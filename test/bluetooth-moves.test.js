@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { decodeBatteryLevel, decodeBluetoothMoves } from '../src/bluetooth-moves.js';
+import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from '../src/bluetooth-moves.js';
 
 test('decodes ASCII move notifications into WCA notation', () => {
   const encoded = new TextEncoder().encode('MOVE R U2 F\'\n');
@@ -87,6 +87,19 @@ test('decodes encrypted Giiker and Mi Smart history packets', () => {
   assert.equal(decoded.protocol, 'giiker-encrypted-latest-move');
   assert.deepEqual(decoded.moves, ['U']);
   assert.deepEqual(decoded.historyMoves, ['U', "R'"]);
+});
+
+test('builds duplicate-sensitive signatures only for Giiker state packets', () => {
+  const packet = Array(20).fill(0);
+  packet[16] = 0x41; // U
+  packet[17] = 0x53; // R'
+
+  const giiker = decodeBluetoothMoves(packet);
+  const goCube = decodeBluetoothMoves([0x2a, 0x00, 0x01, 0x08, 0x00, 0x00, 0x0d, 0x0a]);
+
+  assert.equal(bluetoothMovePacketSignature(giiker), "giiker-latest-move:U R'");
+  assert.equal(bluetoothMovePacketSignature(goCube), '');
+  assert.equal(bluetoothMovePacketSignature(null), '');
 });
 
 test('decodes standard Bluetooth battery levels', () => {

@@ -4,6 +4,7 @@ const goCubeAxisPermutation = [5, 2, 0, 3, 1, 4];
 const goCubeFaces = 'URFDLB';
 const giikerFaces = 'BDLURF';
 const giikerSuffixes = ['', '2', "'"];
+const duplicateSensitiveProtocols = new Set(['giiker-latest-move', 'giiker-encrypted-latest-move']);
 const giikerDecryptionKey = [
   176, 81, 104, 224, 86, 137, 237, 119, 38, 26, 193, 161, 210, 126, 150, 81, 93, 13,
   236, 249, 89, 235, 88, 24, 113, 81, 214, 131, 130, 199, 2, 169, 39, 165, 171, 41,
@@ -35,6 +36,14 @@ export function decodeBatteryLevel(input) {
 
   const level = bytes[0];
   return level <= 100 ? level : null;
+}
+
+export function bluetoothMovePacketSignature(decoded) {
+  if (!decoded || !duplicateSensitiveProtocols.has(decoded.protocol)) return '';
+  const historyMoves = Array.isArray(decoded.historyMoves) ? decoded.historyMoves : [];
+  const moves = Array.isArray(decoded.moves) ? decoded.moves : [];
+  const sequence = historyMoves.length > 0 ? historyMoves : moves;
+  return sequence.length > 0 ? `${decoded.protocol}:${sequence.join(' ')}` : '';
 }
 
 function bytesFromInput(input) {

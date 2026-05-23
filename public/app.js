@@ -1,5 +1,5 @@
 import { cubeStateFromScramble, isSolvedFaces } from '/cube-state.js';
-import { decodeBatteryLevel, decodeBluetoothMoves } from '/bluetooth-moves.js';
+import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from '/bluetooth-moves.js';
 import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv } from '/solves-export.js';
 import { parseSolveImport } from '/solves-import.js';
 import { buildStatsSummary } from '/stats-summary.js';
@@ -222,6 +222,7 @@ let bluetoothLog = [];
 let bluetoothMoves = [];
 let bluetoothSolved = false;
 let bluetoothBatteryLevel = null;
+let lastBluetoothMovePacketSignature = '';
 let previewScrambleText = '';
 let previewRequestId = 0;
 const previewCache = new Map();
@@ -1216,6 +1217,7 @@ function setActiveBluetoothDevice(device) {
     bluetoothDevice.removeEventListener('gattserverdisconnected', bluetoothDeviceDisconnectHandler);
   }
   bluetoothDevice = device;
+  lastBluetoothMovePacketSignature = '';
   bluetoothDeviceDisconnectHandler = handleBluetoothDisconnected;
   bluetoothDevice.addEventListener('gattserverdisconnected', bluetoothDeviceDisconnectHandler);
 }
@@ -1458,24 +1460,33 @@ function processBluetoothPacket(uuid, value, deviceName) {
   if (decoded.batteryLevel != null) {
     updateBluetoothBattery(decoded.batteryLevel, decoded.protocol || label);
   }
-  const parsedMoves = decoded.moves;
+  const packetSignature = bluetoothMovePacketSignature(decoded);
+  const duplicateMovePacket = Boolean(packetSignature && packetSignature === lastBluetoothMovePacketSignature);
+  if (packetSignature) lastBluetoothMovePacketSignature = packetSignature;
+  const parsedMoves = duplicateMovePacket ? [] : decoded.moves;
   const trackingMoves = parsedMoves.length > 0 && shouldTrackBluetoothMoves();
   elements.bluetoothStatus.title = `${uuid} ${hex}`;
   if (trackingMoves) addBluetoothMoves(parsedMoves, label);
   if (trackingMoves) finishTimingFromBluetooth();
   const statusDetail = parsedMoves.length > 0
     ? `${parsedMoves.join(' ')} · ${trackingMoves ? (bluetoothSolved ? '已复原' : '未复原') : '等待计时'}`
-    : (decoded.batteryLevel != null ? `电量 ${decoded.batteryLevel}%` : `${label} ${hex.slice(0, 17)}`);
+    : (duplicateMovePacket
+      ? `${decoded.moves.join(' ')} · 重复状态包`
+      : (decoded.batteryLevel != null ? `电量 ${decoded.batteryLevel}%` : `${label} ${hex.slice(0, 17)}`));
+  const ignoredReason = duplicateMovePacket
+    ? '重复状态包'
+    : (parsedMoves.length > 0 && !trackingMoves ? '等待计时' : '');
   elements.bluetoothStatus.textContent = `${deviceName} · ${statusDetail}`;
   addBluetoothLog(
-    parsedMoves.length > 0 ? (trackingMoves ? '数据/转动' : '数据/预备转动') : '数据',
+    parsedMoves.length > 0 ? (trackingMoves ? '数据/转动' : '数据/预备转动') : (duplicateMovePacket ? '数据/重复' : '数据'),
     label,
-    logBluetoothPacket(hex, decoded, parsedMoves.length > 0 && !trackingMoves ? '等待计时' : ''),
+    logBluetoothPacket(hex, decoded, ignoredReason),
   );
   console.info('Bluetooth cube notification', {
     characteristic: uuid,
     value: hex,
     moves: parsedMoves,
+    duplicate: duplicateMovePacket,
     tracked: trackingMoves,
   });
 }
@@ -1558,6 +1569,7 @@ function clearBluetoothLog() {
   bluetoothLog = [];
   bluetoothMoves = [];
   bluetoothSolved = false;
+  lastBluetoothMovePacketSignature = '';
   renderBluetoothMoves();
   renderBluetoothLog();
 }

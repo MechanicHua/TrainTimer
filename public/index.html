@@ -140,6 +140,7 @@
           <button id="importButton" type="button">导入</button>
           <button id="statsDetailButton" type="button">统计详情</button>
             <button id="manageSolvesButton" type="button">全部成绩</button>
+            <button id="selectedStatsButton" type="button">选中统计</button>
             <button id="markSelectedButton" type="button">标记选中</button>
             <button id="puzzleSelectedButton" type="button">类型选中</button>
             <button id="tagSelectedButton" type="button">标签选中</button>
@@ -222,6 +223,7 @@
                 <option value="asc">升序</option>
               </select>
             </label>
+            <button id="allSelectedStatsButton" type="button">选中统计</button>
             <button id="allMarkSelectedButton" type="button">标记选中</button>
             <button id="allPuzzleSelectedButton" type="button">类型选中</button>
             <button id="allTagSelectedButton" type="button">标签选中</button>
@@ -268,12 +270,12 @@
           <div class="stats-record-panel">
             <div class="stats-record-heading">
               <h3>纪录定位</h3>
-              <p>点击查看成绩或平均明细</p>
+              <p id="statsRecordHint">点击查看成绩或平均明细</p>
             </div>
             <div id="statsRecordList" class="stats-record-list"></div>
           </div>
           <div id="statsDetailGrid" class="stats-detail-grid"></div>
-          <div class="session-overview-panel">
+          <div id="statsSessionOverviewPanel" class="session-overview-panel">
             <div class="stats-record-heading">
               <h3>会话概览</h3>
               <p>点击切换会话</p>

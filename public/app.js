@@ -108,6 +108,7 @@ const elements = {
   importFile: document.querySelector('#importFile'),
   statsDetailButton: document.querySelector('#statsDetailButton'),
   manageSolvesButton: document.querySelector('#manageSolvesButton'),
+  selectedStatsButton: document.querySelector('#selectedStatsButton'),
   markSelectedButton: document.querySelector('#markSelectedButton'),
   puzzleSelectedButton: document.querySelector('#puzzleSelectedButton'),
   tagSelectedButton: document.querySelector('#tagSelectedButton'),
@@ -127,6 +128,7 @@ const elements = {
   allSolvesSortBy: document.querySelector('#allSolvesSortBy'),
   allSolvesSortDirection: document.querySelector('#allSolvesSortDirection'),
   selectAllSessionSolves: document.querySelector('#selectAllSessionSolves'),
+  allSelectedStatsButton: document.querySelector('#allSelectedStatsButton'),
   allMarkSelectedButton: document.querySelector('#allMarkSelectedButton'),
   allPuzzleSelectedButton: document.querySelector('#allPuzzleSelectedButton'),
   allTagSelectedButton: document.querySelector('#allTagSelectedButton'),
@@ -139,10 +141,12 @@ const elements = {
   allExportCstimerJsonButton: document.querySelector('#allExportCstimerJsonButton'),
   statsDialog: document.querySelector('#statsDialog'),
   statsDialogMeta: document.querySelector('#statsDialogMeta'),
+  statsRecordHint: document.querySelector('#statsRecordHint'),
   statsTrendChart: document.querySelector('#statsTrendChart'),
   statsChartMeta: document.querySelector('#statsChartMeta'),
   statsRecordList: document.querySelector('#statsRecordList'),
   statsDetailGrid: document.querySelector('#statsDetailGrid'),
+  statsSessionOverviewPanel: document.querySelector('#statsSessionOverviewPanel'),
   sessionOverviewList: document.querySelector('#sessionOverviewList'),
   copyStatsSummaryButton: document.querySelector('#copyStatsSummaryButton'),
   exportDialog: document.querySelector('#exportDialog'),
@@ -269,6 +273,7 @@ let pendingImportSnapshot = null;
 let pendingImportPreview = null;
 let currentDetailSolveId = null;
 let currentAverageDetail = null;
+let statsScope = 'session';
 let bluetoothDevice = null;
 let bluetoothDeviceDisconnectHandler = null;
 let bluetoothReconnectDevices = [];
@@ -326,6 +331,7 @@ elements.appendImportButton.addEventListener('click', () => confirmImport('appen
 elements.replaceImportButton.addEventListener('click', () => confirmImport('replace'));
 elements.statsDetailButton.addEventListener('click', openStatsDialog);
 elements.manageSolvesButton.addEventListener('click', openAllSolvesDialog);
+elements.selectedStatsButton.addEventListener('click', openSelectedStatsDialog);
 elements.markSelectedButton.addEventListener('click', openMarkPenaltyDialog);
 elements.puzzleSelectedButton.addEventListener('click', openPuzzleSolvesDialog);
 elements.tagSelectedButton.addEventListener('click', openTagSolvesDialog);
@@ -334,6 +340,7 @@ elements.moveSelectedButton.addEventListener('click', openMoveSolvesDialog);
 elements.deleteSelectedButton.addEventListener('click', deleteSelectedSolves);
 elements.undoDeleteButton.addEventListener('click', undoLastDelete);
 elements.clearAllButton.addEventListener('click', clearAllSolves);
+elements.allSelectedStatsButton.addEventListener('click', openSelectedStatsDialog);
 elements.allMarkSelectedButton.addEventListener('click', openMarkPenaltyDialog);
 elements.allPuzzleSelectedButton.addEventListener('click', openPuzzleSolvesDialog);
 elements.allTagSelectedButton.addEventListener('click', openTagSolvesDialog);
@@ -373,6 +380,9 @@ elements.solveDialog.addEventListener('close', () => {
 });
 elements.averageDialog.addEventListener('close', () => {
   currentAverageDetail = null;
+});
+elements.statsDialog.addEventListener('close', () => {
+  statsScope = 'session';
 });
 elements.allSolvesDialog.addEventListener('close', () => {
   selectedSolveIds.clear();
@@ -1108,6 +1118,20 @@ function toggleAllSessions() {
 }
 
 function openStatsDialog() {
+  statsScope = 'session';
+  if (!elements.statsDialog.open) elements.statsDialog.showModal();
+  renderStatsDialog();
+  requestAnimationFrame(() => {
+    if (elements.statsDialog.open) renderStatsDialog();
+  });
+  setTimeout(() => {
+    if (elements.statsDialog.open) renderStatsDialog();
+  }, 220);
+}
+
+function openSelectedStatsDialog() {
+  if (selectedSolveIds.size === 0) return;
+  statsScope = 'selected';
   if (!elements.statsDialog.open) elements.statsDialog.showModal();
   renderStatsDialog();
   requestAnimationFrame(() => {
@@ -2421,13 +2445,15 @@ function renderStats() {
 
 function renderStatsDialog() {
   if (!elements.statsDialog.open) return;
-  const currentSession = sessions.find((session) => session.id === currentSessionId);
-  const sessionSolves = filteredSolves();
-  const summary = summarizeSolves(sessionSolves);
-  elements.statsDialogMeta.textContent = `${currentSession?.name || currentSessionId} · ${summary.count} 条成绩`;
-  renderStatsTrendChart(sessionSolves);
-  renderStatsRecords(sessionSolves);
-  renderSessionOverview();
+  const statsData = currentStatsData();
+  const summary = summarizeSolves(statsData.solves);
+  elements.statsDialogMeta.textContent = `${statsData.label} · ${summary.count} 条成绩`;
+  elements.copyStatsSummaryButton.disabled = summary.count === 0;
+  renderStatsTrendChart(statsData.solves, statsData.scope === 'selected' ? '选中' : '最近');
+  renderStatsRecords(statsData.solves, { selected: statsData.scope === 'selected' });
+  elements.statsSessionOverviewPanel.hidden = statsData.scope === 'selected';
+  if (statsData.scope === 'selected') elements.sessionOverviewList.replaceChildren();
+  else renderSessionOverview();
 
   const rows = [
     ['总次数', summary.count],
@@ -2462,6 +2488,26 @@ function renderStatsDialog() {
       return item;
     }),
   );
+}
+
+function currentStatsData() {
+  if (statsScope === 'selected') {
+    const statsSolves = selectedStatsSolves();
+    const sessionIds = new Set(statsSolves.map((solve) => solve.sessionId || 'default'));
+    const scopeLabel = sessionIds.size > 1 ? `选中成绩 · ${sessionIds.size} 个会话` : '选中成绩';
+    return { scope: 'selected', label: scopeLabel, solves: statsSolves };
+  }
+
+  const currentSession = sessions.find((session) => session.id === currentSessionId);
+  return {
+    scope: 'session',
+    label: currentSession?.name || currentSessionId,
+    solves: filteredSolves(),
+  };
+}
+
+function selectedStatsSolves() {
+  return solves.filter((solve) => selectedSolveIds.has(solve.id));
 }
 
 function renderSessionOverview() {
@@ -2505,7 +2551,10 @@ function sessionOverviewHeader() {
   return header;
 }
 
-function renderStatsRecords(sessionSolves) {
+function renderStatsRecords(sessionSolves, options = {}) {
+  elements.statsRecordHint.textContent = options.selected
+    ? '选中集合内的最佳统计，平均不跳转到会话明细'
+    : '点击查看成绩或平均明细';
   const records = [
     bestSingleRecord(sessionSolves),
     bestMeanRecord(sessionSolves, 3),
@@ -2531,10 +2580,13 @@ function renderStatsRecords(sessionSolves) {
       item.className = 'stats-record-item';
       if (record.type === 'single') {
         item.dataset.detailId = endSolve?.id || '';
-      } else {
+      } else if (!options.selected) {
         item.dataset.averageId = endSolve?.id || '';
         item.dataset.averageKind = record.type.startsWith('mo') ? 'mean' : 'average';
         item.dataset.averageSize = record.type.replace(/^\D+/, '');
+      } else {
+        item.disabled = true;
+        item.title = '选中统计里的平均按当前选中集合计算';
       }
       item.innerHTML = `
         <span>${escapeHtml(record.label)}</span>
@@ -2572,10 +2624,9 @@ async function handleSessionOverviewClick(event) {
 }
 
 async function copyStatsSummary() {
-  const currentSession = sessions.find((session) => session.id === currentSessionId);
-  const sessionSolves = filteredSolves();
-  const summary = summarizeSolves(sessionSolves);
-  const text = buildStatsSummary(currentSession?.name || currentSessionId, summary, sessionSolves);
+  const statsData = currentStatsData();
+  const summary = summarizeSolves(statsData.solves);
+  const text = buildStatsSummary(statsData.label, summary, statsData.solves);
   try {
     await navigator.clipboard.writeText(text);
     elements.copyStatsSummaryButton.textContent = '已复制';
@@ -2587,7 +2638,7 @@ async function copyStatsSummary() {
   }
 }
 
-function renderStatsTrendChart(sessionSolves) {
+function renderStatsTrendChart(sessionSolves, chartLabel = '最近') {
   const canvas = elements.statsTrendChart;
   const context = canvas.getContext('2d');
   const rect = canvas.getBoundingClientRect();
@@ -2649,7 +2700,7 @@ function renderStatsTrendChart(sessionSolves) {
   }
 
   const dnfCount = chartSolves.filter((solve) => solve.penalty === 'dnf').length;
-  elements.statsChartMeta.textContent = `最近 ${chartSolves.length} 把 · 有效 ${points.length} · DNF ${dnfCount}`;
+  elements.statsChartMeta.textContent = `${chartLabel} ${chartSolves.length} 把 · 有效 ${points.length} · DNF ${dnfCount}`;
 }
 
 function drawChartGrid(context, width, height, padding, yMin, yMax) {
@@ -3033,6 +3084,7 @@ function formatRecordTitle(marks) {
 function renderHistoryControls() {
   const canMoveSelected = selectedSolveIds.size > 0 && sessions.some((session) => session.id !== currentSessionId);
   elements.markSelectedButton.disabled = selectedSolveIds.size === 0;
+  elements.selectedStatsButton.disabled = selectedSolveIds.size === 0;
   elements.puzzleSelectedButton.disabled = selectedSolveIds.size === 0;
   elements.tagSelectedButton.disabled = selectedSolveIds.size === 0;
   elements.commentSelectedButton.disabled = selectedSolveIds.size === 0;
@@ -3084,6 +3136,7 @@ function renderHistoryControls() {
 
 function renderAllSolvesControls() {
   const sessionIds = filteredAllSolves().map((solve) => solve.id);
+  elements.allSelectedStatsButton.disabled = selectedSolveIds.size === 0;
   elements.allMarkSelectedButton.disabled = selectedSolveIds.size === 0;
   elements.allPuzzleSelectedButton.disabled = selectedSolveIds.size === 0;
   elements.allTagSelectedButton.disabled = selectedSolveIds.size === 0;
@@ -3105,6 +3158,7 @@ function renderSelectionControls() {
   renderHistoryControls();
   if (elements.allSolvesDialog.open) renderAllSolvesControls();
   if (elements.exportDialog.open) renderExportDialog();
+  if (elements.statsDialog.open) renderStatsDialog();
   if (elements.markPenaltyDialog.open) renderMarkPenaltyDialog();
   if (elements.puzzleSolvesDialog.open) renderPuzzleSolvesDialog();
   if (elements.tagSolvesDialog.open) renderTagSolvesDialog();

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createExportPayload,
+  exportHistoryForSolves,
   safeExportFilename,
   scopedExportHistory,
   selectedExportHistory,
@@ -60,6 +61,12 @@ test('builds selected exports with only used sessions', () => {
   const selected = selectedExportHistory(solves, sessions, new Set(['b']));
   assert.deepEqual(selected.sessions, [{ id: 'oh', name: 'One Handed' }]);
   assert.deepEqual(selected.solves.map((solve) => solve.id), ['b']);
+});
+
+test('builds listed exports in provided order', () => {
+  const listed = exportHistoryForSolves([solves[1], solves[0]], sessions);
+  assert.deepEqual(listed.solves.map((solve) => solve.id), ['b', 'a']);
+  assert.deepEqual(listed.sessions, sessions);
 });
 
 test('exports CSV with stable columns and quoting', () => {

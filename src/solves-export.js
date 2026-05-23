@@ -32,9 +32,13 @@ export function scopedExportHistory(history, scope, sessionId) {
 export function selectedExportHistory(solves, sessions, selectedIds) {
   const idSet = new Set(selectedIds);
   const selectedSolves = solves.filter((solve) => idSet.has(solve.id));
+  return exportHistoryForSolves(selectedSolves, sessions);
+}
+
+export function exportHistoryForSolves(exportSolves, sessions) {
   return {
-    sessions: sessionsForSolves(selectedSolves, sessions),
-    solves: selectedSolves,
+    sessions: sessionsForSolves(exportSolves, sessions),
+    solves: exportSolves,
   };
 }
 

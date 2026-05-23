@@ -1,6 +1,6 @@
 import { cubeStateFromScramble, isSolvedFaces } from '/cube-state.js';
 import { decodeBatteryLevel, decodeBluetoothMoves } from '/bluetooth-moves.js';
-import { createExportPayload, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv } from '/solves-export.js';
+import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv } from '/solves-export.js';
 import { parseSolveImport } from '/solves-import.js';
 import { buildStatsSummary } from '/stats-summary.js';
 import { buildSolveSummary } from '/solve-summary.js';
@@ -109,6 +109,9 @@ const elements = {
   allTagSelectedButton: document.querySelector('#allTagSelectedButton'),
   allMoveSelectedButton: document.querySelector('#allMoveSelectedButton'),
   allDeleteSelectedButton: document.querySelector('#allDeleteSelectedButton'),
+  allExportJsonButton: document.querySelector('#allExportJsonButton'),
+  allExportCsvButton: document.querySelector('#allExportCsvButton'),
+  allExportCstimerButton: document.querySelector('#allExportCstimerButton'),
   statsDialog: document.querySelector('#statsDialog'),
   statsDialogMeta: document.querySelector('#statsDialogMeta'),
   statsTrendChart: document.querySelector('#statsTrendChart'),
@@ -260,6 +263,9 @@ elements.allMarkSelectedButton.addEventListener('click', openMarkPenaltyDialog);
 elements.allTagSelectedButton.addEventListener('click', openTagSolvesDialog);
 elements.allMoveSelectedButton.addEventListener('click', openMoveSolvesDialog);
 elements.allDeleteSelectedButton.addEventListener('click', deleteSelectedSolves);
+elements.allExportJsonButton.addEventListener('click', () => exportListedSolves('json'));
+elements.allExportCsvButton.addEventListener('click', () => exportListedSolves('csv'));
+elements.allExportCstimerButton.addEventListener('click', () => exportListedSolves('cstimer'));
 elements.confirmMarkPenaltyButton.addEventListener('click', markSelectedPenalty);
 elements.confirmMoveButton.addEventListener('click', moveSelectedSolves);
 elements.confirmTagButton.addEventListener('click', saveSelectedTags);
@@ -727,6 +733,20 @@ function exportSelectedSolves(format) {
   if (exportHistory.solves.length === 0) return;
 
   const suffix = `selected-${exportHistory.solves.length}`;
+  downloadSolvesExport(format, 'selected', suffix, exportHistory);
+}
+
+function exportListedSolves(format) {
+  const listedSolves = filteredAllSolves();
+  if (listedSolves.length === 0) return;
+
+  const currentSession = sessions.find((session) => session.id === currentSessionId);
+  const scope = allSolvesQuery() ? 'filtered' : 'listed';
+  const suffix = `${safeExportFilename(currentSession?.name || currentSessionId)}-${scope}-${listedSolves.length}`;
+  downloadSolvesExport(format, scope, suffix, exportHistoryForSolves(listedSolves, sessions));
+}
+
+function downloadSolvesExport(format, scope, suffix, exportHistory) {
   if (format === 'csv') {
     downloadTextFile(
       `traintimer-solves-${suffix}.csv`,
@@ -747,7 +767,7 @@ function exportSelectedSolves(format) {
 
   downloadTextFile(
     `traintimer-solves-${suffix}.json`,
-    `${JSON.stringify(createExportPayload('selected', exportHistory.sessions, exportHistory.solves), null, 2)}\n`,
+    `${JSON.stringify(createExportPayload(scope, exportHistory.sessions, exportHistory.solves), null, 2)}\n`,
     'application/json;charset=utf-8',
   );
 }
@@ -2091,6 +2111,9 @@ function renderAllSolvesControls() {
   elements.allTagSelectedButton.disabled = selectedSolveIds.size === 0;
   elements.allMoveSelectedButton.disabled = selectedSolveIds.size === 0 || !sessions.some((session) => session.id !== currentSessionId);
   elements.allDeleteSelectedButton.disabled = selectedSolveIds.size === 0;
+  elements.allExportJsonButton.disabled = sessionIds.length === 0;
+  elements.allExportCsvButton.disabled = sessionIds.length === 0;
+  elements.allExportCstimerButton.disabled = sessionIds.length === 0;
   elements.selectAllSessionSolves.checked = sessionIds.length > 0 && sessionIds.every((id) => selectedSolveIds.has(id));
   elements.selectAllSessionSolves.indeterminate = sessionIds.some((id) => selectedSolveIds.has(id)) && !elements.selectAllSessionSolves.checked;
 }

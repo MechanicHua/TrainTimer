@@ -4,7 +4,7 @@ import { createExportPayload, exportHistoryForSolves, safeExportFilename, select
 import { parseSolveImport } from '/solves-import.js';
 import { buildStatsSummary } from '/stats-summary.js';
 import { buildSolveSummary } from '/solve-summary.js';
-import { rollingAverageAt } from '/rolling-averages.js';
+import { recordMarksAt, rollingAverageAt } from '/rolling-averages.js';
 
 const inspectionSeconds = 15;
 const inspectionDnfSeconds = 17;
@@ -2187,14 +2187,29 @@ function renderSolveRow(solve, solveNumber, sessionSolves) {
   const solveIndex = Math.max(0, solveNumber - 1);
   const ao5 = rollingAverageAt(sessionSolves, solveIndex, 5);
   const ao12 = rollingAverageAt(sessionSolves, solveIndex, 12);
+  const recordMarks = recordMarksAt(sessionSolves, solveIndex);
+  const singleMarks = recordMarks.filter((mark) => mark.type === 'single' || mark.type === 'mo3');
+  const ao5Marks = recordMarks.filter((mark) => mark.type === 'ao5');
+  const ao12Marks = recordMarks.filter((mark) => mark.type === 'ao12');
+  const recordTitle = formatRecordTitle(recordMarks);
   const row = document.createElement('div');
-  row.className = 'history-row';
+  row.className = recordMarks.length > 0 ? 'history-row has-record' : 'history-row';
+  if (recordTitle) row.title = recordTitle;
   row.innerHTML = `
         <span><input class="solve-check" data-id="${solve.id}" type="checkbox" ${selectedSolveIds.has(solve.id) ? 'checked' : ''} aria-label="选择第 ${solveNumber} 条成绩" /></span>
         <span>${solveNumber}</span>
-        <span class="time" title="${escapeHtml(solve.duration)}">${displaySolveTime(solve)}</span>
-        <span class="rolling-average" title="第 ${solveNumber} 条后的 ao5">${timeOrDash(ao5)}</span>
-        <span class="rolling-average" title="第 ${solveNumber} 条后的 ao12">${timeOrDash(ao12)}</span>
+        <span class="time" title="${escapeHtml([solve.duration, formatRecordTitle(singleMarks)].filter(Boolean).join(' · '))}">
+          <span>${displaySolveTime(solve)}</span>
+          ${renderRecordBadges(singleMarks)}
+        </span>
+        <span class="rolling-average" title="${escapeHtml(['第 ' + solveNumber + ' 条后的 ao5', formatRecordTitle(ao5Marks)].filter(Boolean).join(' · '))}">
+          <span>${timeOrDash(ao5)}</span>
+          ${renderRecordBadges(ao5Marks)}
+        </span>
+        <span class="rolling-average" title="${escapeHtml(['第 ' + solveNumber + ' 条后的 ao12', formatRecordTitle(ao12Marks)].filter(Boolean).join(' · '))}">
+          <span>${timeOrDash(ao12)}</span>
+          ${renderRecordBadges(ao12Marks)}
+        </span>
         <span>
           <select class="penalty-select" data-id="${solve.id}" aria-label="成绩罚时">
             <option value="ok" ${solve.penalty === 'ok' ? 'selected' : ''}>OK</option>
@@ -2209,6 +2224,23 @@ function renderSolveRow(solve, solveNumber, sessionSolves) {
         </span>
       `;
   return row;
+}
+
+function renderRecordBadges(marks) {
+  if (marks.length === 0) return '';
+  const badges = marks.map((mark) => (
+    `<span class="record-badge ${mark.type === 'single' ? 'single' : 'average'}">${escapeHtml(recordBadgeText(mark))}</span>`
+  )).join('');
+  return `<span class="record-badges" aria-label="${escapeHtml(formatRecordTitle(marks))}">${badges}</span>`;
+}
+
+function recordBadgeText(mark) {
+  if (mark.type === 'single') return 'PB';
+  return mark.type;
+}
+
+function formatRecordTitle(marks) {
+  return marks.map((mark) => `${mark.label} ${timeOrDash(mark.value)}`).join(' · ');
 }
 
 function renderHistoryControls() {

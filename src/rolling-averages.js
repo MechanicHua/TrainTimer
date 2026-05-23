@@ -3,6 +3,41 @@ export function rollingAverageAt(solves, index, size) {
   return averageOfWindow(solves.slice(index + 1 - size, index + 1));
 }
 
+export function rollingMeanAt(solves, index, size) {
+  if (!Number.isInteger(index) || index < 0 || index + 1 < size) return null;
+  return meanOfWindow(solves.slice(index + 1 - size, index + 1));
+}
+
+export function recordMarksAt(solves, index, options = {}) {
+  if (!Number.isInteger(index) || index < 0 || index >= solves.length) return [];
+
+  const marks = [];
+  const previousSolves = solves.slice(0, index);
+  const single = effectiveDurationMs(solves[index]);
+  const previousSingleBest = bestSingleOf(previousSolves);
+  if (single != null && (previousSingleBest == null || single < previousSingleBest)) {
+    marks.push({ type: 'single', label: 'PB', value: single });
+  }
+
+  for (const size of options.meanSizes || [3]) {
+    const value = rollingMeanAt(solves, index, size);
+    const previousBest = bestMeanOf(previousSolves, size);
+    if (value != null && (previousBest == null || value < previousBest)) {
+      marks.push({ type: `mo${size}`, label: `PB mo${size}`, value });
+    }
+  }
+
+  for (const size of options.averageSizes || [5, 12]) {
+    const value = rollingAverageAt(solves, index, size);
+    const previousBest = bestAverageOf(previousSolves, size);
+    if (value != null && (previousBest == null || value < previousBest)) {
+      marks.push({ type: `ao${size}`, label: `PB ao${size}`, value });
+    }
+  }
+
+  return marks;
+}
+
 export function averageOfLast(solves, size) {
   if (solves.length < size) return null;
   return averageOfWindow(solves.slice(-size));
@@ -55,4 +90,9 @@ export function effectiveDurationMs(solve) {
   }
   const durationMs = Math.max(0, Math.round(Number(solve.durationMs) || 0));
   return durationMs + (solve.penalty === '+2' ? 2000 : 0);
+}
+
+function bestSingleOf(solves) {
+  const values = solves.map(effectiveDurationMs).filter((value) => value != null);
+  return values.length === 0 ? null : Math.min(...values);
 }

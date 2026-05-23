@@ -600,7 +600,7 @@ body[data-state="timing"] .timer-display {
 .history-head,
 .history-row {
   display: grid;
-  grid-template-columns: 20px 24px 62px 58px 58px 54px minmax(58px, 1fr) 60px;
+  grid-template-columns: 20px 24px minmax(70px, 0.95fr) minmax(58px, 0.7fr) minmax(58px, 0.7fr) 54px minmax(58px, 1fr) 60px;
   gap: 4px;
   align-items: center;
   min-height: 36px;
@@ -627,6 +627,14 @@ body[data-state="timing"] .timer-display {
   background: rgba(0, 113, 227, 0.055);
 }
 
+.history-row.has-record {
+  background: linear-gradient(90deg, rgba(0, 113, 227, 0.075), rgba(52, 199, 89, 0.045));
+}
+
+.history-row.has-record:hover {
+  background: linear-gradient(90deg, rgba(0, 113, 227, 0.115), rgba(52, 199, 89, 0.07));
+}
+
 .history-row span {
   min-width: 0;
   overflow: hidden;
@@ -635,14 +643,45 @@ body[data-state="timing"] .timer-display {
 }
 
 .history-row .time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
   font-weight: 760;
 }
 
 .history-row .rolling-average {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+.history-row .record-badges {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 3px;
+  min-width: 0;
+}
+
+.history-row .record-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: rgba(0, 113, 227, 0.13);
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 820;
+  line-height: 1;
+}
+
+.history-row .record-badge.average {
+  background: rgba(52, 199, 89, 0.14);
+  color: #1d7f3a;
 }
 
 .history-row button,

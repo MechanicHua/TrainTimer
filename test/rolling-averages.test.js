@@ -1,6 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { averageOfLast, bestAverageOf, bestMeanOf, effectiveDurationMs, meanOfLast, rollingAverageAt } from '../src/rolling-averages.js';
+import {
+  averageOfLast,
+  bestAverageOf,
+  bestMeanOf,
+  effectiveDurationMs,
+  meanOfLast,
+  recordMarksAt,
+  rollingAverageAt,
+  rollingMeanAt,
+} from '../src/rolling-averages.js';
 
 const solves = [10, 11, 12, 13, 14, 15].map((seconds, index) => ({
   id: String(index + 1),
@@ -48,6 +57,35 @@ test('computes current and best mean of three without trimming', () => {
   ));
   assert.equal(meanOfLast(withDnf, 3), null);
   assert.equal(bestMeanOf(withDnf, 3), 11000);
+});
+
+test('computes rolling means at a solve index', () => {
+  assert.equal(rollingMeanAt(solves, 1, 3), null);
+  assert.equal(rollingMeanAt(solves, 2, 3), 11000);
+  assert.equal(rollingMeanAt(solves, 5, 3), 14000);
+});
+
+test('marks personal-best solves and rolling averages', () => {
+  const pbSolves = [12, 11, 10, 15, 9, 13, 8, 14, 7, 16, 6, 12].map((seconds, index) => ({
+    id: String(index + 1),
+    durationMs: seconds * 1000,
+    penalty: 'ok',
+  }));
+
+  assert.deepEqual(recordMarksAt(pbSolves, 0), [
+    { type: 'single', label: 'PB', value: 12000 },
+  ]);
+  assert.deepEqual(recordMarksAt(pbSolves, 2), [
+    { type: 'single', label: 'PB', value: 10000 },
+    { type: 'mo3', label: 'PB mo3', value: 11000 },
+  ]);
+  assert.deepEqual(recordMarksAt(pbSolves, 4), [
+    { type: 'single', label: 'PB', value: 9000 },
+    { type: 'ao5', label: 'PB ao5', value: 11000 },
+  ]);
+  assert.deepEqual(recordMarksAt(pbSolves, 11), [
+    { type: 'ao12', label: 'PB ao12', value: 11100 },
+  ]);
 });
 
 test('falls back to duration when effective duration is absent', () => {

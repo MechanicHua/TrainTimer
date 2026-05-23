@@ -569,12 +569,15 @@ async function markSelectedPenalty() {
   const ids = [...selectedSolveIds];
   const penalty = elements.markPenaltySelect.value;
   if (ids.length === 0) return;
+  const snapshot = createHistorySnapshot('mark-penalty', `${ids.length} 条成绩`);
 
   elements.confirmMarkPenaltyButton.disabled = true;
   try {
     const data = await postJson('/api/solves/update', { ids, penalty });
     solves = data.solves;
     if (data.sessions) sessions = data.sessions;
+    pendingDeletedSolves = [];
+    pendingImportSnapshot = snapshot;
     selectedSolveIds.clear();
     renderSolveDialog();
     elements.markPenaltyDialog.close();
@@ -597,6 +600,7 @@ function openTagSolvesDialog() {
 async function saveSelectedTags() {
   const ids = [...selectedSolveIds];
   if (ids.length === 0) return;
+  const snapshot = createHistorySnapshot('tag-solves', `${ids.length} 条成绩`);
 
   elements.confirmTagButton.disabled = true;
   try {
@@ -606,6 +610,8 @@ async function saveSelectedTags() {
     });
     solves = data.solves;
     if (data.sessions) sessions = data.sessions;
+    pendingDeletedSolves = [];
+    pendingImportSnapshot = snapshot;
     selectedSolveIds.clear();
     renderSolveDialog();
     elements.tagSolvesDialog.close();
@@ -1994,6 +2000,12 @@ function renderHistoryControls() {
   } else if (pendingImportSnapshot?.mode === 'move-solves') {
     elements.undoDeleteButton.textContent = '撤销移动';
     elements.undoDeleteButton.title = `恢复移动前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`;
+  } else if (pendingImportSnapshot?.mode === 'mark-penalty') {
+    elements.undoDeleteButton.textContent = '撤销标记';
+    elements.undoDeleteButton.title = `恢复标记前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`;
+  } else if (pendingImportSnapshot?.mode === 'tag-solves') {
+    elements.undoDeleteButton.textContent = '撤销标签';
+    elements.undoDeleteButton.title = `恢复标签修改前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`;
   } else if (canUndoSnapshot) {
     elements.undoDeleteButton.textContent = '撤销导入';
     elements.undoDeleteButton.title = `恢复导入前的数据：${pendingImportSnapshot.fileName || '导入文件'}`;

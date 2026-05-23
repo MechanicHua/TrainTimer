@@ -4,7 +4,7 @@ import { createExportPayload, exportHistoryForSolves, safeExportFilename, select
 import { parseSolveImport } from '/solves-import.js';
 import { buildStatsSummary } from '/stats-summary.js';
 import { buildSolveSummary } from '/solve-summary.js';
-import { bestAverageRecord, bestMeanRecord, bestSingleRecord, recordMarksAt, rollingAverageAt, rollingAverageDetailAt } from '/rolling-averages.js';
+import { bestAverageRecord, bestMeanRecord, bestSingleRecord, recordMarksAt, rollingAverageAt, rollingAverageDetailAt, rollingMeanDetailAt } from '/rolling-averages.js';
 
 const inspectionSeconds = 15;
 const inspectionDnfSeconds = 17;
@@ -1010,7 +1010,11 @@ function handleHistoryClick(event) {
   const averageButton = target?.closest('[data-average-id]');
   if (averageButton) {
     if (elements.allSolvesDialog.open) elements.allSolvesDialog.close();
-    openAverageDialog(averageButton.dataset.averageId, Number(averageButton.dataset.averageSize));
+    openAverageDialog(
+      averageButton.dataset.averageId,
+      Number(averageButton.dataset.averageSize),
+      averageButton.dataset.averageKind || 'average',
+    );
     return;
   }
 
@@ -1063,8 +1067,8 @@ function renderSolveDialog() {
   renderSolveBluetoothReplay(solve);
 }
 
-function openAverageDialog(solveId, size) {
-  currentAverageDetail = { solveId, size };
+function openAverageDialog(solveId, size, kind = 'average') {
+  currentAverageDetail = { solveId, size, kind };
   if (!currentAverageDetailData()) {
     currentAverageDetail = null;
     return;
@@ -1094,9 +1098,12 @@ function renderAverageDialog() {
 function currentAverageDetailData() {
   if (!currentAverageDetail) return null;
   const solve = solves.find((item) => item.id === currentAverageDetail.solveId);
-  if (!solve || ![5, 12].includes(currentAverageDetail.size)) return null;
+  if (!solve || ![3, 5, 12, 50, 100].includes(currentAverageDetail.size)) return null;
   const sessionSolves = solvesForSession(solve.sessionId);
   const solveIndex = sessionSolves.findIndex((item) => item.id === solve.id);
+  if (currentAverageDetail.kind === 'mean') {
+    return rollingMeanDetailAt(sessionSolves, solveIndex, currentAverageDetail.size);
+  }
   return rollingAverageDetailAt(sessionSolves, solveIndex, currentAverageDetail.size);
 }
 
@@ -2190,7 +2197,13 @@ function renderStatsRecords(sessionSolves) {
       const item = document.createElement('button');
       item.type = 'button';
       item.className = 'stats-record-item';
-      item.dataset.detailId = endSolve?.id || '';
+      if (record.type === 'single') {
+        item.dataset.detailId = endSolve?.id || '';
+      } else {
+        item.dataset.averageId = endSolve?.id || '';
+        item.dataset.averageKind = record.type.startsWith('mo') ? 'mean' : 'average';
+        item.dataset.averageSize = record.type.replace(/^\D+/, '');
+      }
       item.innerHTML = `
         <span>${escapeHtml(record.label)}</span>
         <strong>${timeOrDash(record.value)}</strong>
@@ -2202,7 +2215,19 @@ function renderStatsRecords(sessionSolves) {
 }
 
 function handleStatsRecordClick(event) {
-  const button = event.target.closest('[data-detail-id]');
+  const target = event.target instanceof HTMLElement ? event.target : null;
+  const averageButton = target?.closest('[data-average-id]');
+  if (averageButton?.dataset.averageId) {
+    elements.statsDialog.close();
+    openAverageDialog(
+      averageButton.dataset.averageId,
+      Number(averageButton.dataset.averageSize),
+      averageButton.dataset.averageKind,
+    );
+    return;
+  }
+
+  const button = target?.closest('[data-detail-id]');
   if (!button?.dataset.detailId) return;
   elements.statsDialog.close();
   openSolveDialog(button.dataset.detailId);
@@ -2602,7 +2627,7 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
 function renderAverageButton(solveId, solveNumber, size, value, marks) {
   const disabled = value == null ? 'disabled' : '';
   return `
-    <button class="average-detail-button" data-average-id="${escapeHtml(solveId)}" data-average-size="${size}" type="button" ${disabled} aria-label="查看第 ${solveNumber} 条后的 ao${size} 明细">
+    <button class="average-detail-button" data-average-id="${escapeHtml(solveId)}" data-average-kind="average" data-average-size="${size}" type="button" ${disabled} aria-label="查看第 ${solveNumber} 条后的 ao${size} 明细">
       <span>${timeOrDash(value)}</span>
       ${renderRecordBadges(marks)}
     </button>

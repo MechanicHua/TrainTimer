@@ -1272,6 +1272,8 @@ dialog[open] {
 .average-detail-list {
   display: grid;
   gap: 8px;
+  overflow: auto;
+  max-height: min(560px, calc(100vh - 190px));
   margin-top: 16px;
 }
 

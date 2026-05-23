@@ -52,6 +52,29 @@ export function rollingMeanAt(solves, index, size) {
   return meanOfWindow(solves.slice(index + 1 - size, index + 1));
 }
 
+export function rollingMeanDetailAt(solves, index, size) {
+  if (!Number.isInteger(index) || index < 0 || index + 1 < size) return null;
+  const startIndex = index + 1 - size;
+  const windowSolves = solves.slice(startIndex, index + 1);
+  const entries = windowSolves.map((solve, offset) => ({
+    solve,
+    index: startIndex + offset,
+    value: effectiveDurationMs(solve),
+    role: 'counted',
+  }));
+  if (entries.some((entry) => entry.value == null)) return null;
+
+  return {
+    type: `mo${size}`,
+    size,
+    value: entries.reduce((sum, entry) => sum + entry.value, 0) / entries.length,
+    startIndex,
+    endIndex: index,
+    solveIds: windowSolves.map((solve) => solve.id),
+    entries,
+  };
+}
+
 export function recordMarksAt(solves, index, options = {}) {
   if (!Number.isInteger(index) || index < 0 || index >= solves.length) return [];
 

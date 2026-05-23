@@ -12,6 +12,7 @@ import {
   recordMarksAt,
   rollingAverageAt,
   rollingAverageDetailAt,
+  rollingMeanDetailAt,
   rollingMeanAt,
 } from '../src/rolling-averages.js';
 
@@ -98,6 +99,17 @@ test('computes rolling means at a solve index', () => {
   assert.equal(rollingMeanAt(solves, 1, 3), null);
   assert.equal(rollingMeanAt(solves, 2, 3), 11000);
   assert.equal(rollingMeanAt(solves, 5, 3), 14000);
+});
+
+test('describes rolling mean windows without trimming', () => {
+  const detail = rollingMeanDetailAt(solves, 2, 3);
+
+  assert.equal(detail.type, 'mo3');
+  assert.equal(detail.value, 11000);
+  assert.equal(detail.startIndex, 0);
+  assert.equal(detail.endIndex, 2);
+  assert.deepEqual(detail.entries.map((entry) => entry.role), ['counted', 'counted', 'counted']);
+  assert.equal(rollingMeanDetailAt([{ ...solves[0], penalty: 'dnf' }, solves[1], solves[2]], 2, 3), null);
 });
 
 test('marks personal-best solves and rolling averages', () => {

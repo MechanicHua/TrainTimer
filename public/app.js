@@ -103,6 +103,7 @@ const elements = {
   allSolvesMeta: document.querySelector('#allSolvesMeta'),
   allSolvesRows: document.querySelector('#allSolvesRows'),
   allSolvesSearch: document.querySelector('#allSolvesSearch'),
+  allSessionsToggle: document.querySelector('#allSessionsToggle'),
   allSolvesSortBy: document.querySelector('#allSolvesSortBy'),
   allSolvesSortDirection: document.querySelector('#allSolvesSortDirection'),
   selectAllSessionSolves: document.querySelector('#selectAllSessionSolves'),
@@ -194,6 +195,7 @@ let solves = [];
 let sessions = [];
 let inspectionEnabled = localStorage.getItem('trainTimer.inspection') === '1';
 let currentSessionId = localStorage.getItem('trainTimer.session') || 'default';
+let allSessionsEnabled = localStorage.getItem('trainTimer.allSessions') === '1';
 let startedAt = 0;
 let inspectionStartedAt = 0;
 let holdStartedAt = 0;
@@ -298,6 +300,7 @@ elements.importDialog.addEventListener('close', () => {
 elements.selectAllSolves.addEventListener('change', toggleSelectAllSolves);
 elements.selectAllSessionSolves.addEventListener('change', toggleSelectAllSessionSolves);
 elements.allSolvesSearch.addEventListener('input', handleAllSolvesSearch);
+elements.allSessionsToggle.addEventListener('change', toggleAllSessions);
 elements.allSolvesSortBy.addEventListener('change', renderAllSolvesDialog);
 elements.allSolvesSortDirection.addEventListener('change', renderAllSolvesDialog);
 elements.historyRows.addEventListener('change', handleHistoryChange);
@@ -752,7 +755,8 @@ function exportListedSolves(format) {
 
   const currentSession = sessions.find((session) => session.id === currentSessionId);
   const scope = allSolvesQuery() ? 'filtered' : 'listed';
-  const suffix = `${safeExportFilename(currentSession?.name || currentSessionId)}-${scope}-${listedSolves.length}`;
+  const scopeName = allSessionsEnabled ? 'all-sessions' : (currentSession?.name || currentSessionId);
+  const suffix = `${safeExportFilename(scopeName)}-${scope}-${listedSolves.length}`;
   downloadSolvesExport(format, scope, suffix, exportHistoryForSolves(listedSolves, sessions));
 }
 
@@ -842,6 +846,13 @@ function openAllSolvesDialog() {
 }
 
 function handleAllSolvesSearch() {
+  selectedSolveIds.clear();
+  render();
+}
+
+function toggleAllSessions() {
+  allSessionsEnabled = elements.allSessionsToggle.checked;
+  localStorage.setItem('trainTimer.allSessions', allSessionsEnabled ? '1' : '0');
   selectedSolveIds.clear();
   render();
 }
@@ -2126,11 +2137,15 @@ function renderTagSolvesDialog() {
 
 function renderMoveSolvesDialog() {
   if (!elements.moveSolvesDialog.open && selectedSolveIds.size === 0) return;
-  const currentSession = sessions.find((session) => session.id === currentSessionId);
-  const targetSessions = sessions.filter((session) => session.id !== currentSessionId);
+  const selectedSolves = solves.filter((solve) => selectedSolveIds.has(solve.id));
+  const selectedSessionIds = new Set(selectedSolves.map((solve) => solve.sessionId || 'default'));
+  const sourceLabel = selectedSessionIds.size === 1
+    ? sessionNameForId([...selectedSessionIds][0])
+    : `${selectedSessionIds.size} 个会话`;
+  const targetSessions = sessions.filter((session) => !selectedSolves.every((solve) => (solve.sessionId || 'default') === session.id));
   elements.moveSolvesMeta.textContent = targetSessions.length === 0
     ? '请先新建另一个会话'
-    : `${currentSession?.name || currentSessionId} · 选中 ${selectedSolveIds.size} 条`;
+    : `${sourceLabel} · 选中 ${selectedSolveIds.size} 条`;
   elements.moveSessionSelect.replaceChildren(
     ...targetSessions.map((session) => {
       const option = document.createElement('option');
@@ -2211,24 +2226,29 @@ function renderHistory() {
 function renderAllSolvesDialog() {
   if (!elements.allSolvesDialog.open) return;
   const currentSession = sessions.find((session) => session.id === currentSessionId);
-  const sessionSolves = filteredSolves();
+  elements.allSessionsToggle.checked = allSessionsEnabled;
+  const baseSolves = allSolvesBaseSolves();
   const listedSolves = filteredAllSolves();
+  const scopeLabel = allSessionsEnabled ? `全部会话 · ${sessions.length} 个会话` : (currentSession?.name || currentSessionId);
   elements.allSolvesMeta.textContent = allSolvesQuery()
-    ? `${currentSession?.name || currentSessionId} · 筛选 ${listedSolves.length} / ${sessionSolves.length} 条`
-    : `${currentSession?.name || currentSessionId} · ${sessionSolves.length} 条`;
+    ? `${scopeLabel} · 筛选 ${listedSolves.length} / ${baseSolves.length} 条`
+    : `${scopeLabel} · ${baseSolves.length} 条`;
   elements.allSolvesRows.replaceChildren(
-    ...listedSolves.map((solve) => renderSolveRow(solve, sessionSolves.indexOf(solve) + 1, sessionSolves)),
+    ...listedSolves.map((solve) => {
+      const solveSessionSolves = solvesForSession(solve.sessionId);
+      return renderSolveRow(solve, solveSessionSolves.indexOf(solve) + 1, solveSessionSolves, { showSession: allSessionsEnabled });
+    }),
   );
   if (listedSolves.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'history-empty';
-    empty.textContent = allSolvesQuery() ? '没有匹配的成绩' : '当前会话暂无成绩';
+    empty.textContent = allSolvesQuery() ? '没有匹配的成绩' : (allSessionsEnabled ? '暂无成绩' : '当前会话暂无成绩');
     elements.allSolvesRows.append(empty);
   }
   renderAllSolvesControls();
 }
 
-function renderSolveRow(solve, solveNumber, sessionSolves) {
+function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
   const solveIndex = Math.max(0, solveNumber - 1);
   const ao5 = rollingAverageAt(sessionSolves, solveIndex, 5);
   const ao12 = rollingAverageAt(sessionSolves, solveIndex, 12);
@@ -2240,6 +2260,8 @@ function renderSolveRow(solve, solveNumber, sessionSolves) {
   const row = document.createElement('div');
   row.className = recordMarks.length > 0 ? 'history-row has-record' : 'history-row';
   if (recordTitle) row.title = recordTitle;
+  const sessionLabel = options.showSession ? sessionNameForSolve(solve) : '';
+  const createdAtText = new Date(solve.createdAt).toLocaleString();
   row.innerHTML = `
         <span><input class="solve-check" data-id="${solve.id}" type="checkbox" ${selectedSolveIds.has(solve.id) ? 'checked' : ''} aria-label="选择第 ${solveNumber} 条成绩" /></span>
         <span>${solveNumber}</span>
@@ -2262,7 +2284,10 @@ function renderSolveRow(solve, solveNumber, sessionSolves) {
             <option value="dnf" ${solve.penalty === 'dnf' ? 'selected' : ''}>DNF</option>
           </select>
         </span>
-        <span>${new Date(solve.createdAt).toLocaleString()}</span>
+        <span class="row-date" title="${escapeHtml([sessionLabel, createdAtText].filter(Boolean).join(' · '))}">
+          ${sessionLabel ? `<small>${escapeHtml(sessionLabel)}</small>` : ''}
+          <span>${escapeHtml(createdAtText)}</span>
+        </span>
         <span class="row-actions">
           <button data-detail-id="${solve.id}" type="button">详情</button>
           <button data-delete-id="${solve.id}" type="button">删</button>
@@ -2330,7 +2355,10 @@ function renderAllSolvesControls() {
   const sessionIds = filteredAllSolves().map((solve) => solve.id);
   elements.allMarkSelectedButton.disabled = selectedSolveIds.size === 0;
   elements.allTagSelectedButton.disabled = selectedSolveIds.size === 0;
-  elements.allMoveSelectedButton.disabled = selectedSolveIds.size === 0 || !sessions.some((session) => session.id !== currentSessionId);
+  const selectedSolves = solves.filter((solve) => selectedSolveIds.has(solve.id));
+  const canMoveSelected = selectedSolves.length > 0
+    && sessions.some((session) => !selectedSolves.every((solve) => (solve.sessionId || 'default') === session.id));
+  elements.allMoveSelectedButton.disabled = !canMoveSelected;
   elements.allDeleteSelectedButton.disabled = selectedSolveIds.size === 0;
   elements.allExportJsonButton.disabled = sessionIds.length === 0;
   elements.allExportCsvButton.disabled = sessionIds.length === 0;
@@ -2356,11 +2384,21 @@ function filteredSolves() {
   return solves.filter((solve) => solve.sessionId === currentSessionId);
 }
 
+function allSolvesBaseSolves() {
+  return allSessionsEnabled ? solves : filteredSolves();
+}
+
+function solvesForSession(sessionId) {
+  const normalizedSessionId = sessionId || 'default';
+  return solves.filter((solve) => (solve.sessionId || 'default') === normalizedSessionId);
+}
+
 function filteredAllSolves() {
   const query = allSolvesQuery();
+  const baseSolves = allSolvesBaseSolves();
   const listedSolves = query
-    ? filteredSolves().filter((solve) => searchableSolveText(solve).includes(query))
-    : filteredSolves();
+    ? baseSolves.filter((solve) => searchableSolveText(solve).includes(query))
+    : baseSolves;
   return sortAllSolves(listedSolves);
 }
 
@@ -2378,12 +2416,22 @@ function searchableSolveText(solve) {
     Array.isArray(solve.bluetoothMoves) ? solve.bluetoothMoves.join(' ') : '',
     solve.bluetoothMoveCount,
     solve.bluetoothTps,
+    sessionNameForSolve(solve),
     formatTags(solve.tags),
     solve.comment,
     solve.scramble,
     solve.scrambleSource,
     new Date(solve.createdAt).toLocaleString(),
   ].join(' ').toLowerCase();
+}
+
+function sessionNameForSolve(solve) {
+  return sessionNameForId(solve.sessionId || 'default');
+}
+
+function sessionNameForId(sessionId) {
+  const session = sessions.find((item) => item.id === sessionId);
+  return session?.name || sessionId || 'default';
 }
 
 function parseTagsInput(value) {

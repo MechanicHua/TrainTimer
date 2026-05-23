@@ -659,6 +659,26 @@ body[data-state="timing"] .timer-display {
   font-variant-numeric: tabular-nums;
 }
 
+.history-row .row-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.history-row .row-date small {
+  flex: 0 1 auto;
+  overflow: hidden;
+  max-width: 82px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(0, 113, 227, 0.1);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 760;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .history-row .record-badges {
   display: inline-flex;
   flex: 0 0 auto;
@@ -819,7 +839,8 @@ dialog[open] {
 }
 
 .all-solves-search,
-.all-solves-sort {
+.all-solves-sort,
+.all-sessions-toggle {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -836,6 +857,7 @@ dialog[open] {
 
 .all-solves-search span,
 .all-solves-sort span,
+.all-sessions-toggle span,
 .move-session-field span,
 .manual-entry-grid span,
 .solve-detail-grid span,
@@ -865,6 +887,20 @@ dialog[open] {
   min-width: 0;
   min-height: 32px;
   padding: 0 10px;
+}
+
+.all-sessions-toggle {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.all-sessions-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
 }
 
 .all-solves-search input {

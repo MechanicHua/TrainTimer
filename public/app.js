@@ -109,6 +109,7 @@ const elements = {
   statsDetailButton: document.querySelector('#statsDetailButton'),
   manageSolvesButton: document.querySelector('#manageSolvesButton'),
   markSelectedButton: document.querySelector('#markSelectedButton'),
+  puzzleSelectedButton: document.querySelector('#puzzleSelectedButton'),
   tagSelectedButton: document.querySelector('#tagSelectedButton'),
   commentSelectedButton: document.querySelector('#commentSelectedButton'),
   moveSelectedButton: document.querySelector('#moveSelectedButton'),
@@ -127,6 +128,7 @@ const elements = {
   allSolvesSortDirection: document.querySelector('#allSolvesSortDirection'),
   selectAllSessionSolves: document.querySelector('#selectAllSessionSolves'),
   allMarkSelectedButton: document.querySelector('#allMarkSelectedButton'),
+  allPuzzleSelectedButton: document.querySelector('#allPuzzleSelectedButton'),
   allTagSelectedButton: document.querySelector('#allTagSelectedButton'),
   allCommentSelectedButton: document.querySelector('#allCommentSelectedButton'),
   allMoveSelectedButton: document.querySelector('#allMoveSelectedButton'),
@@ -166,6 +168,10 @@ const elements = {
   markPenaltyMeta: document.querySelector('#markPenaltyMeta'),
   markPenaltySelect: document.querySelector('#markPenaltySelect'),
   confirmMarkPenaltyButton: document.querySelector('#confirmMarkPenaltyButton'),
+  puzzleSolvesDialog: document.querySelector('#puzzleSolvesDialog'),
+  puzzleSolvesMeta: document.querySelector('#puzzleSolvesMeta'),
+  puzzleSolvesSelect: document.querySelector('#puzzleSolvesSelect'),
+  confirmPuzzleButton: document.querySelector('#confirmPuzzleButton'),
   moveSolvesDialog: document.querySelector('#moveSolvesDialog'),
   moveSolvesMeta: document.querySelector('#moveSolvesMeta'),
   moveSessionSelect: document.querySelector('#moveSessionSelect'),
@@ -321,6 +327,7 @@ elements.replaceImportButton.addEventListener('click', () => confirmImport('repl
 elements.statsDetailButton.addEventListener('click', openStatsDialog);
 elements.manageSolvesButton.addEventListener('click', openAllSolvesDialog);
 elements.markSelectedButton.addEventListener('click', openMarkPenaltyDialog);
+elements.puzzleSelectedButton.addEventListener('click', openPuzzleSolvesDialog);
 elements.tagSelectedButton.addEventListener('click', openTagSolvesDialog);
 elements.commentSelectedButton.addEventListener('click', openCommentSolvesDialog);
 elements.moveSelectedButton.addEventListener('click', openMoveSolvesDialog);
@@ -328,6 +335,7 @@ elements.deleteSelectedButton.addEventListener('click', deleteSelectedSolves);
 elements.undoDeleteButton.addEventListener('click', undoLastDelete);
 elements.clearAllButton.addEventListener('click', clearAllSolves);
 elements.allMarkSelectedButton.addEventListener('click', openMarkPenaltyDialog);
+elements.allPuzzleSelectedButton.addEventListener('click', openPuzzleSolvesDialog);
 elements.allTagSelectedButton.addEventListener('click', openTagSolvesDialog);
 elements.allCommentSelectedButton.addEventListener('click', openCommentSolvesDialog);
 elements.allMoveSelectedButton.addEventListener('click', openMoveSolvesDialog);
@@ -337,6 +345,7 @@ elements.allExportCsvButton.addEventListener('click', () => exportListedSolves('
 elements.allExportCstimerButton.addEventListener('click', () => exportListedSolves('cstimer'));
 elements.allExportCstimerJsonButton.addEventListener('click', () => exportListedSolves('cstimer-json'));
 elements.confirmMarkPenaltyButton.addEventListener('click', markSelectedPenalty);
+elements.confirmPuzzleButton.addEventListener('click', saveSelectedPuzzle);
 elements.confirmMoveButton.addEventListener('click', moveSelectedSolves);
 elements.confirmMergeSessionButton.addEventListener('click', mergeCurrentSession);
 elements.confirmTagButton.addEventListener('click', saveSelectedTags);
@@ -776,6 +785,37 @@ async function markSelectedPenalty() {
     renderMarkPenaltyDialog();
   } finally {
     elements.confirmMarkPenaltyButton.disabled = false;
+  }
+}
+
+function openPuzzleSolvesDialog() {
+  if (selectedSolveIds.size === 0) return;
+  renderPuzzleSolvesDialog();
+  if (!elements.puzzleSolvesDialog.open) elements.puzzleSolvesDialog.showModal();
+}
+
+async function saveSelectedPuzzle() {
+  const ids = [...selectedSolveIds];
+  const scramblePuzzle = elements.puzzleSolvesSelect.value || 'three';
+  if (ids.length === 0) return;
+  const snapshot = createHistorySnapshot('puzzle-solves', `${ids.length} 条成绩`);
+
+  elements.confirmPuzzleButton.disabled = true;
+  try {
+    const data = await postJson('/api/solves/update', { ids, scramblePuzzle });
+    solves = data.solves;
+    if (data.sessions) sessions = data.sessions;
+    pendingDeletedSolves = [];
+    pendingImportSnapshot = snapshot;
+    selectedSolveIds.clear();
+    renderSolveDialog();
+    elements.puzzleSolvesDialog.close();
+    render();
+  } catch (error) {
+    alert(`保存类型失败：${error.message}`);
+    renderPuzzleSolvesDialog();
+  } finally {
+    elements.confirmPuzzleButton.disabled = false;
   }
 }
 
@@ -2741,6 +2781,18 @@ function renderMarkPenaltyDialog() {
   elements.confirmMarkPenaltyButton.disabled = selectedSolveIds.size === 0;
 }
 
+function renderPuzzleSolvesDialog() {
+  if (!elements.puzzleSolvesDialog.open && selectedSolveIds.size === 0) return;
+  const selectedSolves = solves.filter((solve) => selectedSolveIds.has(solve.id));
+  const puzzles = new Set(selectedSolves.map((solve) => solve.scramblePuzzle || 'three'));
+  if (puzzles.size === 1) elements.puzzleSolvesSelect.value = selectedSolves[0]?.scramblePuzzle || 'three';
+  const sharedLabel = puzzles.size === 1 ? puzzleLabel(selectedSolves[0]?.scramblePuzzle || 'three') : '';
+  elements.puzzleSolvesMeta.textContent = sharedLabel
+    ? `选中 ${selectedSolveIds.size} 条 · 当前 ${sharedLabel}`
+    : `选中 ${selectedSolveIds.size} 条 · 请选择新的打乱类型`;
+  elements.confirmPuzzleButton.disabled = selectedSolveIds.size === 0;
+}
+
 function renderTagSolvesDialog() {
   if (!elements.tagSolvesDialog.open && selectedSolveIds.size === 0) return;
   const selectedSolves = solves.filter((solve) => selectedSolveIds.has(solve.id));
@@ -2981,6 +3033,7 @@ function formatRecordTitle(marks) {
 function renderHistoryControls() {
   const canMoveSelected = selectedSolveIds.size > 0 && sessions.some((session) => session.id !== currentSessionId);
   elements.markSelectedButton.disabled = selectedSolveIds.size === 0;
+  elements.puzzleSelectedButton.disabled = selectedSolveIds.size === 0;
   elements.tagSelectedButton.disabled = selectedSolveIds.size === 0;
   elements.commentSelectedButton.disabled = selectedSolveIds.size === 0;
   elements.moveSelectedButton.disabled = !canMoveSelected;
@@ -3003,6 +3056,9 @@ function renderHistoryControls() {
   } else if (pendingImportSnapshot?.mode === 'mark-penalty') {
     elements.undoDeleteButton.textContent = '撤销标记';
     elements.undoDeleteButton.title = `恢复标记前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`;
+  } else if (pendingImportSnapshot?.mode === 'puzzle-solves') {
+    elements.undoDeleteButton.textContent = '撤销类型';
+    elements.undoDeleteButton.title = `恢复打乱类型修改前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`;
   } else if (pendingImportSnapshot?.mode === 'tag-solves') {
     elements.undoDeleteButton.textContent = '撤销标签';
     elements.undoDeleteButton.title = `恢复标签修改前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`;
@@ -3029,6 +3085,7 @@ function renderHistoryControls() {
 function renderAllSolvesControls() {
   const sessionIds = filteredAllSolves().map((solve) => solve.id);
   elements.allMarkSelectedButton.disabled = selectedSolveIds.size === 0;
+  elements.allPuzzleSelectedButton.disabled = selectedSolveIds.size === 0;
   elements.allTagSelectedButton.disabled = selectedSolveIds.size === 0;
   elements.allCommentSelectedButton.disabled = selectedSolveIds.size === 0;
   const selectedSolves = solves.filter((solve) => selectedSolveIds.has(solve.id));
@@ -3049,6 +3106,7 @@ function renderSelectionControls() {
   if (elements.allSolvesDialog.open) renderAllSolvesControls();
   if (elements.exportDialog.open) renderExportDialog();
   if (elements.markPenaltyDialog.open) renderMarkPenaltyDialog();
+  if (elements.puzzleSolvesDialog.open) renderPuzzleSolvesDialog();
   if (elements.tagSolvesDialog.open) renderTagSolvesDialog();
   if (elements.commentSolvesDialog.open) renderCommentSolvesDialog();
   if (elements.moveSolvesDialog.open) renderMoveSolvesDialog();

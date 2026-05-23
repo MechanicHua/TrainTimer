@@ -141,6 +141,7 @@
           <button id="statsDetailButton" type="button">统计详情</button>
             <button id="manageSolvesButton" type="button">全部成绩</button>
             <button id="markSelectedButton" type="button">标记选中</button>
+            <button id="puzzleSelectedButton" type="button">类型选中</button>
             <button id="tagSelectedButton" type="button">标签选中</button>
             <button id="commentSelectedButton" type="button">备注选中</button>
             <button id="moveSelectedButton" type="button">移动选中</button>
@@ -222,6 +223,7 @@
               </select>
             </label>
             <button id="allMarkSelectedButton" type="button">标记选中</button>
+            <button id="allPuzzleSelectedButton" type="button">类型选中</button>
             <button id="allTagSelectedButton" type="button">标签选中</button>
             <button id="allCommentSelectedButton" type="button">备注选中</button>
             <button id="allMoveSelectedButton" type="button">移动选中</button>
@@ -345,6 +347,36 @@
           <div class="dialog-actions">
             <button type="submit">取消</button>
             <button id="confirmMarkPenaltyButton" type="button">标记</button>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog id="puzzleSolvesDialog" class="move-dialog">
+        <form method="dialog" class="move-dialog-inner">
+          <div class="solve-dialog-header">
+            <div>
+              <h2>编辑打乱类型</h2>
+              <p id="puzzleSolvesMeta">-</p>
+            </div>
+            <button type="submit" aria-label="关闭">关闭</button>
+          </div>
+          <label class="move-session-field">
+            <span>打乱类型</span>
+            <select id="puzzleSolvesSelect">
+              <option value="two">2x2</option>
+              <option value="three">3x3</option>
+              <option value="four">4x4</option>
+              <option value="five">5x5</option>
+              <option value="six">6x6</option>
+              <option value="seven">7x7</option>
+              <option value="clock">Clock</option>
+              <option value="skewb">Skewb</option>
+              <option value="sq1">Square-1</option>
+            </select>
+          </label>
+          <div class="dialog-actions">
+            <button type="submit">取消</button>
+            <button id="confirmPuzzleButton" type="button">保存类型</button>
           </div>
         </form>
       </dialog>

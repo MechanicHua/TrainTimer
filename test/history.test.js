@@ -254,6 +254,11 @@ test('updates penalties for selected solves', async () => {
   assert.equal(result.solves.find((solve) => solve.id === 'a').effectiveDurationMs, null);
   assert.equal(result.solves.find((solve) => solve.id === 'b').penalty, 'ok');
   assert.equal(result.solves.find((solve) => solve.id === 'c').penalty, 'dnf');
+
+  const puzzleResult = await updateSolves(['a', 'b'], { scramblePuzzle: 'five' }, file);
+  assert.equal(puzzleResult.solves.find((solve) => solve.id === 'a').scramblePuzzle, 'five');
+  assert.equal(puzzleResult.solves.find((solve) => solve.id === 'b').scramblePuzzle, 'five');
+  assert.equal(puzzleResult.solves.find((solve) => solve.id === 'c').scramblePuzzle, 'three');
 });
 
 test('normalizes and updates solve tags', async () => {

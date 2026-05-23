@@ -345,6 +345,7 @@ async function handleApi(request, response) {
     const ids = Array.isArray(body.ids) ? body.ids.map(String) : [];
     const updates = {};
     if (Object.hasOwn(body, 'penalty')) updates.penalty = body.penalty;
+    if (Object.hasOwn(body, 'scramblePuzzle')) updates.scramblePuzzle = String(body.scramblePuzzle || 'three');
     if (Object.hasOwn(body, 'tags')) updates.tags = body.tags;
     if (Object.hasOwn(body, 'comment')) updates.comment = String(body.comment || '');
     const result = await updateSolves(ids, updates);

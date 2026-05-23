@@ -866,6 +866,10 @@ function openAllSolvesDialog() {
   elements.allSolvesSearch.value = '';
   elements.allSolvesFromDate.value = '';
   elements.allSolvesToDate.value = '';
+  if (filteredSolves().length === 0 && solves.length > 0) {
+    allSessionsEnabled = true;
+    localStorage.setItem('trainTimer.allSessions', '1');
+  }
   if (!elements.allSolvesDialog.open) elements.allSolvesDialog.showModal();
   renderAllSolvesDialog();
   elements.allSolvesSearch.focus();
@@ -2414,7 +2418,7 @@ function renderHistoryControls() {
     elements.undoDeleteButton.title = canUndoDelete ? `恢复 ${pendingDeletedSolves.length} 条刚删除的成绩` : '没有可撤销的操作';
   }
   elements.clearAllButton.disabled = filteredSolves().length === 0;
-  elements.manageSolvesButton.disabled = filteredSolves().length === 0;
+  elements.manageSolvesButton.disabled = solves.length === 0;
   const visibleIds = visibleSolves().map((solve) => solve.id);
   elements.selectAllSolves.checked = visibleIds.length > 0 && visibleIds.every((id) => selectedSolveIds.has(id));
   elements.selectAllSolves.indeterminate = visibleIds.some((id) => selectedSolveIds.has(id)) && !elements.selectAllSolves.checked;

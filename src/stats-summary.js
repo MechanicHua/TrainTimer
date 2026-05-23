@@ -14,9 +14,13 @@ export function buildStatsSummary(sessionName, summary, latestSolves = []) {
     ['mo3', timeOrDash(summary.mo3)],
     ['ao5', timeOrDash(summary.ao5)],
     ['ao12', timeOrDash(summary.ao12)],
+    ['ao50', timeOrDash(summary.ao50)],
+    ['ao100', timeOrDash(summary.ao100)],
     ['最佳 mo3', timeOrDash(summary.bestMo3)],
     ['最佳 ao5', timeOrDash(summary.bestAo5)],
     ['最佳 ao12', timeOrDash(summary.bestAo12)],
+    ['最佳 ao50', timeOrDash(summary.bestAo50)],
+    ['最佳 ao100', timeOrDash(summary.bestAo100)],
   ];
   const latest = latestSolves.slice(-5).map(displaySolveTime);
 

@@ -20,9 +20,13 @@ test('builds copyable session statistics summary', () => {
       mo3: 11900,
       ao5: 12000,
       ao12: null,
+      ao50: 12100,
+      ao100: null,
       bestMo3: 11200,
       bestAo5: 11500,
       bestAo12: null,
+      bestAo50: 11600,
+      bestAo100: null,
     },
     [
       { durationMs: 10000, duration: '10.000', penalty: 'ok' },
@@ -39,7 +43,10 @@ test('builds copyable session statistics summary', () => {
   assert.match(text, /平均 TPS: 3\.457/);
   assert.match(text, /最佳 TPS: 4\.250/);
   assert.match(text, /mo3: 11\.900/);
+  assert.match(text, /ao50: 12\.100/);
   assert.match(text, /最佳 mo3: 11\.200/);
   assert.match(text, /最佳 ao5: 11\.500/);
+  assert.match(text, /最佳 ao50: 11\.600/);
+  assert.match(text, /最佳 ao100: -/);
   assert.match(text, /最近 3: 10\.000 \/ 13\.000\+ \/ DNF/);
 });

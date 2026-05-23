@@ -274,6 +274,11 @@ h2 {
   border-color: #000;
 }
 
+#bluetoothAnyButton {
+  border-color: rgba(0, 113, 227, 0.22);
+  color: var(--accent);
+}
+
 #bluetoothBattery {
   max-width: 76px;
   color: var(--muted-strong);

@@ -10,6 +10,21 @@ const inspectionSeconds = 15;
 const inspectionDnfSeconds = 17;
 const holdToStartMs = 500;
 const reminderSeconds = new Set([8, 12]);
+const bluetoothDeviceFilters = [
+  { namePrefix: 'GAN' },
+  { namePrefix: 'Gi' },
+  { namePrefix: 'Giiker' },
+  { namePrefix: 'Mi Smart' },
+  { namePrefix: 'Hi-' },
+  { namePrefix: 'GoCube' },
+  { namePrefix: 'Rubik' },
+  { namePrefix: 'Rubiks' },
+  { namePrefix: 'Moyu' },
+  { namePrefix: 'MoYu' },
+  { namePrefix: 'Qiyi' },
+  { namePrefix: 'QiYi' },
+  { namePrefix: 'MHC' },
+];
 const bluetoothOptionalServices = [
   'battery_service',
   'device_information',
@@ -55,6 +70,7 @@ const elements = {
   bestAo12Stat: document.querySelector('#bestAo12Stat'),
   latestStat: document.querySelector('#latestStat'),
   bluetoothButton: document.querySelector('#bluetoothButton'),
+  bluetoothAnyButton: document.querySelector('#bluetoothAnyButton'),
   bluetoothLogButton: document.querySelector('#bluetoothLogButton'),
   bluetoothBattery: document.querySelector('#bluetoothBattery'),
   bluetoothStatus: document.querySelector('#bluetoothStatus'),
@@ -203,7 +219,8 @@ elements.lastOkButton.addEventListener('click', () => updateLatestSolvePenalty('
 elements.lastPlusTwoButton.addEventListener('click', () => updateLatestSolvePenalty('+2'));
 elements.lastDnfButton.addEventListener('click', () => updateLatestSolvePenalty('dnf'));
 elements.lastDeleteButton.addEventListener('click', deleteLatestSolve);
-elements.bluetoothButton.addEventListener('click', connectBluetoothCube);
+elements.bluetoothButton.addEventListener('click', () => connectBluetoothCube());
+elements.bluetoothAnyButton.addEventListener('click', () => connectBluetoothCube({ compatibilityMode: true }));
 elements.bluetoothLogButton.addEventListener('click', openBluetoothLogDialog);
 elements.sessionSelect.addEventListener('change', switchSession);
 elements.newSessionButton.addEventListener('click', createSession);
@@ -988,7 +1005,8 @@ async function copySelectedSolveSummary() {
   }
 }
 
-async function connectBluetoothCube() {
+async function connectBluetoothCube(options = {}) {
+  const compatibilityMode = Boolean(options.compatibilityMode);
   if (!navigator.bluetooth) {
     elements.bluetoothStatus.textContent = '浏览器不支持';
     addBluetoothLog('错误', '浏览器不支持 Web Bluetooth', window.location.protocol);
@@ -1002,39 +1020,22 @@ async function connectBluetoothCube() {
       return;
     }
 
-    elements.bluetoothStatus.textContent = '扫描中...';
+    setBluetoothScanningState(true, compatibilityMode);
     resetBluetoothBattery();
-    addBluetoothLog('扫描', '打开设备选择器');
-    bluetoothDevice = await navigator.bluetooth.requestDevice({
-      filters: [
-        { namePrefix: 'GAN' },
-        { namePrefix: 'Gi' },
-        { namePrefix: 'Giiker' },
-        { namePrefix: 'Mi Smart' },
-        { namePrefix: 'Hi-' },
-        { namePrefix: 'GoCube' },
-        { namePrefix: 'Rubik' },
-        { namePrefix: 'Rubiks' },
-        { namePrefix: 'Moyu' },
-        { namePrefix: 'MoYu' },
-        { namePrefix: 'Qiyi' },
-        { namePrefix: 'QiYi' },
-        { namePrefix: 'MHC' },
-      ],
-      optionalServices: bluetoothOptionalServices,
-    });
+    addBluetoothLog('扫描', compatibilityMode ? '打开兼容设备选择器' : '打开设备选择器');
+    bluetoothDevice = await navigator.bluetooth.requestDevice(bluetoothRequestOptions(compatibilityMode));
 
     addBluetoothLog('设备', bluetoothDevice.name || '未命名设备', bluetoothDevice.id || '');
     bluetoothDevice.addEventListener('gattserverdisconnected', () => {
       cleanupBluetoothSubscriptions();
       resetBluetoothBattery();
       elements.bluetoothStatus.textContent = '已断开';
-      elements.bluetoothButton.textContent = '连接蓝牙魔方';
+      setBluetoothConnectedState(false);
       addBluetoothLog('连接', '设备已断开', bluetoothDevice?.name || '');
     });
     addBluetoothLog('连接', '正在连接 GATT');
     const server = await bluetoothDevice.gatt.connect();
-    elements.bluetoothButton.textContent = '断开蓝牙';
+    setBluetoothConnectedState(true);
     elements.bluetoothStatus.textContent = '读取服务...';
     addBluetoothLog('连接', 'GATT 已连接', bluetoothDevice.name || '');
 
@@ -1051,10 +1052,28 @@ async function connectBluetoothCube() {
     resetBluetoothBattery();
     if (bluetoothDevice?.gatt?.connected) bluetoothDevice.gatt.disconnect();
     elements.bluetoothStatus.textContent = error.name === 'NotFoundError' ? '已取消' : '连接失败';
-    elements.bluetoothButton.textContent = '连接蓝牙魔方';
+    setBluetoothConnectedState(false);
     addBluetoothLog('错误', error.name || 'BluetoothError', error.message || String(error));
     console.error(error);
   }
+}
+
+function bluetoothRequestOptions(compatibilityMode) {
+  return compatibilityMode
+    ? { acceptAllDevices: true, optionalServices: bluetoothOptionalServices }
+    : { filters: bluetoothDeviceFilters, optionalServices: bluetoothOptionalServices };
+}
+
+function setBluetoothScanningState(scanning, compatibilityMode) {
+  elements.bluetoothButton.disabled = scanning;
+  elements.bluetoothAnyButton.disabled = scanning;
+  elements.bluetoothStatus.textContent = compatibilityMode ? '兼容扫描中...' : '扫描中...';
+}
+
+function setBluetoothConnectedState(connected) {
+  elements.bluetoothButton.disabled = false;
+  elements.bluetoothButton.textContent = connected ? '断开蓝牙' : '连接蓝牙魔方';
+  elements.bluetoothAnyButton.disabled = connected;
 }
 
 async function discoverBluetoothServices(server) {

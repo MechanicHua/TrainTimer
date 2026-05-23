@@ -60,6 +60,7 @@ const puzzleLabels = new Map([
   ['skewb', 'Skewb'],
   ['sq1', 'Square-1'],
 ]);
+const untaggedFilterValue = '__untagged';
 
 const elements = {
   statusText: document.querySelector('#statusText'),
@@ -127,6 +128,7 @@ const elements = {
   allSolvesPuzzleFilter: document.querySelector('#allSolvesPuzzleFilter'),
   allSolvesPenaltyFilter: document.querySelector('#allSolvesPenaltyFilter'),
   allSolvesSourceFilter: document.querySelector('#allSolvesSourceFilter'),
+  allSolvesTagFilter: document.querySelector('#allSolvesTagFilter'),
   allSessionsToggle: document.querySelector('#allSessionsToggle'),
   allSolvesSortBy: document.querySelector('#allSolvesSortBy'),
   allSolvesSortDirection: document.querySelector('#allSolvesSortDirection'),
@@ -403,6 +405,7 @@ elements.allSolvesRecordFilter.addEventListener('change', handleAllSolvesFilterC
 elements.allSolvesPuzzleFilter.addEventListener('change', handleAllSolvesFilterChange);
 elements.allSolvesPenaltyFilter.addEventListener('change', handleAllSolvesFilterChange);
 elements.allSolvesSourceFilter.addEventListener('change', handleAllSolvesFilterChange);
+elements.allSolvesTagFilter.addEventListener('change', handleAllSolvesFilterChange);
 elements.allSessionsToggle.addEventListener('change', toggleAllSessions);
 elements.allSolvesSortBy.addEventListener('change', renderAllSolvesDialog);
 elements.allSolvesSortDirection.addEventListener('change', renderAllSolvesDialog);
@@ -1105,6 +1108,7 @@ function openAllSolvesDialog() {
   elements.allSolvesPuzzleFilter.value = 'all';
   elements.allSolvesPenaltyFilter.value = 'all';
   elements.allSolvesSourceFilter.value = 'all';
+  elements.allSolvesTagFilter.value = 'all';
   if (filteredSolves().length === 0 && solves.length > 0) {
     allSessionsEnabled = true;
     localStorage.setItem('trainTimer.allSessions', '1');
@@ -2997,6 +3001,7 @@ function renderAllSolvesDialog() {
   const currentSession = sessions.find((session) => session.id === currentSessionId);
   elements.allSessionsToggle.checked = allSessionsEnabled;
   const baseSolves = allSolvesBaseSolves();
+  renderAllSolvesTagFilter(baseSolves);
   const listedSolves = filteredAllSolves();
   const scopeLabel = allSessionsEnabled ? `全部会话 · ${sessions.length} 个会话` : (currentSession?.name || currentSessionId);
   elements.allSolvesMeta.textContent = allSolvesFilterActive()
@@ -3015,6 +3020,30 @@ function renderAllSolvesDialog() {
     elements.allSolvesRows.append(empty);
   }
   renderAllSolvesControls();
+}
+
+function renderAllSolvesTagFilter(baseSolves) {
+  const currentValue = allSolvesTagFilter();
+  const tagOptions = [...new Set(baseSolves.flatMap((solve) => (
+    Array.isArray(solve.tags) ? solve.tags : []
+  )).filter(Boolean))].sort((left, right) => left.localeCompare(right, 'zh-CN', { numeric: true, sensitivity: 'base' }));
+
+  const optionFor = (value, label) => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    return option;
+  };
+
+  elements.allSolvesTagFilter.replaceChildren(
+    optionFor('all', '全部'),
+    optionFor(untaggedFilterValue, '无标签'),
+    ...tagOptions.map((tag) => optionFor(tag, tag)),
+  );
+
+  elements.allSolvesTagFilter.value = currentValue === untaggedFilterValue || tagOptions.includes(currentValue)
+    ? currentValue
+    : 'all';
 }
 
 function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
@@ -3198,6 +3227,7 @@ function filteredAllSolves() {
   const puzzleFilter = allSolvesPuzzleFilter();
   const penaltyFilter = allSolvesPenaltyFilter();
   const sourceFilter = allSolvesSourceFilter();
+  const tagFilter = allSolvesTagFilter();
   const baseSolves = allSolvesBaseSolves();
   const bounds = allSolvesDateBounds();
   let listedSolves = baseSolves;
@@ -3206,6 +3236,8 @@ function filteredAllSolves() {
   if (puzzleFilter !== 'all') listedSolves = listedSolves.filter((solve) => (solve.scramblePuzzle || 'three') === puzzleFilter);
   if (penaltyFilter !== 'all') listedSolves = listedSolves.filter((solve) => (solve.penalty || 'ok') === penaltyFilter);
   if (sourceFilter !== 'all') listedSolves = listedSolves.filter((solve) => (solve.timerSource || 'manual') === sourceFilter);
+  if (tagFilter === untaggedFilterValue) listedSolves = listedSolves.filter((solve) => !Array.isArray(solve.tags) || solve.tags.length === 0);
+  else if (tagFilter !== 'all') listedSolves = listedSolves.filter((solve) => Array.isArray(solve.tags) && solve.tags.includes(tagFilter));
   if (query) listedSolves = listedSolves.filter((solve) => searchableSolveText(solve).includes(query));
   return sortAllSolves(listedSolves);
 }
@@ -3230,6 +3262,10 @@ function allSolvesSourceFilter() {
   return elements.allSolvesSourceFilter.value || 'all';
 }
 
+function allSolvesTagFilter() {
+  return elements.allSolvesTagFilter.value || 'all';
+}
+
 function allSolvesFilterActive() {
   return Boolean(
     allSolvesQuery()
@@ -3238,7 +3274,8 @@ function allSolvesFilterActive() {
       || allSolvesRecordFilter() !== 'all'
       || allSolvesPuzzleFilter() !== 'all'
       || allSolvesPenaltyFilter() !== 'all'
-      || allSolvesSourceFilter() !== 'all',
+      || allSolvesSourceFilter() !== 'all'
+      || allSolvesTagFilter() !== 'all',
   );
 }
 

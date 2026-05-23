@@ -178,7 +178,7 @@
           <div class="all-solves-toolbar">
             <label class="all-solves-search">
               <span>筛选</span>
-              <input id="allSolvesSearch" type="search" autocomplete="off" placeholder="成绩 / 罚时 / 备注 / 打乱 / 会话" />
+              <input id="allSolvesSearch" type="search" autocomplete="off" placeholder="成绩 / 罚时 / 标签 / 备注 / 打乱 / 会话" />
             </label>
             <label class="all-solves-date">
               <span>起始</span>
@@ -231,6 +231,13 @@
                 <option value="all">全部</option>
                 <option value="manual">手动</option>
                 <option value="bluetooth">蓝牙</option>
+              </select>
+            </label>
+            <label class="all-solves-sort">
+              <span>标签</span>
+              <select id="allSolvesTagFilter">
+                <option value="all">全部</option>
+                <option value="__untagged">无标签</option>
               </select>
             </label>
             <label class="all-sessions-toggle">

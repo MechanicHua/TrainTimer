@@ -1057,7 +1057,8 @@ dialog[open] {
   font-size: 13px;
 }
 
-.stats-record-panel {
+.stats-record-panel,
+.session-overview-panel {
   margin-top: 10px;
   padding: 10px;
   border: 1px solid var(--line-soft);
@@ -1089,6 +1090,58 @@ dialog[open] {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin-top: 8px;
+}
+
+.session-overview-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.session-overview-head,
+.session-overview-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.4fr) repeat(5, minmax(62px, 0.72fr));
+  gap: 8px;
+  align-items: center;
+}
+
+.session-overview-head {
+  padding: 0 10px 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.session-overview-row {
+  min-height: 42px;
+  justify-items: start;
+  padding: 7px 10px;
+  text-align: left;
+}
+
+.session-overview-row.active {
+  border-color: rgba(0, 113, 227, 0.24);
+  background: var(--accent-soft);
+}
+
+.session-overview-row strong,
+.session-overview-row span {
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-overview-row strong {
+  color: var(--ink-strong);
+  font-size: 13px;
+}
+
+.session-overview-row span {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
 }
 
 .stats-record-item {
@@ -1502,6 +1555,18 @@ dialog[open] {
 
   .stats-detail-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .session-overview-head,
+  .session-overview-row {
+    grid-template-columns: minmax(120px, 1.4fr) repeat(3, minmax(58px, 0.7fr));
+  }
+
+  .session-overview-head span:nth-child(5),
+  .session-overview-row span:nth-child(5),
+  .session-overview-head span:nth-child(6),
+  .session-overview-row span:nth-child(6) {
+    display: none;
   }
 
   .import-preview-list {

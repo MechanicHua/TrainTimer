@@ -123,6 +123,7 @@ const elements = {
   statsChartMeta: document.querySelector('#statsChartMeta'),
   statsRecordList: document.querySelector('#statsRecordList'),
   statsDetailGrid: document.querySelector('#statsDetailGrid'),
+  sessionOverviewList: document.querySelector('#sessionOverviewList'),
   copyStatsSummaryButton: document.querySelector('#copyStatsSummaryButton'),
   exportDialog: document.querySelector('#exportDialog'),
   exportDialogMeta: document.querySelector('#exportDialogMeta'),
@@ -325,6 +326,7 @@ elements.historyRows.addEventListener('click', handleHistoryClick);
 elements.allSolvesRows.addEventListener('change', handleHistoryChange);
 elements.allSolvesRows.addEventListener('click', handleHistoryClick);
 elements.statsRecordList.addEventListener('click', handleStatsRecordClick);
+elements.sessionOverviewList.addEventListener('click', handleSessionOverviewClick);
 
 window.__trainTimerDebug = {
   emitBluetoothText(text, uuid = '0000fff1-0000-1000-8000-00805f9b34fb') {
@@ -1926,6 +1928,7 @@ function renderStatsDialog() {
   elements.statsDialogMeta.textContent = `${currentSession?.name || currentSessionId} · ${summary.count} 条成绩`;
   renderStatsTrendChart(sessionSolves);
   renderStatsRecords(sessionSolves);
+  renderSessionOverview();
 
   const rows = [
     ['总次数', summary.count],
@@ -1960,6 +1963,47 @@ function renderStatsDialog() {
       return item;
     }),
   );
+}
+
+function renderSessionOverview() {
+  if (!elements.statsDialog.open) return;
+
+  const rows = sessions.map((session) => {
+    const sessionSolves = solvesForSession(session.id);
+    const summary = summarizeSolves(sessionSolves);
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = session.id === currentSessionId ? 'session-overview-row active' : 'session-overview-row';
+    item.dataset.sessionId = session.id;
+    item.innerHTML = `
+      <strong>${escapeHtml(session.name)}</strong>
+      <span>${summary.count} 把</span>
+      <span>${timeOrDash(summary.best)}</span>
+      <span>${timeOrDash(summary.average)}</span>
+      <span>${timeOrDash(summary.ao5)}</span>
+      <span>${timeOrDash(summary.latest)}</span>
+    `;
+    return item;
+  });
+
+  elements.sessionOverviewList.replaceChildren(
+    sessionOverviewHeader(),
+    ...rows,
+  );
+}
+
+function sessionOverviewHeader() {
+  const header = document.createElement('div');
+  header.className = 'session-overview-head';
+  header.innerHTML = `
+    <span>会话</span>
+    <span>次数</span>
+    <span>最佳</span>
+    <span>平均</span>
+    <span>ao5</span>
+    <span>最近</span>
+  `;
+  return header;
 }
 
 function renderStatsRecords(sessionSolves) {
@@ -2002,6 +2046,16 @@ function handleStatsRecordClick(event) {
   if (!button?.dataset.detailId) return;
   elements.statsDialog.close();
   openSolveDialog(button.dataset.detailId);
+}
+
+function handleSessionOverviewClick(event) {
+  const button = event.target.closest('[data-session-id]');
+  if (!button?.dataset.sessionId || button.dataset.sessionId === currentSessionId) return;
+  currentSessionId = button.dataset.sessionId;
+  localStorage.setItem('trainTimer.session', currentSessionId);
+  selectedSolveIds.clear();
+  if (currentDetailSolveId && !filteredSolves().some((solve) => solve.id === currentDetailSolveId)) elements.solveDialog.close();
+  render();
 }
 
 async function copyStatsSummary() {

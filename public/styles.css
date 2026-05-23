@@ -663,6 +663,30 @@ body[data-state="timing"] .timer-display {
   font-variant-numeric: tabular-nums;
 }
 
+.average-detail-button {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 4px;
+  padding: 0 3px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.average-detail-button:not(:disabled) {
+  cursor: pointer;
+}
+
+.average-detail-button:not(:disabled):hover {
+  color: var(--accent);
+}
+
+.average-detail-button:disabled {
+  opacity: 0.55;
+}
+
 .history-row .row-date {
   display: inline-flex;
   align-items: center;
@@ -726,6 +750,13 @@ body[data-state="timing"] .timer-display {
   padding: 0 6px;
 }
 
+.history-row .average-detail-button {
+  min-height: 22px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+}
+
 .history-row button[data-delete-id] {
   color: var(--danger);
 }
@@ -743,6 +774,7 @@ body[data-state="timing"] .timer-display {
 .solve-dialog,
 .all-solves-dialog,
 .stats-dialog,
+.average-dialog,
 .export-dialog,
 .import-dialog,
 .move-dialog,
@@ -766,6 +798,10 @@ body[data-state="timing"] .timer-display {
   width: min(780px, calc(100vw - 32px));
 }
 
+.average-dialog {
+  width: min(680px, calc(100vw - 32px));
+}
+
 .bluetooth-log-dialog {
   width: min(820px, calc(100vw - 32px));
 }
@@ -773,6 +809,7 @@ body[data-state="timing"] .timer-display {
 .solve-dialog::backdrop,
 .all-solves-dialog::backdrop,
 .stats-dialog::backdrop,
+.average-dialog::backdrop,
 .export-dialog::backdrop,
 .import-dialog::backdrop,
 .move-dialog::backdrop,
@@ -789,6 +826,7 @@ dialog[open] {
 .solve-dialog-inner,
 .all-solves-inner,
 .stats-dialog-inner,
+.average-dialog-inner,
 .export-dialog-inner,
 .import-dialog-inner,
 .move-dialog-inner,
@@ -799,6 +837,7 @@ dialog[open] {
 
 .all-solves-inner,
 .stats-dialog-inner,
+.average-dialog-inner,
 .export-dialog-inner,
 .import-dialog-inner,
 .move-dialog-inner,
@@ -1227,6 +1266,67 @@ dialog[open] {
   font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.average-detail-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.average-detail-row {
+  display: grid;
+  grid-template-columns: 56px minmax(72px, 0.55fr) minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: rgba(245, 245, 247, 0.74);
+  color: var(--muted-strong);
+  font-size: 13px;
+}
+
+.average-detail-row.counted {
+  background: rgba(0, 113, 227, 0.07);
+}
+
+.average-detail-row.trimmed-best,
+.average-detail-row.trimmed-worst {
+  opacity: 0.76;
+}
+
+.average-detail-row span,
+.average-detail-row em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.average-detail-row strong {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.average-detail-row em {
+  color: var(--muted);
+  font-style: normal;
+}
+
+.average-detail-row .trim-label {
+  justify-self: end;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.average-detail-row.counted .trim-label {
+  background: rgba(0, 113, 227, 0.12);
+  color: var(--accent);
 }
 
 .move-session-field {

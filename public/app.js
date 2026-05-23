@@ -4,7 +4,7 @@ import { createExportPayload, exportHistoryForSolves, safeExportFilename, select
 import { parseSolveImport } from '/solves-import.js';
 import { buildStatsSummary } from '/stats-summary.js';
 import { buildSolveSummary } from '/solve-summary.js';
-import { bestAverageRecord, bestMeanRecord, bestSingleRecord, recordMarksAt, rollingAverageAt } from '/rolling-averages.js';
+import { bestAverageRecord, bestMeanRecord, bestSingleRecord, recordMarksAt, rollingAverageAt, rollingAverageDetailAt } from '/rolling-averages.js';
 
 const inspectionSeconds = 15;
 const inspectionDnfSeconds = 17;
@@ -180,6 +180,11 @@ const elements = {
   solveBluetoothReplay: document.querySelector('#solveBluetoothReplay'),
   solveBluetoothReplayMeta: document.querySelector('#solveBluetoothReplayMeta'),
   solveBluetoothReplayNet: document.querySelector('#solveBluetoothReplayNet'),
+  averageDialog: document.querySelector('#averageDialog'),
+  averageDetailTitle: document.querySelector('#averageDetailTitle'),
+  averageDetailMeta: document.querySelector('#averageDetailMeta'),
+  averageDetailList: document.querySelector('#averageDetailList'),
+  copyAverageSummaryButton: document.querySelector('#copyAverageSummaryButton'),
   prevSolveButton: document.querySelector('#prevSolveButton'),
   nextSolveDetailButton: document.querySelector('#nextSolveDetailButton'),
   copySolveSummaryButton: document.querySelector('#copySolveSummaryButton'),
@@ -224,6 +229,7 @@ let pendingDeletedSolves = [];
 let pendingImportSnapshot = null;
 let pendingImportPreview = null;
 let currentDetailSolveId = null;
+let currentAverageDetail = null;
 let bluetoothDevice = null;
 let bluetoothDeviceDisconnectHandler = null;
 let bluetoothReconnectDevices = [];
@@ -305,11 +311,15 @@ elements.saveTimeButton.addEventListener('click', saveSolveTime);
 elements.saveTagsButton.addEventListener('click', saveSolveTags);
 elements.saveCommentButton.addEventListener('click', saveSolveComment);
 elements.saveManualEntryButton.addEventListener('click', saveManualEntry);
+elements.copyAverageSummaryButton.addEventListener('click', copyAverageSummary);
 elements.clearBluetoothLogButton.addEventListener('click', clearBluetoothLog);
 elements.copyBluetoothLogButton.addEventListener('click', copyBluetoothLog);
 elements.exportBluetoothLogButton.addEventListener('click', exportBluetoothLog);
 elements.solveDialog.addEventListener('close', () => {
   currentDetailSolveId = null;
+});
+elements.averageDialog.addEventListener('close', () => {
+  currentAverageDetail = null;
 });
 elements.allSolvesDialog.addEventListener('close', () => {
   selectedSolveIds.clear();
@@ -993,14 +1003,24 @@ function handleHistoryChange(event) {
 }
 
 function handleHistoryClick(event) {
-  const detailId = event.target.dataset.detailId;
+  const target = event.target instanceof HTMLElement ? event.target : null;
+  const averageButton = target?.closest('[data-average-id]');
+  if (averageButton) {
+    if (elements.allSolvesDialog.open) elements.allSolvesDialog.close();
+    openAverageDialog(averageButton.dataset.averageId, Number(averageButton.dataset.averageSize));
+    return;
+  }
+
+  const detailButton = target?.closest('[data-detail-id]');
+  const detailId = detailButton?.dataset.detailId;
   if (detailId) {
     if (elements.allSolvesDialog.open) elements.allSolvesDialog.close();
     openSolveDialog(detailId);
     return;
   }
 
-  const id = event.target.dataset.deleteId;
+  const deleteButton = target?.closest('[data-delete-id]');
+  const id = deleteButton?.dataset.deleteId;
   if (id) deleteSolve(id);
 }
 
@@ -1037,6 +1057,87 @@ function renderSolveDialog() {
   elements.solveDetailBluetoothStats.textContent = `蓝牙转动 · ${bluetoothMoveCount} 次 · ${bluetoothTps}`;
   elements.solveDetailBluetoothMoves.textContent = bluetoothMoveCount > 0 ? solve.bluetoothMoves.join(' ') : '-';
   renderSolveBluetoothReplay(solve);
+}
+
+function openAverageDialog(solveId, size) {
+  currentAverageDetail = { solveId, size };
+  if (!currentAverageDetailData()) {
+    currentAverageDetail = null;
+    return;
+  }
+  elements.copyAverageSummaryButton.textContent = '复制平均';
+  if (!elements.averageDialog.open) elements.averageDialog.showModal();
+  renderAverageDialog();
+}
+
+function renderAverageDialog() {
+  if (!elements.averageDialog.open && !currentAverageDetail) return;
+  const detail = currentAverageDetailData();
+  if (!detail) {
+    if (elements.averageDialog.open) elements.averageDialog.close();
+    return;
+  }
+
+  const endSolve = detail.entries.at(-1)?.solve;
+  elements.averageDetailTitle.textContent = `${detail.type} ${formatTime(detail.value)}`;
+  elements.averageDetailMeta.textContent = `${sessionNameForSolve(endSolve)} · #${detail.startIndex + 1}-#${detail.endIndex + 1} · ${detail.entries.length} 把`;
+  elements.copyAverageSummaryButton.disabled = false;
+  elements.averageDetailList.replaceChildren(
+    ...detail.entries.map((entry) => averageDetailRow(entry)),
+  );
+}
+
+function currentAverageDetailData() {
+  if (!currentAverageDetail) return null;
+  const solve = solves.find((item) => item.id === currentAverageDetail.solveId);
+  if (!solve || ![5, 12].includes(currentAverageDetail.size)) return null;
+  const sessionSolves = solvesForSession(solve.sessionId);
+  const solveIndex = sessionSolves.findIndex((item) => item.id === solve.id);
+  return rollingAverageDetailAt(sessionSolves, solveIndex, currentAverageDetail.size);
+}
+
+function averageDetailRow(entry) {
+  const row = document.createElement('div');
+  row.className = `average-detail-row ${entry.role}`;
+  row.innerHTML = `
+    <span>#${entry.index + 1}</span>
+    <strong>${escapeHtml(displaySolveTime(entry.solve))}</strong>
+    <em>${escapeHtml(new Date(entry.solve.createdAt).toLocaleString())}</em>
+    <span class="trim-label">${escapeHtml(averageRoleLabel(entry.role))}</span>
+  `;
+  return row;
+}
+
+async function copyAverageSummary() {
+  const detail = currentAverageDetailData();
+  if (!detail) return;
+  const endSolve = detail.entries.at(-1)?.solve;
+  const lines = [
+    `TrainTimer ${detail.type}`,
+    `成绩: ${formatTime(detail.value)}`,
+    `会话: ${sessionNameForSolve(endSolve)}`,
+    `范围: #${detail.startIndex + 1}-#${detail.endIndex + 1}`,
+    '明细:',
+    ...detail.entries.map((entry) => (
+      `#${entry.index + 1} ${displaySolveTime(entry.solve)} ${averageRoleLabel(entry.role)}`
+    )),
+  ];
+  const text = lines.join('\n');
+  try {
+    await navigator.clipboard.writeText(text);
+    elements.copyAverageSummaryButton.textContent = '已复制';
+    setTimeout(() => {
+      elements.copyAverageSummaryButton.textContent = '复制平均';
+    }, 900);
+  } catch {
+    alert(text);
+  }
+}
+
+function averageRoleLabel(role) {
+  if (role === 'trimmed-best') return '去最快';
+  if (role === 'trimmed-worst') return '去最慢';
+  return '计入';
 }
 
 function navigateSolveDetail(offset) {
@@ -1831,6 +1932,7 @@ function render() {
   renderQuickActions();
   renderAllSolvesDialog();
   renderStatsDialog();
+  renderAverageDialog();
   renderExportDialog();
   renderImportDialog();
   renderTagSolvesDialog();
@@ -2454,12 +2556,10 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
           ${renderRecordBadges(singleMarks)}
         </span>
         <span class="rolling-average" title="${escapeHtml(['第 ' + solveNumber + ' 条后的 ao5', formatRecordTitle(ao5Marks)].filter(Boolean).join(' · '))}">
-          <span>${timeOrDash(ao5)}</span>
-          ${renderRecordBadges(ao5Marks)}
+          ${renderAverageButton(solve.id, solveNumber, 5, ao5, ao5Marks)}
         </span>
         <span class="rolling-average" title="${escapeHtml(['第 ' + solveNumber + ' 条后的 ao12', formatRecordTitle(ao12Marks)].filter(Boolean).join(' · '))}">
-          <span>${timeOrDash(ao12)}</span>
-          ${renderRecordBadges(ao12Marks)}
+          ${renderAverageButton(solve.id, solveNumber, 12, ao12, ao12Marks)}
         </span>
         <span>
           <select class="penalty-select" data-id="${solve.id}" aria-label="成绩罚时">
@@ -2478,6 +2578,16 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
         </span>
       `;
   return row;
+}
+
+function renderAverageButton(solveId, solveNumber, size, value, marks) {
+  const disabled = value == null ? 'disabled' : '';
+  return `
+    <button class="average-detail-button" data-average-id="${escapeHtml(solveId)}" data-average-size="${size}" type="button" ${disabled} aria-label="查看第 ${solveNumber} 条后的 ao${size} 明细">
+      <span>${timeOrDash(value)}</span>
+      ${renderRecordBadges(marks)}
+    </button>
+  `;
 }
 
 function renderRecordBadges(marks) {

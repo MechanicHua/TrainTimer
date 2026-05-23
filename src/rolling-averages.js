@@ -3,6 +3,50 @@ export function rollingAverageAt(solves, index, size) {
   return averageOfWindow(solves.slice(index + 1 - size, index + 1));
 }
 
+export function rollingAverageDetailAt(solves, index, size) {
+  if (!Number.isInteger(index) || index < 0 || index + 1 < size) return null;
+  const startIndex = index + 1 - size;
+  const windowSolves = solves.slice(startIndex, index + 1);
+  const entries = windowSolves.map((solve, offset) => ({
+    solve,
+    index: startIndex + offset,
+    value: effectiveDurationMs(solve),
+    role: 'counted',
+  }));
+  const dnfEntries = entries.filter((entry) => entry.value == null);
+  if (dnfEntries.length > 1) return null;
+
+  const sortedEntries = entries
+    .filter((entry) => entry.value != null)
+    .sort((left, right) => {
+      const difference = left.value - right.value;
+      return difference === 0 ? left.index - right.index : difference;
+    });
+  if (sortedEntries.length < size - dnfEntries.length) return null;
+
+  const fastest = sortedEntries[0];
+  const slowest = dnfEntries[0] || sortedEntries.at(-1);
+  if (!fastest || !slowest || fastest.index === slowest.index) return null;
+
+  fastest.role = 'trimmed-best';
+  slowest.role = 'trimmed-worst';
+
+  const countedValues = entries
+    .filter((entry) => entry.role === 'counted')
+    .map((entry) => entry.value);
+  if (countedValues.length !== size - 2 || countedValues.some((value) => value == null)) return null;
+
+  return {
+    type: `ao${size}`,
+    size,
+    value: countedValues.reduce((sum, value) => sum + value, 0) / countedValues.length,
+    startIndex,
+    endIndex: index,
+    solveIds: windowSolves.map((solve) => solve.id),
+    entries,
+  };
+}
+
 export function rollingMeanAt(solves, index, size) {
   if (!Number.isInteger(index) || index < 0 || index + 1 < size) return null;
   return meanOfWindow(solves.slice(index + 1 - size, index + 1));

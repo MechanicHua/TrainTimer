@@ -11,6 +11,7 @@ import {
   meanOfLast,
   recordMarksAt,
   rollingAverageAt,
+  rollingAverageDetailAt,
   rollingMeanAt,
 } from '../src/rolling-averages.js';
 
@@ -45,6 +46,37 @@ test('computes current and best averages with +2 penalties', () => {
 
   assert.equal(averageOfLast(penalized, 5), 41000 / 3);
   assert.equal(bestAverageOf(penalized, 5), 38000 / 3);
+});
+
+test('describes rolling average windows with trimmed solves', () => {
+  const detail = rollingAverageDetailAt(solves, 4, 5);
+
+  assert.equal(detail.type, 'ao5');
+  assert.equal(detail.value, 12000);
+  assert.equal(detail.startIndex, 0);
+  assert.equal(detail.endIndex, 4);
+  assert.deepEqual(detail.solveIds, ['1', '2', '3', '4', '5']);
+  assert.deepEqual(detail.entries.map((entry) => entry.role), [
+    'trimmed-best',
+    'counted',
+    'counted',
+    'counted',
+    'trimmed-worst',
+  ]);
+});
+
+test('describes a single DNF as the trimmed worst average solve', () => {
+  const withDnf = solves.slice(0, 5).map((solve, index) => (
+    index === 4 ? { ...solve, penalty: 'dnf' } : solve
+  ));
+  const detail = rollingAverageDetailAt(withDnf, 4, 5);
+
+  assert.equal(detail.value, 12000);
+  assert.equal(detail.entries[0].role, 'trimmed-best');
+  assert.equal(detail.entries[4].role, 'trimmed-worst');
+  assert.equal(rollingAverageDetailAt(withDnf.map((solve, index) => (
+    index === 3 ? { ...solve, penalty: 'dnf' } : solve
+  )), 4, 5), null);
 });
 
 test('computes current and best mean of three without trimming', () => {

@@ -2308,7 +2308,7 @@ function renderAllSolvesDialog() {
   if (listedSolves.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'history-empty';
-    empty.textContent = allSolvesQuery() ? '没有匹配的成绩' : (allSessionsEnabled ? '暂无成绩' : '当前会话暂无成绩');
+    empty.textContent = allSolvesFilterActive() ? '没有匹配的成绩' : (allSessionsEnabled ? '暂无成绩' : '当前会话暂无成绩');
     elements.allSolvesRows.append(empty);
   }
   renderAllSolvesControls();
@@ -2570,6 +2570,8 @@ function sortAllSolves(inputSolves) {
 function sortValue(solve, sortBy) {
   if (sortBy === 'duration') return effectiveDurationMs(solve) ?? Number.POSITIVE_INFINITY;
   if (sortBy === 'penalty') return { ok: 0, '+2': 1, dnf: 2 }[solve.penalty] ?? 0;
+  if (sortBy === 'session') return sessionNameForSolve(solve);
+  if (sortBy === 'tags') return formatTags(solve.tags);
   if (sortBy === 'comment') return solve.comment || '';
   return new Date(solve.createdAt || 0).getTime();
 }

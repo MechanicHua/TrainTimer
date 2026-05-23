@@ -125,6 +125,8 @@ const elements = {
   allSolvesToDate: document.querySelector('#allSolvesToDate'),
   allSolvesRecordFilter: document.querySelector('#allSolvesRecordFilter'),
   allSolvesPuzzleFilter: document.querySelector('#allSolvesPuzzleFilter'),
+  allSolvesPenaltyFilter: document.querySelector('#allSolvesPenaltyFilter'),
+  allSolvesSourceFilter: document.querySelector('#allSolvesSourceFilter'),
   allSessionsToggle: document.querySelector('#allSessionsToggle'),
   allSolvesSortBy: document.querySelector('#allSolvesSortBy'),
   allSolvesSortDirection: document.querySelector('#allSolvesSortDirection'),
@@ -399,6 +401,8 @@ elements.allSolvesFromDate.addEventListener('change', handleAllSolvesFilterChang
 elements.allSolvesToDate.addEventListener('change', handleAllSolvesFilterChange);
 elements.allSolvesRecordFilter.addEventListener('change', handleAllSolvesFilterChange);
 elements.allSolvesPuzzleFilter.addEventListener('change', handleAllSolvesFilterChange);
+elements.allSolvesPenaltyFilter.addEventListener('change', handleAllSolvesFilterChange);
+elements.allSolvesSourceFilter.addEventListener('change', handleAllSolvesFilterChange);
 elements.allSessionsToggle.addEventListener('change', toggleAllSessions);
 elements.allSolvesSortBy.addEventListener('change', renderAllSolvesDialog);
 elements.allSolvesSortDirection.addEventListener('change', renderAllSolvesDialog);
@@ -1099,6 +1103,8 @@ function openAllSolvesDialog() {
   elements.allSolvesToDate.value = '';
   elements.allSolvesRecordFilter.value = 'all';
   elements.allSolvesPuzzleFilter.value = 'all';
+  elements.allSolvesPenaltyFilter.value = 'all';
+  elements.allSolvesSourceFilter.value = 'all';
   if (filteredSolves().length === 0 && solves.length > 0) {
     allSessionsEnabled = true;
     localStorage.setItem('trainTimer.allSessions', '1');
@@ -3190,12 +3196,16 @@ function filteredAllSolves() {
   const query = allSolvesQuery();
   const recordFilter = allSolvesRecordFilter();
   const puzzleFilter = allSolvesPuzzleFilter();
+  const penaltyFilter = allSolvesPenaltyFilter();
+  const sourceFilter = allSolvesSourceFilter();
   const baseSolves = allSolvesBaseSolves();
   const bounds = allSolvesDateBounds();
   let listedSolves = baseSolves;
   if (bounds.from || bounds.to) listedSolves = listedSolves.filter((solve) => solveInDateBounds(solve, bounds));
   if (recordFilter !== 'all') listedSolves = listedSolves.filter((solve) => solveMatchesRecordFilter(solve, recordFilter));
   if (puzzleFilter !== 'all') listedSolves = listedSolves.filter((solve) => (solve.scramblePuzzle || 'three') === puzzleFilter);
+  if (penaltyFilter !== 'all') listedSolves = listedSolves.filter((solve) => (solve.penalty || 'ok') === penaltyFilter);
+  if (sourceFilter !== 'all') listedSolves = listedSolves.filter((solve) => (solve.timerSource || 'manual') === sourceFilter);
   if (query) listedSolves = listedSolves.filter((solve) => searchableSolveText(solve).includes(query));
   return sortAllSolves(listedSolves);
 }
@@ -3212,13 +3222,23 @@ function allSolvesPuzzleFilter() {
   return elements.allSolvesPuzzleFilter.value || 'all';
 }
 
+function allSolvesPenaltyFilter() {
+  return elements.allSolvesPenaltyFilter.value || 'all';
+}
+
+function allSolvesSourceFilter() {
+  return elements.allSolvesSourceFilter.value || 'all';
+}
+
 function allSolvesFilterActive() {
   return Boolean(
     allSolvesQuery()
       || elements.allSolvesFromDate.value
       || elements.allSolvesToDate.value
       || allSolvesRecordFilter() !== 'all'
-      || allSolvesPuzzleFilter() !== 'all',
+      || allSolvesPuzzleFilter() !== 'all'
+      || allSolvesPenaltyFilter() !== 'all'
+      || allSolvesSourceFilter() !== 'all',
   );
 }
 
@@ -3364,6 +3384,7 @@ function sortValue(solve, sortBy) {
   if (sortBy === 'duration') return effectiveDurationMs(solve) ?? Number.POSITIVE_INFINITY;
   if (sortBy === 'penalty') return { ok: 0, '+2': 1, dnf: 2 }[solve.penalty] ?? 0;
   if (sortBy === 'puzzle') return puzzleLabel(solve.scramblePuzzle || 'three');
+  if (sortBy === 'source') return solve.timerSource === 'bluetooth' ? '蓝牙' : '手动';
   if (sortBy === 'session') return sessionNameForSolve(solve);
   if (sortBy === 'tags') return formatTags(solve.tags);
   if (sortBy === 'comment') return solve.comment || '';

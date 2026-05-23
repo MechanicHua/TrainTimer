@@ -195,6 +195,7 @@ const elements = {
   savePenaltyButton: document.querySelector('#savePenaltyButton'),
   saveTagsButton: document.querySelector('#saveTagsButton'),
   saveCommentButton: document.querySelector('#saveCommentButton'),
+  deleteSolveDetailButton: document.querySelector('#deleteSolveDetailButton'),
   bluetoothLogDialog: document.querySelector('#bluetoothLogDialog'),
   bluetoothLogMeta: document.querySelector('#bluetoothLogMeta'),
   bluetoothLogRows: document.querySelector('#bluetoothLogRows'),
@@ -313,6 +314,7 @@ elements.saveTimeButton.addEventListener('click', saveSolveTime);
 elements.savePenaltyButton.addEventListener('click', saveSolvePenalty);
 elements.saveTagsButton.addEventListener('click', saveSolveTags);
 elements.saveCommentButton.addEventListener('click', saveSolveComment);
+elements.deleteSolveDetailButton.addEventListener('click', deleteCurrentDetailSolve);
 elements.saveManualEntryButton.addEventListener('click', saveManualEntry);
 elements.copyAverageSummaryButton.addEventListener('click', copyAverageSummary);
 elements.clearBluetoothLogButton.addEventListener('click', clearBluetoothLog);
@@ -612,6 +614,11 @@ async function deleteSolve(id) {
   selectedSolveIds.delete(id);
   if (currentDetailSolveId === id) elements.solveDialog.close();
   render();
+}
+
+async function deleteCurrentDetailSolve() {
+  if (!currentDetailSolveId) return;
+  await deleteSolve(currentDetailSolveId);
 }
 
 async function deleteLatestSolve() {

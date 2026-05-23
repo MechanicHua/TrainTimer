@@ -557,7 +557,7 @@ body[data-state="timing"] .timer-display {
 .history-head,
 .history-row {
   display: grid;
-  grid-template-columns: 20px 24px 68px 58px minmax(58px, 1fr) 60px;
+  grid-template-columns: 20px 24px 62px 58px 58px 54px minmax(58px, 1fr) 60px;
   gap: 4px;
   align-items: center;
   min-height: 36px;
@@ -595,6 +595,11 @@ body[data-state="timing"] .timer-display {
   color: var(--ink);
   font-variant-numeric: tabular-nums;
   font-weight: 760;
+}
+
+.history-row .rolling-average {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .history-row button,
@@ -849,7 +854,7 @@ dialog[open] {
 
 .all-solves-table .history-head,
 .all-solves-table .history-row {
-  grid-template-columns: 28px 44px 90px 86px minmax(190px, 1fr) 96px;
+  grid-template-columns: 28px 44px 86px 76px 76px 78px minmax(170px, 1fr) 96px;
 }
 
 .history-empty {
@@ -1201,9 +1206,18 @@ dialog[open] {
     grid-template-columns: 26px 34px 76px 72px minmax(90px, 1fr);
   }
 
+  .history-head span:nth-child(4),
+  .history-row span:nth-child(4),
+  .history-head span:nth-child(5),
+  .history-row span:nth-child(5),
+  .history-head span:nth-child(8),
+  .history-row span:nth-child(8) {
+    display: none;
+  }
+
   .history-head span:nth-child(6),
   .history-row span:nth-child(6) {
-    display: none;
+    display: block;
   }
 
   .solve-detail-grid {

@@ -4,6 +4,7 @@ import { createExportPayload, safeExportFilename, selectedExportHistory, solvesT
 import { parseSolveImport } from '/solves-import.js';
 import { buildStatsSummary } from '/stats-summary.js';
 import { buildSolveSummary } from '/solve-summary.js';
+import { rollingAverageAt } from '/rolling-averages.js';
 
 const inspectionSeconds = 15;
 const inspectionDnfSeconds = 17;
@@ -1809,10 +1810,11 @@ async function saveManualEntry() {
 }
 
 function renderHistory() {
-  const latest = visibleSolves();
+  const sessionSolves = filteredSolves();
+  const latest = sessionSolves.slice(-3).reverse();
   renderHistoryControls();
   elements.historyRows.replaceChildren(
-    ...latest.map((solve, index) => renderSolveRow(solve, filteredSolves().length - index)),
+    ...latest.map((solve, index) => renderSolveRow(solve, sessionSolves.length - index, sessionSolves)),
   );
 }
 
@@ -1825,7 +1827,7 @@ function renderAllSolvesDialog() {
     ? `${currentSession?.name || currentSessionId} · 筛选 ${listedSolves.length} / ${sessionSolves.length} 条`
     : `${currentSession?.name || currentSessionId} · ${sessionSolves.length} 条`;
   elements.allSolvesRows.replaceChildren(
-    ...listedSolves.map((solve) => renderSolveRow(solve, sessionSolves.indexOf(solve) + 1)),
+    ...listedSolves.map((solve) => renderSolveRow(solve, sessionSolves.indexOf(solve) + 1, sessionSolves)),
   );
   if (listedSolves.length === 0) {
     const empty = document.createElement('div');
@@ -1836,13 +1838,18 @@ function renderAllSolvesDialog() {
   renderAllSolvesControls();
 }
 
-function renderSolveRow(solve, solveNumber) {
+function renderSolveRow(solve, solveNumber, sessionSolves) {
+  const solveIndex = Math.max(0, solveNumber - 1);
+  const ao5 = rollingAverageAt(sessionSolves, solveIndex, 5);
+  const ao12 = rollingAverageAt(sessionSolves, solveIndex, 12);
   const row = document.createElement('div');
   row.className = 'history-row';
   row.innerHTML = `
         <span><input class="solve-check" data-id="${solve.id}" type="checkbox" ${selectedSolveIds.has(solve.id) ? 'checked' : ''} aria-label="选择第 ${solveNumber} 条成绩" /></span>
         <span>${solveNumber}</span>
         <span class="time" title="${escapeHtml(solve.duration)}">${displaySolveTime(solve)}</span>
+        <span class="rolling-average" title="第 ${solveNumber} 条后的 ao5">${timeOrDash(ao5)}</span>
+        <span class="rolling-average" title="第 ${solveNumber} 条后的 ao12">${timeOrDash(ao12)}</span>
         <span>
           <select class="penalty-select" data-id="${solve.id}" aria-label="成绩罚时">
             <option value="ok" ${solve.penalty === 'ok' ? 'selected' : ''}>OK</option>

@@ -26,7 +26,7 @@ import { createExportPayload, safeExportFilename, scopedExportHistory, solvesToC
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const publicRoot = join(projectRoot, 'public');
 const srcRoot = join(projectRoot, 'src');
-const publicSrcModules = new Set(['bluetooth-moves.js', 'cube-state.js', 'solve-summary.js', 'solves-export.js', 'solves-import.js', 'stats-summary.js']);
+const publicSrcModules = new Set(['bluetooth-moves.js', 'cube-state.js', 'rolling-averages.js', 'solve-summary.js', 'solves-export.js', 'solves-import.js', 'stats-summary.js']);
 const requestedPort = Number(process.env.PORT || 3000);
 const host = process.env.HOST || '127.0.0.1';
 

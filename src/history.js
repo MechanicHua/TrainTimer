@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
+import { averageOfLast, bestAverageOf } from './rolling-averages.js';
 
 const defaultHistoryPath = join(homedir(), '.train-timer', 'solves.json');
 const defaultSession = { id: 'default', name: '默认' };
@@ -333,30 +334,6 @@ export function normalizeHistory(history) {
     sessions: [...sessionMap.values()],
     solves,
   };
-}
-
-function averageOfLast(solves, size) {
-  if (solves.length < size) return null;
-  return averageOfWindow(solves.slice(-size));
-}
-
-function bestAverageOf(solves, size) {
-  if (solves.length < size) return null;
-  const averages = [];
-  for (let index = 0; index <= solves.length - size; index += 1) {
-    const average = averageOfWindow(solves.slice(index, index + size));
-    if (average != null) averages.push(average);
-  }
-  return averages.length === 0 ? null : Math.min(...averages);
-}
-
-function averageOfWindow(solves) {
-  const values = solves.map((solve) => solve.effectiveDurationMs);
-  if (values.filter((value) => value == null).length > 1) return null;
-  const sorted = [...values].sort((a, b) => (a ?? Infinity) - (b ?? Infinity));
-  const trimmed = sorted.slice(1, -1);
-  if (trimmed.some((value) => value == null)) return null;
-  return trimmed.reduce((sum, value) => sum + value, 0) / trimmed.length;
 }
 
 function normalizeSession(session) {

@@ -74,6 +74,7 @@ const elements = {
   bluetoothButton: document.querySelector('#bluetoothButton'),
   bluetoothAnyButton: document.querySelector('#bluetoothAnyButton'),
   bluetoothReconnectButton: document.querySelector('#bluetoothReconnectButton'),
+  bluetoothDisconnectButton: document.querySelector('#bluetoothDisconnectButton'),
   bluetoothLogButton: document.querySelector('#bluetoothLogButton'),
   bluetoothBattery: document.querySelector('#bluetoothBattery'),
   bluetoothStatus: document.querySelector('#bluetoothStatus'),
@@ -249,6 +250,7 @@ elements.lastDeleteButton.addEventListener('click', deleteLatestSolve);
 elements.bluetoothButton.addEventListener('click', () => connectBluetoothCube());
 elements.bluetoothAnyButton.addEventListener('click', () => connectBluetoothCube({ compatibilityMode: true }));
 elements.bluetoothReconnectButton.addEventListener('click', reconnectBluetoothCube);
+elements.bluetoothDisconnectButton.addEventListener('click', disconnectBluetoothDevice);
 elements.bluetoothLogButton.addEventListener('click', openBluetoothLogDialog);
 elements.sessionSelect.addEventListener('change', switchSession);
 elements.newSessionButton.addEventListener('click', createSession);
@@ -1197,7 +1199,7 @@ async function connectBluetoothCube(options = {}) {
 
   try {
     if (bluetoothDevice?.gatt?.connected) {
-      disconnectBluetoothDevice();
+      elements.bluetoothStatus.textContent = '已连接';
       return;
     }
 
@@ -1221,7 +1223,7 @@ async function reconnectBluetoothCube() {
 
   try {
     if (bluetoothDevice?.gatt?.connected) {
-      disconnectBluetoothDevice();
+      elements.bluetoothStatus.textContent = '已连接';
       return;
     }
 
@@ -1264,6 +1266,11 @@ async function connectBluetoothDevice(device, options = {}) {
 }
 
 function disconnectBluetoothDevice() {
+  if (!bluetoothDevice?.gatt?.connected) {
+    setBluetoothConnectedState(false);
+    return;
+  }
+
   addBluetoothLog('连接', '请求断开设备', bluetoothDevice.name || bluetoothDevice.id || '');
   bluetoothDevice.gatt.disconnect();
 }
@@ -1314,13 +1321,16 @@ function setBluetoothScanningState(scanning, compatibilityMode, label = '') {
   elements.bluetoothButton.disabled = scanning;
   elements.bluetoothAnyButton.disabled = scanning;
   elements.bluetoothReconnectButton.disabled = scanning;
+  elements.bluetoothDisconnectButton.disabled = true;
   elements.bluetoothStatus.textContent = label || (compatibilityMode ? '兼容扫描中...' : '扫描中...');
 }
 
 function setBluetoothConnectedState(connected) {
-  elements.bluetoothButton.disabled = false;
-  elements.bluetoothButton.textContent = connected ? '断开蓝牙' : '连接蓝牙魔方';
+  elements.bluetoothButton.disabled = connected;
+  elements.bluetoothButton.textContent = '连接蓝牙魔方';
   elements.bluetoothAnyButton.disabled = connected;
+  elements.bluetoothDisconnectButton.disabled = !connected;
+  elements.bluetoothDisconnectButton.title = connected ? '断开当前蓝牙魔方' : '当前没有已连接设备';
   renderBluetoothReconnectButton();
 }
 

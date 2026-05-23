@@ -187,7 +187,10 @@ test('normalizes manually entered solve metadata', async () => {
 
   const history = await loadHistory(file);
   assert.equal(history.sessions.some((session) => session.id === 'manual-session'), true);
-  assert.deepEqual(history.solves[0], {
+  const [solve] = history.solves;
+  assert.match(solve.id, /^solve-/);
+  assert.deepEqual({ ...solve, id: undefined }, {
+    id: undefined,
     durationMs: 12346,
     penalty: '+2',
     comment: 'manual entry',
@@ -202,6 +205,31 @@ test('normalizes manually entered solve metadata', async () => {
     effectiveDurationMs: 14346,
     effectiveDuration: '14.346',
   });
+});
+
+test('keeps solve ids unique after replace and import-style merges', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'train-timer-'));
+  const file = join(dir, 'solves.json');
+
+  await replaceSolves(
+    [
+      { id: 'same', durationMs: 10000 },
+      { id: 'same', durationMs: 11000 },
+      { durationMs: 12000 },
+    ],
+    file,
+  );
+
+  let history = await loadHistory(file);
+  assert.equal(new Set(history.solves.map((solve) => solve.id)).size, 3);
+  assert.equal(history.solves[0].id, 'same');
+  assert.equal(history.solves[1].id, 'same-2');
+  assert.match(history.solves[2].id, /^solve-/);
+
+  await replaceSolves([...history.solves, { id: 'same', durationMs: 13000 }], file, history.sessions);
+  history = await loadHistory(file);
+  assert.equal(new Set(history.solves.map((solve) => solve.id)).size, 4);
+  assert.deepEqual(history.solves.map((solve) => solve.id).filter((id) => id.startsWith('same')), ['same', 'same-2', 'same-3']);
 });
 
 test('tracks sessions and filters deleted session solves', async () => {

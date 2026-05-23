@@ -104,7 +104,7 @@ export async function clearSolves(historyPath = getHistoryPath()) {
 
 export async function createSession(name, historyPath = getHistoryPath()) {
   const history = await loadHistory(historyPath);
-  const session = normalizeSession({ id: cryptoRandomId(), name });
+  const session = normalizeSession({ id: randomId('session'), name });
   const nextHistory = normalizeHistory({
     ...history,
     sessions: [...history.sessions, session],
@@ -145,6 +145,7 @@ export function normalizeSolve(solve) {
 
   return {
     ...solve,
+    id: typeof solve.id === 'string' && solve.id ? solve.id : randomId('solve'),
     durationMs,
     duration: solve.duration || formatTime(durationMs),
     penalty,
@@ -314,7 +315,8 @@ function averageNumber(values) {
 
 export function normalizeHistory(history) {
   const rawSolves = Array.isArray(history.solves) ? history.solves : [];
-  const solves = rawSolves.map(normalizeSolve);
+  const usedSolveIds = new Set();
+  const solves = rawSolves.map((solve) => dedupeSolveId(normalizeSolve(solve), usedSolveIds));
   const sessionMap = new Map();
   sessionMap.set(defaultSession.id, defaultSession);
 
@@ -337,9 +339,26 @@ export function normalizeHistory(history) {
 }
 
 function normalizeSession(session) {
-  const id = typeof session.id === 'string' && session.id ? session.id : cryptoRandomId();
+  const id = typeof session.id === 'string' && session.id ? session.id : randomId('session');
   const name = typeof session.name === 'string' && session.name.trim() ? session.name.trim() : id;
   return { id, name };
+}
+
+function dedupeSolveId(solve, usedIds) {
+  if (!usedIds.has(solve.id)) {
+    usedIds.add(solve.id);
+    return solve;
+  }
+
+  let suffix = 2;
+  let nextId = `${solve.id}-${suffix}`;
+  while (usedIds.has(nextId)) {
+    suffix += 1;
+    nextId = `${solve.id}-${suffix}`;
+  }
+
+  usedIds.add(nextId);
+  return { ...solve, id: nextId };
 }
 
 function ensureSession(sessions, sessionId) {
@@ -356,6 +375,6 @@ async function writeHistory(history, historyPath) {
   );
 }
 
-function cryptoRandomId() {
-  return `session-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+function randomId(prefix) {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }

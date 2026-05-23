@@ -4,7 +4,7 @@ import { createExportPayload, exportHistoryForSolves, safeExportFilename, select
 import { parseSolveImport } from '/solves-import.js';
 import { buildStatsSummary } from '/stats-summary.js';
 import { buildSolveSummary } from '/solve-summary.js';
-import { recordMarksAt, rollingAverageAt } from '/rolling-averages.js';
+import { bestAverageRecord, bestMeanRecord, bestSingleRecord, recordMarksAt, rollingAverageAt } from '/rolling-averages.js';
 
 const inspectionSeconds = 15;
 const inspectionDnfSeconds = 17;
@@ -117,6 +117,7 @@ const elements = {
   statsDialogMeta: document.querySelector('#statsDialogMeta'),
   statsTrendChart: document.querySelector('#statsTrendChart'),
   statsChartMeta: document.querySelector('#statsChartMeta'),
+  statsRecordList: document.querySelector('#statsRecordList'),
   statsDetailGrid: document.querySelector('#statsDetailGrid'),
   copyStatsSummaryButton: document.querySelector('#copyStatsSummaryButton'),
   exportDialog: document.querySelector('#exportDialog'),
@@ -303,6 +304,7 @@ elements.historyRows.addEventListener('change', handleHistoryChange);
 elements.historyRows.addEventListener('click', handleHistoryClick);
 elements.allSolvesRows.addEventListener('change', handleHistoryChange);
 elements.allSolvesRows.addEventListener('click', handleHistoryClick);
+elements.statsRecordList.addEventListener('click', handleStatsRecordClick);
 
 window.__trainTimerDebug = {
   emitBluetoothText(text, uuid = '0000fff1-0000-1000-8000-00805f9b34fb') {
@@ -1825,6 +1827,7 @@ function renderStatsDialog() {
   const summary = summarizeSolves(sessionSolves);
   elements.statsDialogMeta.textContent = `${currentSession?.name || currentSessionId} · ${summary.count} 条成绩`;
   renderStatsTrendChart(sessionSolves);
+  renderStatsRecords(sessionSolves);
 
   const rows = [
     ['总次数', summary.count],
@@ -1859,6 +1862,48 @@ function renderStatsDialog() {
       return item;
     }),
   );
+}
+
+function renderStatsRecords(sessionSolves) {
+  const records = [
+    bestSingleRecord(sessionSolves),
+    bestMeanRecord(sessionSolves, 3),
+    bestAverageRecord(sessionSolves, 5),
+    bestAverageRecord(sessionSolves, 12),
+    bestAverageRecord(sessionSolves, 50),
+    bestAverageRecord(sessionSolves, 100),
+  ].filter(Boolean);
+
+  if (records.length === 0) {
+    elements.statsRecordList.innerHTML = '<div class="stats-record-empty">暂无可定位纪录</div>';
+    return;
+  }
+
+  elements.statsRecordList.replaceChildren(
+    ...records.map((record) => {
+      const endSolve = sessionSolves[record.endIndex];
+      const startNumber = record.startIndex + 1;
+      const endNumber = record.endIndex + 1;
+      const range = startNumber === endNumber ? `#${endNumber}` : `#${startNumber}-#${endNumber}`;
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'stats-record-item';
+      item.dataset.detailId = endSolve?.id || '';
+      item.innerHTML = `
+        <span>${escapeHtml(record.label)}</span>
+        <strong>${timeOrDash(record.value)}</strong>
+        <em>${escapeHtml(range)} · ${escapeHtml(endSolve ? new Date(endSolve.createdAt).toLocaleString() : '-')}</em>
+      `;
+      return item;
+    }),
+  );
+}
+
+function handleStatsRecordClick(event) {
+  const button = event.target.closest('[data-detail-id]');
+  if (!button?.dataset.detailId) return;
+  elements.statsDialog.close();
+  openSolveDialog(button.dataset.detailId);
 }
 
 async function copyStatsSummary() {

@@ -2,8 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   averageOfLast,
+  bestAverageRecord,
   bestAverageOf,
+  bestMeanRecord,
   bestMeanOf,
+  bestSingleRecord,
   effectiveDurationMs,
   meanOfLast,
   recordMarksAt,
@@ -86,6 +89,39 @@ test('marks personal-best solves and rolling averages', () => {
   assert.deepEqual(recordMarksAt(pbSolves, 11), [
     { type: 'ao12', label: 'PB ao12', value: 11100 },
   ]);
+});
+
+test('finds best single and rolling average records with ending index', () => {
+  const recordSolves = [12, 11, 10, 15, 9, 13].map((seconds, index) => ({
+    id: `r${index + 1}`,
+    durationMs: seconds * 1000,
+    penalty: 'ok',
+  }));
+
+  assert.deepEqual(bestSingleRecord(recordSolves), {
+    type: 'single',
+    label: '最佳单次',
+    value: 9000,
+    startIndex: 4,
+    endIndex: 4,
+    solveIds: ['r5'],
+  });
+  assert.deepEqual(bestMeanRecord(recordSolves, 3), {
+    type: 'mo3',
+    label: 'mo3',
+    value: 11000,
+    startIndex: 0,
+    endIndex: 2,
+    solveIds: ['r1', 'r2', 'r3'],
+  });
+  assert.deepEqual(bestAverageRecord(recordSolves, 5), {
+    type: 'ao5',
+    label: 'ao5',
+    value: 11000,
+    startIndex: 0,
+    endIndex: 4,
+    solveIds: ['r1', 'r2', 'r3', 'r4', 'r5'],
+  });
 });
 
 test('falls back to duration when effective duration is absent', () => {

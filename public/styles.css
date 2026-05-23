@@ -1009,6 +1009,73 @@ dialog[open] {
   font-size: 13px;
 }
 
+.stats-record-panel {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.stats-record-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.stats-record-heading h3 {
+  margin: 0;
+  color: var(--ink-strong);
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.stats-record-heading p {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.stats-record-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.stats-record-item {
+  display: grid;
+  min-height: 58px;
+  justify-items: start;
+  gap: 2px;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.stats-record-item span,
+.stats-record-item em {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-record-item strong {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.stats-record-empty {
+  padding: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .export-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

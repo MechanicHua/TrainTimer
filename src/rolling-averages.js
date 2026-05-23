@@ -53,6 +53,10 @@ export function bestAverageOf(solves, size) {
   return averages.length === 0 ? null : Math.min(...averages);
 }
 
+export function bestAverageRecord(solves, size) {
+  return bestWindowRecord(solves, size, averageOfWindow, `ao${size}`);
+}
+
 export function meanOfLast(solves, size) {
   if (solves.length < size) return null;
   return meanOfWindow(solves.slice(-size));
@@ -66,6 +70,10 @@ export function bestMeanOf(solves, size) {
     if (mean != null) means.push(mean);
   }
   return means.length === 0 ? null : Math.min(...means);
+}
+
+export function bestMeanRecord(solves, size) {
+  return bestWindowRecord(solves, size, meanOfWindow, `mo${size}`);
 }
 
 export function averageOfWindow(solves) {
@@ -90,6 +98,46 @@ export function effectiveDurationMs(solve) {
   }
   const durationMs = Math.max(0, Math.round(Number(solve.durationMs) || 0));
   return durationMs + (solve.penalty === '+2' ? 2000 : 0);
+}
+
+export function bestSingleRecord(solves) {
+  let best = null;
+  solves.forEach((solve, index) => {
+    const value = effectiveDurationMs(solve);
+    if (value == null) return;
+    if (!best || value < best.value) {
+      best = {
+        type: 'single',
+        label: '最佳单次',
+        value,
+        startIndex: index,
+        endIndex: index,
+        solveIds: [solve.id],
+      };
+    }
+  });
+  return best;
+}
+
+function bestWindowRecord(solves, size, windowValue, type) {
+  if (solves.length < size) return null;
+  let best = null;
+  for (let startIndex = 0; startIndex <= solves.length - size; startIndex += 1) {
+    const windowSolves = solves.slice(startIndex, startIndex + size);
+    const value = windowValue(windowSolves);
+    if (value == null) continue;
+    if (!best || value < best.value) {
+      best = {
+        type,
+        label: type,
+        value,
+        startIndex,
+        endIndex: startIndex + size - 1,
+        solveIds: windowSolves.map((solve) => solve.id),
+      };
+    }
+  }
+  return best;
 }
 
 function bestSingleOf(solves) {

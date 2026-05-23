@@ -103,6 +103,8 @@ const elements = {
   allSolvesMeta: document.querySelector('#allSolvesMeta'),
   allSolvesRows: document.querySelector('#allSolvesRows'),
   allSolvesSearch: document.querySelector('#allSolvesSearch'),
+  allSolvesFromDate: document.querySelector('#allSolvesFromDate'),
+  allSolvesToDate: document.querySelector('#allSolvesToDate'),
   allSessionsToggle: document.querySelector('#allSessionsToggle'),
   allSolvesSortBy: document.querySelector('#allSolvesSortBy'),
   allSolvesSortDirection: document.querySelector('#allSolvesSortDirection'),
@@ -304,7 +306,9 @@ elements.importDialog.addEventListener('close', () => {
 });
 elements.selectAllSolves.addEventListener('change', toggleSelectAllSolves);
 elements.selectAllSessionSolves.addEventListener('change', toggleSelectAllSessionSolves);
-elements.allSolvesSearch.addEventListener('input', handleAllSolvesSearch);
+elements.allSolvesSearch.addEventListener('input', handleAllSolvesFilterChange);
+elements.allSolvesFromDate.addEventListener('change', handleAllSolvesFilterChange);
+elements.allSolvesToDate.addEventListener('change', handleAllSolvesFilterChange);
 elements.allSessionsToggle.addEventListener('change', toggleAllSessions);
 elements.allSolvesSortBy.addEventListener('change', renderAllSolvesDialog);
 elements.allSolvesSortDirection.addEventListener('change', renderAllSolvesDialog);
@@ -759,7 +763,7 @@ function exportListedSolves(format) {
   if (listedSolves.length === 0) return;
 
   const currentSession = sessions.find((session) => session.id === currentSessionId);
-  const scope = allSolvesQuery() ? 'filtered' : 'listed';
+  const scope = allSolvesFilterActive() ? 'filtered' : 'listed';
   const scopeName = allSessionsEnabled ? 'all-sessions' : (currentSession?.name || currentSessionId);
   const suffix = `${safeExportFilename(scopeName)}-${scope}-${listedSolves.length}`;
   downloadSolvesExport(format, scope, suffix, exportHistoryForSolves(listedSolves, sessions));
@@ -845,12 +849,14 @@ function toggleSelectAllSessionSolves() {
 
 function openAllSolvesDialog() {
   elements.allSolvesSearch.value = '';
+  elements.allSolvesFromDate.value = '';
+  elements.allSolvesToDate.value = '';
   if (!elements.allSolvesDialog.open) elements.allSolvesDialog.showModal();
   renderAllSolvesDialog();
   elements.allSolvesSearch.focus();
 }
 
-function handleAllSolvesSearch() {
+function handleAllSolvesFilterChange() {
   selectedSolveIds.clear();
   render();
 }
@@ -2263,7 +2269,7 @@ function renderAllSolvesDialog() {
   const baseSolves = allSolvesBaseSolves();
   const listedSolves = filteredAllSolves();
   const scopeLabel = allSessionsEnabled ? `全部会话 · ${sessions.length} 个会话` : (currentSession?.name || currentSessionId);
-  elements.allSolvesMeta.textContent = allSolvesQuery()
+  elements.allSolvesMeta.textContent = allSolvesFilterActive()
     ? `${scopeLabel} · 筛选 ${listedSolves.length} / ${baseSolves.length} 条`
     : `${scopeLabel} · ${baseSolves.length} 条`;
   elements.allSolvesRows.replaceChildren(
@@ -2429,14 +2435,46 @@ function solvesForSession(sessionId) {
 function filteredAllSolves() {
   const query = allSolvesQuery();
   const baseSolves = allSolvesBaseSolves();
-  const listedSolves = query
-    ? baseSolves.filter((solve) => searchableSolveText(solve).includes(query))
-    : baseSolves;
+  const bounds = allSolvesDateBounds();
+  let listedSolves = baseSolves;
+  if (bounds.from || bounds.to) listedSolves = listedSolves.filter((solve) => solveInDateBounds(solve, bounds));
+  if (query) listedSolves = listedSolves.filter((solve) => searchableSolveText(solve).includes(query));
   return sortAllSolves(listedSolves);
 }
 
 function allSolvesQuery() {
   return elements.allSolvesSearch.value.trim().toLowerCase();
+}
+
+function allSolvesFilterActive() {
+  return Boolean(allSolvesQuery() || elements.allSolvesFromDate.value || elements.allSolvesToDate.value);
+}
+
+function allSolvesDateBounds() {
+  const from = parseDateInput(elements.allSolvesFromDate.value);
+  const to = parseDateInput(elements.allSolvesToDate.value);
+  return {
+    from: from ? from.getTime() : null,
+    to: to ? new Date(to.getFullYear(), to.getMonth(), to.getDate() + 1).getTime() : null,
+  };
+}
+
+function parseDateInput(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  const date = new Date(year, month, day);
+  return date.getFullYear() === year && date.getMonth() === month && date.getDate() === day ? date : null;
+}
+
+function solveInDateBounds(solve, bounds) {
+  const timestamp = new Date(solve.createdAt || 0).getTime();
+  if (!Number.isFinite(timestamp)) return false;
+  if (bounds.from != null && timestamp < bounds.from) return false;
+  if (bounds.to != null && timestamp >= bounds.to) return false;
+  return true;
 }
 
 function searchableSolveText(solve) {

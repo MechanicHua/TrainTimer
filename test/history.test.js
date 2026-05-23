@@ -17,6 +17,7 @@ import {
   saveSolve,
   summarizeSolves,
   updateSolve,
+  updateSession,
   updateSolves,
 } from '../src/history.js';
 
@@ -172,6 +173,25 @@ test('duplicates a session with copied solve ids and metadata', async () => {
   assert.deepEqual(copiedSolves[0].tags, ['PLL']);
   assert.deepEqual(copiedSolves[0].bluetoothMoves, ['R', 'U']);
   assert.equal(await duplicateSession('missing-session', 'missing', file), null);
+});
+
+test('stores session scramble puzzle preferences', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'train-timer-'));
+  const file = join(dir, 'solves.json');
+
+  const created = await createSession('2x2', file, { scramblePuzzle: 'two' });
+  assert.equal(created.session.scramblePuzzle, 'two');
+
+  const updated = await updateSession(created.session.id, { scramblePuzzle: 'four' }, file);
+  assert.equal(updated.session.scramblePuzzle, 'four');
+
+  const duplicated = await duplicateSession(created.session.id, '4x4 备份', file);
+  assert.equal(duplicated.session.scramblePuzzle, 'four');
+
+  const history = await loadHistory(file);
+  assert.equal(history.sessions.find((session) => session.id === 'default').scramblePuzzle, 'three');
+  assert.equal(history.sessions.find((session) => session.id === created.session.id).scramblePuzzle, 'four');
+  assert.equal(await updateSession('missing-session', { scramblePuzzle: 'two' }, file), null);
 });
 
 test('merges a non-default session into another session', async () => {

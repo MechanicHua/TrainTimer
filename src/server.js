@@ -17,11 +17,11 @@ import {
   mergeSession,
   moveSolves,
   replaceSolves,
-  renameSession,
   saveSolve,
   summarizeSolves,
   updateSolve,
   updateSolves,
+  updateSession,
 } from './history.js';
 import { createExportPayload, safeExportFilename, scopedExportHistory, solvesToCsv, solvesToCstimerCsv, solvesToCstimerJson } from './solves-export.js';
 
@@ -114,7 +114,9 @@ async function handleApi(request, response) {
 
   if (request.method === 'POST' && url.pathname === '/api/sessions') {
     const body = await readJsonBody(request);
-    const result = await createSession(String(body.name || '新会话'));
+    const result = await createSession(String(body.name || '新会话'), undefined, {
+      scramblePuzzle: String(body.scramblePuzzle || 'three'),
+    });
     sendJson(response, 201, {
       session: result.session,
       sessions: result.sessions,
@@ -164,8 +166,16 @@ async function handleApi(request, response) {
   if (request.method === 'PATCH' && url.pathname.startsWith('/api/sessions/')) {
     const id = decodeURIComponent(url.pathname.slice('/api/sessions/'.length));
     const body = await readJsonBody(request);
-    const result = await renameSession(id, String(body.name || id));
+    const updates = {};
+    if (Object.hasOwn(body, 'name')) updates.name = String(body.name || id);
+    if (Object.hasOwn(body, 'scramblePuzzle')) updates.scramblePuzzle = String(body.scramblePuzzle || 'three');
+    const result = await updateSession(id, updates);
+    if (!result) {
+      sendJson(response, 404, { error: 'Session not found' });
+      return;
+    }
     sendJson(response, 200, {
+      session: result.session,
       sessions: result.sessions,
       solves: result.solves,
       summary: summarizeSolves(result.solves),

@@ -4,7 +4,7 @@ import { homedir } from 'node:os';
 import { averageOfLast, bestAverageOf, bestMeanOf, meanOfLast } from './rolling-averages.js';
 
 const defaultHistoryPath = join(homedir(), '.train-timer', 'solves.json');
-const defaultSession = { id: 'default', name: '默认' };
+const defaultSession = { id: 'default', name: '默认', scramblePuzzle: 'three' };
 
 export function getHistoryPath() {
   return process.env.TRAIN_TIMER_HISTORY || defaultHistoryPath;
@@ -102,9 +102,9 @@ export async function clearSolves(historyPath = getHistoryPath()) {
   return [];
 }
 
-export async function createSession(name, historyPath = getHistoryPath()) {
+export async function createSession(name, historyPath = getHistoryPath(), options = {}) {
   const history = await loadHistory(historyPath);
-  const session = normalizeSession({ id: randomId('session'), name });
+  const session = normalizeSession({ id: randomId('session'), name, scramblePuzzle: options.scramblePuzzle });
   const nextHistory = normalizeHistory({
     ...history,
     sessions: [...history.sessions, session],
@@ -122,6 +122,7 @@ export async function duplicateSession(id, name, historyPath = getHistoryPath())
   const session = normalizeSession({
     id: randomId('session'),
     name: typeof name === 'string' && name.trim() ? name : `${sourceSession.name} 副本`,
+    scramblePuzzle: sourceSession.scramblePuzzle,
   });
   const copiedSolves = history.solves
     .filter((solve) => solve.sessionId === sourceSessionId)
@@ -160,11 +161,21 @@ export async function mergeSession(sourceId, targetId, historyPath = getHistoryP
 }
 
 export async function renameSession(id, name, historyPath = getHistoryPath()) {
+  return updateSession(id, { name }, historyPath);
+}
+
+export async function updateSession(id, updates, historyPath = getHistoryPath()) {
   const history = await loadHistory(historyPath);
-  const sessions = history.sessions.map((session) => (session.id === id ? normalizeSession({ ...session, name }) : session));
+  let updatedSession = null;
+  const sessions = history.sessions.map((session) => {
+    if (session.id !== id) return session;
+    updatedSession = normalizeSession({ ...session, ...updates });
+    return updatedSession;
+  });
+  if (!updatedSession) return null;
   const nextHistory = normalizeHistory({ ...history, sessions });
   await writeHistory(nextHistory, historyPath);
-  return { sessions: nextHistory.sessions, solves: nextHistory.solves };
+  return { session: updatedSession, sessions: nextHistory.sessions, solves: nextHistory.solves };
 }
 
 export async function deleteSession(id, historyPath = getHistoryPath()) {
@@ -404,7 +415,10 @@ export function normalizeHistory(history) {
 function normalizeSession(session) {
   const id = typeof session.id === 'string' && session.id ? session.id : randomId('session');
   const name = typeof session.name === 'string' && session.name.trim() ? session.name.trim() : id;
-  return { id, name };
+  const scramblePuzzle = typeof session.scramblePuzzle === 'string' && session.scramblePuzzle
+    ? session.scramblePuzzle
+    : 'three';
+  return { id, name, scramblePuzzle };
 }
 
 function dedupeSolveId(solve, usedIds) {

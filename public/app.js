@@ -406,10 +406,14 @@ async function bootstrap() {
   try {
     const data = await getJson(`/api/bootstrap?${new URLSearchParams({ puzzle: scramblePuzzle }).toString()}`);
     scramble = data.scramble;
-    scramblePuzzle = scramble.puzzle || scramblePuzzle;
     solves = data.solves;
     sessions = data.sessions;
     if (!sessions.some((session) => session.id === currentSessionId)) currentSessionId = 'default';
+    applyCurrentSessionPuzzle(scramble?.puzzle || scramblePuzzle);
+    if ((scramble?.puzzle || 'three') !== scramblePuzzle) {
+      const nextScramble = await postJson('/api/scramble', { puzzle: scramblePuzzle });
+      scramble = nextScramble.scramble;
+    }
     elements.historyPath.textContent = data.historyPath;
     appState = 'ready';
     render();
@@ -420,6 +424,25 @@ async function bootstrap() {
     elements.statusText.classList.add('error');
     elements.timerHint.textContent = error.message;
   }
+}
+
+function applyCurrentSessionPuzzle(fallback = scramblePuzzle || 'three') {
+  scramblePuzzle = sessionPuzzleForId(currentSessionId, fallback);
+  localStorage.setItem('trainTimer.scramblePuzzle', scramblePuzzle);
+  return scramblePuzzle;
+}
+
+function sessionPuzzleForId(sessionId, fallback = 'three') {
+  const session = sessions.find((item) => item.id === sessionId);
+  return session?.scramblePuzzle || fallback || 'three';
+}
+
+function updateLocalSession(sessionId, updates) {
+  sessions = sessions.map((session) => (session.id === sessionId ? { ...session, ...updates } : session));
+}
+
+function scrambleChangeLocked() {
+  return appState === 'timing' || appState === 'inspection' || appState === 'hold' || appState === 'saving';
 }
 
 function handleKeyDown(event) {
@@ -589,9 +612,27 @@ async function nextSolve() {
 async function changeScramblePuzzle() {
   const nextPuzzle = elements.scramblePuzzleSelect.value || 'three';
   if (nextPuzzle === scramblePuzzle) return;
+  const previousPuzzle = sessionPuzzleForId(currentSessionId, scramblePuzzle);
   scramblePuzzle = nextPuzzle;
   localStorage.setItem('trainTimer.scramblePuzzle', scramblePuzzle);
-  if (appState === 'timing' || appState === 'inspection' || appState === 'hold' || appState === 'saving') {
+  updateLocalSession(currentSessionId, { scramblePuzzle });
+
+  try {
+    const data = await requestJson(`/api/sessions/${encodeURIComponent(currentSessionId)}`, {
+      method: 'PATCH',
+      body: { scramblePuzzle },
+    });
+    sessions = data.sessions;
+  } catch (error) {
+    scramblePuzzle = previousPuzzle;
+    localStorage.setItem('trainTimer.scramblePuzzle', scramblePuzzle);
+    updateLocalSession(currentSessionId, { scramblePuzzle });
+    alert(`保存打乱类型失败：${error.message}`);
+    render();
+    return;
+  }
+
+  if (scrambleChangeLocked()) {
     render();
     return;
   }
@@ -599,11 +640,12 @@ async function changeScramblePuzzle() {
 }
 
 async function loadScramble() {
+  applyCurrentSessionPuzzle();
   elements.scrambleButton.disabled = true;
   try {
     const data = await postJson('/api/scramble', { puzzle: scramblePuzzle });
     scramble = data.scramble;
-    scramblePuzzle = scramble.puzzle || scramblePuzzle;
+    scramblePuzzle = scramble.puzzle || sessionPuzzleForId(currentSessionId, scramblePuzzle);
     localStorage.setItem('trainTimer.scramblePuzzle', scramblePuzzle);
     resetBluetoothSolveTracking();
     render();
@@ -984,21 +1026,32 @@ function openStatsDialog() {
 }
 
 async function switchSession() {
-  currentSessionId = elements.sessionSelect.value;
+  await selectSession(elements.sessionSelect.value);
+}
+
+async function selectSession(sessionId) {
+  currentSessionId = sessionId;
   localStorage.setItem('trainTimer.session', currentSessionId);
+  applyCurrentSessionPuzzle();
   selectedSolveIds.clear();
   if (currentDetailSolveId && !filteredSolves().some((solve) => solve.id === currentDetailSolveId)) elements.solveDialog.close();
+  if (!scrambleChangeLocked() && (!scramble || (scramble.puzzle || 'three') !== scramblePuzzle)) {
+    await loadScramble();
+    return;
+  }
   render();
 }
 
 async function createSession() {
   const name = prompt('新会话名称', `Session ${sessions.length + 1}`);
   if (!name) return;
-  const data = await postJson('/api/sessions', { name });
+  const data = await postJson('/api/sessions', { name, scramblePuzzle });
   sessions = data.sessions;
   solves = data.solves;
   currentSessionId = data.session.id;
+  scramblePuzzle = data.session.scramblePuzzle || scramblePuzzle;
   localStorage.setItem('trainTimer.session', currentSessionId);
+  localStorage.setItem('trainTimer.scramblePuzzle', scramblePuzzle);
   selectedSolveIds.clear();
   if (elements.solveDialog.open) elements.solveDialog.close();
   render();
@@ -1015,7 +1068,9 @@ async function duplicateCurrentSession() {
   sessions = data.sessions;
   solves = data.solves;
   currentSessionId = data.session.id;
+  scramblePuzzle = data.session.scramblePuzzle || scramblePuzzle;
   localStorage.setItem('trainTimer.session', currentSessionId);
+  localStorage.setItem('trainTimer.scramblePuzzle', scramblePuzzle);
   selectedSolveIds.clear();
   if (elements.solveDialog.open) elements.solveDialog.close();
   render();
@@ -1045,12 +1100,17 @@ async function mergeCurrentSession() {
     sessions = data.sessions;
     solves = data.solves;
     currentSessionId = target.id;
+    applyCurrentSessionPuzzle();
     localStorage.setItem('trainTimer.session', currentSessionId);
     pendingDeletedSolves = [];
     pendingImportSnapshot = snapshot;
     selectedSolveIds.clear();
     if (currentDetailSolveId && !solves.some((solve) => solve.id === currentDetailSolveId)) elements.solveDialog.close();
     elements.mergeSessionDialog.close();
+    if (!scrambleChangeLocked() && (!scramble || (scramble.puzzle || 'three') !== scramblePuzzle)) {
+      await loadScramble();
+      return;
+    }
     render();
   } catch (error) {
     alert(`合并失败：${error.message}`);
@@ -2343,14 +2403,10 @@ function handleStatsRecordClick(event) {
   openSolveDialog(button.dataset.detailId);
 }
 
-function handleSessionOverviewClick(event) {
+async function handleSessionOverviewClick(event) {
   const button = event.target.closest('[data-session-id]');
   if (!button?.dataset.sessionId || button.dataset.sessionId === currentSessionId) return;
-  currentSessionId = button.dataset.sessionId;
-  localStorage.setItem('trainTimer.session', currentSessionId);
-  selectedSolveIds.clear();
-  if (currentDetailSolveId && !filteredSolves().some((solve) => solve.id === currentDetailSolveId)) elements.solveDialog.close();
-  render();
+  await selectSession(button.dataset.sessionId);
 }
 
 async function copyStatsSummary() {

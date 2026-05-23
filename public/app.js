@@ -106,6 +106,7 @@ const elements = {
   allSolvesSearch: document.querySelector('#allSolvesSearch'),
   allSolvesFromDate: document.querySelector('#allSolvesFromDate'),
   allSolvesToDate: document.querySelector('#allSolvesToDate'),
+  allSolvesRecordFilter: document.querySelector('#allSolvesRecordFilter'),
   allSessionsToggle: document.querySelector('#allSessionsToggle'),
   allSolvesSortBy: document.querySelector('#allSolvesSortBy'),
   allSolvesSortDirection: document.querySelector('#allSolvesSortDirection'),
@@ -322,6 +323,7 @@ elements.selectAllSessionSolves.addEventListener('change', toggleSelectAllSessio
 elements.allSolvesSearch.addEventListener('input', handleAllSolvesFilterChange);
 elements.allSolvesFromDate.addEventListener('change', handleAllSolvesFilterChange);
 elements.allSolvesToDate.addEventListener('change', handleAllSolvesFilterChange);
+elements.allSolvesRecordFilter.addEventListener('change', handleAllSolvesFilterChange);
 elements.allSessionsToggle.addEventListener('change', toggleAllSessions);
 elements.allSolvesSortBy.addEventListener('change', renderAllSolvesDialog);
 elements.allSolvesSortDirection.addEventListener('change', renderAllSolvesDialog);
@@ -889,6 +891,7 @@ function openAllSolvesDialog() {
   elements.allSolvesSearch.value = '';
   elements.allSolvesFromDate.value = '';
   elements.allSolvesToDate.value = '';
+  elements.allSolvesRecordFilter.value = 'all';
   if (filteredSolves().length === 0 && solves.length > 0) {
     allSessionsEnabled = true;
     localStorage.setItem('trainTimer.allSessions', '1');
@@ -2580,10 +2583,12 @@ function solvesForSession(sessionId) {
 
 function filteredAllSolves() {
   const query = allSolvesQuery();
+  const recordFilter = allSolvesRecordFilter();
   const baseSolves = allSolvesBaseSolves();
   const bounds = allSolvesDateBounds();
   let listedSolves = baseSolves;
   if (bounds.from || bounds.to) listedSolves = listedSolves.filter((solve) => solveInDateBounds(solve, bounds));
+  if (recordFilter !== 'all') listedSolves = listedSolves.filter((solve) => solveMatchesRecordFilter(solve, recordFilter));
   if (query) listedSolves = listedSolves.filter((solve) => searchableSolveText(solve).includes(query));
   return sortAllSolves(listedSolves);
 }
@@ -2592,8 +2597,29 @@ function allSolvesQuery() {
   return elements.allSolvesSearch.value.trim().toLowerCase();
 }
 
+function allSolvesRecordFilter() {
+  return elements.allSolvesRecordFilter.value || 'all';
+}
+
 function allSolvesFilterActive() {
-  return Boolean(allSolvesQuery() || elements.allSolvesFromDate.value || elements.allSolvesToDate.value);
+  return Boolean(
+    allSolvesQuery()
+      || elements.allSolvesFromDate.value
+      || elements.allSolvesToDate.value
+      || allSolvesRecordFilter() !== 'all',
+  );
+}
+
+function solveMatchesRecordFilter(solve, recordFilter) {
+  const recordTypes = solveRecordTypes(solve);
+  if (recordFilter === 'any-record') return recordTypes.length > 0;
+  return recordTypes.includes(recordFilter);
+}
+
+function solveRecordTypes(solve) {
+  const sessionSolves = solvesForSession(solve.sessionId);
+  const solveIndex = sessionSolves.findIndex((item) => item.id === solve.id);
+  return recordMarksAt(sessionSolves, solveIndex).map((mark) => mark.type);
 }
 
 function allSolvesDateBounds() {

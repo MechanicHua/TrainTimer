@@ -923,6 +923,10 @@ dialog[open] {
   width: 84px;
 }
 
+.all-solves-record select {
+  width: 108px;
+}
+
 .all-solves-date input {
   width: 136px;
 }

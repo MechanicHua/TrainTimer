@@ -49,6 +49,8 @@ const elements = {
   averageStat: document.querySelector('#averageStat'),
   ao5Stat: document.querySelector('#ao5Stat'),
   ao12Stat: document.querySelector('#ao12Stat'),
+  bestAo5Stat: document.querySelector('#bestAo5Stat'),
+  bestAo12Stat: document.querySelector('#bestAo12Stat'),
   latestStat: document.querySelector('#latestStat'),
   bluetoothButton: document.querySelector('#bluetoothButton'),
   bluetoothLogButton: document.querySelector('#bluetoothLogButton'),
@@ -1481,6 +1483,8 @@ function renderStats() {
   elements.averageStat.textContent = sessionSummary.average == null ? '-' : formatTime(sessionSummary.average);
   elements.ao5Stat.textContent = sessionSummary.ao5 == null ? '-' : formatTime(sessionSummary.ao5);
   elements.ao12Stat.textContent = sessionSummary.ao12 == null ? '-' : formatTime(sessionSummary.ao12);
+  elements.bestAo5Stat.textContent = sessionSummary.bestAo5 == null ? '-' : formatTime(sessionSummary.bestAo5);
+  elements.bestAo12Stat.textContent = sessionSummary.bestAo12 == null ? '-' : formatTime(sessionSummary.bestAo12);
   elements.latestStat.textContent = sessionSummary.latest == null ? '-' : formatTime(sessionSummary.latest);
   elements.statsDetailButton.disabled = sessionSummary.count === 0;
 }

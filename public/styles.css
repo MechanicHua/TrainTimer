@@ -385,13 +385,13 @@ body[data-state="timing"] .timer-display {
 .stats-panel {
   display: grid;
   width: 100%;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
 .stats-panel div {
   display: flex;
-  min-height: 58px;
+  min-height: 55px;
   min-width: 0;
   flex-direction: column;
   align-items: center;
@@ -415,7 +415,7 @@ body[data-state="timing"] .timer-display {
   overflow: hidden;
   color: #fff;
   font-variant-numeric: tabular-nums;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 720;
   text-overflow: ellipsis;
   white-space: nowrap;

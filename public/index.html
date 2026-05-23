@@ -469,6 +469,10 @@
               <p id="solveDetailError" class="form-error" aria-live="polite"></p>
             </div>
             <div>
+              <label for="solveDetailDateInput">复原时间</label>
+              <input id="solveDetailDateInput" type="datetime-local" step="1" autocomplete="off" />
+            </div>
+            <div>
               <label for="solveDetailPenaltySelect">罚时</label>
               <select id="solveDetailPenaltySelect">
                 <option value="ok">OK</option>
@@ -505,6 +509,7 @@
             <button id="copyScrambleButton" type="button">复制打乱</button>
             <button id="saveScrambleButton" type="button">保存打乱</button>
             <button id="saveTimeButton" type="button">保存成绩</button>
+            <button id="saveDateButton" type="button">保存日期</button>
             <button id="savePenaltyButton" type="button">保存罚时</button>
             <button id="saveTagsButton" type="button">保存标签</button>
             <button id="saveCommentButton" type="button">保存备注</button>

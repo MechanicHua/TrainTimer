@@ -289,6 +289,14 @@ async function handleApi(request, response) {
     if (Object.hasOwn(body, 'scramblePuzzle')) updates.scramblePuzzle = String(body.scramblePuzzle || 'three');
     if (Object.hasOwn(body, 'comment')) updates.comment = body.comment;
     if (Object.hasOwn(body, 'tags')) updates.tags = body.tags;
+    if (Object.hasOwn(body, 'createdAt')) {
+      const createdAt = new Date(body.createdAt);
+      if (!Number.isFinite(createdAt.getTime())) {
+        sendJson(response, 400, { error: 'createdAt must be a valid date' });
+        return;
+      }
+      updates.createdAt = createdAt.toISOString();
+    }
     if (Object.hasOwn(body, 'sessionId')) updates.sessionId = String(body.sessionId || 'default');
     const result = await updateSolve(id, updates);
 

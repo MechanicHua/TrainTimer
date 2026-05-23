@@ -189,6 +189,7 @@ const elements = {
   solveDetailTitle: document.querySelector('#solveDetailTitle'),
   solveDetailMeta: document.querySelector('#solveDetailMeta'),
   solveDetailTimeInput: document.querySelector('#solveDetailTimeInput'),
+  solveDetailDateInput: document.querySelector('#solveDetailDateInput'),
   solveDetailError: document.querySelector('#solveDetailError'),
   solveDetailPenaltySelect: document.querySelector('#solveDetailPenaltySelect'),
   solveDetailScramble: document.querySelector('#solveDetailScramble'),
@@ -210,6 +211,7 @@ const elements = {
   copyScrambleButton: document.querySelector('#copyScrambleButton'),
   saveScrambleButton: document.querySelector('#saveScrambleButton'),
   saveTimeButton: document.querySelector('#saveTimeButton'),
+  saveDateButton: document.querySelector('#saveDateButton'),
   savePenaltyButton: document.querySelector('#savePenaltyButton'),
   saveTagsButton: document.querySelector('#saveTagsButton'),
   saveCommentButton: document.querySelector('#saveCommentButton'),
@@ -334,6 +336,7 @@ elements.copyScrambleButton.addEventListener('click', copySelectedScramble);
 elements.saveScrambleButton.addEventListener('click', saveSolveScramble);
 elements.copyStatsSummaryButton.addEventListener('click', copyStatsSummary);
 elements.saveTimeButton.addEventListener('click', saveSolveTime);
+elements.saveDateButton.addEventListener('click', saveSolveDate);
 elements.savePenaltyButton.addEventListener('click', saveSolvePenalty);
 elements.saveTagsButton.addEventListener('click', saveSolveTags);
 elements.saveCommentButton.addEventListener('click', saveSolveComment);
@@ -1219,6 +1222,7 @@ function renderSolveDialog() {
   elements.prevSolveButton.disabled = solveIndex <= 0;
   elements.nextSolveDetailButton.disabled = solveIndex < 0 || solveIndex >= sessionSolves.length - 1;
   elements.solveDetailTimeInput.value = solve.duration || formatTime(solve.durationMs);
+  elements.solveDetailDateInput.value = dateTimeLocalValue(solve.createdAt);
   elements.solveDetailError.textContent = '';
   elements.solveDetailPenaltySelect.value = solve.penalty || 'ok';
   elements.solveDetailScramble.value = solve.scramble || '';
@@ -1368,6 +1372,27 @@ async function saveSolveTime() {
     `原始成绩 ${displaySolveTime(solve)}`,
     '保存失败',
     elements.saveTimeButton,
+  );
+}
+
+async function saveSolveDate() {
+  const solve = solves.find((item) => item.id === currentDetailSolveId);
+  if (!solve) return;
+  let createdAt;
+  try {
+    createdAt = parseDateTimeLocalInput(elements.solveDetailDateInput.value);
+  } catch (error) {
+    elements.solveDetailError.textContent = error.message;
+    elements.solveDetailDateInput.focus();
+    return;
+  }
+
+  if (dateTimeLocalValue(solve.createdAt) === elements.solveDetailDateInput.value) return;
+  await saveSolveDetailUpdates(
+    { createdAt },
+    `复原时间 ${displaySolveTime(solve)}`,
+    '保存日期失败',
+    elements.saveDateButton,
   );
 }
 
@@ -2984,6 +3009,36 @@ function parseDateInput(value) {
   const day = Number(match[3]);
   const date = new Date(year, month, day);
   return date.getFullYear() === year && date.getMonth() === month && date.getDate() === day ? date : null;
+}
+
+function dateTimeLocalValue(value) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  const pad = (number) => String(number).padStart(2, '0');
+  return [
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+    `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`,
+  ].join('T');
+}
+
+function parseDateTimeLocalInput(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if (!match) throw new Error('请输入有效的复原时间');
+  const year = Number(match[1]);
+  const month = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = match[6] == null ? 0 : Number(match[6]);
+  const date = new Date(year, month, day, hour, minute, second);
+  const isSameDateTime = date.getFullYear() === year
+    && date.getMonth() === month
+    && date.getDate() === day
+    && date.getHours() === hour
+    && date.getMinutes() === minute
+    && date.getSeconds() === second;
+  if (!isSameDateTime) throw new Error('请输入有效的复原时间');
+  return date.toISOString();
 }
 
 function solveInDateBounds(solve, bounds) {

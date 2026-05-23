@@ -95,6 +95,9 @@ function parseCsvImport(text, options = {}) {
       bluetoothMoves: parseMoves(value('bluetoothMoves')),
       bluetoothMoveCount: parseOptionalInteger(value('bluetoothMoveCount')),
       bluetoothTps: parseOptionalNumber(value('bluetoothTps')),
+      bluetoothDeviceName: value('bluetoothDeviceName'),
+      bluetoothProtocols: parseTags(value('bluetoothProtocols')),
+      bluetoothSources: parseTags(value('bluetoothSources')),
       tags: parseTags(value('tags')),
       comment: value('comment'),
     };

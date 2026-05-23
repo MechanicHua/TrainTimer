@@ -226,6 +226,9 @@ export function normalizeSolve(solve) {
     bluetoothMoves,
     bluetoothMoveCount,
     bluetoothTps,
+    bluetoothDeviceName: typeof solve.bluetoothDeviceName === 'string' ? solve.bluetoothDeviceName : '',
+    bluetoothProtocols: normalizeStringList(solve.bluetoothProtocols),
+    bluetoothSources: normalizeStringList(solve.bluetoothSources),
   };
 }
 
@@ -258,6 +261,23 @@ export function normalizeBluetoothMoves(moves) {
       .replace(/[’′`]/g, "'")
       .toUpperCase();
     if (/^[URFDLB](?:2|')?$/.test(value)) normalized.push(value);
+  }
+
+  return normalized;
+}
+
+function normalizeStringList(values) {
+  const rawValues = Array.isArray(values)
+    ? values
+    : String(values || '').split(/[;,，；]/);
+  const seen = new Set();
+  const normalized = [];
+
+  for (const value of rawValues) {
+    const text = String(value || '').trim();
+    if (!text || seen.has(text)) continue;
+    seen.add(text);
+    normalized.push(text);
   }
 
   return normalized;

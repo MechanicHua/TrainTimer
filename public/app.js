@@ -393,6 +393,7 @@ window.__trainTimerDebug = {
       appState,
       bluetoothMoveCount: bluetoothMoves.length,
       bluetoothMoves: bluetoothMoveSequence(),
+      bluetoothMetadata: bluetoothSolveMetadata(),
       bluetoothReconnectDevices: bluetoothReconnectDevices.length,
       bluetoothSolved,
       bluetoothState: elements.bluetoothStateMeta.textContent,
@@ -584,6 +585,7 @@ async function finishTiming() {
   const durationMs = performance.now() - startedAt;
   appState = 'saving';
   render();
+  const bluetoothMetadata = bluetoothSolveMetadata();
 
   const data = await postJson('/api/solves', {
     durationMs,
@@ -595,6 +597,9 @@ async function finishTiming() {
     penalty: activePenalty,
     timerSource: finishSource,
     bluetoothMoves: bluetoothMoveSequence(),
+    bluetoothDeviceName: bluetoothMetadata.deviceName,
+    bluetoothProtocols: bluetoothMetadata.protocols,
+    bluetoothSources: bluetoothMetadata.sources,
   });
 
   solves = data.solves;
@@ -1215,10 +1220,15 @@ function renderSolveDialog() {
   const solveNumber = solveIndex + 1;
   elements.solveDetailTitle.textContent = `成绩 ${displaySolveTime(solve)}`;
   const timerSource = solve.timerSource === 'bluetooth' ? '蓝牙停表' : '手动停表';
+  const bluetoothMoves = Array.isArray(solve.bluetoothMoves) ? solve.bluetoothMoves : [];
   const bluetoothMoveCount = solve.bluetoothMoveCount ?? (Array.isArray(solve.bluetoothMoves) ? solve.bluetoothMoves.length : 0);
   const bluetoothTps = Number.isFinite(solve.bluetoothTps) ? `${solve.bluetoothTps.toFixed(3)} TPS` : 'TPS -';
+  const bluetoothDevice = solve.bluetoothDeviceName || '';
+  const bluetoothProtocols = formatList(solve.bluetoothProtocols);
+  const bluetoothSources = formatList(solve.bluetoothSources);
+  const bluetoothDetail = [bluetoothDevice, bluetoothProtocols].filter(Boolean).join(' · ');
   const positionText = solveIndex >= 0 ? `第 ${solveNumber} / ${sessionSolves.length} 条` : '未知位置';
-  elements.solveDetailMeta.textContent = `${sessionNameForSolve(solve)} · ${positionText} · ${new Date(solve.createdAt).toLocaleString()} · ${timerSource} · ${puzzleLabel(solve.scramblePuzzle || 'three')} · ${solve.inspectionEnabled ? '开启观察' : '无观察'} · ${bluetoothMoveCount} 次蓝牙转动 · ${bluetoothTps} · ${solve.scrambleSource || 'unknown'}`;
+  elements.solveDetailMeta.textContent = `${sessionNameForSolve(solve)} · ${positionText} · ${new Date(solve.createdAt).toLocaleString()} · ${timerSource} · ${puzzleLabel(solve.scramblePuzzle || 'three')} · ${solve.inspectionEnabled ? '开启观察' : '无观察'} · ${bluetoothMoveCount} 次蓝牙转动 · ${bluetoothTps}${bluetoothDetail ? ` · ${bluetoothDetail}` : ''} · ${solve.scrambleSource || 'unknown'}`;
   elements.prevSolveButton.disabled = solveIndex <= 0;
   elements.nextSolveDetailButton.disabled = solveIndex < 0 || solveIndex >= sessionSolves.length - 1;
   elements.solveDetailTimeInput.value = solve.duration || formatTime(solve.durationMs);
@@ -1228,8 +1238,10 @@ function renderSolveDialog() {
   elements.solveDetailScramble.value = solve.scramble || '';
   elements.solveDetailComment.value = solve.comment || '';
   elements.solveDetailTagsInput.value = formatTags(solve.tags);
-  elements.solveDetailBluetoothStats.textContent = `蓝牙转动 · ${bluetoothMoveCount} 次 · ${bluetoothTps}`;
-  elements.solveDetailBluetoothMoves.textContent = bluetoothMoveCount > 0 ? solve.bluetoothMoves.join(' ') : '-';
+  elements.solveDetailBluetoothStats.textContent = ['蓝牙转动', `${bluetoothMoveCount} 次`, bluetoothTps, bluetoothDevice, bluetoothProtocols, bluetoothSources].filter(Boolean).join(' · ');
+  elements.solveDetailBluetoothMoves.textContent = bluetoothMoves.length > 0
+    ? bluetoothMoves.join(' ')
+    : (bluetoothMoveCount > 0 ? '未提供转动序列' : '-');
   renderSolveBluetoothReplay(solve);
 }
 
@@ -1851,7 +1863,7 @@ function processBluetoothPacket(uuid, value, deviceName) {
   const parsedMoves = duplicateMovePacket ? [] : decoded.moves;
   const trackingMoves = parsedMoves.length > 0 && shouldTrackBluetoothMoves();
   elements.bluetoothStatus.title = `${uuid} ${hex}`;
-  if (trackingMoves) addBluetoothMoves(parsedMoves, label);
+  if (trackingMoves) addBluetoothMoves(parsedMoves, label, decoded.protocol || '', deviceName);
   if (trackingMoves) finishTimingFromBluetooth();
   const statusDetail = parsedMoves.length > 0
     ? `${parsedMoves.join(' ')} · ${trackingMoves ? (bluetoothSolved ? '已复原' : '未复原') : '等待计时'}`
@@ -2007,11 +2019,13 @@ function shouldTrackBluetoothMoves() {
   return appState === 'timing';
 }
 
-function addBluetoothMoves(moves, source) {
+function addBluetoothMoves(moves, source, protocol = '', deviceName = '') {
   const now = new Date();
   bluetoothMoves.unshift(...moves.map((move) => ({
     move,
     source,
+    protocol,
+    deviceName,
     time: now.toLocaleTimeString(),
     isoTime: now.toISOString(),
   })).reverse());
@@ -2041,6 +2055,30 @@ function renderBluetoothMoves() {
 
 function bluetoothMoveSequence() {
   return bluetoothMoves.slice().reverse().map((entry) => entry.move);
+}
+
+function bluetoothSolveMetadata() {
+  const entries = bluetoothMoves.slice().reverse();
+  const deviceName = bluetoothDevice?.name
+    || entries.find((entry) => entry.deviceName)?.deviceName
+    || '';
+  return {
+    deviceName,
+    protocols: uniqueText(entries.map((entry) => entry.protocol)),
+    sources: uniqueText(entries.map((entry) => entry.source)),
+  };
+}
+
+function uniqueText(values) {
+  const seen = new Set();
+  const output = [];
+  for (const value of values) {
+    const text = String(value || '').trim();
+    if (!text || seen.has(text)) continue;
+    seen.add(text);
+    output.push(text);
+  }
+  return output;
 }
 
 function resetBluetoothSolveTracking() {
@@ -3059,6 +3097,9 @@ function searchableSolveText(solve) {
     Array.isArray(solve.bluetoothMoves) ? solve.bluetoothMoves.join(' ') : '',
     solve.bluetoothMoveCount,
     solve.bluetoothTps,
+    solve.bluetoothDeviceName,
+    formatList(solve.bluetoothProtocols),
+    formatList(solve.bluetoothSources),
     sessionNameForSolve(solve),
     formatTags(solve.tags),
     solve.comment,
@@ -3093,6 +3134,10 @@ function parseTagsInput(value) {
 
 function formatTags(tags) {
   return Array.isArray(tags) ? tags.join(', ') : '';
+}
+
+function formatList(values) {
+  return Array.isArray(values) ? values.filter(Boolean).join(', ') : '';
 }
 
 function sameStringArray(left, right) {

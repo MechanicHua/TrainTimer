@@ -49,6 +49,9 @@ const solves = [
     bluetoothMoves: ['R', 'U2', "F'"],
     bluetoothMoveCount: 3,
     bluetoothTps: 0.25,
+    bluetoothDeviceName: 'GoCube',
+    bluetoothProtocols: ['gocube-move'],
+    bluetoothSources: ['0x0003'],
     tags: ['PLL', '慢十字'],
     comment: 'PLL "lockup"',
   },
@@ -74,9 +77,9 @@ test('builds listed exports in provided order', () => {
 
 test('exports CSV with stable columns and quoting', () => {
   const csv = solvesToCsv([solves[1]], sessions);
-  assert.equal(csv.split('\n')[0], 'id,sessionId,sessionName,createdAt,durationMs,duration,penalty,effectiveDurationMs,effectiveDuration,scramble,scrambleSource,scramblePuzzle,inspectionEnabled,timerSource,bluetoothMoves,bluetoothMoveCount,bluetoothTps,tags,comment');
+  assert.equal(csv.split('\n')[0], 'id,sessionId,sessionName,createdAt,durationMs,duration,penalty,effectiveDurationMs,effectiveDuration,scramble,scrambleSource,scramblePuzzle,inspectionEnabled,timerSource,bluetoothMoves,bluetoothMoveCount,bluetoothTps,bluetoothDeviceName,bluetoothProtocols,bluetoothSources,tags,comment');
   assert.match(csv, /"F, R"/);
-  assert.match(csv, /test,four,true,bluetooth,R U2 F',3,0.25/);
+  assert.match(csv, /test,four,true,bluetooth,R U2 F',3,0.25,GoCube,gocube-move,0x0003/);
   assert.match(csv, /PLL;慢十字/);
   assert.match(csv, /"PLL ""lockup"""/);
 });

@@ -18,6 +18,9 @@ test('builds copyable single-solve summary with metadata', () => {
       bluetoothMoves: ['R', 'U2', "F'"],
       bluetoothMoveCount: 3,
       bluetoothTps: 0.25,
+      bluetoothDeviceName: 'GoCube',
+      bluetoothProtocols: ['gocube-move'],
+      bluetoothSources: ['0x0003'],
     },
     '默认',
   );
@@ -36,6 +39,9 @@ test('builds copyable single-solve summary with metadata', () => {
   assert.match(text, /蓝牙转动: R U2 F'/);
   assert.match(text, /转动数: 3/);
   assert.match(text, /TPS: 0\.250/);
+  assert.match(text, /蓝牙设备: GoCube/);
+  assert.match(text, /蓝牙协议: gocube-move/);
+  assert.match(text, /蓝牙来源: 0x0003/);
 });
 
 test('builds DNF summary without optional sections', () => {

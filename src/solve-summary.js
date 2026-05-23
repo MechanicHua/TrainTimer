@@ -20,6 +20,11 @@ export function buildSolveSummary(solve, sessionName = '') {
     lines.push(`蓝牙转动: ${bluetoothMoves.join(' ')}`);
     lines.push(`转动数: ${solve.bluetoothMoveCount ?? bluetoothMoves.length}`);
     if (Number.isFinite(solve.bluetoothTps)) lines.push(`TPS: ${solve.bluetoothTps.toFixed(3)}`);
+    if (solve.bluetoothDeviceName) lines.push(`蓝牙设备: ${solve.bluetoothDeviceName}`);
+    const protocols = formatList(solve.bluetoothProtocols);
+    const sources = formatList(solve.bluetoothSources);
+    if (protocols) lines.push(`蓝牙协议: ${protocols}`);
+    if (sources) lines.push(`蓝牙来源: ${sources}`);
   }
 
   return lines.join('\n');
@@ -35,6 +40,10 @@ function penaltyLabel(penalty) {
   if (penalty === '+2') return '+2';
   if (penalty === 'dnf') return 'DNF';
   return 'OK';
+}
+
+function formatList(values) {
+  return Array.isArray(values) ? values.filter(Boolean).join(', ') : '';
 }
 
 function formatDate(value) {

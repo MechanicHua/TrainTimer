@@ -154,6 +154,9 @@ test('duplicates a session with copied solve ids and metadata', async () => {
         tags: ['PLL'],
         timerSource: 'bluetooth',
         bluetoothMoves: ['R', 'U'],
+        bluetoothDeviceName: 'GoCube',
+        bluetoothProtocols: ['gocube-move'],
+        bluetoothSources: ['0x0003'],
       },
     ],
     file,
@@ -175,6 +178,9 @@ test('duplicates a session with copied solve ids and metadata', async () => {
   assert.equal(copiedSolves[0].comment, 'good solve');
   assert.deepEqual(copiedSolves[0].tags, ['PLL']);
   assert.deepEqual(copiedSolves[0].bluetoothMoves, ['R', 'U']);
+  assert.equal(copiedSolves[0].bluetoothDeviceName, 'GoCube');
+  assert.deepEqual(copiedSolves[0].bluetoothProtocols, ['gocube-move']);
+  assert.deepEqual(copiedSolves[0].bluetoothSources, ['0x0003']);
   assert.equal(await duplicateSession('missing-session', 'missing', file), null);
 });
 
@@ -285,6 +291,9 @@ test('normalizes manually entered solve metadata', async () => {
     bluetoothMoves: ['R', 'U2'],
     bluetoothMoveCount: 2,
     bluetoothTps: 0.162,
+    bluetoothDeviceName: 'Giiker Super Cube',
+    bluetoothProtocols: ['giiker-latest-move', 'giiker-latest-move'],
+    bluetoothSources: ['0xFFF6', '0xFFF6'],
     sessionId: 'manual-session',
     scrambleSource: 'manual',
   }, file);
@@ -303,6 +312,9 @@ test('normalizes manually entered solve metadata', async () => {
     bluetoothMoves: ['R', 'U2'],
     bluetoothMoveCount: 2,
     bluetoothTps: 0.162,
+    bluetoothDeviceName: 'Giiker Super Cube',
+    bluetoothProtocols: ['giiker-latest-move'],
+    bluetoothSources: ['0xFFF6'],
     sessionId: 'manual-session',
     scramble: '',
     scrambleSource: 'manual',

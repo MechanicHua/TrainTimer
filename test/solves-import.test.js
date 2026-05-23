@@ -15,9 +15,9 @@ test('parses TrainTimer JSON exports', () => {
 
 test('parses exported CSV solves and sessions', () => {
   const csv = [
-    'id,sessionId,sessionName,createdAt,durationMs,duration,penalty,effectiveDurationMs,effectiveDuration,scramble,scrambleSource,scramblePuzzle,inspectionEnabled,timerSource,bluetoothMoves,bluetoothMoveCount,bluetoothTps,tags,comment',
-    `s1,oh,OH,2026-05-23T00:00:00.000Z,12345,12.345,+2,14345,14.345,"R, U",tnoodle,four,true,bluetooth,"R U2 F'",3,0.243,PLL;慢十字,"PLL ""lockup"""`,
-    's2,default,默认,2026-05-23T00:01:00.000Z,62000,1:02.000,ok,62000,1:02.000,U,tnoodle,three,false,manual,,,,,',
+    'id,sessionId,sessionName,createdAt,durationMs,duration,penalty,effectiveDurationMs,effectiveDuration,scramble,scrambleSource,scramblePuzzle,inspectionEnabled,timerSource,bluetoothMoves,bluetoothMoveCount,bluetoothTps,bluetoothDeviceName,bluetoothProtocols,bluetoothSources,tags,comment',
+    `s1,oh,OH,2026-05-23T00:00:00.000Z,12345,12.345,+2,14345,14.345,"R, U",tnoodle,four,true,bluetooth,"R U2 F'",3,0.243,GoCube,gocube-move,0x0003,PLL;慢十字,"PLL ""lockup"""`,
+    's2,default,默认,2026-05-23T00:01:00.000Z,62000,1:02.000,ok,62000,1:02.000,U,tnoodle,three,false,manual,,,,,,,,',
   ].join('\n');
 
   const parsed = parseSolveImport('solves.csv', csv);
@@ -43,6 +43,9 @@ test('parses exported CSV solves and sessions', () => {
       bluetoothMoves: ['R', 'U2', "F'"],
       bluetoothMoveCount: 3,
       bluetoothTps: 0.243,
+      bluetoothDeviceName: 'GoCube',
+      bluetoothProtocols: ['gocube-move'],
+      bluetoothSources: ['0x0003'],
       tags: ['PLL', '慢十字'],
       comment: 'PLL "lockup"',
     },
@@ -61,6 +64,9 @@ test('parses exported CSV solves and sessions', () => {
       bluetoothMoves: [],
       bluetoothMoveCount: undefined,
       bluetoothTps: undefined,
+      bluetoothDeviceName: '',
+      bluetoothProtocols: [],
+      bluetoothSources: [],
       tags: [],
       comment: '',
     },

@@ -2,24 +2,58 @@ export function parseSolveImport(fileName, text, options = {}) {
   const trimmed = String(text || '').trim();
   if (!trimmed) throw new Error('文件内容为空');
 
-  if (trimmed.startsWith('{') || trimmed.startsWith('[')) return parseJsonImport(trimmed);
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) return parseJsonImport(trimmed, options);
 
   if (looksLikeCstimerCsv(trimmed)) return parseCstimerCsvImport(trimmed, options);
 
   const isCsv = /\.csv$/i.test(fileName || '') || looksLikeCsv(trimmed);
   return isCsv
     ? parseCsvImport(trimmed, options)
-    : parseJsonImport(trimmed);
+    : parseJsonImport(trimmed, options);
 }
 
-function parseJsonImport(text) {
+function parseJsonImport(text, options = {}) {
   const parsed = JSON.parse(text);
+  if (!Array.isArray(parsed) && !Array.isArray(parsed.solves) && looksLikeCstimerJson(parsed)) {
+    return parseCstimerJsonImport(parsed, options);
+  }
+
   const solves = Array.isArray(parsed) ? parsed : parsed.solves;
   if (!Array.isArray(solves)) throw new Error('JSON 中没有 solves 数组');
 
   return {
     source: 'json',
     sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
+    solves,
+  };
+}
+
+function parseCstimerJsonImport(data, options = {}) {
+  const sessionKeys = cstimerSessionKeys(data);
+  if (sessionKeys.length === 0) throw new Error('csTimer JSON 中没有 session 数据');
+
+  const sessionMeta = cstimerSessionMeta(data);
+  const sessions = sessionKeys.map((key) => {
+    const sessionId = cstimerSessionId(key);
+    return {
+      id: sessionId,
+      name: String(sessionMeta.get(key)?.name || `csTimer Session ${key}`),
+    };
+  });
+  const solves = [];
+
+  for (const key of sessionKeys) {
+    const sessionSolves = parseMaybeJson(data[`session${key}`]);
+    if (!Array.isArray(sessionSolves)) throw new Error(`csTimer session${key} 不是成绩数组`);
+
+    sessionSolves.forEach((solve, index) => {
+      solves.push(parseCstimerJsonSolve(solve, cstimerSessionId(key), key, index, options));
+    });
+  }
+
+  return {
+    source: 'cstimer-json',
+    sessions,
     solves,
   };
 }
@@ -111,6 +145,71 @@ function looksLikeCsv(text) {
 
 function looksLikeCstimerCsv(text) {
   return /^No\.;Time;Comment;Scramble;Date(?:;|$)/i.test(text.split(/\r?\n/, 1)[0]);
+}
+
+function looksLikeCstimerJson(data) {
+  return Boolean(data && typeof data === 'object' && cstimerSessionKeys(data).length > 0);
+}
+
+function cstimerSessionKeys(data) {
+  return Object.keys(data || {})
+    .map((key) => key.match(/^session(\d+)$/)?.[1])
+    .filter(Boolean)
+    .sort((left, right) => Number(left) - Number(right));
+}
+
+function cstimerSessionMeta(data) {
+  const properties = parseMaybeJson(data?.properties);
+  const sessionData = parseMaybeJson(properties?.sessionData ?? data?.sessionData);
+  const meta = new Map();
+  if (!sessionData || typeof sessionData !== 'object') return meta;
+
+  for (const [key, value] of Object.entries(sessionData)) {
+    if (value && typeof value === 'object') meta.set(String(key), value);
+  }
+  return meta;
+}
+
+function parseCstimerJsonSolve(record, sessionId, sessionKey, index, options) {
+  if (!Array.isArray(record) || !Array.isArray(record[0])) {
+    throw new Error(`csTimer session${sessionKey} 第 ${index + 1} 条成绩格式无效`);
+  }
+
+  const timeParts = record[0];
+  const durationMs = parseMillisecondValue(timeParts[1]);
+  if (durationMs == null) throw new Error(`csTimer session${sessionKey} 第 ${index + 1} 条缺少有效成绩`);
+
+  const penaltyFlag = Number(timeParts[0]);
+  const penalty = penaltyFlag === -1 ? 'dnf' : (penaltyFlag > 0 ? '+2' : 'ok');
+  return {
+    id: createImportId(options),
+    sessionId,
+    createdAt: parseDateValue(record[3]) || new Date().toISOString(),
+    durationMs,
+    penalty,
+    scramble: String(record[1] || ''),
+    scrambleSource: 'cstimer-json',
+    inspectionEnabled: false,
+    timerSource: 'manual',
+    bluetoothMoves: [],
+    tags: [],
+    comment: String(record[2] || ''),
+  };
+}
+
+function cstimerSessionId(key) {
+  return `cstimer-${key}`;
+}
+
+function parseMaybeJson(value) {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  if (!trimmed || (!trimmed.startsWith('{') && !trimmed.startsWith('['))) return value;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
 }
 
 function parseCsvRows(text, delimiter = ',') {

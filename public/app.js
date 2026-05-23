@@ -2179,6 +2179,7 @@ function importDuplicateInfo(incomingSolves) {
 
 function importSourceLabel(source) {
   if (source === 'cstimer-csv') return 'csTimer CSV';
+  if (source === 'cstimer-json') return 'csTimer JSON';
   if (source === 'csv') return 'TrainTimer CSV';
   if (source === 'json') return 'TrainTimer JSON';
   return '未知格式';

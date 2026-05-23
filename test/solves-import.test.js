@@ -102,3 +102,44 @@ test('parses csTimer CSV exports', () => {
   assert.equal(parsed.solves[1].penalty, 'dnf');
   assert.equal(parsed.solves[1].comment, '失误');
 });
+
+test('parses csTimer JSON backups with session metadata', () => {
+  let nextId = 0;
+  const exportedAt = 1716458400;
+  const parsed = parseSolveImport(
+    'cstimer.json',
+    JSON.stringify({
+      properties: JSON.stringify({
+        sessionData: JSON.stringify({
+          1: { name: '3x3' },
+          2: { name: 'OH' },
+        }),
+      }),
+      session1: JSON.stringify([
+        [[0, 12345], 'R U', 'clean', exportedAt],
+        [[2000, 10000], 'F2', '+2 lockup', exportedAt + 60],
+      ]),
+      session2: [
+        [[-1, 62500], 'L2', 'DNF case', exportedAt + 120],
+      ],
+    }),
+    { createId: () => `json-${nextId += 1}` },
+  );
+
+  assert.equal(parsed.source, 'cstimer-json');
+  assert.deepEqual(parsed.sessions, [
+    { id: 'cstimer-1', name: '3x3' },
+    { id: 'cstimer-2', name: 'OH' },
+  ]);
+  assert.deepEqual(parsed.solves.map((solve) => solve.id), ['json-1', 'json-2', 'json-3']);
+  assert.equal(parsed.solves[0].sessionId, 'cstimer-1');
+  assert.equal(parsed.solves[0].durationMs, 12345);
+  assert.equal(parsed.solves[0].penalty, 'ok');
+  assert.equal(parsed.solves[0].scramble, 'R U');
+  assert.equal(parsed.solves[0].scrambleSource, 'cstimer-json');
+  assert.equal(parsed.solves[0].comment, 'clean');
+  assert.equal(parsed.solves[0].createdAt, new Date(exportedAt * 1000).toISOString());
+  assert.equal(parsed.solves[1].penalty, '+2');
+  assert.equal(parsed.solves[2].sessionId, 'cstimer-2');
+  assert.equal(parsed.solves[2].penalty, 'dnf');
+});

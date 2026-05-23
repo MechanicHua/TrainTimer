@@ -925,6 +925,7 @@ dialog[open] {
 .manual-entry-grid select,
 .manual-entry-grid textarea,
 .solve-detail-grid input,
+.solve-detail-grid select,
 .solve-detail-grid textarea {
   border: 1px solid var(--line-soft);
   border-radius: var(--radius);
@@ -1491,7 +1492,8 @@ dialog[open] {
   padding: 10px 12px;
 }
 
-.solve-detail-grid input {
+.solve-detail-grid input,
+.solve-detail-grid select {
   width: 100%;
   min-height: 40px;
   padding: 0 12px;

@@ -172,6 +172,7 @@ const elements = {
   solveDetailMeta: document.querySelector('#solveDetailMeta'),
   solveDetailTimeInput: document.querySelector('#solveDetailTimeInput'),
   solveDetailError: document.querySelector('#solveDetailError'),
+  solveDetailPenaltySelect: document.querySelector('#solveDetailPenaltySelect'),
   solveDetailScramble: document.querySelector('#solveDetailScramble'),
   solveDetailComment: document.querySelector('#solveDetailComment'),
   solveDetailTagsInput: document.querySelector('#solveDetailTagsInput'),
@@ -191,6 +192,7 @@ const elements = {
   copyScrambleButton: document.querySelector('#copyScrambleButton'),
   saveScrambleButton: document.querySelector('#saveScrambleButton'),
   saveTimeButton: document.querySelector('#saveTimeButton'),
+  savePenaltyButton: document.querySelector('#savePenaltyButton'),
   saveTagsButton: document.querySelector('#saveTagsButton'),
   saveCommentButton: document.querySelector('#saveCommentButton'),
   bluetoothLogDialog: document.querySelector('#bluetoothLogDialog'),
@@ -308,6 +310,7 @@ elements.copyScrambleButton.addEventListener('click', copySelectedScramble);
 elements.saveScrambleButton.addEventListener('click', saveSolveScramble);
 elements.copyStatsSummaryButton.addEventListener('click', copyStatsSummary);
 elements.saveTimeButton.addEventListener('click', saveSolveTime);
+elements.savePenaltyButton.addEventListener('click', saveSolvePenalty);
 elements.saveTagsButton.addEventListener('click', saveSolveTags);
 elements.saveCommentButton.addEventListener('click', saveSolveComment);
 elements.saveManualEntryButton.addEventListener('click', saveManualEntry);
@@ -1051,6 +1054,7 @@ function renderSolveDialog() {
   elements.nextSolveDetailButton.disabled = solveIndex < 0 || solveIndex >= sessionSolves.length - 1;
   elements.solveDetailTimeInput.value = solve.duration || formatTime(solve.durationMs);
   elements.solveDetailError.textContent = '';
+  elements.solveDetailPenaltySelect.value = solve.penalty || 'ok';
   elements.solveDetailScramble.value = solve.scramble || '';
   elements.solveDetailComment.value = solve.comment || '';
   elements.solveDetailTagsInput.value = formatTags(solve.tags);
@@ -1208,6 +1212,21 @@ async function saveSolveComment() {
     `备注 ${displaySolveTime(solve)}`,
     '保存备注失败',
     elements.saveCommentButton,
+  );
+}
+
+async function saveSolvePenalty() {
+  const solve = solves.find((item) => item.id === currentDetailSolveId);
+  if (!solve) return;
+  const penalty = ['ok', '+2', 'dnf'].includes(elements.solveDetailPenaltySelect.value)
+    ? elements.solveDetailPenaltySelect.value
+    : 'ok';
+  if ((solve.penalty || 'ok') === penalty) return;
+  await saveSolveDetailUpdates(
+    { penalty },
+    `罚时 ${displaySolveTime(solve)}`,
+    '保存罚时失败',
+    elements.savePenaltyButton,
   );
 }
 

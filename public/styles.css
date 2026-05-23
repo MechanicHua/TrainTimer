@@ -638,6 +638,7 @@ body[data-state="timing"] .timer-display {
 .all-solves-dialog,
 .stats-dialog,
 .export-dialog,
+.import-dialog,
 .move-dialog,
 .manual-dialog,
 .bluetooth-log-dialog {
@@ -667,6 +668,7 @@ body[data-state="timing"] .timer-display {
 .all-solves-dialog::backdrop,
 .stats-dialog::backdrop,
 .export-dialog::backdrop,
+.import-dialog::backdrop,
 .move-dialog::backdrop,
 .manual-dialog::backdrop,
 .bluetooth-log-dialog::backdrop {
@@ -682,6 +684,7 @@ dialog[open] {
 .all-solves-inner,
 .stats-dialog-inner,
 .export-dialog-inner,
+.import-dialog-inner,
 .move-dialog-inner,
 .manual-entry-inner,
 .bluetooth-log-inner {
@@ -691,6 +694,7 @@ dialog[open] {
 .all-solves-inner,
 .stats-dialog-inner,
 .export-dialog-inner,
+.import-dialog-inner,
 .move-dialog-inner,
 .manual-entry-inner,
 .bluetooth-log-inner {
@@ -933,6 +937,38 @@ dialog[open] {
 .export-grid button {
   min-height: 48px;
   font-weight: 650;
+}
+
+.import-preview-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.import-preview-list div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: rgba(245, 245, 247, 0.74);
+}
+
+.import-preview-list span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.import-preview-list strong {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .move-session-field {
@@ -1226,6 +1262,10 @@ dialog[open] {
 
   .stats-detail-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .import-preview-list {
+    grid-template-columns: 1fr;
   }
 
   .export-grid {

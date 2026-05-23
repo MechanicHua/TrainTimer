@@ -230,6 +230,24 @@
         </form>
       </dialog>
 
+      <dialog id="importDialog" class="import-dialog">
+        <form method="dialog" class="import-dialog-inner">
+          <div class="solve-dialog-header">
+            <div>
+              <h2>导入预览</h2>
+              <p id="importDialogMeta">-</p>
+            </div>
+            <button type="submit" aria-label="关闭">关闭</button>
+          </div>
+          <div id="importPreviewList" class="import-preview-list"></div>
+          <div class="dialog-actions">
+            <button type="submit">取消</button>
+            <button id="appendImportButton" type="button">追加导入</button>
+            <button id="replaceImportButton" type="button">替换全部</button>
+          </div>
+        </form>
+      </dialog>
+
       <dialog id="markPenaltyDialog" class="move-dialog">
         <form method="dialog" class="move-dialog-inner">
           <div class="solve-dialog-header">

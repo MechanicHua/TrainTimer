@@ -108,6 +108,11 @@ const elements = {
   exportAllJsonButton: document.querySelector('#exportAllJsonButton'),
   exportAllCsvButton: document.querySelector('#exportAllCsvButton'),
   exportAllCstimerButton: document.querySelector('#exportAllCstimerButton'),
+  importDialog: document.querySelector('#importDialog'),
+  importDialogMeta: document.querySelector('#importDialogMeta'),
+  importPreviewList: document.querySelector('#importPreviewList'),
+  appendImportButton: document.querySelector('#appendImportButton'),
+  replaceImportButton: document.querySelector('#replaceImportButton'),
   markPenaltyDialog: document.querySelector('#markPenaltyDialog'),
   markPenaltyMeta: document.querySelector('#markPenaltyMeta'),
   markPenaltySelect: document.querySelector('#markPenaltySelect'),
@@ -174,6 +179,7 @@ let finishSource = 'manual';
 let selectedSolveIds = new Set();
 let pendingDeletedSolves = [];
 let pendingImportSnapshot = null;
+let pendingImportPreview = null;
 let currentDetailSolveId = null;
 let bluetoothDevice = null;
 let bluetoothSubscriptions = [];
@@ -216,6 +222,8 @@ elements.exportAllCsvButton.addEventListener('click', () => exportSolves('csv', 
 elements.exportAllCstimerButton.addEventListener('click', () => exportSolves('cstimer', 'all'));
 elements.importButton.addEventListener('click', () => elements.importFile.click());
 elements.importFile.addEventListener('change', importSolves);
+elements.appendImportButton.addEventListener('click', () => confirmImport('append'));
+elements.replaceImportButton.addEventListener('click', () => confirmImport('replace'));
 elements.statsDetailButton.addEventListener('click', openStatsDialog);
 elements.manageSolvesButton.addEventListener('click', openAllSolvesDialog);
 elements.markSelectedButton.addEventListener('click', openMarkPenaltyDialog);
@@ -246,6 +254,9 @@ elements.solveDialog.addEventListener('close', () => {
 elements.allSolvesDialog.addEventListener('close', () => {
   selectedSolveIds.clear();
   render();
+});
+elements.importDialog.addEventListener('close', () => {
+  pendingImportPreview = null;
 });
 elements.selectAllSolves.addEventListener('change', toggleSelectAllSolves);
 elements.selectAllSessionSolves.addEventListener('change', toggleSelectAllSessionSolves);
@@ -713,27 +724,44 @@ async function importSolves() {
   try {
     const text = await file.text();
     const parsed = parseSolveImport(file.name, text);
-    const mode = confirm('点击“确定”替换当前成绩；点击“取消”追加导入成绩。') ? 'replace' : 'append';
-    const snapshot = {
-      solves: solves.map(cloneHistoryItem),
-      sessions: sessions.map(cloneHistoryItem),
-      currentSessionId,
-      mode,
-      fileName: file.name,
-    };
+    pendingImportPreview = { fileName: file.name, parsed };
+    if (!elements.importDialog.open) elements.importDialog.showModal();
+    renderImportDialog();
+  } catch (error) {
+    alert(`导入失败：${error.message}`);
+  } finally {
+    elements.importFile.value = '';
+  }
+}
+
+async function confirmImport(mode) {
+  if (!pendingImportPreview) return;
+  const { fileName, parsed } = pendingImportPreview;
+  const snapshot = {
+    solves: solves.map(cloneHistoryItem),
+    sessions: sessions.map(cloneHistoryItem),
+    currentSessionId,
+    mode,
+    fileName,
+  };
+
+  elements.appendImportButton.disabled = true;
+  elements.replaceImportButton.disabled = true;
+  try {
     const data = await postJson('/api/import', { mode, sessions: parsed.sessions, solves: parsed.solves });
     solves = data.solves;
     sessions = data.sessions;
     pendingDeletedSolves = [];
     pendingImportSnapshot = snapshot;
+    pendingImportPreview = null;
     if (!sessions.some((session) => session.id === currentSessionId)) currentSessionId = 'default';
     selectedSolveIds.clear();
     if (currentDetailSolveId && !solves.some((solve) => solve.id === currentDetailSolveId)) elements.solveDialog.close();
+    if (elements.importDialog.open) elements.importDialog.close();
     render();
   } catch (error) {
     alert(`导入失败：${error.message}`);
-  } finally {
-    elements.importFile.value = '';
+    renderImportDialog();
   }
 }
 
@@ -1414,6 +1442,7 @@ function render() {
   renderAllSolvesDialog();
   renderStatsDialog();
   renderExportDialog();
+  renderImportDialog();
   renderTagSolvesDialog();
 }
 
@@ -1711,6 +1740,69 @@ function renderExportDialog() {
   elements.exportSelectedCstimerButton.disabled = selectedSolveIds.size === 0;
   elements.exportAllJsonButton.disabled = solves.length === 0;
   elements.exportAllCsvButton.disabled = solves.length === 0;
+  elements.exportAllCstimerButton.disabled = solves.length === 0;
+}
+
+function renderImportDialog() {
+  if (!elements.importDialog.open || !pendingImportPreview) return;
+  const { fileName, parsed } = pendingImportPreview;
+  const incomingSolves = Array.isArray(parsed.solves) ? parsed.solves : [];
+  const incomingSessions = Array.isArray(parsed.sessions) ? parsed.sessions : [];
+  const duplicateInfo = importDuplicateInfo(incomingSolves);
+  const source = importSourceLabel(parsed.source);
+
+  elements.importDialogMeta.textContent = `${source} · ${incomingSolves.length} 条成绩`;
+  elements.importPreviewList.replaceChildren(
+    importPreviewItem('文件', fileName),
+    importPreviewItem('格式', source),
+    importPreviewItem('待导入成绩', `${incomingSolves.length} 条`),
+    importPreviewItem('待导入会话', `${incomingSessions.length} 个`),
+    importPreviewItem('当前数据', `${solves.length} 条成绩 · ${sessions.length} 个会话`),
+    importPreviewItem('与当前重复 ID', duplicateInfo.conflicts > 0 ? `${duplicateInfo.conflicts} 条，将自动改名` : '无'),
+    importPreviewItem('文件内重复 ID', duplicateInfo.duplicates > 0 ? `${duplicateInfo.duplicates} 个，将自动改名` : '无'),
+    importPreviewItem('缺少 ID', duplicateInfo.missing > 0 ? `${duplicateInfo.missing} 条，将自动生成` : '无'),
+  );
+  elements.appendImportButton.disabled = incomingSolves.length === 0;
+  elements.replaceImportButton.disabled = incomingSolves.length === 0;
+  elements.replaceImportButton.textContent = `替换全部 ${solves.length} 条`;
+}
+
+function importPreviewItem(label, value) {
+  const item = document.createElement('div');
+  const labelNode = document.createElement('span');
+  const valueNode = document.createElement('strong');
+  labelNode.textContent = label;
+  valueNode.textContent = value;
+  item.replaceChildren(labelNode, valueNode);
+  return item;
+}
+
+function importDuplicateInfo(incomingSolves) {
+  const existingIds = new Set(solves.map((solve) => solve.id).filter(Boolean));
+  const seen = new Set();
+  const duplicates = new Set();
+  let conflicts = 0;
+  let missing = 0;
+
+  for (const solve of incomingSolves) {
+    const id = typeof solve.id === 'string' ? solve.id : '';
+    if (!id) {
+      missing += 1;
+      continue;
+    }
+    if (seen.has(id)) duplicates.add(id);
+    else seen.add(id);
+    if (existingIds.has(id)) conflicts += 1;
+  }
+
+  return { conflicts, duplicates: duplicates.size, missing };
+}
+
+function importSourceLabel(source) {
+  if (source === 'cstimer-csv') return 'csTimer CSV';
+  if (source === 'csv') return 'TrainTimer CSV';
+  if (source === 'json') return 'TrainTimer JSON';
+  return '未知格式';
 }
 
 function renderMarkPenaltyDialog() {

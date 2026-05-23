@@ -151,6 +151,8 @@ export function normalizeSolve(solve) {
     penalty,
     effectiveDurationMs,
     effectiveDuration,
+    scramble: typeof solve.scramble === 'string' ? solve.scramble : '',
+    scrambleSource: typeof solve.scrambleSource === 'string' ? solve.scrambleSource : '',
     sessionId: typeof solve.sessionId === 'string' && solve.sessionId ? solve.sessionId : defaultSession.id,
     comment: typeof solve.comment === 'string' ? solve.comment : '',
     tags: normalizeTags(solve.tags),

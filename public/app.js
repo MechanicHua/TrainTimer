@@ -170,6 +170,7 @@ const elements = {
   solveBluetoothReplayNet: document.querySelector('#solveBluetoothReplayNet'),
   copySolveSummaryButton: document.querySelector('#copySolveSummaryButton'),
   copyScrambleButton: document.querySelector('#copyScrambleButton'),
+  saveScrambleButton: document.querySelector('#saveScrambleButton'),
   saveTimeButton: document.querySelector('#saveTimeButton'),
   saveTagsButton: document.querySelector('#saveTagsButton'),
   saveCommentButton: document.querySelector('#saveCommentButton'),
@@ -271,6 +272,7 @@ elements.confirmMoveButton.addEventListener('click', moveSelectedSolves);
 elements.confirmTagButton.addEventListener('click', saveSelectedTags);
 elements.copySolveSummaryButton.addEventListener('click', copySelectedSolveSummary);
 elements.copyScrambleButton.addEventListener('click', copySelectedScramble);
+elements.saveScrambleButton.addEventListener('click', saveSolveScramble);
 elements.copyStatsSummaryButton.addEventListener('click', copyStatsSummary);
 elements.saveTimeButton.addEventListener('click', saveSolveTime);
 elements.saveTagsButton.addEventListener('click', saveSolveTags);
@@ -948,7 +950,7 @@ function renderSolveDialog() {
   elements.solveDetailMeta.textContent = `${new Date(solve.createdAt).toLocaleString()} · ${timerSource} · ${solve.inspectionEnabled ? '开启观察' : '无观察'} · ${bluetoothMoveCount} 次蓝牙转动 · ${bluetoothTps} · ${solve.scrambleSource || 'unknown'}`;
   elements.solveDetailTimeInput.value = solve.duration || formatTime(solve.durationMs);
   elements.solveDetailError.textContent = '';
-  elements.solveDetailScramble.textContent = solve.scramble || '-';
+  elements.solveDetailScramble.value = solve.scramble || '';
   elements.solveDetailComment.value = solve.comment || '';
   elements.solveDetailTagsInput.value = formatTags(solve.tags);
   elements.solveDetailBluetoothStats.textContent = `蓝牙转动 · ${bluetoothMoveCount} 次 · ${bluetoothTps}`;
@@ -1034,11 +1036,35 @@ async function saveSolveTags() {
   render();
 }
 
+async function saveSolveScramble() {
+  if (!currentDetailSolveId) return;
+  const scrambleText = elements.solveDetailScramble.value.trim();
+  elements.saveScrambleButton.disabled = true;
+  try {
+    const data = await requestJson(`/api/solves/${encodeURIComponent(currentDetailSolveId)}`, {
+      method: 'PATCH',
+      body: {
+        scramble: scrambleText,
+        scrambleSource: scrambleText ? 'manual-edit' : '',
+      },
+    });
+    solves = data.solves;
+    if (data.sessions) sessions = data.sessions;
+    renderSolveDialog();
+    render();
+  } catch (error) {
+    elements.solveDetailError.textContent = `保存打乱失败：${error.message}`;
+  } finally {
+    elements.saveScrambleButton.disabled = false;
+  }
+}
+
 async function copySelectedScramble() {
   const solve = solves.find((item) => item.id === currentDetailSolveId);
-  if (!solve?.scramble) return;
+  const scrambleText = elements.solveDetailScramble.value.trim() || solve?.scramble || '';
+  if (!scrambleText) return;
   try {
-    await navigator.clipboard.writeText(solve.scramble);
+    await navigator.clipboard.writeText(scrambleText);
     elements.copyScrambleButton.textContent = '已复制';
     setTimeout(() => {
       elements.copyScrambleButton.textContent = '复制打乱';

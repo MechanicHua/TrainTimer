@@ -79,6 +79,10 @@ test('updates penalties and deletes solves', async () => {
   assert.equal(timeUpdate.solve.duration, '13.000');
   assert.equal(timeUpdate.solve.effectiveDurationMs, 15000);
 
+  const scrambleUpdate = await updateSolve('a', { scramble: "R U R'", scrambleSource: 'manual-edit' }, file);
+  assert.equal(scrambleUpdate.solve.scramble, "R U R'");
+  assert.equal(scrambleUpdate.solve.scrambleSource, 'manual-edit');
+
   const afterDelete = await deleteSolves(['b'], file);
   assert.deepEqual(afterDelete.map((solve) => solve.id), ['a']);
   assert.deepEqual(summarizeSolves(afterDelete), {
@@ -204,6 +208,7 @@ test('normalizes manually entered solve metadata', async () => {
     bluetoothMoveCount: 2,
     bluetoothTps: 0.162,
     sessionId: 'manual-session',
+    scramble: '',
     scrambleSource: 'manual',
     duration: '12.346',
     effectiveDurationMs: 14346,

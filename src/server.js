@@ -225,6 +225,8 @@ async function handleApi(request, response) {
       updates.duration = formatTime(durationMs);
     }
     if (Object.hasOwn(body, 'penalty')) updates.penalty = body.penalty;
+    if (Object.hasOwn(body, 'scramble')) updates.scramble = String(body.scramble || '');
+    if (Object.hasOwn(body, 'scrambleSource')) updates.scrambleSource = String(body.scrambleSource || '');
     if (Object.hasOwn(body, 'comment')) updates.comment = body.comment;
     if (Object.hasOwn(body, 'tags')) updates.tags = body.tags;
     if (Object.hasOwn(body, 'sessionId')) updates.sessionId = String(body.sessionId || 'default');

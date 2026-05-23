@@ -854,13 +854,20 @@ async function deleteCurrentSession() {
   if (currentSessionId === 'default') return;
   const current = sessions.find((session) => session.id === currentSessionId);
   if (!current || !confirm(`删除会话“${current.name}”及其中所有成绩？`)) return;
+  const snapshot = {
+    solves: solves.map(cloneHistoryItem),
+    sessions: sessions.map(cloneHistoryItem),
+    currentSessionId,
+    mode: 'delete-session',
+    fileName: current.name,
+  };
   const data = await requestJson(`/api/sessions/${encodeURIComponent(currentSessionId)}`, { method: 'DELETE' });
   sessions = data.sessions;
   solves = data.solves;
   currentSessionId = 'default';
   localStorage.setItem('trainTimer.session', currentSessionId);
   pendingDeletedSolves = [];
-  pendingImportSnapshot = null;
+  pendingImportSnapshot = snapshot;
   selectedSolveIds.clear();
   if (currentDetailSolveId && !filteredSolves().some((solve) => solve.id === currentDetailSolveId)) elements.solveDialog.close();
   render();
@@ -1989,10 +1996,16 @@ function renderHistoryControls() {
   const canUndoImport = Boolean(pendingImportSnapshot);
   const canUndoDelete = pendingDeletedSolves.length > 0;
   elements.undoDeleteButton.disabled = !canUndoImport && !canUndoDelete;
-  elements.undoDeleteButton.textContent = canUndoImport ? '撤销导入' : '撤销删除';
-  elements.undoDeleteButton.title = canUndoImport
-    ? `恢复导入前的数据：${pendingImportSnapshot.fileName || '导入文件'}`
-    : (canUndoDelete ? `恢复 ${pendingDeletedSolves.length} 条刚删除的成绩` : '没有可撤销的操作');
+  if (pendingImportSnapshot?.mode === 'delete-session') {
+    elements.undoDeleteButton.textContent = '撤销删会话';
+    elements.undoDeleteButton.title = `恢复会话：${pendingImportSnapshot.fileName || '已删除会话'}`;
+  } else if (canUndoImport) {
+    elements.undoDeleteButton.textContent = '撤销导入';
+    elements.undoDeleteButton.title = `恢复导入前的数据：${pendingImportSnapshot.fileName || '导入文件'}`;
+  } else {
+    elements.undoDeleteButton.textContent = '撤销删除';
+    elements.undoDeleteButton.title = canUndoDelete ? `恢复 ${pendingDeletedSolves.length} 条刚删除的成绩` : '没有可撤销的操作';
+  }
   elements.clearAllButton.disabled = filteredSolves().length === 0;
   elements.manageSolvesButton.disabled = filteredSolves().length === 0;
   const visibleIds = visibleSolves().map((solve) => solve.id);

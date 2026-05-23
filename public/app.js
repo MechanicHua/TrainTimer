@@ -73,6 +73,7 @@ const elements = {
   latestStat: document.querySelector('#latestStat'),
   bluetoothButton: document.querySelector('#bluetoothButton'),
   bluetoothAnyButton: document.querySelector('#bluetoothAnyButton'),
+  bluetoothReconnectButton: document.querySelector('#bluetoothReconnectButton'),
   bluetoothLogButton: document.querySelector('#bluetoothLogButton'),
   bluetoothBattery: document.querySelector('#bluetoothBattery'),
   bluetoothStatus: document.querySelector('#bluetoothStatus'),
@@ -209,6 +210,8 @@ let pendingImportSnapshot = null;
 let pendingImportPreview = null;
 let currentDetailSolveId = null;
 let bluetoothDevice = null;
+let bluetoothDeviceDisconnectHandler = null;
+let bluetoothReconnectDevices = [];
 let bluetoothSubscriptions = [];
 let bluetoothLog = [];
 let bluetoothMoves = [];
@@ -232,6 +235,7 @@ elements.lastDnfButton.addEventListener('click', () => updateLatestSolvePenalty(
 elements.lastDeleteButton.addEventListener('click', deleteLatestSolve);
 elements.bluetoothButton.addEventListener('click', () => connectBluetoothCube());
 elements.bluetoothAnyButton.addEventListener('click', () => connectBluetoothCube({ compatibilityMode: true }));
+elements.bluetoothReconnectButton.addEventListener('click', reconnectBluetoothCube);
 elements.bluetoothLogButton.addEventListener('click', openBluetoothLogDialog);
 elements.sessionSelect.addEventListener('change', switchSession);
 elements.newSessionButton.addEventListener('click', createSession);
@@ -318,6 +322,7 @@ window.__trainTimerDebug = {
       appState,
       bluetoothMoveCount: bluetoothMoves.length,
       bluetoothMoves: bluetoothMoveSequence(),
+      bluetoothReconnectDevices: bluetoothReconnectDevices.length,
       bluetoothSolved,
       bluetoothState: elements.bluetoothStateMeta.textContent,
     };
@@ -339,6 +344,7 @@ async function bootstrap() {
     elements.historyPath.textContent = data.historyPath;
     appState = 'ready';
     render();
+    void refreshBluetoothReconnectDevices();
   } catch (error) {
     appState = 'error';
     elements.statusText.textContent = '无法连接本地服务';
@@ -1092,7 +1098,7 @@ async function copySelectedSolveSummary() {
 
 async function connectBluetoothCube(options = {}) {
   const compatibilityMode = Boolean(options.compatibilityMode);
-  if (!navigator.bluetooth) {
+  if (!isBluetoothAvailable()) {
     elements.bluetoothStatus.textContent = '浏览器不支持';
     addBluetoothLog('错误', '浏览器不支持 Web Bluetooth', window.location.protocol);
     return;
@@ -1100,47 +1106,110 @@ async function connectBluetoothCube(options = {}) {
 
   try {
     if (bluetoothDevice?.gatt?.connected) {
-      addBluetoothLog('连接', '请求断开设备', bluetoothDevice.name || bluetoothDevice.id || '');
-      bluetoothDevice.gatt.disconnect();
+      disconnectBluetoothDevice();
       return;
     }
 
     setBluetoothScanningState(true, compatibilityMode);
     resetBluetoothBattery();
     addBluetoothLog('扫描', compatibilityMode ? '打开兼容设备选择器' : '打开设备选择器');
-    bluetoothDevice = await navigator.bluetooth.requestDevice(bluetoothRequestOptions(compatibilityMode));
-
-    addBluetoothLog('设备', bluetoothDevice.name || '未命名设备', bluetoothDevice.id || '');
-    bluetoothDevice.addEventListener('gattserverdisconnected', () => {
-      cleanupBluetoothSubscriptions();
-      resetBluetoothBattery();
-      elements.bluetoothStatus.textContent = '已断开';
-      setBluetoothConnectedState(false);
-      addBluetoothLog('连接', '设备已断开', bluetoothDevice?.name || '');
-    });
-    addBluetoothLog('连接', '正在连接 GATT');
-    const server = await bluetoothDevice.gatt.connect();
-    setBluetoothConnectedState(true);
-    elements.bluetoothStatus.textContent = '读取服务...';
-    addBluetoothLog('连接', 'GATT 已连接', bluetoothDevice.name || '');
-
-    const discovery = await discoverBluetoothServices(server);
-    const deviceName = bluetoothDevice.name || '已连接';
-    const initDetail = discovery.writeCount > 0 ? ` · ${discovery.writeCount} 次初始化` : '';
-    elements.bluetoothStatus.textContent = discovery.notifyCount > 0
-      ? `${deviceName} · ${discovery.notifyCount} 路通知${initDetail}`
-      : `${deviceName} · 未发现通知`;
-    elements.bluetoothStatus.title = discovery.detail;
-    addBluetoothLog('服务', `发现 ${discovery.serviceCount} 个服务`, `${discovery.notifyCount} 路通知 · ${discovery.writeCount} 次初始化 · ${discovery.detail}`);
+    const device = await navigator.bluetooth.requestDevice(bluetoothRequestOptions(compatibilityMode));
+    await connectBluetoothDevice(device, { reconnect: false });
+    void refreshBluetoothReconnectDevices();
   } catch (error) {
-    cleanupBluetoothSubscriptions();
-    resetBluetoothBattery();
-    if (bluetoothDevice?.gatt?.connected) bluetoothDevice.gatt.disconnect();
-    elements.bluetoothStatus.textContent = error.name === 'NotFoundError' ? '已取消' : '连接失败';
-    setBluetoothConnectedState(false);
-    addBluetoothLog('错误', error.name || 'BluetoothError', error.message || String(error));
-    console.error(error);
+    handleBluetoothConnectionError(error);
   }
+}
+
+async function reconnectBluetoothCube() {
+  if (!isBluetoothAvailable()) {
+    elements.bluetoothStatus.textContent = '浏览器不支持';
+    addBluetoothLog('错误', '浏览器不支持 Web Bluetooth', window.location.protocol);
+    return;
+  }
+
+  try {
+    if (bluetoothDevice?.gatt?.connected) {
+      disconnectBluetoothDevice();
+      return;
+    }
+
+    setBluetoothScanningState(true, false, '重连中...');
+    resetBluetoothBattery();
+    const device = await bluetoothReconnectCandidate();
+    if (!device) {
+      elements.bluetoothStatus.textContent = '无已授权设备';
+      addBluetoothLog('连接', '无可重连设备', '先用连接或兼容扫描授权一次');
+      setBluetoothConnectedState(false);
+      return;
+    }
+
+    addBluetoothLog('连接', '重连已授权设备', device.name || device.id || '');
+    await connectBluetoothDevice(device, { reconnect: true });
+    void refreshBluetoothReconnectDevices();
+  } catch (error) {
+    handleBluetoothConnectionError(error);
+  }
+}
+
+async function connectBluetoothDevice(device, options = {}) {
+  cleanupBluetoothSubscriptions();
+  setActiveBluetoothDevice(device);
+  addBluetoothLog('设备', bluetoothDevice.name || '未命名设备', bluetoothDevice.id || '');
+  addBluetoothLog('连接', options.reconnect ? '正在重连 GATT' : '正在连接 GATT');
+  const server = await bluetoothDevice.gatt.connect();
+  setBluetoothConnectedState(true);
+  elements.bluetoothStatus.textContent = '读取服务...';
+  addBluetoothLog('连接', 'GATT 已连接', bluetoothDevice.name || '');
+
+  const discovery = await discoverBluetoothServices(server);
+  const deviceName = bluetoothDevice.name || '已连接';
+  const initDetail = discovery.writeCount > 0 ? ` · ${discovery.writeCount} 次初始化` : '';
+  elements.bluetoothStatus.textContent = discovery.notifyCount > 0
+    ? `${deviceName} · ${discovery.notifyCount} 路通知${initDetail}`
+    : `${deviceName} · 未发现通知`;
+  elements.bluetoothStatus.title = discovery.detail || '未发现可订阅特征';
+  addBluetoothLog('服务', `发现 ${discovery.serviceCount} 个服务`, `${discovery.notifyCount} 路通知 · ${discovery.writeCount} 次初始化 · ${discovery.detail}`);
+}
+
+function disconnectBluetoothDevice() {
+  addBluetoothLog('连接', '请求断开设备', bluetoothDevice.name || bluetoothDevice.id || '');
+  bluetoothDevice.gatt.disconnect();
+}
+
+function setActiveBluetoothDevice(device) {
+  if (bluetoothDevice && bluetoothDeviceDisconnectHandler) {
+    bluetoothDevice.removeEventListener('gattserverdisconnected', bluetoothDeviceDisconnectHandler);
+  }
+  bluetoothDevice = device;
+  bluetoothDeviceDisconnectHandler = handleBluetoothDisconnected;
+  bluetoothDevice.addEventListener('gattserverdisconnected', bluetoothDeviceDisconnectHandler);
+}
+
+function handleBluetoothDisconnected() {
+  cleanupBluetoothSubscriptions();
+  resetBluetoothBattery();
+  elements.bluetoothStatus.textContent = '已断开';
+  elements.bluetoothStatus.title = '';
+  setBluetoothConnectedState(false);
+  void refreshBluetoothReconnectDevices();
+  addBluetoothLog('连接', '设备已断开', bluetoothDevice?.name || '');
+}
+
+function handleBluetoothConnectionError(error) {
+  cleanupBluetoothSubscriptions();
+  resetBluetoothBattery();
+  if (bluetoothDevice?.gatt?.connected) bluetoothDevice.gatt.disconnect();
+  elements.bluetoothStatus.textContent = error.name === 'NotFoundError' ? '已取消' : '连接失败';
+  elements.bluetoothStatus.title = '';
+  setBluetoothConnectedState(false);
+  void refreshBluetoothReconnectDevices();
+  addBluetoothLog('错误', error.name || 'BluetoothError', error.message || String(error));
+  console.error(error);
+}
+
+function isBluetoothAvailable() {
+  return Boolean(navigator.bluetooth);
 }
 
 function bluetoothRequestOptions(compatibilityMode) {
@@ -1149,16 +1218,65 @@ function bluetoothRequestOptions(compatibilityMode) {
     : { filters: bluetoothDeviceFilters, optionalServices: bluetoothOptionalServices };
 }
 
-function setBluetoothScanningState(scanning, compatibilityMode) {
+function setBluetoothScanningState(scanning, compatibilityMode, label = '') {
   elements.bluetoothButton.disabled = scanning;
   elements.bluetoothAnyButton.disabled = scanning;
-  elements.bluetoothStatus.textContent = compatibilityMode ? '兼容扫描中...' : '扫描中...';
+  elements.bluetoothReconnectButton.disabled = scanning;
+  elements.bluetoothStatus.textContent = label || (compatibilityMode ? '兼容扫描中...' : '扫描中...');
 }
 
 function setBluetoothConnectedState(connected) {
   elements.bluetoothButton.disabled = false;
   elements.bluetoothButton.textContent = connected ? '断开蓝牙' : '连接蓝牙魔方';
   elements.bluetoothAnyButton.disabled = connected;
+  renderBluetoothReconnectButton();
+}
+
+async function bluetoothReconnectCandidate() {
+  const devices = await refreshBluetoothReconnectDevices();
+  return devices.find((device) => device?.gatt && !device.gatt.connected) || null;
+}
+
+async function refreshBluetoothReconnectDevices() {
+  const devices = [];
+  if (navigator.bluetooth && typeof navigator.bluetooth.getDevices === 'function') {
+    try {
+      devices.push(...await navigator.bluetooth.getDevices());
+    } catch (error) {
+      console.warn('Bluetooth granted device lookup failed', error);
+    }
+  }
+  if (bluetoothDevice && !devices.some((device) => isSameBluetoothDevice(device, bluetoothDevice))) {
+    devices.unshift(bluetoothDevice);
+  }
+
+  bluetoothReconnectDevices = devices.filter((device) => device?.gatt);
+  renderBluetoothReconnectButton();
+  return bluetoothReconnectDevices;
+}
+
+function renderBluetoothReconnectButton() {
+  const connected = Boolean(bluetoothDevice?.gatt?.connected);
+  const supported = isBluetoothAvailable();
+  const count = bluetoothReconnectDevices.length;
+  elements.bluetoothReconnectButton.disabled = !supported || connected || count === 0;
+  if (!supported) {
+    elements.bluetoothReconnectButton.title = '浏览器不支持 Web Bluetooth';
+  } else if (connected) {
+    elements.bluetoothReconnectButton.title = '当前已连接蓝牙魔方';
+  } else if (count > 0) {
+    const names = bluetoothReconnectDevices.map((device) => device.name || device.id || '未命名设备').join(', ');
+    elements.bluetoothReconnectButton.title = `重连：${names}`;
+  } else if (typeof navigator.bluetooth.getDevices === 'function') {
+    elements.bluetoothReconnectButton.title = '没有已授权设备';
+  } else {
+    elements.bluetoothReconnectButton.title = '当前浏览器不支持读取已授权设备';
+  }
+}
+
+function isSameBluetoothDevice(left, right) {
+  if (left === right) return true;
+  return Boolean(left?.id && right?.id && left.id === right.id);
 }
 
 async function discoverBluetoothServices(server) {

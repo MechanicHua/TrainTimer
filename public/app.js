@@ -124,6 +124,7 @@ const elements = {
   allSolvesFromDate: document.querySelector('#allSolvesFromDate'),
   allSolvesToDate: document.querySelector('#allSolvesToDate'),
   allSolvesRecordFilter: document.querySelector('#allSolvesRecordFilter'),
+  allSolvesPuzzleFilter: document.querySelector('#allSolvesPuzzleFilter'),
   allSessionsToggle: document.querySelector('#allSessionsToggle'),
   allSolvesSortBy: document.querySelector('#allSolvesSortBy'),
   allSolvesSortDirection: document.querySelector('#allSolvesSortDirection'),
@@ -397,6 +398,7 @@ elements.allSolvesSearch.addEventListener('input', handleAllSolvesFilterChange);
 elements.allSolvesFromDate.addEventListener('change', handleAllSolvesFilterChange);
 elements.allSolvesToDate.addEventListener('change', handleAllSolvesFilterChange);
 elements.allSolvesRecordFilter.addEventListener('change', handleAllSolvesFilterChange);
+elements.allSolvesPuzzleFilter.addEventListener('change', handleAllSolvesFilterChange);
 elements.allSessionsToggle.addEventListener('change', toggleAllSessions);
 elements.allSolvesSortBy.addEventListener('change', renderAllSolvesDialog);
 elements.allSolvesSortDirection.addEventListener('change', renderAllSolvesDialog);
@@ -1096,6 +1098,7 @@ function openAllSolvesDialog() {
   elements.allSolvesFromDate.value = '';
   elements.allSolvesToDate.value = '';
   elements.allSolvesRecordFilter.value = 'all';
+  elements.allSolvesPuzzleFilter.value = 'all';
   if (filteredSolves().length === 0 && solves.length > 0) {
     allSessionsEnabled = true;
     localStorage.setItem('trainTimer.allSessions', '1');
@@ -3186,11 +3189,13 @@ function solvesForSession(sessionId) {
 function filteredAllSolves() {
   const query = allSolvesQuery();
   const recordFilter = allSolvesRecordFilter();
+  const puzzleFilter = allSolvesPuzzleFilter();
   const baseSolves = allSolvesBaseSolves();
   const bounds = allSolvesDateBounds();
   let listedSolves = baseSolves;
   if (bounds.from || bounds.to) listedSolves = listedSolves.filter((solve) => solveInDateBounds(solve, bounds));
   if (recordFilter !== 'all') listedSolves = listedSolves.filter((solve) => solveMatchesRecordFilter(solve, recordFilter));
+  if (puzzleFilter !== 'all') listedSolves = listedSolves.filter((solve) => (solve.scramblePuzzle || 'three') === puzzleFilter);
   if (query) listedSolves = listedSolves.filter((solve) => searchableSolveText(solve).includes(query));
   return sortAllSolves(listedSolves);
 }
@@ -3203,12 +3208,17 @@ function allSolvesRecordFilter() {
   return elements.allSolvesRecordFilter.value || 'all';
 }
 
+function allSolvesPuzzleFilter() {
+  return elements.allSolvesPuzzleFilter.value || 'all';
+}
+
 function allSolvesFilterActive() {
   return Boolean(
     allSolvesQuery()
       || elements.allSolvesFromDate.value
       || elements.allSolvesToDate.value
-      || allSolvesRecordFilter() !== 'all',
+      || allSolvesRecordFilter() !== 'all'
+      || allSolvesPuzzleFilter() !== 'all',
   );
 }
 
@@ -3353,6 +3363,7 @@ function sortAllSolves(inputSolves) {
 function sortValue(solve, sortBy) {
   if (sortBy === 'duration') return effectiveDurationMs(solve) ?? Number.POSITIVE_INFINITY;
   if (sortBy === 'penalty') return { ok: 0, '+2': 1, dnf: 2 }[solve.penalty] ?? 0;
+  if (sortBy === 'puzzle') return puzzleLabel(solve.scramblePuzzle || 'three');
   if (sortBy === 'session') return sessionNameForSolve(solve);
   if (sortBy === 'tags') return formatTags(solve.tags);
   if (sortBy === 'comment') return solve.comment || '';

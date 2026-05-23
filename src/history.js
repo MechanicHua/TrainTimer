@@ -113,6 +113,32 @@ export async function createSession(name, historyPath = getHistoryPath()) {
   return { session, sessions: nextHistory.sessions, solves: nextHistory.solves };
 }
 
+export async function duplicateSession(id, name, historyPath = getHistoryPath()) {
+  const sourceSessionId = typeof id === 'string' && id ? id : defaultSession.id;
+  const history = await loadHistory(historyPath);
+  const sourceSession = history.sessions.find((session) => session.id === sourceSessionId);
+  if (!sourceSession) return null;
+
+  const session = normalizeSession({
+    id: randomId('session'),
+    name: typeof name === 'string' && name.trim() ? name : `${sourceSession.name} 副本`,
+  });
+  const copiedSolves = history.solves
+    .filter((solve) => solve.sessionId === sourceSessionId)
+    .map((solve) => ({
+      ...solve,
+      id: randomId('solve'),
+      sessionId: session.id,
+    }));
+  const nextHistory = normalizeHistory({
+    ...history,
+    sessions: [...history.sessions, session],
+    solves: [...history.solves, ...copiedSolves],
+  });
+  await writeHistory(nextHistory, historyPath);
+  return { session, sessions: nextHistory.sessions, solves: nextHistory.solves };
+}
+
 export async function renameSession(id, name, historyPath = getHistoryPath()) {
   const history = await loadHistory(historyPath);
   const sessions = history.sessions.map((session) => (session.id === id ? normalizeSession({ ...session, name }) : session));

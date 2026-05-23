@@ -7,6 +7,7 @@ import {
   createSession,
   deleteSession,
   deleteSolves,
+  duplicateSession,
   formatTime,
   loadHistory,
   loadSolves,
@@ -130,6 +131,46 @@ test('moves selected solves to another session', async () => {
   assert.equal(moved.solves.find((solve) => solve.id === 'a').sessionId, 'default');
   assert.equal(moved.solves.find((solve) => solve.id === 'b').sessionId, session.session.id);
   assert.equal(moved.sessions.some((item) => item.id === session.session.id), true);
+});
+
+test('duplicates a session with copied solve ids and metadata', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'train-timer-'));
+  const file = join(dir, 'solves.json');
+  const session = await createSession('OH', file);
+
+  await replaceSolves(
+    [
+      { id: 'a', durationMs: 10000, sessionId: 'default' },
+      {
+        id: 'b',
+        durationMs: 12000,
+        sessionId: session.session.id,
+        comment: 'good solve',
+        tags: ['PLL'],
+        timerSource: 'bluetooth',
+        bluetoothMoves: ['R', 'U'],
+      },
+    ],
+    file,
+    session.sessions,
+  );
+
+  const duplicated = await duplicateSession(session.session.id, 'OH 备份', file);
+  assert.equal(duplicated.session.name, 'OH 备份');
+  assert.notEqual(duplicated.session.id, session.session.id);
+  assert.equal(duplicated.sessions.some((item) => item.id === duplicated.session.id), true);
+
+  const history = await loadHistory(file);
+  const originalSolves = history.solves.filter((solve) => solve.sessionId === session.session.id);
+  const copiedSolves = history.solves.filter((solve) => solve.sessionId === duplicated.session.id);
+  assert.equal(originalSolves.length, 1);
+  assert.equal(copiedSolves.length, 1);
+  assert.notEqual(copiedSolves[0].id, originalSolves[0].id);
+  assert.equal(copiedSolves[0].durationMs, originalSolves[0].durationMs);
+  assert.equal(copiedSolves[0].comment, 'good solve');
+  assert.deepEqual(copiedSolves[0].tags, ['PLL']);
+  assert.deepEqual(copiedSolves[0].bluetoothMoves, ['R', 'U']);
+  assert.equal(await duplicateSession('missing-session', 'missing', file), null);
 });
 
 test('updates penalties for selected solves', async () => {

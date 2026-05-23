@@ -80,6 +80,7 @@ const elements = {
   bluetoothStatus: document.querySelector('#bluetoothStatus'),
   sessionSelect: document.querySelector('#sessionSelect'),
   newSessionButton: document.querySelector('#newSessionButton'),
+  duplicateSessionButton: document.querySelector('#duplicateSessionButton'),
   renameSessionButton: document.querySelector('#renameSessionButton'),
   deleteSessionButton: document.querySelector('#deleteSessionButton'),
   scrambleSource: document.querySelector('#scrambleSource'),
@@ -265,6 +266,7 @@ elements.bluetoothDisconnectButton.addEventListener('click', disconnectBluetooth
 elements.bluetoothLogButton.addEventListener('click', openBluetoothLogDialog);
 elements.sessionSelect.addEventListener('change', switchSession);
 elements.newSessionButton.addEventListener('click', createSession);
+elements.duplicateSessionButton.addEventListener('click', duplicateCurrentSession);
 elements.renameSessionButton.addEventListener('click', renameSession);
 elements.deleteSessionButton.addEventListener('click', deleteCurrentSession);
 elements.manualEntryButton.addEventListener('click', openManualEntryDialog);
@@ -956,6 +958,23 @@ async function createSession() {
   const name = prompt('新会话名称', `Session ${sessions.length + 1}`);
   if (!name) return;
   const data = await postJson('/api/sessions', { name });
+  sessions = data.sessions;
+  solves = data.solves;
+  currentSessionId = data.session.id;
+  localStorage.setItem('trainTimer.session', currentSessionId);
+  selectedSolveIds.clear();
+  if (elements.solveDialog.open) elements.solveDialog.close();
+  render();
+}
+
+async function duplicateCurrentSession() {
+  const current = sessions.find((session) => session.id === currentSessionId);
+  if (!current) return;
+
+  const name = prompt('复制会话名称', `${current.name} 副本`);
+  if (!name) return;
+
+  const data = await postJson(`/api/sessions/${encodeURIComponent(currentSessionId)}/duplicate`, { name });
   sessions = data.sessions;
   solves = data.solves;
   currentSessionId = data.session.id;
@@ -1981,6 +2000,7 @@ function renderSessions() {
       return option;
     }),
   );
+  elements.duplicateSessionButton.disabled = !sessions.some((session) => session.id === currentSessionId);
   elements.deleteSessionButton.disabled = currentSessionId === 'default';
 }
 

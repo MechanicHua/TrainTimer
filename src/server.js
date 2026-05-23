@@ -10,6 +10,7 @@ import {
   createSession,
   deleteSolves,
   deleteSession,
+  duplicateSession,
   formatTime,
   getHistoryPath,
   loadHistory,
@@ -111,6 +112,24 @@ async function handleApi(request, response) {
   if (request.method === 'POST' && url.pathname === '/api/sessions') {
     const body = await readJsonBody(request);
     const result = await createSession(String(body.name || '新会话'));
+    sendJson(response, 201, {
+      session: result.session,
+      sessions: result.sessions,
+      solves: result.solves,
+      summary: summarizeSolves(result.solves),
+    });
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname.startsWith('/api/sessions/') && url.pathname.endsWith('/duplicate')) {
+    const id = decodeURIComponent(url.pathname.slice('/api/sessions/'.length, -'/duplicate'.length));
+    const body = await readJsonBody(request);
+    const result = await duplicateSession(id, String(body.name || ''));
+    if (!result) {
+      sendJson(response, 404, { error: 'Session not found' });
+      return;
+    }
+
     sendJson(response, 201, {
       session: result.session,
       sessions: result.sessions,

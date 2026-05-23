@@ -276,6 +276,10 @@ test('normalizes and updates solve tags', async () => {
   await updateSolves(['a', 'b'], { tags: ['失误', 'PLL', '失误'] }, file);
   history = await loadHistory(file);
   assert.deepEqual(history.solves.map((solve) => solve.tags), [['失误', 'PLL'], ['失误', 'PLL']]);
+
+  await updateSolves(['a', 'b'], { comment: 'training block' }, file);
+  history = await loadHistory(file);
+  assert.deepEqual(history.solves.map((solve) => solve.comment), ['training block', 'training block']);
 });
 
 test('normalizes manually entered solve metadata', async () => {

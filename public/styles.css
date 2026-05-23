@@ -941,6 +941,7 @@ dialog[open] {
 .all-solves-sort select,
 .move-session-field input,
 .move-session-field select,
+.move-session-field textarea,
 .manual-entry-grid input,
 .manual-entry-grid select,
 .manual-entry-grid textarea,
@@ -1360,13 +1361,21 @@ dialog[open] {
 }
 
 .move-session-field input,
-.move-session-field select {
+.move-session-field select,
+.move-session-field textarea {
   min-height: 42px;
   padding: 0 10px;
 }
 
-.move-session-field input {
+.move-session-field input,
+.move-session-field textarea {
   width: 100%;
+}
+
+.move-session-field textarea {
+  min-height: 92px;
+  padding: 10px 12px;
+  resize: none;
 }
 
 .manual-entry-grid {

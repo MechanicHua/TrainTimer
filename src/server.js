@@ -346,6 +346,7 @@ async function handleApi(request, response) {
     const updates = {};
     if (Object.hasOwn(body, 'penalty')) updates.penalty = body.penalty;
     if (Object.hasOwn(body, 'tags')) updates.tags = body.tags;
+    if (Object.hasOwn(body, 'comment')) updates.comment = String(body.comment || '');
     const result = await updateSolves(ids, updates);
     sendJson(response, 200, {
       solves: result.solves,

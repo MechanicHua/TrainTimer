@@ -142,6 +142,7 @@
             <button id="manageSolvesButton" type="button">全部成绩</button>
             <button id="markSelectedButton" type="button">标记选中</button>
             <button id="tagSelectedButton" type="button">标签选中</button>
+            <button id="commentSelectedButton" type="button">备注选中</button>
             <button id="moveSelectedButton" type="button">移动选中</button>
             <button id="deleteSelectedButton" type="button">删除选中</button>
             <button id="undoDeleteButton" type="button">撤销删除</button>
@@ -222,6 +223,7 @@
             </label>
             <button id="allMarkSelectedButton" type="button">标记选中</button>
             <button id="allTagSelectedButton" type="button">标签选中</button>
+            <button id="allCommentSelectedButton" type="button">备注选中</button>
             <button id="allMoveSelectedButton" type="button">移动选中</button>
             <button id="allDeleteSelectedButton" type="button">删除选中</button>
             <button id="allExportJsonButton" type="button">导出列表 JSON</button>
@@ -403,6 +405,26 @@
           <div class="dialog-actions">
             <button type="submit">取消</button>
             <button id="confirmTagButton" type="button">保存标签</button>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog id="commentSolvesDialog" class="move-dialog">
+        <form method="dialog" class="move-dialog-inner">
+          <div class="solve-dialog-header">
+            <div>
+              <h2>编辑备注</h2>
+              <p id="commentSolvesMeta">-</p>
+            </div>
+            <button type="submit" aria-label="关闭">关闭</button>
+          </div>
+          <label class="move-session-field">
+            <span>备注</span>
+            <textarea id="commentSolvesInput" rows="3" maxlength="240" placeholder="输入备注，留空可清除"></textarea>
+          </label>
+          <div class="dialog-actions">
+            <button type="submit">取消</button>
+            <button id="confirmCommentButton" type="button">保存备注</button>
           </div>
         </form>
       </dialog>

@@ -110,6 +110,7 @@ const elements = {
   manageSolvesButton: document.querySelector('#manageSolvesButton'),
   markSelectedButton: document.querySelector('#markSelectedButton'),
   tagSelectedButton: document.querySelector('#tagSelectedButton'),
+  commentSelectedButton: document.querySelector('#commentSelectedButton'),
   moveSelectedButton: document.querySelector('#moveSelectedButton'),
   deleteSelectedButton: document.querySelector('#deleteSelectedButton'),
   undoDeleteButton: document.querySelector('#undoDeleteButton'),
@@ -127,6 +128,7 @@ const elements = {
   selectAllSessionSolves: document.querySelector('#selectAllSessionSolves'),
   allMarkSelectedButton: document.querySelector('#allMarkSelectedButton'),
   allTagSelectedButton: document.querySelector('#allTagSelectedButton'),
+  allCommentSelectedButton: document.querySelector('#allCommentSelectedButton'),
   allMoveSelectedButton: document.querySelector('#allMoveSelectedButton'),
   allDeleteSelectedButton: document.querySelector('#allDeleteSelectedButton'),
   allExportJsonButton: document.querySelector('#allExportJsonButton'),
@@ -175,7 +177,11 @@ const elements = {
   tagSolvesDialog: document.querySelector('#tagSolvesDialog'),
   tagSolvesMeta: document.querySelector('#tagSolvesMeta'),
   tagSolvesInput: document.querySelector('#tagSolvesInput'),
+  commentSolvesDialog: document.querySelector('#commentSolvesDialog'),
+  commentSolvesMeta: document.querySelector('#commentSolvesMeta'),
+  commentSolvesInput: document.querySelector('#commentSolvesInput'),
   confirmTagButton: document.querySelector('#confirmTagButton'),
+  confirmCommentButton: document.querySelector('#confirmCommentButton'),
   manualEntryDialog: document.querySelector('#manualEntryDialog'),
   manualEntryMeta: document.querySelector('#manualEntryMeta'),
   manualTimeInput: document.querySelector('#manualTimeInput'),
@@ -314,12 +320,14 @@ elements.statsDetailButton.addEventListener('click', openStatsDialog);
 elements.manageSolvesButton.addEventListener('click', openAllSolvesDialog);
 elements.markSelectedButton.addEventListener('click', openMarkPenaltyDialog);
 elements.tagSelectedButton.addEventListener('click', openTagSolvesDialog);
+elements.commentSelectedButton.addEventListener('click', openCommentSolvesDialog);
 elements.moveSelectedButton.addEventListener('click', openMoveSolvesDialog);
 elements.deleteSelectedButton.addEventListener('click', deleteSelectedSolves);
 elements.undoDeleteButton.addEventListener('click', undoLastDelete);
 elements.clearAllButton.addEventListener('click', clearAllSolves);
 elements.allMarkSelectedButton.addEventListener('click', openMarkPenaltyDialog);
 elements.allTagSelectedButton.addEventListener('click', openTagSolvesDialog);
+elements.allCommentSelectedButton.addEventListener('click', openCommentSolvesDialog);
 elements.allMoveSelectedButton.addEventListener('click', openMoveSolvesDialog);
 elements.allDeleteSelectedButton.addEventListener('click', deleteSelectedSolves);
 elements.allExportJsonButton.addEventListener('click', () => exportListedSolves('json'));
@@ -330,6 +338,7 @@ elements.confirmMarkPenaltyButton.addEventListener('click', markSelectedPenalty)
 elements.confirmMoveButton.addEventListener('click', moveSelectedSolves);
 elements.confirmMergeSessionButton.addEventListener('click', mergeCurrentSession);
 elements.confirmTagButton.addEventListener('click', saveSelectedTags);
+elements.confirmCommentButton.addEventListener('click', saveSelectedComment);
 elements.prevSolveButton.addEventListener('click', () => navigateSolveDetail(-1));
 elements.nextSolveDetailButton.addEventListener('click', () => navigateSolveDetail(1));
 elements.copySolveSummaryButton.addEventListener('click', copySelectedSolveSummary);
@@ -798,6 +807,38 @@ async function saveSelectedTags() {
     renderTagSolvesDialog();
   } finally {
     elements.confirmTagButton.disabled = false;
+  }
+}
+
+function openCommentSolvesDialog() {
+  if (selectedSolveIds.size === 0) return;
+  renderCommentSolvesDialog();
+  if (!elements.commentSolvesDialog.open) elements.commentSolvesDialog.showModal();
+  elements.commentSolvesInput.focus();
+}
+
+async function saveSelectedComment() {
+  const ids = [...selectedSolveIds];
+  if (ids.length === 0) return;
+  const comment = elements.commentSolvesInput.value;
+  const snapshot = createHistorySnapshot('comment-solves', `${ids.length} 条成绩`);
+
+  elements.confirmCommentButton.disabled = true;
+  try {
+    const data = await postJson('/api/solves/update', { ids, comment });
+    solves = data.solves;
+    if (data.sessions) sessions = data.sessions;
+    pendingDeletedSolves = [];
+    pendingImportSnapshot = snapshot;
+    selectedSolveIds.clear();
+    renderSolveDialog();
+    elements.commentSolvesDialog.close();
+    render();
+  } catch (error) {
+    alert(`保存备注失败：${error.message}`);
+    renderCommentSolvesDialog();
+  } finally {
+    elements.confirmCommentButton.disabled = false;
   }
 }
 
@@ -2695,6 +2736,18 @@ function renderTagSolvesDialog() {
   elements.confirmTagButton.disabled = selectedSolveIds.size === 0;
 }
 
+function renderCommentSolvesDialog() {
+  if (!elements.commentSolvesDialog.open && selectedSolveIds.size === 0) return;
+  const selectedSolves = solves.filter((solve) => selectedSolveIds.has(solve.id));
+  const comments = selectedSolves.map((solve) => solve.comment || '');
+  const sharedComment = comments.length > 0 && comments.every((value) => value === comments[0]) ? comments[0] : '';
+  elements.commentSolvesMeta.textContent = sharedComment
+    ? `选中 ${selectedSolveIds.size} 条 · 当前备注相同`
+    : `选中 ${selectedSolveIds.size} 条 · 输入新备注，留空可清除`;
+  elements.commentSolvesInput.value = sharedComment;
+  elements.confirmCommentButton.disabled = selectedSolveIds.size === 0;
+}
+
 function renderMoveSolvesDialog() {
   if (!elements.moveSolvesDialog.open && selectedSolveIds.size === 0) return;
   const selectedSolves = solves.filter((solve) => selectedSolveIds.has(solve.id));
@@ -2912,6 +2965,7 @@ function renderHistoryControls() {
   const canMoveSelected = selectedSolveIds.size > 0 && sessions.some((session) => session.id !== currentSessionId);
   elements.markSelectedButton.disabled = selectedSolveIds.size === 0;
   elements.tagSelectedButton.disabled = selectedSolveIds.size === 0;
+  elements.commentSelectedButton.disabled = selectedSolveIds.size === 0;
   elements.moveSelectedButton.disabled = !canMoveSelected;
   elements.moveSelectedButton.title = sessions.some((session) => session.id !== currentSessionId)
     ? '把选中成绩移动到其他会话'
@@ -2935,6 +2989,9 @@ function renderHistoryControls() {
   } else if (pendingImportSnapshot?.mode === 'tag-solves') {
     elements.undoDeleteButton.textContent = '撤销标签';
     elements.undoDeleteButton.title = `恢复标签修改前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`;
+  } else if (pendingImportSnapshot?.mode === 'comment-solves') {
+    elements.undoDeleteButton.textContent = '撤销备注';
+    elements.undoDeleteButton.title = `恢复备注修改前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`;
   } else if (pendingImportSnapshot?.mode === 'edit-solve') {
     elements.undoDeleteButton.textContent = '撤销编辑';
     elements.undoDeleteButton.title = `恢复编辑前的数据：${pendingImportSnapshot.fileName || '成绩详情'}`;
@@ -2956,6 +3013,7 @@ function renderAllSolvesControls() {
   const sessionIds = filteredAllSolves().map((solve) => solve.id);
   elements.allMarkSelectedButton.disabled = selectedSolveIds.size === 0;
   elements.allTagSelectedButton.disabled = selectedSolveIds.size === 0;
+  elements.allCommentSelectedButton.disabled = selectedSolveIds.size === 0;
   const selectedSolves = solves.filter((solve) => selectedSolveIds.has(solve.id));
   const canMoveSelected = selectedSolves.length > 0
     && sessions.some((session) => !selectedSolves.every((solve) => (solve.sessionId || 'default') === session.id));
@@ -2975,6 +3033,7 @@ function renderSelectionControls() {
   if (elements.exportDialog.open) renderExportDialog();
   if (elements.markPenaltyDialog.open) renderMarkPenaltyDialog();
   if (elements.tagSolvesDialog.open) renderTagSolvesDialog();
+  if (elements.commentSolvesDialog.open) renderCommentSolvesDialog();
   if (elements.moveSolvesDialog.open) renderMoveSolvesDialog();
 }
 

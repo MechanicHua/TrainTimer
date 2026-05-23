@@ -1134,6 +1134,41 @@ dialog[open] {
   line-height: 1.35;
 }
 
+.solve-bluetooth-replay {
+  display: grid;
+  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background: rgba(245, 245, 247, 0.78);
+}
+
+.solve-bluetooth-replay[hidden] {
+  display: none;
+}
+
+.solve-bluetooth-replay.solved {
+  border-color: rgba(52, 199, 89, 0.42);
+  background: rgba(52, 199, 89, 0.08);
+}
+
+.solve-bluetooth-replay.invalid {
+  border-color: rgba(255, 59, 48, 0.34);
+}
+
+.solve-bluetooth-state-net {
+  display: grid;
+  width: 100%;
+  max-width: 360px;
+  grid-template-columns: repeat(12, minmax(10px, 1fr));
+  grid-template-rows: repeat(9, minmax(10px, 1fr));
+  gap: 2px;
+  aspect-ratio: 4 / 3;
+  justify-self: end;
+}
+
 .solve-detail-grid textarea {
   width: 100%;
   min-height: 104px;
@@ -1301,6 +1336,14 @@ dialog[open] {
 
   .solve-detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .solve-bluetooth-replay {
+    grid-template-columns: 1fr;
+  }
+
+  .solve-bluetooth-state-net {
+    justify-self: stretch;
   }
 
   .stats-detail-grid {

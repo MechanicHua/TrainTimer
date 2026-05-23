@@ -160,6 +160,9 @@ const elements = {
   solveDetailTagsInput: document.querySelector('#solveDetailTagsInput'),
   solveDetailBluetoothStats: document.querySelector('#solveDetailBluetoothStats'),
   solveDetailBluetoothMoves: document.querySelector('#solveDetailBluetoothMoves'),
+  solveBluetoothReplay: document.querySelector('#solveBluetoothReplay'),
+  solveBluetoothReplayMeta: document.querySelector('#solveBluetoothReplayMeta'),
+  solveBluetoothReplayNet: document.querySelector('#solveBluetoothReplayNet'),
   copySolveSummaryButton: document.querySelector('#copySolveSummaryButton'),
   copyScrambleButton: document.querySelector('#copyScrambleButton'),
   saveTimeButton: document.querySelector('#saveTimeButton'),
@@ -928,6 +931,32 @@ function renderSolveDialog() {
   elements.solveDetailTagsInput.value = formatTags(solve.tags);
   elements.solveDetailBluetoothStats.textContent = `蓝牙转动 · ${bluetoothMoveCount} 次 · ${bluetoothTps}`;
   elements.solveDetailBluetoothMoves.textContent = bluetoothMoveCount > 0 ? solve.bluetoothMoves.join(' ') : '-';
+  renderSolveBluetoothReplay(solve);
+}
+
+function renderSolveBluetoothReplay(solve) {
+  const moves = Array.isArray(solve.bluetoothMoves) ? solve.bluetoothMoves : [];
+  const canReplay = moves.length > 0 && solve.scramble;
+  elements.solveBluetoothReplay.hidden = !canReplay;
+  elements.solveBluetoothReplay.classList.remove('solved', 'invalid');
+  elements.solveBluetoothReplayNet.replaceChildren();
+  if (!canReplay) {
+    elements.solveBluetoothReplayMeta.textContent = '-';
+    return;
+  }
+
+  try {
+    const faces = cubeStateFromScramble(`${solve.scramble} ${moves.join(' ')}`);
+    const solved = isSolvedFaces(faces);
+    renderCubeFacesNet(elements.solveBluetoothReplayNet, faces, 'solve-bluetooth-state-net');
+    elements.solveBluetoothReplayMeta.textContent = `${moves.length} 步 · ${solved ? '已复原' : '未复原'}`;
+    elements.solveBluetoothReplay.classList.toggle('solved', solved);
+  } catch (error) {
+    elements.solveBluetoothReplay.classList.add('invalid');
+    elements.solveBluetoothReplayMeta.textContent = '转动无法复盘';
+    elements.solveBluetoothReplayNet.className = 'solve-bluetooth-state-net preview-loading';
+    elements.solveBluetoothReplayNet.textContent = '无法渲染';
+  }
 }
 
 async function saveSolveTime() {

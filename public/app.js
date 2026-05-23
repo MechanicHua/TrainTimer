@@ -167,6 +167,7 @@ let activePenalty = 'ok';
 let finishSource = 'manual';
 let selectedSolveIds = new Set();
 let pendingDeletedSolves = [];
+let pendingImportSnapshot = null;
 let currentDetailSolveId = null;
 let bluetoothDevice = null;
 let bluetoothSubscriptions = [];
@@ -613,6 +614,27 @@ async function clearAllSolves() {
 }
 
 async function undoLastDelete() {
+  if (pendingImportSnapshot) {
+    const snapshot = pendingImportSnapshot;
+    const data = await postJson('/api/import', {
+      mode: 'replace',
+      sessions: snapshot.sessions,
+      solves: snapshot.solves,
+    });
+    solves = data.solves;
+    sessions = data.sessions;
+    currentSessionId = sessions.some((session) => session.id === snapshot.currentSessionId)
+      ? snapshot.currentSessionId
+      : 'default';
+    localStorage.setItem('trainTimer.session', currentSessionId);
+    pendingImportSnapshot = null;
+    pendingDeletedSolves = [];
+    selectedSolveIds.clear();
+    if (currentDetailSolveId && !solves.some((solve) => solve.id === currentDetailSolveId)) elements.solveDialog.close();
+    render();
+    return;
+  }
+
   if (pendingDeletedSolves.length === 0) return;
   const restoredIds = new Set(pendingDeletedSolves.map((solve) => solve.id));
   const merged = [...solves.filter((solve) => !restoredIds.has(solve.id)), ...pendingDeletedSolves]
@@ -621,6 +643,7 @@ async function undoLastDelete() {
   solves = data.solves;
   sessions = data.sessions;
   pendingDeletedSolves = [];
+  pendingImportSnapshot = null;
   selectedSolveIds.clear();
   render();
 }
@@ -674,10 +697,18 @@ async function importSolves() {
     const text = await file.text();
     const parsed = parseSolveImport(file.name, text);
     const mode = confirm('点击“确定”替换当前成绩；点击“取消”追加导入成绩。') ? 'replace' : 'append';
+    const snapshot = {
+      solves: solves.map(cloneHistoryItem),
+      sessions: sessions.map(cloneHistoryItem),
+      currentSessionId,
+      mode,
+      fileName: file.name,
+    };
     const data = await postJson('/api/import', { mode, sessions: parsed.sessions, solves: parsed.solves });
     solves = data.solves;
     sessions = data.sessions;
     pendingDeletedSolves = [];
+    pendingImportSnapshot = snapshot;
     if (!sessions.some((session) => session.id === currentSessionId)) currentSessionId = 'default';
     selectedSolveIds.clear();
     if (currentDetailSolveId && !solves.some((solve) => solve.id === currentDetailSolveId)) elements.solveDialog.close();
@@ -767,6 +798,7 @@ async function deleteCurrentSession() {
   currentSessionId = 'default';
   localStorage.setItem('trainTimer.session', currentSessionId);
   pendingDeletedSolves = [];
+  pendingImportSnapshot = null;
   selectedSolveIds.clear();
   if (currentDetailSolveId && !filteredSolves().some((solve) => solve.id === currentDetailSolveId)) elements.solveDialog.close();
   render();
@@ -1784,8 +1816,13 @@ function renderHistoryControls() {
     ? '把选中成绩移动到其他会话'
     : '请先新建另一个会话';
   elements.deleteSelectedButton.disabled = selectedSolveIds.size === 0;
-  elements.undoDeleteButton.disabled = pendingDeletedSolves.length === 0;
-  elements.undoDeleteButton.title = pendingDeletedSolves.length === 0 ? '没有可撤销的删除' : `恢复 ${pendingDeletedSolves.length} 条刚删除的成绩`;
+  const canUndoImport = Boolean(pendingImportSnapshot);
+  const canUndoDelete = pendingDeletedSolves.length > 0;
+  elements.undoDeleteButton.disabled = !canUndoImport && !canUndoDelete;
+  elements.undoDeleteButton.textContent = canUndoImport ? '撤销导入' : '撤销删除';
+  elements.undoDeleteButton.title = canUndoImport
+    ? `恢复导入前的数据：${pendingImportSnapshot.fileName || '导入文件'}`
+    : (canUndoDelete ? `恢复 ${pendingDeletedSolves.length} 条刚删除的成绩` : '没有可撤销的操作');
   elements.clearAllButton.disabled = filteredSolves().length === 0;
   elements.manageSolvesButton.disabled = filteredSolves().length === 0;
   const visibleIds = visibleSolves().map((solve) => solve.id);
@@ -1905,6 +1942,11 @@ function downloadTextFile(filename, content, type) {
 
 function stageDeletedSolves(deletedSolves) {
   pendingDeletedSolves = deletedSolves.map((solve) => ({ ...solve }));
+  pendingImportSnapshot = null;
+}
+
+function cloneHistoryItem(item) {
+  return JSON.parse(JSON.stringify(item));
 }
 
 function renderPreviewLoading() {

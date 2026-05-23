@@ -27,7 +27,7 @@ export function recordMarksAt(solves, index, options = {}) {
     }
   }
 
-  for (const size of options.averageSizes || [5, 12]) {
+  for (const size of options.averageSizes || [5, 12, 50, 100]) {
     const value = rollingAverageAt(solves, index, size);
     const previousBest = bestAverageOf(previousSolves, size);
     if (value != null && (previousBest == null || value < previousBest)) {

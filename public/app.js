@@ -2292,7 +2292,7 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
   const ao5 = rollingAverageAt(sessionSolves, solveIndex, 5);
   const ao12 = rollingAverageAt(sessionSolves, solveIndex, 12);
   const recordMarks = recordMarksAt(sessionSolves, solveIndex);
-  const singleMarks = recordMarks.filter((mark) => mark.type === 'single' || mark.type === 'mo3');
+  const singleMarks = recordMarks.filter((mark) => ['single', 'mo3', 'ao50', 'ao100'].includes(mark.type));
   const ao5Marks = recordMarks.filter((mark) => mark.type === 'ao5');
   const ao12Marks = recordMarks.filter((mark) => mark.type === 'ao12');
   const recordTitle = formatRecordTitle(recordMarks);

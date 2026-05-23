@@ -91,6 +91,26 @@ test('marks personal-best solves and rolling averages', () => {
   ]);
 });
 
+test('marks long personal-best rolling averages', () => {
+  const fiftySolves = Array.from({ length: 50 }, (_, index) => ({
+    id: `f${index + 1}`,
+    durationMs: 10000,
+    penalty: 'ok',
+  }));
+  const hundredSolves = Array.from({ length: 100 }, (_, index) => ({
+    id: `h${index + 1}`,
+    durationMs: 10000,
+    penalty: 'ok',
+  }));
+
+  assert.deepEqual(recordMarksAt(fiftySolves, 49), [
+    { type: 'ao50', label: 'PB ao50', value: 10000 },
+  ]);
+  assert.deepEqual(recordMarksAt(hundredSolves, 99), [
+    { type: 'ao100', label: 'PB ao100', value: 10000 },
+  ]);
+});
+
 test('finds best single and rolling average records with ending index', () => {
   const recordSolves = [12, 11, 10, 15, 9, 13].map((seconds, index) => ({
     id: `r${index + 1}`,

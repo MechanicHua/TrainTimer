@@ -133,6 +133,7 @@ const elements = {
   allSolvesSortBy: document.querySelector('#allSolvesSortBy'),
   allSolvesSortDirection: document.querySelector('#allSolvesSortDirection'),
   selectAllSessionSolves: document.querySelector('#selectAllSessionSolves'),
+  allListedStatsButton: document.querySelector('#allListedStatsButton'),
   allSelectedStatsButton: document.querySelector('#allSelectedStatsButton'),
   allMarkSelectedButton: document.querySelector('#allMarkSelectedButton'),
   allPuzzleSelectedButton: document.querySelector('#allPuzzleSelectedButton'),
@@ -409,6 +410,7 @@ elements.allSolvesTagFilter.addEventListener('change', handleAllSolvesFilterChan
 elements.allSessionsToggle.addEventListener('change', toggleAllSessions);
 elements.allSolvesSortBy.addEventListener('change', renderAllSolvesDialog);
 elements.allSolvesSortDirection.addEventListener('change', renderAllSolvesDialog);
+elements.allListedStatsButton.addEventListener('click', openListedStatsDialog);
 elements.historyRows.addEventListener('change', handleHistoryChange);
 elements.historyRows.addEventListener('click', handleHistoryClick);
 elements.allSolvesRows.addEventListener('change', handleHistoryChange);
@@ -1145,6 +1147,19 @@ function openStatsDialog() {
 function openSelectedStatsDialog() {
   if (selectedSolveIds.size === 0) return;
   statsScope = 'selected';
+  if (!elements.statsDialog.open) elements.statsDialog.showModal();
+  renderStatsDialog();
+  requestAnimationFrame(() => {
+    if (elements.statsDialog.open) renderStatsDialog();
+  });
+  setTimeout(() => {
+    if (elements.statsDialog.open) renderStatsDialog();
+  }, 220);
+}
+
+function openListedStatsDialog() {
+  if (!elements.allSolvesDialog.open || filteredAllSolves().length === 0) return;
+  statsScope = 'listed';
   if (!elements.statsDialog.open) elements.statsDialog.showModal();
   renderStatsDialog();
   requestAnimationFrame(() => {
@@ -2462,10 +2477,10 @@ function renderStatsDialog() {
   const summary = summarizeSolves(statsData.solves);
   elements.statsDialogMeta.textContent = `${statsData.label} · ${summary.count} 条成绩`;
   elements.copyStatsSummaryButton.disabled = summary.count === 0;
-  renderStatsTrendChart(statsData.solves, statsData.scope === 'selected' ? '选中' : '最近');
-  renderStatsRecords(statsData.solves, { selected: statsData.scope === 'selected' });
-  elements.statsSessionOverviewPanel.hidden = statsData.scope === 'selected';
-  if (statsData.scope === 'selected') elements.sessionOverviewList.replaceChildren();
+  renderStatsTrendChart(statsData.solves, statsData.scope === 'session' ? '最近' : statsData.shortLabel);
+  renderStatsRecords(statsData.solves, { selected: statsData.scope !== 'session' });
+  elements.statsSessionOverviewPanel.hidden = statsData.scope !== 'session';
+  if (statsData.scope !== 'session') elements.sessionOverviewList.replaceChildren();
   else renderSessionOverview();
 
   const rows = [
@@ -2508,12 +2523,23 @@ function currentStatsData() {
     const statsSolves = selectedStatsSolves();
     const sessionIds = new Set(statsSolves.map((solve) => solve.sessionId || 'default'));
     const scopeLabel = sessionIds.size > 1 ? `选中成绩 · ${sessionIds.size} 个会话` : '选中成绩';
-    return { scope: 'selected', label: scopeLabel, solves: statsSolves };
+    return { scope: 'selected', shortLabel: '选中', label: scopeLabel, solves: statsSolves };
+  }
+
+  if (statsScope === 'listed') {
+    const statsSolves = filteredAllSolves();
+    const sessionIds = new Set(statsSolves.map((solve) => solve.sessionId || 'default'));
+    const baseSolves = allSolvesBaseSolves();
+    const scopeLabel = allSolvesFilterActive()
+      ? `当前筛选列表 · ${statsSolves.length} / ${baseSolves.length}`
+      : (sessionIds.size > 1 ? `当前列表 · ${sessionIds.size} 个会话` : '当前列表');
+    return { scope: 'listed', shortLabel: '列表', label: scopeLabel, solves: statsSolves };
   }
 
   const currentSession = sessions.find((session) => session.id === currentSessionId);
   return {
     scope: 'session',
+    shortLabel: '最近',
     label: currentSession?.name || currentSessionId,
     solves: filteredSolves(),
   };
@@ -3174,6 +3200,7 @@ function renderHistoryControls() {
 
 function renderAllSolvesControls() {
   const sessionIds = filteredAllSolves().map((solve) => solve.id);
+  elements.allListedStatsButton.disabled = sessionIds.length === 0;
   elements.allSelectedStatsButton.disabled = selectedSolveIds.size === 0;
   elements.allMarkSelectedButton.disabled = selectedSolveIds.size === 0;
   elements.allPuzzleSelectedButton.disabled = selectedSolveIds.size === 0;

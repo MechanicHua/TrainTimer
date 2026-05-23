@@ -494,6 +494,44 @@ body[data-state="timing"] .timer-display {
   margin: 12px auto 0;
 }
 
+.bluetooth-state-panel {
+  display: grid;
+  grid-template-columns: minmax(136px, 176px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.bluetooth-state-head {
+  display: grid;
+  gap: 6px;
+}
+
+.bluetooth-state-head strong {
+  color: var(--ink-strong);
+  font-size: 14px;
+}
+
+.bluetooth-state-head span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.bluetooth-state-net {
+  display: grid;
+  width: 100%;
+  max-width: 330px;
+  grid-template-columns: repeat(12, minmax(10px, 1fr));
+  grid-template-rows: repeat(9, minmax(10px, 1fr));
+  gap: 2px;
+  aspect-ratio: 4 / 3;
+  justify-self: end;
+}
+
 .official-preview {
   display: flex;
   align-items: center;
@@ -1275,6 +1313,14 @@ dialog[open] {
 
   .export-grid {
     grid-template-columns: 1fr;
+  }
+
+  .bluetooth-state-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .bluetooth-state-net {
+    justify-self: stretch;
   }
 }
 

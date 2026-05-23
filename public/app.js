@@ -171,6 +171,8 @@ const elements = {
   bluetoothMoveCount: document.querySelector('#bluetoothMoveCount'),
   bluetoothMoveRows: document.querySelector('#bluetoothMoveRows'),
   bluetoothSolveStatus: document.querySelector('#bluetoothSolveStatus'),
+  bluetoothStateMeta: document.querySelector('#bluetoothStateMeta'),
+  bluetoothStateNet: document.querySelector('#bluetoothStateNet'),
   clearBluetoothLogButton: document.querySelector('#clearBluetoothLogButton'),
   copyBluetoothLogButton: document.querySelector('#copyBluetoothLogButton'),
 };
@@ -304,6 +306,7 @@ window.__trainTimerDebug = {
       bluetoothMoveCount: bluetoothMoves.length,
       bluetoothMoves: bluetoothMoveSequence(),
       bluetoothSolved,
+      bluetoothState: elements.bluetoothStateMeta.textContent,
     };
   },
 };
@@ -1376,12 +1379,14 @@ function renderBluetoothMoves() {
   if (bluetoothMoves.length === 0) {
     elements.bluetoothMoveRows.textContent = appState === 'timing' ? '暂无解析出的转动' : '计时开始后记录转动';
     elements.bluetoothMoveRows.title = '';
+    renderBluetoothStatePreview();
     return;
   }
 
   const moveText = bluetoothMoves.slice(0, 40).map((entry) => entry.move).reverse().join(' ');
   elements.bluetoothMoveRows.textContent = moveText;
   elements.bluetoothMoveRows.title = moveText;
+  renderBluetoothStatePreview();
 }
 
 function bluetoothMoveSequence() {
@@ -1402,6 +1407,30 @@ function isBluetoothSolved() {
   } catch (error) {
     addBluetoothLog('警告', '蓝牙转动无法应用到当前打乱', error.message || String(error));
     return false;
+  }
+}
+
+function renderBluetoothStatePreview() {
+  elements.bluetoothStateNet.replaceChildren();
+  if (!scramble?.scramble) {
+    elements.bluetoothStateMeta.textContent = '等待打乱';
+    elements.bluetoothStateNet.className = 'bluetooth-state-net preview-loading';
+    elements.bluetoothStateNet.textContent = '暂无状态';
+    return;
+  }
+
+  const moveText = bluetoothMoveSequence().join(' ');
+  const stateText = [scramble.scramble, moveText].filter(Boolean).join(' ');
+  try {
+    const faces = cubeStateFromScramble(stateText);
+    renderCubeFacesNet(elements.bluetoothStateNet, faces, 'bluetooth-state-net');
+    elements.bluetoothStateMeta.textContent = bluetoothMoves.length === 0
+      ? (appState === 'timing' ? '打乱状态' : '计时开始后同步')
+      : `${bluetoothMoves.length} 步 · ${isSolvedFaces(faces) ? '已复原' : '未复原'}`;
+  } catch (error) {
+    elements.bluetoothStateMeta.textContent = '状态无效';
+    elements.bluetoothStateNet.className = 'bluetooth-state-net preview-loading';
+    elements.bluetoothStateNet.textContent = '无法渲染';
   }
 }
 
@@ -1458,6 +1487,7 @@ function bytesToHex(bytes) {
 
 function render() {
   renderTimer();
+  renderBluetoothMoves();
   renderSessions();
   renderScramble();
   renderStats();
@@ -2173,10 +2203,14 @@ function renderTnoodleCubeSvg(svgText) {
 
 function renderCubeNet(scrambleText) {
   const faces = cubeStateFromScramble(scrambleText);
+  renderCubeFacesNet(elements.cubeNet, faces, 'cube-net');
+}
+
+function renderCubeFacesNet(container, faces, baseClass) {
   const fragment = document.createDocumentFragment();
 
-  elements.cubeNet.className = 'cube-net sticker-preview';
-  elements.cubeNet.replaceChildren();
+  container.className = `${baseClass} sticker-preview`;
+  container.replaceChildren();
 
   for (const [face, [xOffset, yOffset]] of Object.entries(facePositions)) {
     for (let row = 0; row < 3; row += 1) {
@@ -2192,7 +2226,7 @@ function renderCubeNet(scrambleText) {
     }
   }
 
-  elements.cubeNet.append(fragment);
+  container.append(fragment);
 }
 
 function formatTime(ms) {

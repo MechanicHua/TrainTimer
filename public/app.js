@@ -1046,7 +1046,8 @@ function renderSolveBluetoothReplay(solve) {
 }
 
 async function saveSolveTime() {
-  if (!currentDetailSolveId) return;
+  const solve = solves.find((item) => item.id === currentDetailSolveId);
+  if (!solve) return;
   let durationMs;
   try {
     durationMs = parseTimeInput(elements.solveDetailTimeInput.value);
@@ -1056,68 +1057,79 @@ async function saveSolveTime() {
     return;
   }
 
-  elements.saveTimeButton.disabled = true;
+  const duration = formatTime(durationMs);
+  if (Math.round(Number(solve.durationMs) || 0) === durationMs && solve.duration === duration) return;
+  await saveSolveDetailUpdates(
+    { durationMs, duration },
+    `原始成绩 ${displaySolveTime(solve)}`,
+    '保存失败',
+    elements.saveTimeButton,
+  );
+}
+
+async function saveSolveComment() {
+  const solve = solves.find((item) => item.id === currentDetailSolveId);
+  if (!solve) return;
+  const comment = elements.solveDetailComment.value;
+  if ((solve.comment || '') === comment) return;
+  await saveSolveDetailUpdates(
+    { comment },
+    `备注 ${displaySolveTime(solve)}`,
+    '保存备注失败',
+    elements.saveCommentButton,
+  );
+}
+
+async function saveSolveTags() {
+  const solve = solves.find((item) => item.id === currentDetailSolveId);
+  if (!solve) return;
+  const tags = parseTagsInput(elements.solveDetailTagsInput.value);
+  if (sameStringArray(solve.tags, tags)) return;
+  await saveSolveDetailUpdates(
+    { tags },
+    `标签 ${displaySolveTime(solve)}`,
+    '保存标签失败',
+    elements.saveTagsButton,
+  );
+}
+
+async function saveSolveScramble() {
+  const solve = solves.find((item) => item.id === currentDetailSolveId);
+  if (!solve) return;
+  const scrambleText = elements.solveDetailScramble.value.trim();
+  const scrambleSource = scrambleText ? 'manual-edit' : '';
+  if ((solve.scramble || '') === scrambleText && (solve.scrambleSource || '') === scrambleSource) return;
+  await saveSolveDetailUpdates(
+    {
+      scramble: scrambleText,
+      scrambleSource,
+    },
+    `打乱 ${displaySolveTime(solve)}`,
+    '保存打乱失败',
+    elements.saveScrambleButton,
+  );
+}
+
+async function saveSolveDetailUpdates(updates, snapshotLabel, errorPrefix, button) {
+  if (!currentDetailSolveId) return;
+  const snapshot = createHistorySnapshot('edit-solve', snapshotLabel);
+  if (button) button.disabled = true;
   elements.solveDetailError.textContent = '';
   try {
     const data = await requestJson(`/api/solves/${encodeURIComponent(currentDetailSolveId)}`, {
       method: 'PATCH',
-      body: { durationMs },
+      body: updates,
     });
     solves = data.solves;
     if (data.sessions) sessions = data.sessions;
+    pendingDeletedSolves = [];
+    pendingImportSnapshot = snapshot;
     renderSolveDialog();
     render();
   } catch (error) {
-    elements.solveDetailError.textContent = `保存失败：${error.message}`;
+    elements.solveDetailError.textContent = `${errorPrefix}：${error.message}`;
   } finally {
-    elements.saveTimeButton.disabled = false;
-  }
-}
-
-async function saveSolveComment() {
-  if (!currentDetailSolveId) return;
-  const data = await requestJson(`/api/solves/${encodeURIComponent(currentDetailSolveId)}`, {
-    method: 'PATCH',
-    body: { comment: elements.solveDetailComment.value },
-  });
-  solves = data.solves;
-  if (data.sessions) sessions = data.sessions;
-  renderSolveDialog();
-  render();
-}
-
-async function saveSolveTags() {
-  if (!currentDetailSolveId) return;
-  const data = await requestJson(`/api/solves/${encodeURIComponent(currentDetailSolveId)}`, {
-    method: 'PATCH',
-    body: { tags: parseTagsInput(elements.solveDetailTagsInput.value) },
-  });
-  solves = data.solves;
-  if (data.sessions) sessions = data.sessions;
-  renderSolveDialog();
-  render();
-}
-
-async function saveSolveScramble() {
-  if (!currentDetailSolveId) return;
-  const scrambleText = elements.solveDetailScramble.value.trim();
-  elements.saveScrambleButton.disabled = true;
-  try {
-    const data = await requestJson(`/api/solves/${encodeURIComponent(currentDetailSolveId)}`, {
-      method: 'PATCH',
-      body: {
-        scramble: scrambleText,
-        scrambleSource: scrambleText ? 'manual-edit' : '',
-      },
-    });
-    solves = data.solves;
-    if (data.sessions) sessions = data.sessions;
-    renderSolveDialog();
-    render();
-  } catch (error) {
-    elements.solveDetailError.textContent = `保存打乱失败：${error.message}`;
-  } finally {
-    elements.saveScrambleButton.disabled = false;
+    if (button) button.disabled = false;
   }
 }
 
@@ -2391,6 +2403,9 @@ function renderHistoryControls() {
   } else if (pendingImportSnapshot?.mode === 'tag-solves') {
     elements.undoDeleteButton.textContent = '撤销标签';
     elements.undoDeleteButton.title = `恢复标签修改前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`;
+  } else if (pendingImportSnapshot?.mode === 'edit-solve') {
+    elements.undoDeleteButton.textContent = '撤销编辑';
+    elements.undoDeleteButton.title = `恢复编辑前的数据：${pendingImportSnapshot.fileName || '成绩详情'}`;
   } else if (canUndoSnapshot) {
     elements.undoDeleteButton.textContent = '撤销导入';
     elements.undoDeleteButton.title = `恢复导入前的数据：${pendingImportSnapshot.fileName || '导入文件'}`;
@@ -2534,6 +2549,12 @@ function parseTagsInput(value) {
 
 function formatTags(tags) {
   return Array.isArray(tags) ? tags.join(', ') : '';
+}
+
+function sameStringArray(left, right) {
+  const leftItems = Array.isArray(left) ? left : [];
+  const rightItems = Array.isArray(right) ? right : [];
+  return leftItems.length === rightItems.length && leftItems.every((item, index) => item === rightItems[index]);
 }
 
 function sortAllSolves(inputSolves) {

@@ -15,9 +15,9 @@ test('parses TrainTimer JSON exports', () => {
 
 test('parses exported CSV solves and sessions', () => {
   const csv = [
-    'id,sessionId,sessionName,createdAt,durationMs,duration,penalty,effectiveDurationMs,effectiveDuration,scramble,scrambleSource,inspectionEnabled,timerSource,bluetoothMoves,tags,comment',
-    `s1,oh,OH,2026-05-23T00:00:00.000Z,12345,12.345,+2,14345,14.345,"R, U",tnoodle,true,bluetooth,"R U2 F'",PLL;慢十字,"PLL ""lockup"""`,
-    's2,default,默认,2026-05-23T00:01:00.000Z,62000,1:02.000,ok,62000,1:02.000,U,tnoodle,false,manual,,,',
+    'id,sessionId,sessionName,createdAt,durationMs,duration,penalty,effectiveDurationMs,effectiveDuration,scramble,scrambleSource,inspectionEnabled,timerSource,bluetoothMoves,bluetoothMoveCount,bluetoothTps,tags,comment',
+    `s1,oh,OH,2026-05-23T00:00:00.000Z,12345,12.345,+2,14345,14.345,"R, U",tnoodle,true,bluetooth,"R U2 F'",3,0.243,PLL;慢十字,"PLL ""lockup"""`,
+    's2,default,默认,2026-05-23T00:01:00.000Z,62000,1:02.000,ok,62000,1:02.000,U,tnoodle,false,manual,,,,,',
   ].join('\n');
 
   const parsed = parseSolveImport('solves.csv', csv);
@@ -40,6 +40,8 @@ test('parses exported CSV solves and sessions', () => {
       inspectionEnabled: true,
       timerSource: 'bluetooth',
       bluetoothMoves: ['R', 'U2', "F'"],
+      bluetoothMoveCount: 3,
+      bluetoothTps: 0.243,
       tags: ['PLL', '慢十字'],
       comment: 'PLL "lockup"',
     },
@@ -55,6 +57,8 @@ test('parses exported CSV solves and sessions', () => {
       inspectionEnabled: false,
       timerSource: 'manual',
       bluetoothMoves: [],
+      bluetoothMoveCount: undefined,
+      bluetoothTps: undefined,
       tags: [],
       comment: '',
     },

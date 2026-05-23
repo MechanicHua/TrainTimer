@@ -138,10 +138,17 @@ export function normalizeSolve(solve) {
   const effectiveDurationMs = penalty === 'dnf' ? null : durationMs + (penalty === '+2' ? 2000 : 0);
   const effectiveDuration = effectiveDurationMs == null ? 'DNF' : formatTime(effectiveDurationMs);
   const bluetoothMoves = normalizeBluetoothMoves(solve.bluetoothMoves);
-  const bluetoothMoveCount = bluetoothMoves.length;
-  const bluetoothTps = bluetoothMoveCount > 0 && durationMs > 0
+  const importedBluetoothMoveCount = Number(solve.bluetoothMoveCount);
+  const bluetoothMoveCount = bluetoothMoves.length > 0
+    ? bluetoothMoves.length
+    : (Number.isFinite(importedBluetoothMoveCount) ? Math.max(0, Math.round(importedBluetoothMoveCount)) : 0);
+  const importedBluetoothTps = Number(solve.bluetoothTps);
+  const computedBluetoothTps = bluetoothMoveCount > 0 && durationMs > 0
     ? Math.round((bluetoothMoveCount / (durationMs / 1000)) * 1000) / 1000
     : null;
+  const bluetoothTps = Number.isFinite(importedBluetoothTps)
+    ? Math.max(0, importedBluetoothTps)
+    : computedBluetoothTps;
 
   return {
     ...solve,

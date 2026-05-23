@@ -216,6 +216,49 @@ test('normalizes manually entered solve metadata', async () => {
   });
 });
 
+test('preserves imported bluetooth summary fields when move list is unavailable', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'train-timer-'));
+  const file = join(dir, 'solves.json');
+
+  await saveSolve({
+    id: 'imported-bluetooth',
+    durationMs: 20000,
+    timerSource: 'bluetooth',
+    bluetoothMoves: [],
+    bluetoothMoveCount: 18,
+    bluetoothTps: 0.9,
+  }, file);
+
+  const history = await loadHistory(file);
+  assert.equal(history.solves[0].bluetoothMoveCount, 18);
+  assert.equal(history.solves[0].bluetoothTps, 0.9);
+  assert.deepEqual(summarizeSolves(history.solves), {
+    count: 1,
+    validCount: 1,
+    dnfCount: 0,
+    plus2Count: 0,
+    bluetoothSolveCount: 1,
+    averageBluetoothMoveCount: 18,
+    averageBluetoothTps: 0.9,
+    bestBluetoothTps: 0.9,
+    best: 20000,
+    worst: 20000,
+    latest: 20000,
+    average: 20000,
+    standardDeviation: 0,
+    mo3: null,
+    ao5: null,
+    ao12: null,
+    ao50: null,
+    ao100: null,
+    bestMo3: null,
+    bestAo5: null,
+    bestAo12: null,
+    bestAo50: null,
+    bestAo100: null,
+  });
+});
+
 test('keeps solve ids unique after replace and import-style merges', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'train-timer-'));
   const file = join(dir, 'solves.json');

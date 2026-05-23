@@ -54,6 +54,8 @@ function parseCsvImport(text, options = {}) {
       inspectionEnabled: parseBoolean(value('inspectionEnabled')),
       timerSource: value('timerSource') || 'manual',
       bluetoothMoves: parseMoves(value('bluetoothMoves')),
+      bluetoothMoveCount: parseOptionalInteger(value('bluetoothMoveCount')),
+      bluetoothTps: parseOptionalNumber(value('bluetoothTps')),
       tags: parseTags(value('tags')),
       comment: value('comment'),
     };
@@ -199,6 +201,18 @@ function parseDurationMs(value) {
 function parseMillisecondValue(value) {
   const numeric = Number(String(value || '').trim());
   return Number.isFinite(numeric) ? Math.max(0, Math.round(numeric)) : null;
+}
+
+function parseOptionalInteger(value) {
+  const numeric = parseOptionalNumber(value);
+  return numeric == null ? undefined : Math.max(0, Math.round(numeric));
+}
+
+function parseOptionalNumber(value) {
+  const text = String(value ?? '').trim();
+  if (!text) return undefined;
+  const numeric = Number(text);
+  return Number.isFinite(numeric) ? numeric : undefined;
 }
 
 function fractionToMs(fraction = '') {

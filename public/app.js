@@ -171,6 +171,8 @@ const elements = {
   solveBluetoothReplay: document.querySelector('#solveBluetoothReplay'),
   solveBluetoothReplayMeta: document.querySelector('#solveBluetoothReplayMeta'),
   solveBluetoothReplayNet: document.querySelector('#solveBluetoothReplayNet'),
+  prevSolveButton: document.querySelector('#prevSolveButton'),
+  nextSolveDetailButton: document.querySelector('#nextSolveDetailButton'),
   copySolveSummaryButton: document.querySelector('#copySolveSummaryButton'),
   copyScrambleButton: document.querySelector('#copyScrambleButton'),
   saveScrambleButton: document.querySelector('#saveScrambleButton'),
@@ -277,6 +279,8 @@ elements.allExportCstimerButton.addEventListener('click', () => exportListedSolv
 elements.confirmMarkPenaltyButton.addEventListener('click', markSelectedPenalty);
 elements.confirmMoveButton.addEventListener('click', moveSelectedSolves);
 elements.confirmTagButton.addEventListener('click', saveSelectedTags);
+elements.prevSolveButton.addEventListener('click', () => navigateSolveDetail(-1));
+elements.nextSolveDetailButton.addEventListener('click', () => navigateSolveDetail(1));
 elements.copySolveSummaryButton.addEventListener('click', copySelectedSolveSummary);
 elements.copyScrambleButton.addEventListener('click', copySelectedScramble);
 elements.saveScrambleButton.addEventListener('click', saveSolveScramble);
@@ -962,11 +966,17 @@ function renderSolveDialog() {
     return;
   }
 
+  const sessionSolves = solvesForSession(solve.sessionId);
+  const solveIndex = sessionSolves.findIndex((item) => item.id === solve.id);
+  const solveNumber = solveIndex + 1;
   elements.solveDetailTitle.textContent = `成绩 ${displaySolveTime(solve)}`;
   const timerSource = solve.timerSource === 'bluetooth' ? '蓝牙停表' : '手动停表';
   const bluetoothMoveCount = solve.bluetoothMoveCount ?? (Array.isArray(solve.bluetoothMoves) ? solve.bluetoothMoves.length : 0);
   const bluetoothTps = Number.isFinite(solve.bluetoothTps) ? `${solve.bluetoothTps.toFixed(3)} TPS` : 'TPS -';
-  elements.solveDetailMeta.textContent = `${new Date(solve.createdAt).toLocaleString()} · ${timerSource} · ${solve.inspectionEnabled ? '开启观察' : '无观察'} · ${bluetoothMoveCount} 次蓝牙转动 · ${bluetoothTps} · ${solve.scrambleSource || 'unknown'}`;
+  const positionText = solveIndex >= 0 ? `第 ${solveNumber} / ${sessionSolves.length} 条` : '未知位置';
+  elements.solveDetailMeta.textContent = `${sessionNameForSolve(solve)} · ${positionText} · ${new Date(solve.createdAt).toLocaleString()} · ${timerSource} · ${solve.inspectionEnabled ? '开启观察' : '无观察'} · ${bluetoothMoveCount} 次蓝牙转动 · ${bluetoothTps} · ${solve.scrambleSource || 'unknown'}`;
+  elements.prevSolveButton.disabled = solveIndex <= 0;
+  elements.nextSolveDetailButton.disabled = solveIndex < 0 || solveIndex >= sessionSolves.length - 1;
   elements.solveDetailTimeInput.value = solve.duration || formatTime(solve.durationMs);
   elements.solveDetailError.textContent = '';
   elements.solveDetailScramble.value = solve.scramble || '';
@@ -975,6 +985,17 @@ function renderSolveDialog() {
   elements.solveDetailBluetoothStats.textContent = `蓝牙转动 · ${bluetoothMoveCount} 次 · ${bluetoothTps}`;
   elements.solveDetailBluetoothMoves.textContent = bluetoothMoveCount > 0 ? solve.bluetoothMoves.join(' ') : '-';
   renderSolveBluetoothReplay(solve);
+}
+
+function navigateSolveDetail(offset) {
+  const solve = solves.find((item) => item.id === currentDetailSolveId);
+  if (!solve) return;
+  const sessionSolves = solvesForSession(solve.sessionId);
+  const solveIndex = sessionSolves.findIndex((item) => item.id === solve.id);
+  const nextSolve = sessionSolves[solveIndex + offset];
+  if (!nextSolve) return;
+  currentDetailSolveId = nextSolve.id;
+  renderSolveDialog();
 }
 
 function renderSolveBluetoothReplay(solve) {

@@ -259,6 +259,24 @@ test('preserves imported bluetooth summary fields when move list is unavailable'
   });
 });
 
+test('keeps empty bluetooth TPS null for ordinary solves', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'train-timer-'));
+  const file = join(dir, 'solves.json');
+
+  await saveSolve({
+    id: 'manual-no-bluetooth',
+    durationMs: 10000,
+    timerSource: 'manual',
+    bluetoothMoves: [],
+    bluetoothMoveCount: 0,
+    bluetoothTps: null,
+  }, file);
+
+  const history = await loadHistory(file);
+  assert.equal(history.solves[0].bluetoothMoveCount, 0);
+  assert.equal(history.solves[0].bluetoothTps, null);
+});
+
 test('keeps solve ids unique after replace and import-style merges', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'train-timer-'));
   const file = join(dir, 'solves.json');

@@ -142,11 +142,12 @@ export function normalizeSolve(solve) {
   const bluetoothMoveCount = bluetoothMoves.length > 0
     ? bluetoothMoves.length
     : (Number.isFinite(importedBluetoothMoveCount) ? Math.max(0, Math.round(importedBluetoothMoveCount)) : 0);
-  const importedBluetoothTps = Number(solve.bluetoothTps);
+  const bluetoothTpsText = String(solve.bluetoothTps ?? '').trim();
+  const importedBluetoothTps = Number(bluetoothTpsText);
   const computedBluetoothTps = bluetoothMoveCount > 0 && durationMs > 0
     ? Math.round((bluetoothMoveCount / (durationMs / 1000)) * 1000) / 1000
     : null;
-  const bluetoothTps = Number.isFinite(importedBluetoothTps)
+  const bluetoothTps = bluetoothTpsText && Number.isFinite(importedBluetoothTps)
     ? Math.max(0, importedBluetoothTps)
     : computedBluetoothTps;
 

@@ -241,10 +241,15 @@ async function handleApi(request, response) {
       sendJson(response, 400, { error: 'durationMs must be a non-negative number' });
       return;
     }
+    const createdAt = Object.hasOwn(body, 'createdAt') ? new Date(body.createdAt) : new Date();
+    if (!Number.isFinite(createdAt.getTime())) {
+      sendJson(response, 400, { error: 'createdAt must be a valid date' });
+      return;
+    }
 
     const solve = {
       id: randomUUID(),
-      createdAt: new Date().toISOString(),
+      createdAt: createdAt.toISOString(),
       durationMs: Math.round(durationMs),
       duration: formatTime(durationMs),
       scramble: String(body.scramble || ''),

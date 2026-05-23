@@ -180,6 +180,7 @@ const elements = {
   manualEntryMeta: document.querySelector('#manualEntryMeta'),
   manualTimeInput: document.querySelector('#manualTimeInput'),
   manualPenaltySelect: document.querySelector('#manualPenaltySelect'),
+  manualDateInput: document.querySelector('#manualDateInput'),
   manualScrambleInput: document.querySelector('#manualScrambleInput'),
   manualCommentInput: document.querySelector('#manualCommentInput'),
   manualTagsInput: document.querySelector('#manualTagsInput'),
@@ -2743,6 +2744,7 @@ function openManualEntryDialog() {
   elements.manualEntryMeta.textContent = currentSession?.name || currentSessionId;
   elements.manualTimeInput.value = '';
   elements.manualPenaltySelect.value = 'ok';
+  elements.manualDateInput.value = dateTimeLocalValue(new Date());
   elements.manualScrambleInput.value = scramble?.scramble || '';
   elements.manualCommentInput.value = '';
   elements.manualTagsInput.value = '';
@@ -2754,11 +2756,14 @@ function openManualEntryDialog() {
 
 async function saveManualEntry() {
   let durationMs;
+  let createdAt;
   try {
     durationMs = parseTimeInput(elements.manualTimeInput.value);
+    createdAt = parseDateTimeLocalInput(elements.manualDateInput.value);
   } catch (error) {
     elements.manualEntryError.textContent = error.message;
-    elements.manualTimeInput.focus();
+    if (durationMs == null) elements.manualTimeInput.focus();
+    else elements.manualDateInput.focus();
     return;
   }
 
@@ -2773,6 +2778,7 @@ async function saveManualEntry() {
   try {
     const data = await postJson('/api/solves', {
       durationMs,
+      createdAt,
       scramble: scrambleText,
       scrambleSource,
       scramblePuzzle: scramble?.puzzle || scramblePuzzle,

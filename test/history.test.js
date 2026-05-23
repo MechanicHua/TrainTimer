@@ -283,6 +283,7 @@ test('normalizes manually entered solve metadata', async () => {
   const file = join(dir, 'solves.json');
 
   await saveSolve({
+    createdAt: '2026-05-24T08:15:30.000Z',
     durationMs: 12345.6,
     penalty: '+2',
     comment: 'manual entry',
@@ -304,6 +305,7 @@ test('normalizes manually entered solve metadata', async () => {
   assert.match(solve.id, /^solve-/);
   assert.deepEqual({ ...solve, id: undefined }, {
     id: undefined,
+    createdAt: '2026-05-24T08:15:30.000Z',
     durationMs: 12346,
     penalty: '+2',
     comment: 'manual entry',

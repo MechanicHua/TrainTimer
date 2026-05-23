@@ -197,6 +197,7 @@ const elements = {
   bluetoothStateNet: document.querySelector('#bluetoothStateNet'),
   clearBluetoothLogButton: document.querySelector('#clearBluetoothLogButton'),
   copyBluetoothLogButton: document.querySelector('#copyBluetoothLogButton'),
+  exportBluetoothLogButton: document.querySelector('#exportBluetoothLogButton'),
 };
 
 let appState = 'loading';
@@ -305,6 +306,7 @@ elements.saveCommentButton.addEventListener('click', saveSolveComment);
 elements.saveManualEntryButton.addEventListener('click', saveManualEntry);
 elements.clearBluetoothLogButton.addEventListener('click', clearBluetoothLog);
 elements.copyBluetoothLogButton.addEventListener('click', copyBluetoothLog);
+elements.exportBluetoothLogButton.addEventListener('click', exportBluetoothLog);
 elements.solveDialog.addEventListener('close', () => {
   currentDetailSolveId = null;
 });
@@ -1641,7 +1643,7 @@ function clearBluetoothLog() {
 }
 
 async function copyBluetoothLog() {
-  const text = JSON.stringify({ events: bluetoothLog, moves: bluetoothMoves }, null, 2);
+  const text = JSON.stringify(bluetoothLogPayload(), null, 2);
   try {
     await navigator.clipboard.writeText(text);
     elements.copyBluetoothLogButton.textContent = '已复制';
@@ -1651,6 +1653,30 @@ async function copyBluetoothLog() {
   } catch (error) {
     addBluetoothLog('错误', '复制日志失败', error.message || String(error));
   }
+}
+
+function exportBluetoothLog() {
+  downloadTextFile(
+    `traintimer-bluetooth-log-${new Date().toISOString().replaceAll(/[:.]/g, '-')}.json`,
+    `${JSON.stringify(bluetoothLogPayload(), null, 2)}\n`,
+    'application/json;charset=utf-8',
+  );
+}
+
+function bluetoothLogPayload() {
+  return {
+    exportedAt: new Date().toISOString(),
+    connected: Boolean(bluetoothDevice?.gatt?.connected),
+    device: bluetoothDevice ? {
+      name: bluetoothDevice.name || '',
+      id: bluetoothDevice.id || '',
+    } : null,
+    batteryLevel: bluetoothBatteryLevel,
+    solved: bluetoothSolved,
+    moveCount: bluetoothMoves.length,
+    moves: bluetoothMoves,
+    events: bluetoothLog,
+  };
 }
 
 function armBluetoothSolveTracking() {

@@ -106,6 +106,7 @@ const elements = {
   exportSelectedCstimerButton: document.querySelector('#exportSelectedCstimerButton'),
   exportAllJsonButton: document.querySelector('#exportAllJsonButton'),
   exportAllCsvButton: document.querySelector('#exportAllCsvButton'),
+  exportAllCstimerButton: document.querySelector('#exportAllCstimerButton'),
   markPenaltyDialog: document.querySelector('#markPenaltyDialog'),
   markPenaltyMeta: document.querySelector('#markPenaltyMeta'),
   markPenaltySelect: document.querySelector('#markPenaltySelect'),
@@ -211,6 +212,7 @@ elements.exportSelectedCsvButton.addEventListener('click', () => exportSelectedS
 elements.exportSelectedCstimerButton.addEventListener('click', () => exportSelectedSolves('cstimer'));
 elements.exportAllJsonButton.addEventListener('click', () => exportSolves('json', 'all'));
 elements.exportAllCsvButton.addEventListener('click', () => exportSolves('csv', 'all'));
+elements.exportAllCstimerButton.addEventListener('click', () => exportSolves('cstimer', 'all'));
 elements.importButton.addEventListener('click', () => elements.importFile.click());
 elements.importFile.addEventListener('change', importSolves);
 elements.statsDetailButton.addEventListener('click', openStatsDialog);

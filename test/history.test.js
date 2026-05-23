@@ -11,6 +11,7 @@ import {
   formatTime,
   loadHistory,
   loadSolves,
+  mergeSession,
   moveSolves,
   replaceSolves,
   saveSolve,
@@ -171,6 +172,37 @@ test('duplicates a session with copied solve ids and metadata', async () => {
   assert.deepEqual(copiedSolves[0].tags, ['PLL']);
   assert.deepEqual(copiedSolves[0].bluetoothMoves, ['R', 'U']);
   assert.equal(await duplicateSession('missing-session', 'missing', file), null);
+});
+
+test('merges a non-default session into another session', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'train-timer-'));
+  const file = join(dir, 'solves.json');
+  const oh = await createSession('OH', file);
+  const blind = await createSession('Blind', file);
+
+  await replaceSolves(
+    [
+      { id: 'default-solve', durationMs: 9000, sessionId: 'default' },
+      { id: 'oh-solve', durationMs: 10000, sessionId: oh.session.id, tags: ['OH'] },
+      { id: 'blind-solve', durationMs: 60000, sessionId: blind.session.id },
+    ],
+    file,
+    blind.sessions,
+  );
+
+  const merged = await mergeSession(oh.session.id, 'default', file);
+  assert.equal(merged.sourceSession.name, 'OH');
+  assert.equal(merged.targetSession.id, 'default');
+
+  const history = await loadHistory(file);
+  assert.equal(history.sessions.some((session) => session.id === oh.session.id), false);
+  assert.equal(history.sessions.some((session) => session.id === blind.session.id), true);
+  assert.equal(history.solves.find((solve) => solve.id === 'oh-solve').sessionId, 'default');
+  assert.deepEqual(history.solves.find((solve) => solve.id === 'oh-solve').tags, ['OH']);
+  assert.equal(history.solves.find((solve) => solve.id === 'blind-solve').sessionId, blind.session.id);
+  assert.equal(await mergeSession('default', blind.session.id, file), null);
+  assert.equal(await mergeSession(blind.session.id, blind.session.id, file), null);
+  assert.equal(await mergeSession('missing', 'default', file), null);
 });
 
 test('updates penalties for selected solves', async () => {

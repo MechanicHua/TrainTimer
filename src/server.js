@@ -14,6 +14,7 @@ import {
   formatTime,
   getHistoryPath,
   loadHistory,
+  mergeSession,
   moveSolves,
   replaceSolves,
   renameSession,
@@ -114,6 +115,25 @@ async function handleApi(request, response) {
     const result = await createSession(String(body.name || '新会话'));
     sendJson(response, 201, {
       session: result.session,
+      sessions: result.sessions,
+      solves: result.solves,
+      summary: summarizeSolves(result.solves),
+    });
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname.startsWith('/api/sessions/') && url.pathname.endsWith('/merge')) {
+    const id = decodeURIComponent(url.pathname.slice('/api/sessions/'.length, -'/merge'.length));
+    const body = await readJsonBody(request);
+    const result = await mergeSession(id, String(body.targetSessionId || ''));
+    if (!result) {
+      sendJson(response, 400, { error: 'Session cannot be merged' });
+      return;
+    }
+
+    sendJson(response, 200, {
+      sourceSession: result.sourceSession,
+      targetSession: result.targetSession,
       sessions: result.sessions,
       solves: result.solves,
       summary: summarizeSolves(result.solves),

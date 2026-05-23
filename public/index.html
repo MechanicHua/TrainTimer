@@ -18,6 +18,7 @@
           <select id="sessionSelect" aria-label="当前会话"></select>
           <button id="newSessionButton" type="button">新会话</button>
           <button id="duplicateSessionButton" type="button">复制</button>
+          <button id="mergeSessionButton" type="button">合并</button>
           <button id="renameSessionButton" type="button">重命名</button>
           <button id="deleteSessionButton" type="button">删会话</button>
         </div>
@@ -348,6 +349,26 @@
           <div class="dialog-actions">
             <button type="submit">取消</button>
             <button id="confirmMoveButton" type="button">移动</button>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog id="mergeSessionDialog" class="move-dialog">
+        <form method="dialog" class="move-dialog-inner">
+          <div class="solve-dialog-header">
+            <div>
+              <h2>合并会话</h2>
+              <p id="mergeSessionMeta">-</p>
+            </div>
+            <button type="submit" aria-label="关闭">关闭</button>
+          </div>
+          <label class="move-session-field">
+            <span>并入会话</span>
+            <select id="mergeSessionSelect"></select>
+          </label>
+          <div class="dialog-actions">
+            <button type="submit">取消</button>
+            <button id="confirmMergeSessionButton" class="danger-action" type="button">合并</button>
           </div>
         </form>
       </dialog>

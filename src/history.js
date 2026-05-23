@@ -139,6 +139,26 @@ export async function duplicateSession(id, name, historyPath = getHistoryPath())
   return { session, sessions: nextHistory.sessions, solves: nextHistory.solves };
 }
 
+export async function mergeSession(sourceId, targetId, historyPath = getHistoryPath()) {
+  const sourceSessionId = typeof sourceId === 'string' && sourceId ? sourceId : defaultSession.id;
+  const targetSessionId = typeof targetId === 'string' && targetId ? targetId : defaultSession.id;
+  if (sourceSessionId === defaultSession.id || sourceSessionId === targetSessionId) return null;
+
+  const history = await loadHistory(historyPath);
+  const sourceSession = history.sessions.find((session) => session.id === sourceSessionId);
+  const targetSession = history.sessions.find((session) => session.id === targetSessionId);
+  if (!sourceSession || !targetSession) return null;
+
+  const nextHistory = normalizeHistory({
+    sessions: history.sessions.filter((session) => session.id !== sourceSessionId),
+    solves: history.solves.map((solve) => (
+      solve.sessionId === sourceSessionId ? { ...solve, sessionId: targetSessionId } : solve
+    )),
+  });
+  await writeHistory(nextHistory, historyPath);
+  return { sourceSession, targetSession, sessions: nextHistory.sessions, solves: nextHistory.solves };
+}
+
 export async function renameSession(id, name, historyPath = getHistoryPath()) {
   const history = await loadHistory(historyPath);
   const sessions = history.sessions.map((session) => (session.id === id ? normalizeSession({ ...session, name }) : session));

@@ -81,6 +81,7 @@ const elements = {
   sessionSelect: document.querySelector('#sessionSelect'),
   newSessionButton: document.querySelector('#newSessionButton'),
   duplicateSessionButton: document.querySelector('#duplicateSessionButton'),
+  mergeSessionButton: document.querySelector('#mergeSessionButton'),
   renameSessionButton: document.querySelector('#renameSessionButton'),
   deleteSessionButton: document.querySelector('#deleteSessionButton'),
   scrambleSource: document.querySelector('#scrambleSource'),
@@ -155,6 +156,10 @@ const elements = {
   moveSolvesMeta: document.querySelector('#moveSolvesMeta'),
   moveSessionSelect: document.querySelector('#moveSessionSelect'),
   confirmMoveButton: document.querySelector('#confirmMoveButton'),
+  mergeSessionDialog: document.querySelector('#mergeSessionDialog'),
+  mergeSessionMeta: document.querySelector('#mergeSessionMeta'),
+  mergeSessionSelect: document.querySelector('#mergeSessionSelect'),
+  confirmMergeSessionButton: document.querySelector('#confirmMergeSessionButton'),
   tagSolvesDialog: document.querySelector('#tagSolvesDialog'),
   tagSolvesMeta: document.querySelector('#tagSolvesMeta'),
   tagSolvesInput: document.querySelector('#tagSolvesInput'),
@@ -267,6 +272,7 @@ elements.bluetoothLogButton.addEventListener('click', openBluetoothLogDialog);
 elements.sessionSelect.addEventListener('change', switchSession);
 elements.newSessionButton.addEventListener('click', createSession);
 elements.duplicateSessionButton.addEventListener('click', duplicateCurrentSession);
+elements.mergeSessionButton.addEventListener('click', openMergeSessionDialog);
 elements.renameSessionButton.addEventListener('click', renameSession);
 elements.deleteSessionButton.addEventListener('click', deleteCurrentSession);
 elements.manualEntryButton.addEventListener('click', openManualEntryDialog);
@@ -305,6 +311,7 @@ elements.allExportCstimerButton.addEventListener('click', () => exportListedSolv
 elements.allExportCstimerJsonButton.addEventListener('click', () => exportListedSolves('cstimer-json'));
 elements.confirmMarkPenaltyButton.addEventListener('click', markSelectedPenalty);
 elements.confirmMoveButton.addEventListener('click', moveSelectedSolves);
+elements.confirmMergeSessionButton.addEventListener('click', mergeCurrentSession);
 elements.confirmTagButton.addEventListener('click', saveSelectedTags);
 elements.prevSolveButton.addEventListener('click', () => navigateSolveDetail(-1));
 elements.nextSolveDetailButton.addEventListener('click', () => navigateSolveDetail(1));
@@ -982,6 +989,45 @@ async function duplicateCurrentSession() {
   selectedSolveIds.clear();
   if (elements.solveDialog.open) elements.solveDialog.close();
   render();
+}
+
+function openMergeSessionDialog() {
+  if (currentSessionId === 'default' || sessions.length < 2) return;
+  renderMergeSessionDialog();
+  if (!elements.mergeSessionDialog.open) elements.mergeSessionDialog.showModal();
+}
+
+async function mergeCurrentSession() {
+  const current = sessions.find((session) => session.id === currentSessionId);
+  const targetSessionId = elements.mergeSessionSelect.value;
+  const target = sessions.find((session) => session.id === targetSessionId);
+  if (!current || !target || current.id === 'default' || current.id === target.id) return;
+
+  const sourceCount = solvesForSession(current.id).length;
+  if (!confirm(`把会话“${current.name}”的 ${sourceCount} 条成绩合并到“${target.name}”？源会话会被删除，可用撤销恢复。`)) return;
+
+  const snapshot = createHistorySnapshot('merge-session', `${current.name} 到 ${target.name}`);
+  elements.confirmMergeSessionButton.disabled = true;
+  try {
+    const data = await postJson(`/api/sessions/${encodeURIComponent(current.id)}/merge`, {
+      targetSessionId: target.id,
+    });
+    sessions = data.sessions;
+    solves = data.solves;
+    currentSessionId = target.id;
+    localStorage.setItem('trainTimer.session', currentSessionId);
+    pendingDeletedSolves = [];
+    pendingImportSnapshot = snapshot;
+    selectedSolveIds.clear();
+    if (currentDetailSolveId && !solves.some((solve) => solve.id === currentDetailSolveId)) elements.solveDialog.close();
+    elements.mergeSessionDialog.close();
+    render();
+  } catch (error) {
+    alert(`合并失败：${error.message}`);
+    renderMergeSessionDialog();
+  } finally {
+    elements.confirmMergeSessionButton.disabled = false;
+  }
 }
 
 async function renameSession() {
@@ -1988,6 +2034,7 @@ function render() {
   renderExportDialog();
   renderImportDialog();
   renderTagSolvesDialog();
+  renderMergeSessionDialog();
 }
 
 function renderSessions() {
@@ -2001,6 +2048,7 @@ function renderSessions() {
     }),
   );
   elements.duplicateSessionButton.disabled = !sessions.some((session) => session.id === currentSessionId);
+  elements.mergeSessionButton.disabled = currentSessionId === 'default' || sessions.length < 2;
   elements.deleteSessionButton.disabled = currentSessionId === 'default';
 }
 
@@ -2515,6 +2563,27 @@ function renderMoveSolvesDialog() {
   elements.confirmMoveButton.disabled = selectedSolveIds.size === 0 || targetSessions.length === 0;
 }
 
+function renderMergeSessionDialog() {
+  if (!elements.mergeSessionDialog.open && currentSessionId === 'default') return;
+  const current = sessions.find((session) => session.id === currentSessionId);
+  const targetSessions = sessions.filter((session) => session.id !== currentSessionId);
+  const sourceCount = current ? solvesForSession(current.id).length : 0;
+  elements.mergeSessionMeta.textContent = !current || current.id === 'default'
+    ? '默认会话不可作为合并源'
+    : `${current.name} · ${sourceCount} 条成绩 · 合并后源会话会删除`;
+  elements.mergeSessionSelect.replaceChildren(
+    ...targetSessions.map((session) => {
+      const option = document.createElement('option');
+      option.value = session.id;
+      option.textContent = `${session.name} (${solvesForSession(session.id).length} 条)`;
+      return option;
+    }),
+  );
+  const canMerge = Boolean(current && current.id !== 'default' && targetSessions.length > 0);
+  elements.mergeSessionSelect.disabled = !canMerge;
+  elements.confirmMergeSessionButton.disabled = !canMerge;
+}
+
 function openManualEntryDialog() {
   const currentSession = sessions.find((session) => session.id === currentSessionId);
   elements.manualEntryMeta.textContent = currentSession?.name || currentSessionId;
@@ -2696,6 +2765,9 @@ function renderHistoryControls() {
   } else if (pendingImportSnapshot?.mode === 'move-solves') {
     elements.undoDeleteButton.textContent = '撤销移动';
     elements.undoDeleteButton.title = `恢复移动前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`;
+  } else if (pendingImportSnapshot?.mode === 'merge-session') {
+    elements.undoDeleteButton.textContent = '撤销合并';
+    elements.undoDeleteButton.title = `恢复合并前的数据：${pendingImportSnapshot.fileName || '会话合并'}`;
   } else if (pendingImportSnapshot?.mode === 'mark-penalty') {
     elements.undoDeleteButton.textContent = '撤销标记';
     elements.undoDeleteButton.title = `恢复标记前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`;

@@ -1,0 +1,271 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import {
+  createSession,
+  deleteSession,
+  deleteSolves,
+  formatTime,
+  loadHistory,
+  loadSolves,
+  moveSolves,
+  replaceSolves,
+  saveSolve,
+  summarizeSolves,
+  updateSolve,
+  updateSolves,
+} from '../src/history.js';
+
+test('formats solve times with millisecond precision', () => {
+  assert.equal(formatTime(1234.4), '1.234');
+  assert.equal(formatTime(61234.4), '1:01.234');
+});
+
+test('saves and summarizes solve history', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'train-timer-'));
+  const file = join(dir, 'solves.json');
+
+  await saveSolve({ durationMs: 10000 }, file);
+  await saveSolve({ durationMs: 12000 }, file);
+
+  const solves = await loadSolves(file);
+  assert.equal(solves.length, 2);
+  assert.deepEqual(summarizeSolves(solves), {
+    count: 2,
+    validCount: 2,
+    dnfCount: 0,
+    plus2Count: 0,
+    bluetoothSolveCount: 0,
+    best: 10000,
+    worst: 12000,
+    latest: 12000,
+    average: 11000,
+    standardDeviation: 1000,
+    averageBluetoothMoveCount: null,
+    averageBluetoothTps: null,
+    bestBluetoothTps: null,
+    ao5: null,
+    ao12: null,
+    ao50: null,
+    ao100: null,
+    bestAo5: null,
+    bestAo12: null,
+    bestAo50: null,
+    bestAo100: null,
+  });
+});
+
+test('updates penalties and deletes solves', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'train-timer-'));
+  const file = join(dir, 'solves.json');
+
+  await replaceSolves(
+    [
+      { id: 'a', durationMs: 10000, comment: 'PLL lockup' },
+      { id: 'b', durationMs: 12000 },
+    ],
+    file,
+  );
+
+  const update = await updateSolve('a', { penalty: '+2' }, file);
+  assert.equal(update.solve.effectiveDurationMs, 12000);
+  assert.equal(update.solve.comment, 'PLL lockup');
+
+  const timeUpdate = await updateSolve('a', { durationMs: 13000, duration: '13.000' }, file);
+  assert.equal(timeUpdate.solve.duration, '13.000');
+  assert.equal(timeUpdate.solve.effectiveDurationMs, 15000);
+
+  const afterDelete = await deleteSolves(['b'], file);
+  assert.deepEqual(afterDelete.map((solve) => solve.id), ['a']);
+  assert.deepEqual(summarizeSolves(afterDelete), {
+    count: 1,
+    validCount: 1,
+    dnfCount: 0,
+    plus2Count: 1,
+    bluetoothSolveCount: 0,
+    best: 15000,
+    worst: 15000,
+    latest: 15000,
+    average: 15000,
+    standardDeviation: 0,
+    averageBluetoothMoveCount: null,
+    averageBluetoothTps: null,
+    bestBluetoothTps: null,
+    ao5: null,
+    ao12: null,
+    ao50: null,
+    ao100: null,
+    bestAo5: null,
+    bestAo12: null,
+    bestAo50: null,
+    bestAo100: null,
+  });
+});
+
+test('moves selected solves to another session', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'train-timer-'));
+  const file = join(dir, 'solves.json');
+  const session = await createSession('OH', file);
+
+  await replaceSolves(
+    [
+      { id: 'a', durationMs: 10000, sessionId: 'default' },
+      { id: 'b', durationMs: 12000, sessionId: 'default' },
+    ],
+    file,
+    session.sessions,
+  );
+
+  const moved = await moveSolves(['b'], session.session.id, file);
+  assert.equal(moved.solves.find((solve) => solve.id === 'a').sessionId, 'default');
+  assert.equal(moved.solves.find((solve) => solve.id === 'b').sessionId, session.session.id);
+  assert.equal(moved.sessions.some((item) => item.id === session.session.id), true);
+});
+
+test('updates penalties for selected solves', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'train-timer-'));
+  const file = join(dir, 'solves.json');
+
+  await replaceSolves(
+    [
+      { id: 'a', durationMs: 10000, penalty: 'ok' },
+      { id: 'b', durationMs: 12000, penalty: 'ok' },
+      { id: 'c', durationMs: 15000, penalty: 'ok' },
+    ],
+    file,
+  );
+
+  const result = await updateSolves(['a', 'c'], { penalty: 'dnf' }, file);
+  assert.equal(result.solves.find((solve) => solve.id === 'a').effectiveDurationMs, null);
+  assert.equal(result.solves.find((solve) => solve.id === 'b').penalty, 'ok');
+  assert.equal(result.solves.find((solve) => solve.id === 'c').penalty, 'dnf');
+});
+
+test('normalizes and updates solve tags', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'train-timer-'));
+  const file = join(dir, 'solves.json');
+
+  await replaceSolves(
+    [
+      { id: 'a', durationMs: 10000, tags: 'PLL, 慢十字, PLL' },
+      { id: 'b', durationMs: 12000, timerSource: 'bluetooth', bluetoothMoves: 'R U2 F′ invalid' },
+    ],
+    file,
+  );
+
+  let history = await loadHistory(file);
+  assert.deepEqual(history.solves.find((solve) => solve.id === 'a').tags, ['PLL', '慢十字']);
+  assert.deepEqual(history.solves.find((solve) => solve.id === 'b').tags, []);
+  assert.equal(history.solves.find((solve) => solve.id === 'a').timerSource, 'manual');
+  assert.deepEqual(history.solves.find((solve) => solve.id === 'b').bluetoothMoves, ['R', 'U2', "F'"]);
+  assert.equal(history.solves.find((solve) => solve.id === 'b').bluetoothMoveCount, 3);
+  assert.equal(history.solves.find((solve) => solve.id === 'b').bluetoothTps, 0.25);
+
+  await updateSolves(['a', 'b'], { tags: ['失误', 'PLL', '失误'] }, file);
+  history = await loadHistory(file);
+  assert.deepEqual(history.solves.map((solve) => solve.tags), [['失误', 'PLL'], ['失误', 'PLL']]);
+});
+
+test('normalizes manually entered solve metadata', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'train-timer-'));
+  const file = join(dir, 'solves.json');
+
+  await saveSolve({
+    durationMs: 12345.6,
+    penalty: '+2',
+    comment: 'manual entry',
+    tags: ['PLL', '慢十字'],
+    timerSource: 'bluetooth',
+    bluetoothMoves: ['R', 'U2'],
+    bluetoothMoveCount: 2,
+    bluetoothTps: 0.162,
+    sessionId: 'manual-session',
+    scrambleSource: 'manual',
+  }, file);
+
+  const history = await loadHistory(file);
+  assert.equal(history.sessions.some((session) => session.id === 'manual-session'), true);
+  assert.deepEqual(history.solves[0], {
+    durationMs: 12346,
+    penalty: '+2',
+    comment: 'manual entry',
+    tags: ['PLL', '慢十字'],
+    timerSource: 'bluetooth',
+    bluetoothMoves: ['R', 'U2'],
+    bluetoothMoveCount: 2,
+    bluetoothTps: 0.162,
+    sessionId: 'manual-session',
+    scrambleSource: 'manual',
+    duration: '12.346',
+    effectiveDurationMs: 14346,
+    effectiveDuration: '14.346',
+  });
+});
+
+test('tracks sessions and filters deleted session solves', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'train-timer-'));
+  const file = join(dir, 'solves.json');
+
+  const created = await createSession('OH', file);
+  await saveSolve({ id: 'default-solve', durationMs: 10000, sessionId: 'default' }, file);
+  await saveSolve({ id: 'oh-solve', durationMs: 12000, sessionId: created.session.id }, file);
+
+  let history = await loadHistory(file);
+  assert.equal(history.sessions.length, 2);
+  assert.equal(history.solves.length, 2);
+
+  await deleteSession(created.session.id, file);
+  history = await loadHistory(file);
+  assert.deepEqual(history.solves.map((solve) => solve.id), ['default-solve']);
+});
+
+test('summarizes average of 5 and 12 with best and worst trimmed', () => {
+  const solves = [10, 11, 12, 13, 30, 9, 15, 16, 17, 18, 19, 40].map((seconds, index) => ({
+    id: String(index),
+    durationMs: seconds * 1000,
+  }));
+  const summary = summarizeSolves(solves);
+
+  assert.equal(summary.ao5, 18000);
+  assert.equal(summary.ao12, 16100);
+  assert.equal(summary.bestAo5, 12000);
+  assert.equal(summary.bestAo12, 16100);
+});
+
+test('summarizes bluetooth move count and TPS', () => {
+  const summary = summarizeSolves([
+    { durationMs: 2000, timerSource: 'bluetooth', bluetoothMoves: ['R', 'U2', "F'", 'D'] },
+    { durationMs: 3000, timerSource: 'bluetooth', bluetoothMoves: ['R', 'U'] },
+    { durationMs: 10000 },
+  ]);
+
+  assert.equal(summary.bluetoothSolveCount, 2);
+  assert.equal(summary.averageBluetoothMoveCount, 3);
+  assert.equal(summary.averageBluetoothTps, 1.3335);
+  assert.equal(summary.bestBluetoothTps, 2);
+});
+
+test('session summaries include extended stats and WCA-style DNF trimming', () => {
+  const oneDnfWindow = [10, 11, 12, 13, 14].map((seconds, index) => ({
+    id: String(index),
+    durationMs: seconds * 1000,
+    penalty: index === 4 ? 'dnf' : 'ok',
+  }));
+  const oneDnfSummary = summarizeSolves(oneDnfWindow);
+  assert.equal(oneDnfSummary.validCount, 4);
+  assert.equal(oneDnfSummary.dnfCount, 1);
+  assert.equal(oneDnfSummary.worst, 13000);
+  assert.equal(oneDnfSummary.standardDeviation, Math.sqrt(1250000));
+  assert.equal(oneDnfSummary.ao5, 12000);
+  assert.equal(oneDnfSummary.bestAo5, 12000);
+
+  const twoDnfSummary = summarizeSolves(oneDnfWindow.map((solve, index) => ({
+    ...solve,
+    penalty: index >= 3 ? 'dnf' : solve.penalty,
+  })));
+  assert.equal(twoDnfSummary.dnfCount, 2);
+  assert.equal(twoDnfSummary.ao5, null);
+  assert.equal(twoDnfSummary.bestAo5, null);
+});

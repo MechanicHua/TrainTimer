@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TrainTimer</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand-box">
+          <h1>TrainTimer</h1>
+          <p id="statusText">加载中...</p>
+        </div>
+        <div class="session-box">
+          <select id="sessionSelect" aria-label="当前会话"></select>
+          <button id="newSessionButton" type="button">新会话</button>
+          <button id="renameSessionButton" type="button">重命名</button>
+          <button id="deleteSessionButton" type="button">删会话</button>
+        </div>
+        <label class="toggle">
+          <input id="inspectionToggle" type="checkbox" />
+          <span>15s 观察</span>
+        </label>
+        <div class="bluetooth-box">
+          <button id="bluetoothButton" type="button">连接蓝牙魔方</button>
+          <button id="bluetoothLogButton" type="button">日志</button>
+          <span id="bluetoothBattery">电量 -</span>
+          <span id="bluetoothStatus">未连接</span>
+        </div>
+      </header>
+
+      <section class="timer-band" aria-label="计时器">
+        <div class="timer-layout">
+          <div class="timer-surface">
+            <div id="timerDisplay" class="timer-display">0.000</div>
+            <div id="timerHint" class="timer-hint">Space 准备</div>
+            <div class="action-row">
+              <button id="nextButton" type="button">下一把</button>
+              <button id="scrambleButton" type="button">新打乱</button>
+              <button id="lastOkButton" type="button">OK</button>
+              <button id="lastPlusTwoButton" type="button">+2</button>
+              <button id="lastDnfButton" type="button">DNF</button>
+              <button id="lastDeleteButton" type="button">删本把</button>
+            </div>
+          </div>
+
+          <aside class="stats-panel" aria-label="成绩统计">
+            <div>
+              <span>次数</span>
+              <strong id="countStat">0</strong>
+            </div>
+            <div>
+              <span>最佳</span>
+              <strong id="bestStat">-</strong>
+            </div>
+            <div>
+              <span>平均</span>
+              <strong id="averageStat">-</strong>
+            </div>
+            <div>
+              <span>ao5</span>
+              <strong id="ao5Stat">-</strong>
+            </div>
+            <div>
+              <span>ao12</span>
+              <strong id="ao12Stat">-</strong>
+            </div>
+            <div>
+              <span>最近</span>
+              <strong id="latestStat">-</strong>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="scramble-band" aria-label="打乱公式">
+        <div class="scramble-header">
+          <div>
+            <h2>打乱</h2>
+            <p id="scrambleSource">-</p>
+          </div>
+        </div>
+        <p id="scrambleText" class="scramble-text">加载中...</p>
+      </section>
+
+      <section class="preview-panel" aria-label="打乱结果预览">
+        <div class="section-heading">
+          <h2>打乱结果预览</h2>
+          <p>TNoodle</p>
+        </div>
+        <div id="cubeNet" class="cube-net" aria-label="魔方展开图"></div>
+      </section>
+
+      <section class="history-panel" aria-label="成绩管理">
+        <div class="section-heading">
+          <h2>成绩管理</h2>
+          <p id="historyPath">-</p>
+        </div>
+        <div class="manager-toolbar" aria-label="成绩管理工具">
+          <button id="manualEntryButton" type="button">录入成绩</button>
+          <button id="exportButton" type="button">导出</button>
+          <button id="importButton" type="button">导入</button>
+          <button id="statsDetailButton" type="button">统计详情</button>
+            <button id="manageSolvesButton" type="button">全部成绩</button>
+            <button id="markSelectedButton" type="button">标记选中</button>
+            <button id="tagSelectedButton" type="button">标签选中</button>
+            <button id="moveSelectedButton" type="button">移动选中</button>
+            <button id="deleteSelectedButton" type="button">删除选中</button>
+            <button id="undoDeleteButton" type="button">撤销删除</button>
+          <button id="clearAllButton" type="button">清空会话</button>
+          <input id="importFile" type="file" accept="application/json,.json,text/csv,.csv" hidden />
+        </div>
+        <div class="history-table">
+          <div class="history-head">
+            <span><input id="selectAllSolves" type="checkbox" aria-label="选择可见成绩" /></span>
+            <span>#</span>
+            <span>成绩</span>
+            <span>罚时</span>
+            <span>时间</span>
+            <span>操作</span>
+          </div>
+          <div id="historyRows" class="history-rows"></div>
+        </div>
+      </section>
+
+      <dialog id="allSolvesDialog" class="all-solves-dialog">
+        <form method="dialog" class="all-solves-inner">
+          <div class="solve-dialog-header">
+            <div>
+              <h2>全部成绩</h2>
+              <p id="allSolvesMeta">-</p>
+            </div>
+            <button type="submit" aria-label="关闭">关闭</button>
+          </div>
+          <div class="all-solves-toolbar">
+            <label class="all-solves-search">
+              <span>筛选</span>
+              <input id="allSolvesSearch" type="search" autocomplete="off" placeholder="成绩 / 罚时 / 备注 / 打乱" />
+            </label>
+            <label class="all-solves-sort">
+              <span>排序</span>
+              <select id="allSolvesSortBy">
+                <option value="createdAt">日期</option>
+                <option value="duration">成绩</option>
+                <option value="penalty">罚时</option>
+                <option value="comment">备注</option>
+              </select>
+            </label>
+            <label class="all-solves-sort">
+              <span>方向</span>
+              <select id="allSolvesSortDirection">
+                <option value="desc">降序</option>
+                <option value="asc">升序</option>
+              </select>
+            </label>
+            <button id="allMarkSelectedButton" type="button">标记选中</button>
+            <button id="allTagSelectedButton" type="button">标签选中</button>
+            <button id="allMoveSelectedButton" type="button">移动选中</button>
+            <button id="allDeleteSelectedButton" type="button">删除选中</button>
+          </div>
+          <div class="all-solves-table">
+            <div class="history-head">
+              <span><input id="selectAllSessionSolves" type="checkbox" aria-label="选择当前筛选成绩" /></span>
+              <span>#</span>
+              <span>成绩</span>
+              <span>罚时</span>
+              <span>时间</span>
+              <span>操作</span>
+            </div>
+            <div id="allSolvesRows"></div>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog id="statsDialog" class="stats-dialog">
+        <form method="dialog" class="stats-dialog-inner">
+          <div class="solve-dialog-header">
+            <div>
+              <h2>统计详情</h2>
+              <p id="statsDialogMeta">-</p>
+            </div>
+            <div class="dialog-header-actions">
+              <button id="copyStatsSummaryButton" type="button">复制统计</button>
+              <button type="submit" aria-label="关闭">关闭</button>
+            </div>
+          </div>
+          <div class="stats-chart-panel">
+            <canvas id="statsTrendChart" aria-label="当前会话成绩趋势"></canvas>
+            <p id="statsChartMeta">-</p>
+          </div>
+          <div id="statsDetailGrid" class="stats-detail-grid"></div>
+        </form>
+      </dialog>
+
+      <dialog id="exportDialog" class="export-dialog">
+        <form method="dialog" class="export-dialog-inner">
+          <div class="solve-dialog-header">
+            <div>
+              <h2>导出成绩</h2>
+              <p id="exportDialogMeta">-</p>
+            </div>
+            <button type="submit" aria-label="关闭">关闭</button>
+          </div>
+          <div class="export-grid">
+            <button id="exportSessionJsonButton" type="button">当前会话 JSON</button>
+            <button id="exportSessionCsvButton" type="button">当前会话 CSV</button>
+            <button id="exportSessionCstimerButton" type="button">当前会话 csTimer CSV</button>
+            <button id="exportSelectedJsonButton" type="button">选中 JSON</button>
+            <button id="exportSelectedCsvButton" type="button">选中 CSV</button>
+            <button id="exportSelectedCstimerButton" type="button">选中 csTimer CSV</button>
+            <button id="exportAllJsonButton" type="button">全部数据 JSON</button>
+            <button id="exportAllCsvButton" type="button">全部数据 CSV</button>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog id="markPenaltyDialog" class="move-dialog">
+        <form method="dialog" class="move-dialog-inner">
+          <div class="solve-dialog-header">
+            <div>
+              <h2>标记罚时</h2>
+              <p id="markPenaltyMeta">-</p>
+            </div>
+            <button type="submit" aria-label="关闭">关闭</button>
+          </div>
+          <label class="move-session-field">
+            <span>罚时</span>
+            <select id="markPenaltySelect">
+              <option value="ok">OK</option>
+              <option value="+2">+2</option>
+              <option value="dnf">DNF</option>
+            </select>
+          </label>
+          <div class="dialog-actions">
+            <button type="submit">取消</button>
+            <button id="confirmMarkPenaltyButton" type="button">标记</button>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog id="moveSolvesDialog" class="move-dialog">
+        <form method="dialog" class="move-dialog-inner">
+          <div class="solve-dialog-header">
+            <div>
+              <h2>移动成绩</h2>
+              <p id="moveSolvesMeta">-</p>
+            </div>
+            <button type="submit" aria-label="关闭">关闭</button>
+          </div>
+          <label class="move-session-field">
+            <span>目标会话</span>
+            <select id="moveSessionSelect"></select>
+          </label>
+          <div class="dialog-actions">
+            <button type="submit">取消</button>
+            <button id="confirmMoveButton" type="button">移动</button>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog id="tagSolvesDialog" class="move-dialog">
+        <form method="dialog" class="move-dialog-inner">
+          <div class="solve-dialog-header">
+            <div>
+              <h2>编辑标签</h2>
+              <p id="tagSolvesMeta">-</p>
+            </div>
+            <button type="submit" aria-label="关闭">关闭</button>
+          </div>
+          <label class="move-session-field">
+            <span>标签</span>
+            <input id="tagSolvesInput" type="text" autocomplete="off" placeholder="PLL, 慢十字, 失误" />
+          </label>
+          <div class="dialog-actions">
+            <button type="submit">取消</button>
+            <button id="confirmTagButton" type="button">保存标签</button>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog id="manualEntryDialog" class="manual-dialog">
+        <form method="dialog" class="manual-entry-inner">
+          <div class="solve-dialog-header">
+            <div>
+              <h2>录入成绩</h2>
+              <p id="manualEntryMeta">-</p>
+            </div>
+            <button type="submit" aria-label="关闭">关闭</button>
+          </div>
+          <div class="manual-entry-grid">
+            <label>
+              <span>成绩</span>
+              <input id="manualTimeInput" type="text" inputmode="decimal" autocomplete="off" placeholder="12.345 或 1:02.345" />
+            </label>
+            <label>
+              <span>罚时</span>
+              <select id="manualPenaltySelect">
+                <option value="ok">OK</option>
+                <option value="+2">+2</option>
+                <option value="dnf">DNF</option>
+              </select>
+            </label>
+            <label class="wide">
+              <span>打乱公式</span>
+              <textarea id="manualScrambleInput" rows="3" maxlength="420"></textarea>
+            </label>
+            <label class="wide">
+              <span>备注</span>
+              <textarea id="manualCommentInput" rows="2" maxlength="240" placeholder="可选"></textarea>
+            </label>
+            <label class="wide">
+              <span>标签</span>
+              <input id="manualTagsInput" type="text" autocomplete="off" placeholder="用逗号分隔，例如 PLL, 慢十字" />
+            </label>
+          </div>
+          <p id="manualEntryError" class="form-error" aria-live="polite"></p>
+          <div class="dialog-actions">
+            <button id="saveManualEntryButton" type="button">保存成绩</button>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog id="solveDialog" class="solve-dialog">
+        <form method="dialog" class="solve-dialog-inner">
+          <div class="solve-dialog-header">
+            <div>
+              <h2 id="solveDetailTitle">成绩详情</h2>
+              <p id="solveDetailMeta">-</p>
+            </div>
+            <button id="closeDialogButton" type="submit" aria-label="关闭">关闭</button>
+          </div>
+          <div class="solve-detail-grid">
+            <div>
+              <label for="solveDetailTimeInput">原始成绩</label>
+              <input id="solveDetailTimeInput" type="text" inputmode="decimal" autocomplete="off" placeholder="12.345 或 1:02.345" />
+              <p id="solveDetailError" class="form-error" aria-live="polite"></p>
+            </div>
+            <div>
+              <span>打乱公式</span>
+              <p id="solveDetailScramble" class="solve-detail-scramble">-</p>
+            </div>
+            <div>
+              <label for="solveDetailComment">备注</label>
+              <textarea id="solveDetailComment" rows="3" maxlength="240" placeholder="记录失误、PLL、手法问题等"></textarea>
+            </div>
+            <div>
+              <label for="solveDetailTagsInput">标签</label>
+              <input id="solveDetailTagsInput" type="text" autocomplete="off" placeholder="用逗号分隔，例如 PLL, 慢十字" />
+            </div>
+            <div class="wide">
+              <span id="solveDetailBluetoothStats">蓝牙转动</span>
+              <p id="solveDetailBluetoothMoves" class="solve-detail-scramble">-</p>
+            </div>
+          </div>
+          <div class="dialog-actions">
+            <button id="copyScrambleButton" type="button">复制打乱</button>
+            <button id="saveTimeButton" type="button">保存成绩</button>
+            <button id="saveTagsButton" type="button">保存标签</button>
+            <button id="saveCommentButton" type="button">保存备注</button>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog id="bluetoothLogDialog" class="bluetooth-log-dialog">
+        <form method="dialog" class="bluetooth-log-inner">
+          <div class="solve-dialog-header">
+            <div>
+              <h2>蓝牙日志</h2>
+              <p id="bluetoothLogMeta">-</p>
+            </div>
+            <button type="submit" aria-label="关闭">关闭</button>
+          </div>
+          <div class="bluetooth-log-toolbar">
+            <button id="copyBluetoothLogButton" type="button">复制日志</button>
+            <button id="clearBluetoothLogButton" type="button">清空</button>
+          </div>
+          <div class="bluetooth-move-strip">
+            <strong id="bluetoothMoveCount">0</strong>
+            <span id="bluetoothMoveRows">暂无解析出的转动</span>
+            <em id="bluetoothSolveStatus">未同步</em>
+          </div>
+          <div id="bluetoothLogRows" class="bluetooth-log-rows"></div>
+        </form>
+      </dialog>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

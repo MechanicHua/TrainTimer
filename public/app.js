@@ -267,6 +267,14 @@ window.__trainTimerDebug = {
     const packet = Uint8Array.from(bytes);
     processBluetoothPacket(uuid, new DataView(packet.buffer), '模拟蓝牙魔方');
   },
+  state() {
+    return {
+      appState,
+      bluetoothMoveCount: bluetoothMoves.length,
+      bluetoothMoves: bluetoothMoveSequence(),
+      bluetoothSolved,
+    };
+  },
 };
 
 document.addEventListener('keydown', handleKeyDown);
@@ -412,6 +420,7 @@ function startTiming() {
   finishSource = 'manual';
   appState = 'timing';
   startedAt = performance.now();
+  armBluetoothSolveTracking();
   tickTimer();
 }
 
@@ -1163,18 +1172,24 @@ function processBluetoothPacket(uuid, value, deviceName) {
     updateBluetoothBattery(decoded.batteryLevel, decoded.protocol || label);
   }
   const parsedMoves = decoded.moves;
+  const trackingMoves = parsedMoves.length > 0 && shouldTrackBluetoothMoves();
   elements.bluetoothStatus.title = `${uuid} ${hex}`;
-  if (parsedMoves.length > 0) addBluetoothMoves(parsedMoves, label);
-  if (parsedMoves.length > 0) finishTimingFromBluetooth();
+  if (trackingMoves) addBluetoothMoves(parsedMoves, label);
+  if (trackingMoves) finishTimingFromBluetooth();
   const statusDetail = parsedMoves.length > 0
-    ? `${parsedMoves.join(' ')} · ${bluetoothSolved ? '已复原' : '未复原'}`
+    ? `${parsedMoves.join(' ')} · ${trackingMoves ? (bluetoothSolved ? '已复原' : '未复原') : '等待计时'}`
     : (decoded.batteryLevel != null ? `电量 ${decoded.batteryLevel}%` : `${label} ${hex.slice(0, 17)}`);
   elements.bluetoothStatus.textContent = `${deviceName} · ${statusDetail}`;
-  addBluetoothLog(parsedMoves.length > 0 ? '数据/转动' : '数据', label, logBluetoothPacket(hex, decoded));
+  addBluetoothLog(
+    parsedMoves.length > 0 ? (trackingMoves ? '数据/转动' : '数据/预备转动') : '数据',
+    label,
+    logBluetoothPacket(hex, decoded, parsedMoves.length > 0 && !trackingMoves ? '等待计时' : ''),
+  );
   console.info('Bluetooth cube notification', {
     characteristic: uuid,
     value: hex,
     moves: parsedMoves,
+    tracked: trackingMoves,
   });
 }
 
@@ -1273,6 +1288,17 @@ async function copyBluetoothLog() {
   }
 }
 
+function armBluetoothSolveTracking() {
+  resetBluetoothSolveTracking();
+  if (bluetoothDevice?.gatt?.connected) {
+    addBluetoothLog('状态', '计时开始', '蓝牙转动从此刻计入本把成绩');
+  }
+}
+
+function shouldTrackBluetoothMoves() {
+  return appState === 'timing';
+}
+
 function addBluetoothMoves(moves, source) {
   const now = new Date();
   bluetoothMoves.unshift(...moves.map((move) => ({
@@ -1290,10 +1316,10 @@ function renderBluetoothMoves() {
   elements.bluetoothMoveCount.textContent = String(bluetoothMoves.length);
   elements.bluetoothSolveStatus.parentElement.classList.toggle('solved', bluetoothSolved);
   elements.bluetoothSolveStatus.textContent = bluetoothMoves.length === 0
-    ? '未同步'
+    ? (appState === 'timing' ? '未同步' : '等待计时')
     : (bluetoothSolved ? '已复原' : '未复原');
   if (bluetoothMoves.length === 0) {
-    elements.bluetoothMoveRows.textContent = '暂无解析出的转动';
+    elements.bluetoothMoveRows.textContent = appState === 'timing' ? '暂无解析出的转动' : '计时开始后记录转动';
     elements.bluetoothMoveRows.title = '';
     return;
   }
@@ -1324,7 +1350,7 @@ function isBluetoothSolved() {
   }
 }
 
-function logBluetoothPacket(hex, decoded) {
+function logBluetoothPacket(hex, decoded, ignoredReason = '') {
   const detail = [];
   detail.push(hex);
   if (decoded.protocol) detail.push(`protocol=${decoded.protocol}`);
@@ -1334,6 +1360,7 @@ function logBluetoothPacket(hex, decoded) {
   }
   if (decoded.text) detail.push(`text=${JSON.stringify(decoded.text)}`);
   if (decoded.moves.length > 0) detail.push(`moves=${decoded.moves.join(' ')}`);
+  if (ignoredReason) detail.push(`未计入=${ignoredReason}`);
   return detail.join(' · ');
 }
 

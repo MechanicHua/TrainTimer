@@ -543,14 +543,29 @@ async function loadScramble() {
 }
 
 async function updateSolvePenalty(id, penalty) {
-  const data = await requestJson(`/api/solves/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: { penalty },
-  });
-  solves = data.solves;
-  if (data.sessions) sessions = data.sessions;
-  renderSolveDialog();
-  render();
+  const solve = solves.find((item) => item.id === id);
+  const nextPenalty = ['ok', '+2', 'dnf'].includes(penalty) ? penalty : 'ok';
+  if (!solve || solve.penalty === nextPenalty) {
+    render();
+    return;
+  }
+
+  const snapshot = createHistorySnapshot('mark-penalty', `成绩 ${displaySolveTime(solve)}`);
+  try {
+    const data = await requestJson(`/api/solves/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: { penalty: nextPenalty },
+    });
+    solves = data.solves;
+    if (data.sessions) sessions = data.sessions;
+    pendingDeletedSolves = [];
+    pendingImportSnapshot = snapshot;
+    renderSolveDialog();
+    render();
+  } catch (error) {
+    alert(`标记失败：${error.message}`);
+    render();
+  }
 }
 
 async function updateLatestSolvePenalty(penalty) {

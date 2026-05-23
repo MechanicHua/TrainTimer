@@ -3,6 +3,7 @@ import { decodeBatteryLevel, decodeBluetoothMoves } from '/bluetooth-moves.js';
 import { createExportPayload, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv } from '/solves-export.js';
 import { parseSolveImport } from '/solves-import.js';
 import { buildStatsSummary } from '/stats-summary.js';
+import { buildSolveSummary } from '/solve-summary.js';
 
 const inspectionSeconds = 15;
 const inspectionDnfSeconds = 17;
@@ -136,6 +137,7 @@ const elements = {
   solveDetailTagsInput: document.querySelector('#solveDetailTagsInput'),
   solveDetailBluetoothStats: document.querySelector('#solveDetailBluetoothStats'),
   solveDetailBluetoothMoves: document.querySelector('#solveDetailBluetoothMoves'),
+  copySolveSummaryButton: document.querySelector('#copySolveSummaryButton'),
   copyScrambleButton: document.querySelector('#copyScrambleButton'),
   saveTimeButton: document.querySelector('#saveTimeButton'),
   saveTagsButton: document.querySelector('#saveTagsButton'),
@@ -226,6 +228,7 @@ elements.allDeleteSelectedButton.addEventListener('click', deleteSelectedSolves)
 elements.confirmMarkPenaltyButton.addEventListener('click', markSelectedPenalty);
 elements.confirmMoveButton.addEventListener('click', moveSelectedSolves);
 elements.confirmTagButton.addEventListener('click', saveSelectedTags);
+elements.copySolveSummaryButton.addEventListener('click', copySelectedSolveSummary);
 elements.copyScrambleButton.addEventListener('click', copySelectedScramble);
 elements.copyStatsSummaryButton.addEventListener('click', copyStatsSummary);
 elements.saveTimeButton.addEventListener('click', saveSolveTime);
@@ -926,6 +929,22 @@ async function copySelectedScramble() {
     }, 900);
   } catch {
     elements.solveDetailScramble.focus();
+  }
+}
+
+async function copySelectedSolveSummary() {
+  const solve = solves.find((item) => item.id === currentDetailSolveId);
+  if (!solve) return;
+  const session = sessions.find((item) => item.id === solve.sessionId);
+  const text = buildSolveSummary(solve, session?.name || solve.sessionId);
+  try {
+    await navigator.clipboard.writeText(text);
+    elements.copySolveSummaryButton.textContent = '已复制';
+    setTimeout(() => {
+      elements.copySolveSummaryButton.textContent = '复制详情';
+    }, 900);
+  } catch {
+    alert(text);
   }
 }
 

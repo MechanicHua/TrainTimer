@@ -628,12 +628,16 @@ async function moveSelectedSolves() {
   const ids = [...selectedSolveIds];
   const sessionId = elements.moveSessionSelect.value;
   if (ids.length === 0 || !sessionId) return;
+  const targetSession = sessions.find((session) => session.id === sessionId);
+  const snapshot = createHistorySnapshot('move-solves', `${ids.length} 条成绩到 ${targetSession?.name || '目标会话'}`);
 
   elements.confirmMoveButton.disabled = true;
   try {
     const data = await postJson('/api/solves/move', { ids, sessionId });
     solves = data.solves;
     if (data.sessions) sessions = data.sessions;
+    pendingDeletedSolves = [];
+    pendingImportSnapshot = snapshot;
     selectedSolveIds.clear();
     if (currentDetailSolveId && !filteredSolves().some((solve) => solve.id === currentDetailSolveId)) elements.solveDialog.close();
     elements.moveSolvesDialog.close();
@@ -754,13 +758,7 @@ async function importSolves() {
 async function confirmImport(mode) {
   if (!pendingImportPreview) return;
   const { fileName, parsed } = pendingImportPreview;
-  const snapshot = {
-    solves: solves.map(cloneHistoryItem),
-    sessions: sessions.map(cloneHistoryItem),
-    currentSessionId,
-    mode,
-    fileName,
-  };
+  const snapshot = createHistorySnapshot(mode, fileName);
 
   elements.appendImportButton.disabled = true;
   elements.replaceImportButton.disabled = true;
@@ -854,13 +852,7 @@ async function deleteCurrentSession() {
   if (currentSessionId === 'default') return;
   const current = sessions.find((session) => session.id === currentSessionId);
   if (!current || !confirm(`删除会话“${current.name}”及其中所有成绩？`)) return;
-  const snapshot = {
-    solves: solves.map(cloneHistoryItem),
-    sessions: sessions.map(cloneHistoryItem),
-    currentSessionId,
-    mode: 'delete-session',
-    fileName: current.name,
-  };
+  const snapshot = createHistorySnapshot('delete-session', current.name);
   const data = await requestJson(`/api/sessions/${encodeURIComponent(currentSessionId)}`, { method: 'DELETE' });
   sessions = data.sessions;
   solves = data.solves;
@@ -1993,13 +1985,16 @@ function renderHistoryControls() {
     ? '把选中成绩移动到其他会话'
     : '请先新建另一个会话';
   elements.deleteSelectedButton.disabled = selectedSolveIds.size === 0;
-  const canUndoImport = Boolean(pendingImportSnapshot);
+  const canUndoSnapshot = Boolean(pendingImportSnapshot);
   const canUndoDelete = pendingDeletedSolves.length > 0;
-  elements.undoDeleteButton.disabled = !canUndoImport && !canUndoDelete;
+  elements.undoDeleteButton.disabled = !canUndoSnapshot && !canUndoDelete;
   if (pendingImportSnapshot?.mode === 'delete-session') {
     elements.undoDeleteButton.textContent = '撤销删会话';
     elements.undoDeleteButton.title = `恢复会话：${pendingImportSnapshot.fileName || '已删除会话'}`;
-  } else if (canUndoImport) {
+  } else if (pendingImportSnapshot?.mode === 'move-solves') {
+    elements.undoDeleteButton.textContent = '撤销移动';
+    elements.undoDeleteButton.title = `恢复移动前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`;
+  } else if (canUndoSnapshot) {
     elements.undoDeleteButton.textContent = '撤销导入';
     elements.undoDeleteButton.title = `恢复导入前的数据：${pendingImportSnapshot.fileName || '导入文件'}`;
   } else {
@@ -2126,6 +2121,16 @@ function downloadTextFile(filename, content, type) {
 function stageDeletedSolves(deletedSolves) {
   pendingDeletedSolves = deletedSolves.map((solve) => ({ ...solve }));
   pendingImportSnapshot = null;
+}
+
+function createHistorySnapshot(mode, fileName) {
+  return {
+    solves: solves.map(cloneHistoryItem),
+    sessions: sessions.map(cloneHistoryItem),
+    currentSessionId,
+    mode,
+    fileName,
+  };
 }
 
 function cloneHistoryItem(item) {

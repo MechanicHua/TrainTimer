@@ -1,6 +1,6 @@
 import { cubeStateFromScramble, isSolvedFaces } from '/cube-state.js';
 import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from '/bluetooth-moves.js';
-import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv } from '/solves-export.js';
+import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv, solvesToCstimerJson } from '/solves-export.js';
 import { parseSolveImport } from '/solves-import.js';
 import { buildStatsSummary } from '/stats-summary.js';
 import { buildSolveSummary } from '/solve-summary.js';
@@ -116,6 +116,7 @@ const elements = {
   allExportJsonButton: document.querySelector('#allExportJsonButton'),
   allExportCsvButton: document.querySelector('#allExportCsvButton'),
   allExportCstimerButton: document.querySelector('#allExportCstimerButton'),
+  allExportCstimerJsonButton: document.querySelector('#allExportCstimerJsonButton'),
   statsDialog: document.querySelector('#statsDialog'),
   statsDialogMeta: document.querySelector('#statsDialogMeta'),
   statsTrendChart: document.querySelector('#statsTrendChart'),
@@ -128,12 +129,15 @@ const elements = {
   exportSessionJsonButton: document.querySelector('#exportSessionJsonButton'),
   exportSessionCsvButton: document.querySelector('#exportSessionCsvButton'),
   exportSessionCstimerButton: document.querySelector('#exportSessionCstimerButton'),
+  exportSessionCstimerJsonButton: document.querySelector('#exportSessionCstimerJsonButton'),
   exportSelectedJsonButton: document.querySelector('#exportSelectedJsonButton'),
   exportSelectedCsvButton: document.querySelector('#exportSelectedCsvButton'),
   exportSelectedCstimerButton: document.querySelector('#exportSelectedCstimerButton'),
+  exportSelectedCstimerJsonButton: document.querySelector('#exportSelectedCstimerJsonButton'),
   exportAllJsonButton: document.querySelector('#exportAllJsonButton'),
   exportAllCsvButton: document.querySelector('#exportAllCsvButton'),
   exportAllCstimerButton: document.querySelector('#exportAllCstimerButton'),
+  exportAllCstimerJsonButton: document.querySelector('#exportAllCstimerJsonButton'),
   importDialog: document.querySelector('#importDialog'),
   importDialogMeta: document.querySelector('#importDialogMeta'),
   importPreviewList: document.querySelector('#importPreviewList'),
@@ -254,12 +258,15 @@ elements.exportButton.addEventListener('click', openExportDialog);
 elements.exportSessionJsonButton.addEventListener('click', () => exportSolves('json', 'session'));
 elements.exportSessionCsvButton.addEventListener('click', () => exportSolves('csv', 'session'));
 elements.exportSessionCstimerButton.addEventListener('click', () => exportSolves('cstimer', 'session'));
+elements.exportSessionCstimerJsonButton.addEventListener('click', () => exportSolves('cstimer-json', 'session'));
 elements.exportSelectedJsonButton.addEventListener('click', () => exportSelectedSolves('json'));
 elements.exportSelectedCsvButton.addEventListener('click', () => exportSelectedSolves('csv'));
 elements.exportSelectedCstimerButton.addEventListener('click', () => exportSelectedSolves('cstimer'));
+elements.exportSelectedCstimerJsonButton.addEventListener('click', () => exportSelectedSolves('cstimer-json'));
 elements.exportAllJsonButton.addEventListener('click', () => exportSolves('json', 'all'));
 elements.exportAllCsvButton.addEventListener('click', () => exportSolves('csv', 'all'));
 elements.exportAllCstimerButton.addEventListener('click', () => exportSolves('cstimer', 'all'));
+elements.exportAllCstimerJsonButton.addEventListener('click', () => exportSolves('cstimer-json', 'all'));
 elements.importButton.addEventListener('click', () => elements.importFile.click());
 elements.importFile.addEventListener('change', importSolves);
 elements.appendImportButton.addEventListener('click', () => confirmImport('append'));
@@ -279,6 +286,7 @@ elements.allDeleteSelectedButton.addEventListener('click', deleteSelectedSolves)
 elements.allExportJsonButton.addEventListener('click', () => exportListedSolves('json'));
 elements.allExportCsvButton.addEventListener('click', () => exportListedSolves('csv'));
 elements.allExportCstimerButton.addEventListener('click', () => exportListedSolves('cstimer'));
+elements.allExportCstimerJsonButton.addEventListener('click', () => exportListedSolves('cstimer-json'));
 elements.confirmMarkPenaltyButton.addEventListener('click', markSelectedPenalty);
 elements.confirmMoveButton.addEventListener('click', moveSelectedSolves);
 elements.confirmTagButton.addEventListener('click', saveSelectedTags);
@@ -799,6 +807,15 @@ function downloadSolvesExport(format, scope, suffix, exportHistory) {
       `traintimer-cstimer-${suffix}.csv`,
       solvesToCstimerCsv(exportHistory.solves),
       'text/csv;charset=utf-8',
+    );
+    return;
+  }
+
+  if (format === 'cstimer-json') {
+    downloadTextFile(
+      `traintimer-cstimer-${suffix}.json`,
+      solvesToCstimerJson(exportHistory.solves, exportHistory.sessions),
+      'application/json;charset=utf-8',
     );
     return;
   }
@@ -2114,12 +2131,15 @@ function renderExportDialog() {
   elements.exportSessionJsonButton.disabled = sessionCount === 0;
   elements.exportSessionCsvButton.disabled = sessionCount === 0;
   elements.exportSessionCstimerButton.disabled = sessionCount === 0;
+  elements.exportSessionCstimerJsonButton.disabled = sessionCount === 0;
   elements.exportSelectedJsonButton.disabled = selectedSolveIds.size === 0;
   elements.exportSelectedCsvButton.disabled = selectedSolveIds.size === 0;
   elements.exportSelectedCstimerButton.disabled = selectedSolveIds.size === 0;
+  elements.exportSelectedCstimerJsonButton.disabled = selectedSolveIds.size === 0;
   elements.exportAllJsonButton.disabled = solves.length === 0;
   elements.exportAllCsvButton.disabled = solves.length === 0;
   elements.exportAllCstimerButton.disabled = solves.length === 0;
+  elements.exportAllCstimerJsonButton.disabled = solves.length === 0;
 }
 
 function renderImportDialog() {
@@ -2437,6 +2457,7 @@ function renderAllSolvesControls() {
   elements.allExportJsonButton.disabled = sessionIds.length === 0;
   elements.allExportCsvButton.disabled = sessionIds.length === 0;
   elements.allExportCstimerButton.disabled = sessionIds.length === 0;
+  elements.allExportCstimerJsonButton.disabled = sessionIds.length === 0;
   elements.selectAllSessionSolves.checked = sessionIds.length > 0 && sessionIds.every((id) => selectedSolveIds.has(id));
   elements.selectAllSessionSolves.indeterminate = sessionIds.some((id) => selectedSolveIds.has(id)) && !elements.selectAllSessionSolves.checked;
 }

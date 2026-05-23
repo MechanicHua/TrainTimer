@@ -97,6 +97,33 @@ export function solvesToCstimerCsv(solves) {
   return `${rows.map((row) => row.map((value) => csvCell(value, ';')).join(';')).join('\n')}\n`;
 }
 
+export function solvesToCstimerJson(solves, sessions = []) {
+  const exportSessions = sessionsForSolves(solves, sessions);
+  const sessionData = {};
+  const output = {};
+
+  exportSessions.forEach((session, index) => {
+    const sessionNumber = index + 1;
+    const sessionSolves = solves
+      .filter((solve) => (solve.sessionId || 'default') === session.id)
+      .map((solve) => [
+        [cstimerPenaltyFlag(solve), Math.max(0, Math.round(Number(solve.durationMs) || 0))],
+        solve.scramble || '',
+        solve.comment || '',
+        cstimerTimestamp(solve.createdAt),
+      ]);
+
+    sessionData[String(sessionNumber)] = { name: session.name || session.id || `Session ${sessionNumber}` };
+    output[`session${sessionNumber}`] = JSON.stringify(sessionSolves);
+  });
+
+  output.properties = JSON.stringify({
+    sessionData: JSON.stringify(sessionData),
+  });
+
+  return `${JSON.stringify(output, null, 2)}\n`;
+}
+
 export function safeExportFilename(value) {
   return String(value).replaceAll(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'session';
 }
@@ -126,6 +153,17 @@ function cstimerDate(value) {
     `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
     `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`,
   ].join(' ');
+}
+
+function cstimerTimestamp(value) {
+  const date = new Date(value || Date.now());
+  return Math.floor((Number.isNaN(date.getTime()) ? Date.now() : date.getTime()) / 1000);
+}
+
+function cstimerPenaltyFlag(solve) {
+  if (solve.penalty === 'dnf') return -1;
+  if (solve.penalty === '+2') return 2000;
+  return 0;
 }
 
 function formatMilliseconds(value) {

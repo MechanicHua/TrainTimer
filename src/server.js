@@ -21,7 +21,7 @@ import {
   updateSolve,
   updateSolves,
 } from './history.js';
-import { createExportPayload, safeExportFilename, scopedExportHistory, solvesToCsv, solvesToCstimerCsv } from './solves-export.js';
+import { createExportPayload, safeExportFilename, scopedExportHistory, solvesToCsv, solvesToCstimerCsv, solvesToCstimerJson } from './solves-export.js';
 
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const publicRoot = join(projectRoot, 'public');
@@ -166,6 +166,13 @@ async function handleApi(request, response) {
     if (format === 'cstimer') {
       sendText(response, 200, solvesToCstimerCsv(exportHistory.solves), 'text/csv; charset=utf-8', {
         'Content-Disposition': `attachment; filename="traintimer-cstimer${suffix}.csv"`,
+      });
+      return;
+    }
+
+    if (format === 'cstimer-json') {
+      sendText(response, 200, solvesToCstimerJson(exportHistory.solves, exportHistory.sessions), 'application/json; charset=utf-8', {
+        'Content-Disposition': `attachment; filename="traintimer-cstimer${suffix}.json"`,
       });
       return;
     }

@@ -8,6 +8,7 @@ import {
   selectedExportHistory,
   solvesToCsv,
   solvesToCstimerCsv,
+  solvesToCstimerJson,
 } from '../src/solves-export.js';
 
 const sessions = [
@@ -92,6 +93,34 @@ test('exports DNF solves with csTimer raw time wrapper', () => {
   const csv = solvesToCstimerCsv([{ ...solves[0], penalty: 'dnf' }]);
 
   assert.match(csv, /DNF\(10\.000\)/);
+});
+
+test('exports csTimer JSON backups with sessions and penalties', () => {
+  const json = solvesToCstimerJson(solves, sessions);
+  const payload = JSON.parse(json);
+  const properties = JSON.parse(payload.properties);
+  const sessionData = JSON.parse(properties.sessionData);
+  const session1 = JSON.parse(payload.session1);
+  const session2 = JSON.parse(payload.session2);
+
+  assert.deepEqual(sessionData, {
+    1: { name: 'Default' },
+    2: { name: 'One Handed' },
+  });
+  assert.deepEqual(session1, [
+    [[0, 10000], 'R U', 'normal', 1779530400],
+  ]);
+  assert.deepEqual(session2, [
+    [[2000, 12000], 'F, R', 'PLL "lockup"', 1779530460],
+  ]);
+});
+
+test('exports DNF solves in csTimer JSON backups', () => {
+  const payload = JSON.parse(solvesToCstimerJson([{ ...solves[0], penalty: 'dnf' }], sessions));
+  const session1 = JSON.parse(payload.session1);
+
+  assert.equal(session1[0][0][0], -1);
+  assert.equal(session1[0][0][1], 10000);
 });
 
 test('builds JSON export metadata', () => {

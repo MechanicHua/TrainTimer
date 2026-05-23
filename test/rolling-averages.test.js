@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { averageOfLast, bestAverageOf, effectiveDurationMs, rollingAverageAt } from '../src/rolling-averages.js';
+import { averageOfLast, bestAverageOf, bestMeanOf, effectiveDurationMs, meanOfLast, rollingAverageAt } from '../src/rolling-averages.js';
 
 const solves = [10, 11, 12, 13, 14, 15].map((seconds, index) => ({
   id: String(index + 1),
@@ -33,6 +33,21 @@ test('computes current and best averages with +2 penalties', () => {
 
   assert.equal(averageOfLast(penalized, 5), 41000 / 3);
   assert.equal(bestAverageOf(penalized, 5), 38000 / 3);
+});
+
+test('computes current and best mean of three without trimming', () => {
+  const penalized = solves.map((solve, index) => (
+    index === 4 ? { ...solve, penalty: '+2' } : solve
+  ));
+
+  assert.equal(meanOfLast(penalized, 3), 44000 / 3);
+  assert.equal(bestMeanOf(penalized, 3), 11000);
+
+  const withDnf = penalized.map((solve, index) => (
+    index === 5 ? { ...solve, penalty: 'dnf' } : solve
+  ));
+  assert.equal(meanOfLast(withDnf, 3), null);
+  assert.equal(bestMeanOf(withDnf, 3), 11000);
 });
 
 test('falls back to duration when effective duration is absent', () => {

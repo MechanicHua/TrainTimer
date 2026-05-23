@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
-import { averageOfLast, bestAverageOf } from './rolling-averages.js';
+import { averageOfLast, bestAverageOf, bestMeanOf, meanOfLast } from './rolling-averages.js';
 
 const defaultHistoryPath = join(homedir(), '.train-timer', 'solves.json');
 const defaultSession = { id: 'default', name: '默认' };
@@ -224,10 +224,12 @@ export function summarizeSolves(solves) {
       averageBluetoothMoveCount: null,
       averageBluetoothTps: null,
       bestBluetoothTps: null,
+      mo3: null,
       ao5: null,
       ao12: null,
       ao50: null,
       ao100: null,
+      bestMo3: null,
       bestAo5: null,
       bestAo12: null,
       bestAo50: null,
@@ -259,10 +261,12 @@ export function summarizeSolves(solves) {
       averageBluetoothMoveCount: bluetoothStats.averageBluetoothMoveCount,
       averageBluetoothTps: bluetoothStats.averageBluetoothTps,
       bestBluetoothTps: bluetoothStats.bestBluetoothTps,
+      mo3: null,
       ao5: null,
       ao12: null,
       ao50: null,
       ao100: null,
+      bestMo3: null,
       bestAo5: null,
       bestAo12: null,
       bestAo50: null,
@@ -285,10 +289,12 @@ export function summarizeSolves(solves) {
     latest: latestSolve?.effectiveDurationMs ?? null,
     average,
     standardDeviation: Math.sqrt(variance),
+    mo3: meanOfLast(normalized, 3),
     ao5: averageOfLast(normalized, 5),
     ao12: averageOfLast(normalized, 12),
     ao50: averageOfLast(normalized, 50),
     ao100: averageOfLast(normalized, 100),
+    bestMo3: bestMeanOf(normalized, 3),
     bestAo5: bestAverageOf(normalized, 5),
     bestAo12: bestAverageOf(normalized, 12),
     bestAo50: bestAverageOf(normalized, 50),

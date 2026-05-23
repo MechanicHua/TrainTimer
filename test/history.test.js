@@ -46,10 +46,12 @@ test('saves and summarizes solve history', async () => {
     averageBluetoothMoveCount: null,
     averageBluetoothTps: null,
     bestBluetoothTps: null,
+    mo3: null,
     ao5: null,
     ao12: null,
     ao50: null,
     ao100: null,
+    bestMo3: null,
     bestAo5: null,
     bestAo12: null,
     bestAo50: null,
@@ -93,10 +95,12 @@ test('updates penalties and deletes solves', async () => {
     averageBluetoothMoveCount: null,
     averageBluetoothTps: null,
     bestBluetoothTps: null,
+    mo3: null,
     ao5: null,
     ao12: null,
     ao50: null,
     ao100: null,
+    bestMo3: null,
     bestAo5: null,
     bestAo12: null,
     bestAo50: null,
@@ -256,8 +260,10 @@ test('summarizes average of 5 and 12 with best and worst trimmed', () => {
   }));
   const summary = summarizeSolves(solves);
 
+  assert.equal(summary.mo3, 77000 / 3);
   assert.equal(summary.ao5, 18000);
   assert.equal(summary.ao12, 16100);
+  assert.equal(summary.bestMo3, 11000);
   assert.equal(summary.bestAo5, 12000);
   assert.equal(summary.bestAo12, 16100);
 });
@@ -286,6 +292,8 @@ test('session summaries include extended stats and WCA-style DNF trimming', () =
   assert.equal(oneDnfSummary.dnfCount, 1);
   assert.equal(oneDnfSummary.worst, 13000);
   assert.equal(oneDnfSummary.standardDeviation, Math.sqrt(1250000));
+  assert.equal(oneDnfSummary.mo3, null);
+  assert.equal(oneDnfSummary.bestMo3, 11000);
   assert.equal(oneDnfSummary.ao5, 12000);
   assert.equal(oneDnfSummary.bestAo5, 12000);
 

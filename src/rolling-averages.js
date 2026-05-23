@@ -18,6 +18,21 @@ export function bestAverageOf(solves, size) {
   return averages.length === 0 ? null : Math.min(...averages);
 }
 
+export function meanOfLast(solves, size) {
+  if (solves.length < size) return null;
+  return meanOfWindow(solves.slice(-size));
+}
+
+export function bestMeanOf(solves, size) {
+  if (solves.length < size) return null;
+  const means = [];
+  for (let index = 0; index <= solves.length - size; index += 1) {
+    const mean = meanOfWindow(solves.slice(index, index + size));
+    if (mean != null) means.push(mean);
+  }
+  return means.length === 0 ? null : Math.min(...means);
+}
+
 export function averageOfWindow(solves) {
   const values = solves.map(effectiveDurationMs);
   if (values.filter((value) => value == null).length > 1) return null;
@@ -25,6 +40,12 @@ export function averageOfWindow(solves) {
   const trimmed = sorted.slice(1, -1);
   if (trimmed.some((value) => value == null)) return null;
   return trimmed.reduce((sum, value) => sum + value, 0) / trimmed.length;
+}
+
+export function meanOfWindow(solves) {
+  const values = solves.map(effectiveDurationMs);
+  if (values.some((value) => value == null)) return null;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 export function effectiveDurationMs(solve) {

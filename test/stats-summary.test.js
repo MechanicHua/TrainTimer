@@ -17,8 +17,10 @@ test('builds copyable session statistics summary', () => {
       averageBluetoothMoveCount: 12.5,
       averageBluetoothTps: 3.4567,
       bestBluetoothTps: 4.25,
+      mo3: 11900,
       ao5: 12000,
       ao12: null,
+      bestMo3: 11200,
       bestAo5: 11500,
       bestAo12: null,
     },
@@ -36,6 +38,8 @@ test('builds copyable session statistics summary', () => {
   assert.match(text, /平均转动: 12\.5/);
   assert.match(text, /平均 TPS: 3\.457/);
   assert.match(text, /最佳 TPS: 4\.250/);
+  assert.match(text, /mo3: 11\.900/);
+  assert.match(text, /最佳 mo3: 11\.200/);
   assert.match(text, /最佳 ao5: 11\.500/);
   assert.match(text, /最近 3: 10\.000 \/ 13\.000\+ \/ DNF/);
 });

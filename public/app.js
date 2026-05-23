@@ -64,8 +64,10 @@ const elements = {
   countStat: document.querySelector('#countStat'),
   bestStat: document.querySelector('#bestStat'),
   averageStat: document.querySelector('#averageStat'),
+  mo3Stat: document.querySelector('#mo3Stat'),
   ao5Stat: document.querySelector('#ao5Stat'),
   ao12Stat: document.querySelector('#ao12Stat'),
+  bestMo3Stat: document.querySelector('#bestMo3Stat'),
   bestAo5Stat: document.querySelector('#bestAo5Stat'),
   bestAo12Stat: document.querySelector('#bestAo12Stat'),
   latestStat: document.querySelector('#latestStat'),
@@ -1642,8 +1644,10 @@ function renderStats() {
   elements.countStat.textContent = sessionSummary.count ?? 0;
   elements.bestStat.textContent = sessionSummary.best == null ? '-' : formatTime(sessionSummary.best);
   elements.averageStat.textContent = sessionSummary.average == null ? '-' : formatTime(sessionSummary.average);
+  elements.mo3Stat.textContent = sessionSummary.mo3 == null ? '-' : formatTime(sessionSummary.mo3);
   elements.ao5Stat.textContent = sessionSummary.ao5 == null ? '-' : formatTime(sessionSummary.ao5);
   elements.ao12Stat.textContent = sessionSummary.ao12 == null ? '-' : formatTime(sessionSummary.ao12);
+  elements.bestMo3Stat.textContent = sessionSummary.bestMo3 == null ? '-' : formatTime(sessionSummary.bestMo3);
   elements.bestAo5Stat.textContent = sessionSummary.bestAo5 == null ? '-' : formatTime(sessionSummary.bestAo5);
   elements.bestAo12Stat.textContent = sessionSummary.bestAo12 == null ? '-' : formatTime(sessionSummary.bestAo12);
   elements.latestStat.textContent = sessionSummary.latest == null ? '-' : formatTime(sessionSummary.latest);
@@ -1672,10 +1676,12 @@ function renderStatsDialog() {
     ['平均 TPS', numberOrDash(summary.averageBluetoothTps, 3)],
     ['最佳 TPS', numberOrDash(summary.bestBluetoothTps, 3)],
     ['最近', timeOrDash(summary.latest)],
+    ['mo3', timeOrDash(summary.mo3)],
     ['ao5', timeOrDash(summary.ao5)],
     ['ao12', timeOrDash(summary.ao12)],
     ['ao50', timeOrDash(summary.ao50)],
     ['ao100', timeOrDash(summary.ao100)],
+    ['最佳 mo3', timeOrDash(summary.bestMo3)],
     ['最佳 ao5', timeOrDash(summary.bestAo5)],
     ['最佳 ao12', timeOrDash(summary.bestAo12)],
     ['最佳 ao50', timeOrDash(summary.bestAo50)],
@@ -2344,10 +2350,12 @@ function summarizeSolves(inputSolves) {
       averageBluetoothTps: null,
       bestBluetoothTps: null,
       latest: null,
+      mo3: null,
       ao5: null,
       ao12: null,
       ao50: null,
       ao100: null,
+      bestMo3: null,
       bestAo5: null,
       bestAo12: null,
       bestAo50: null,
@@ -2374,10 +2382,12 @@ function summarizeSolves(inputSolves) {
       averageBluetoothTps: bluetoothStats.averageBluetoothTps,
       bestBluetoothTps: bluetoothStats.bestBluetoothTps,
       latest,
+      mo3: null,
       ao5: null,
       ao12: null,
       ao50: null,
       ao100: null,
+      bestMo3: null,
       bestAo5: null,
       bestAo12: null,
       bestAo50: null,
@@ -2397,10 +2407,12 @@ function summarizeSolves(inputSolves) {
     average,
     standardDeviation: Math.sqrt(variance),
     latest,
+    mo3: meanOfLast(inputSolves, 3),
     ao5: averageOfLast(inputSolves, 5),
     ao12: averageOfLast(inputSolves, 12),
     ao50: averageOfLast(inputSolves, 50),
     ao100: averageOfLast(inputSolves, 100),
+    bestMo3: bestMeanOf(inputSolves, 3),
     bestAo5: bestAverageOf(inputSolves, 5),
     bestAo12: bestAverageOf(inputSolves, 12),
     bestAo50: bestAverageOf(inputSolves, 50),
@@ -2439,6 +2451,21 @@ function bestAverageOf(inputSolves, size) {
   return averages.length === 0 ? null : Math.min(...averages);
 }
 
+function meanOfLast(inputSolves, size) {
+  if (inputSolves.length < size) return null;
+  return meanOfWindow(inputSolves.slice(-size));
+}
+
+function bestMeanOf(inputSolves, size) {
+  if (inputSolves.length < size) return null;
+  const means = [];
+  for (let index = 0; index <= inputSolves.length - size; index += 1) {
+    const mean = meanOfWindow(inputSolves.slice(index, index + size));
+    if (mean != null) means.push(mean);
+  }
+  return means.length === 0 ? null : Math.min(...means);
+}
+
 function averageOfWindow(inputSolves) {
   const values = inputSolves.map(effectiveDurationMs);
   if (values.filter((value) => value == null).length > 1) return null;
@@ -2446,6 +2473,12 @@ function averageOfWindow(inputSolves) {
   const trimmed = sorted.slice(1, -1);
   if (trimmed.some((value) => value == null)) return null;
   return trimmed.reduce((sum, value) => sum + value, 0) / trimmed.length;
+}
+
+function meanOfWindow(inputSolves) {
+  const values = inputSolves.map(effectiveDurationMs);
+  if (values.some((value) => value == null)) return null;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 function effectiveDurationMs(solve) {

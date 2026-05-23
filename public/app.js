@@ -3086,6 +3086,7 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
   if (recordTitle) row.title = recordTitle;
   const sessionLabel = options.showSession ? sessionNameForSolve(solve) : '';
   const createdAtText = new Date(solve.createdAt).toLocaleString();
+  const metadataText = solveRowMetadataText(solve);
   row.innerHTML = `
         <span><input class="solve-check" data-id="${solve.id}" type="checkbox" ${selectedSolveIds.has(solve.id) ? 'checked' : ''} aria-label="选择第 ${solveNumber} 条成绩" /></span>
         <span>${solveNumber}</span>
@@ -3106,9 +3107,12 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
             <option value="dnf" ${solve.penalty === 'dnf' ? 'selected' : ''}>DNF</option>
           </select>
         </span>
-        <span class="row-date" title="${escapeHtml([sessionLabel, createdAtText].filter(Boolean).join(' · '))}">
-          ${sessionLabel ? `<small>${escapeHtml(sessionLabel)}</small>` : ''}
-          <span>${escapeHtml(createdAtText)}</span>
+        <span class="row-date" title="${escapeHtml([sessionLabel, createdAtText, metadataText].filter(Boolean).join(' · '))}">
+          <span class="row-date-main">
+            ${sessionLabel ? `<small>${escapeHtml(sessionLabel)}</small>` : ''}
+            <span>${escapeHtml(createdAtText)}</span>
+          </span>
+          ${metadataText ? `<span class="row-meta">${escapeHtml(metadataText)}</span>` : ''}
         </span>
         <span class="row-actions">
           <button data-detail-id="${solve.id}" type="button">详情</button>
@@ -3116,6 +3120,19 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
         </span>
       `;
   return row;
+}
+
+function solveRowMetadataText(solve) {
+  const tags = Array.isArray(solve.tags) ? solve.tags.filter(Boolean) : [];
+  const shownTags = tags.slice(0, 2).join(', ');
+  const tagText = tags.length > 2 ? `${shownTags} +${tags.length - 2}` : shownTags;
+  const comment = String(solve.comment || '').trim();
+  return [
+    puzzleLabel(solve.scramblePuzzle || 'three'),
+    solve.timerSource === 'bluetooth' ? '蓝牙停表' : '',
+    tagText,
+    comment ? `备注 ${comment}` : '',
+  ].filter(Boolean).join(' · ');
 }
 
 function renderAverageButton(solveId, solveNumber, size, value, marks) {

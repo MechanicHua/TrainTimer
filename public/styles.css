@@ -627,7 +627,7 @@ body[data-state="timing"] .timer-display {
   grid-template-columns: 20px 24px minmax(70px, 0.95fr) minmax(58px, 0.7fr) minmax(58px, 0.7fr) 54px minmax(58px, 1fr) 60px;
   gap: 4px;
   align-items: center;
-  min-height: 36px;
+  min-height: 40px;
   padding: 0 7px;
 }
 
@@ -708,7 +708,16 @@ body[data-state="timing"] .timer-display {
 }
 
 .history-row .row-date {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.history-row .row-date-main {
   display: inline-flex;
+  min-width: 0;
   align-items: center;
   gap: 5px;
 }
@@ -723,6 +732,17 @@ body[data-state="timing"] .timer-display {
   color: var(--accent);
   font-size: 10px;
   font-weight: 760;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-row .row-meta {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 620;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

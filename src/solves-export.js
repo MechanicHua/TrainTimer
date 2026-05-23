@@ -107,7 +107,9 @@ export function solvesToCstimerJson(solves, sessions = []) {
   exportSessions.forEach((session, index) => {
     const sessionNumber = index + 1;
     const sessionSolves = solves
-      .filter((solve) => (solve.sessionId || 'default') === session.id)
+      .filter((solve) => (solve.sessionId || 'default') === session.id);
+    const scramblePuzzle = session.scramblePuzzle || sessionSolves.find((solve) => solve.scramblePuzzle)?.scramblePuzzle || 'three';
+    const cstimerSolves = sessionSolves
       .map((solve) => [
         [cstimerPenaltyFlag(solve), Math.max(0, Math.round(Number(solve.durationMs) || 0))],
         solve.scramble || '',
@@ -115,8 +117,12 @@ export function solvesToCstimerJson(solves, sessions = []) {
         cstimerTimestamp(solve.createdAt),
       ]);
 
-    sessionData[String(sessionNumber)] = { name: session.name || session.id || `Session ${sessionNumber}` };
-    output[`session${sessionNumber}`] = JSON.stringify(sessionSolves);
+    sessionData[String(sessionNumber)] = {
+      name: session.name || session.id || `Session ${sessionNumber}`,
+      scramblePuzzle,
+      scrType: cstimerScrambleType(scramblePuzzle),
+    };
+    output[`session${sessionNumber}`] = JSON.stringify(cstimerSolves);
   });
 
   output.properties = JSON.stringify({
@@ -136,7 +142,11 @@ function sessionsForSolves(solves, sessions) {
   const knownIds = new Set(knownSessions.map((session) => session.id));
   const missingSessions = [...sessionIds]
     .filter((id) => !knownIds.has(id))
-    .map((id) => ({ id, name: id }));
+    .map((id) => ({
+      id,
+      name: id,
+      scramblePuzzle: solves.find((solve) => (solve.sessionId || 'default') === id)?.scramblePuzzle || 'three',
+    }));
   return [...knownSessions, ...missingSessions];
 }
 
@@ -166,6 +176,21 @@ function cstimerPenaltyFlag(solve) {
   if (solve.penalty === 'dnf') return -1;
   if (solve.penalty === '+2') return 2000;
   return 0;
+}
+
+function cstimerScrambleType(scramblePuzzle) {
+  const map = new Map([
+    ['two', '222'],
+    ['three', '333'],
+    ['four', '444'],
+    ['five', '555'],
+    ['six', '666'],
+    ['seven', '777'],
+    ['clock', 'clock'],
+    ['skewb', 'skewb'],
+    ['sq1', 'sq1'],
+  ]);
+  return map.get(scramblePuzzle) || '333';
 }
 
 function formatMilliseconds(value) {

@@ -106,8 +106,8 @@ test('exports csTimer JSON backups with sessions and penalties', () => {
   const session2 = JSON.parse(payload.session2);
 
   assert.deepEqual(sessionData, {
-    1: { name: 'Default' },
-    2: { name: 'One Handed' },
+    1: { name: 'Default', scramblePuzzle: 'three', scrType: '333' },
+    2: { name: 'One Handed', scramblePuzzle: 'four', scrType: '444' },
   });
   assert.deepEqual(session1, [
     [[0, 10000], 'R U', 'normal', 1779530400],

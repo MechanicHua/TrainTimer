@@ -24,8 +24,8 @@ test('parses exported CSV solves and sessions', () => {
 
   assert.equal(parsed.source, 'csv');
   assert.deepEqual(parsed.sessions, [
-    { id: 'oh', name: 'OH' },
-    { id: 'default', name: '默认' },
+    { id: 'oh', name: 'OH', scramblePuzzle: 'four' },
+    { id: 'default', name: '默认', scramblePuzzle: 'three' },
   ]);
   assert.deepEqual(parsed.solves, [
     {
@@ -88,11 +88,11 @@ test('parses csTimer CSV exports', () => {
       '1;12.345+;"PLL lockup";"R U";2026-05-23 10:00:00;',
       '2;DNF(1:02.500);失误;F2;1716458400;',
     ].join('\n'),
-    { createId: () => `cs-${nextId += 1}` },
+    { createId: () => `cs-${nextId += 1}`, scramblePuzzle: 'two' },
   );
 
   assert.equal(parsed.source, 'cstimer-csv');
-  assert.deepEqual(parsed.sessions, [{ id: 'cstimer-import', name: 'csTimer Import' }]);
+  assert.deepEqual(parsed.sessions, [{ id: 'cstimer-import', name: 'csTimer Import', scramblePuzzle: 'two' }]);
   assert.equal(parsed.solves[0].id, 'cs-1');
   assert.equal(parsed.solves[0].sessionId, 'cstimer-import');
   assert.equal(parsed.solves[0].durationMs, 12345);
@@ -100,7 +100,7 @@ test('parses csTimer CSV exports', () => {
   assert.equal(parsed.solves[0].comment, 'PLL lockup');
   assert.equal(parsed.solves[0].scramble, 'R U');
   assert.equal(parsed.solves[0].scrambleSource, 'cstimer-csv');
-  assert.equal(parsed.solves[0].scramblePuzzle, 'three');
+  assert.equal(parsed.solves[0].scramblePuzzle, 'two');
   assert.equal(parsed.solves[1].durationMs, 62500);
   assert.equal(parsed.solves[1].penalty, 'dnf');
   assert.equal(parsed.solves[1].comment, '失误');
@@ -114,8 +114,8 @@ test('parses csTimer JSON backups with session metadata', () => {
     JSON.stringify({
       properties: JSON.stringify({
         sessionData: JSON.stringify({
-          1: { name: '3x3' },
-          2: { name: 'OH' },
+          1: { name: '3x3', scrType: '333' },
+          2: { name: '4x4', scramblePuzzle: 'four' },
         }),
       }),
       session1: JSON.stringify([
@@ -131,8 +131,8 @@ test('parses csTimer JSON backups with session metadata', () => {
 
   assert.equal(parsed.source, 'cstimer-json');
   assert.deepEqual(parsed.sessions, [
-    { id: 'cstimer-1', name: '3x3' },
-    { id: 'cstimer-2', name: 'OH' },
+    { id: 'cstimer-1', name: '3x3', scramblePuzzle: 'three' },
+    { id: 'cstimer-2', name: '4x4', scramblePuzzle: 'four' },
   ]);
   assert.deepEqual(parsed.solves.map((solve) => solve.id), ['json-1', 'json-2', 'json-3']);
   assert.equal(parsed.solves[0].sessionId, 'cstimer-1');
@@ -145,5 +145,6 @@ test('parses csTimer JSON backups with session metadata', () => {
   assert.equal(parsed.solves[0].createdAt, new Date(exportedAt * 1000).toISOString());
   assert.equal(parsed.solves[1].penalty, '+2');
   assert.equal(parsed.solves[2].sessionId, 'cstimer-2');
+  assert.equal(parsed.solves[2].scramblePuzzle, 'four');
   assert.equal(parsed.solves[2].penalty, 'dnf');
 });

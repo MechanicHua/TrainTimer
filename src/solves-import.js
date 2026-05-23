@@ -35,9 +35,11 @@ function parseCstimerJsonImport(data, options = {}) {
   const sessionMeta = cstimerSessionMeta(data);
   const sessions = sessionKeys.map((key) => {
     const sessionId = cstimerSessionId(key);
+    const meta = sessionMeta.get(key);
     return {
       id: sessionId,
-      name: String(sessionMeta.get(key)?.name || `csTimer Session ${key}`),
+      name: String(meta?.name || `csTimer Session ${key}`),
+      scramblePuzzle: cstimerSessionPuzzle(meta),
     };
   });
   const solves = [];
@@ -47,7 +49,7 @@ function parseCstimerJsonImport(data, options = {}) {
     if (!Array.isArray(sessionSolves)) throw new Error(`csTimer session${key} 不是成绩数组`);
 
     sessionSolves.forEach((solve, index) => {
-      solves.push(parseCstimerJsonSolve(solve, cstimerSessionId(key), key, index, options));
+      solves.push(parseCstimerJsonSolve(solve, cstimerSessionId(key), key, index, options, cstimerSessionPuzzle(sessionMeta.get(key))));
     });
   }
 
@@ -69,7 +71,9 @@ function parseCsvImport(text, options = {}) {
     const value = (name) => row[lowerHeader.indexOf(name.toLowerCase())] ?? '';
     const sessionId = value('sessionId') || 'default';
     const sessionName = value('sessionName') || sessionId;
-    if (sessionId) sessions.set(sessionId, { id: sessionId, name: sessionName });
+    if (sessionId && !sessions.has(sessionId)) {
+      sessions.set(sessionId, { id: sessionId, name: sessionName, scramblePuzzle: value('scramblePuzzle') || 'three' });
+    }
 
     const durationMs = value('durationMs')
       ? parseMillisecondValue(value('durationMs'))
@@ -124,7 +128,7 @@ function parseCstimerCsvImport(text, options = {}) {
       penalty: parsedTime.penalty,
       scramble: value('Scramble'),
       scrambleSource: 'cstimer-csv',
-      scramblePuzzle: 'three',
+      scramblePuzzle: options.scramblePuzzle || 'three',
       inspectionEnabled: false,
       timerSource: 'manual',
       bluetoothMoves: [],
@@ -135,7 +139,7 @@ function parseCstimerCsvImport(text, options = {}) {
 
   return {
     source: 'cstimer-csv',
-    sessions: [{ id: sessionId, name: sessionName }],
+    sessions: [{ id: sessionId, name: sessionName, scramblePuzzle: options.scramblePuzzle || 'three' }],
     solves,
   };
 }
@@ -172,7 +176,7 @@ function cstimerSessionMeta(data) {
   return meta;
 }
 
-function parseCstimerJsonSolve(record, sessionId, sessionKey, index, options) {
+function parseCstimerJsonSolve(record, sessionId, sessionKey, index, options, scramblePuzzle = 'three') {
   if (!Array.isArray(record) || !Array.isArray(record[0])) {
     throw new Error(`csTimer session${sessionKey} 第 ${index + 1} 条成绩格式无效`);
   }
@@ -191,13 +195,33 @@ function parseCstimerJsonSolve(record, sessionId, sessionKey, index, options) {
     penalty,
     scramble: String(record[1] || ''),
     scrambleSource: 'cstimer-json',
-    scramblePuzzle: 'three',
+    scramblePuzzle,
     inspectionEnabled: false,
     timerSource: 'manual',
     bluetoothMoves: [],
     tags: [],
     comment: String(record[2] || ''),
   };
+}
+
+function cstimerSessionPuzzle(meta) {
+  const raw = meta?.scramblePuzzle ?? meta?.scrType ?? meta?.scrambleType ?? meta?.puzzle ?? meta?.scr ?? '';
+  return normalizePuzzle(raw);
+}
+
+function normalizePuzzle(value) {
+  const compact = String(value || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+  if (!compact) return 'three';
+  if (compact === 'two' || compact.startsWith('222') || compact === '2x2' || compact === '2x2x2') return 'two';
+  if (compact === 'three' || compact.startsWith('333') || compact === '3x3' || compact === '3x3x3') return 'three';
+  if (compact === 'four' || compact.startsWith('444') || compact === '4x4' || compact === '4x4x4') return 'four';
+  if (compact === 'five' || compact.startsWith('555') || compact === '5x5' || compact === '5x5x5') return 'five';
+  if (compact === 'six' || compact.startsWith('666') || compact === '6x6' || compact === '6x6x6') return 'six';
+  if (compact === 'seven' || compact.startsWith('777') || compact === '7x7' || compact === '7x7x7') return 'seven';
+  if (compact === 'clock' || compact === 'clk') return 'clock';
+  if (compact === 'skewb' || compact.startsWith('skb')) return 'skewb';
+  if (compact === 'sq1' || compact === 'square1' || compact === 'squareone' || compact.startsWith('sqr')) return 'sq1';
+  return 'three';
 }
 
 function cstimerSessionId(key) {

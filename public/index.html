@@ -507,6 +507,20 @@
               </select>
             </div>
             <div>
+              <label for="solveDetailPuzzleSelect">打乱类型</label>
+              <select id="solveDetailPuzzleSelect">
+                <option value="two">2x2</option>
+                <option value="three">3x3</option>
+                <option value="four">4x4</option>
+                <option value="five">5x5</option>
+                <option value="six">6x6</option>
+                <option value="seven">7x7</option>
+                <option value="clock">Clock</option>
+                <option value="skewb">Skewb</option>
+                <option value="sq1">Square-1</option>
+              </select>
+            </div>
+            <div>
               <label for="solveDetailScramble">打乱公式</label>
               <textarea id="solveDetailScramble" class="solve-detail-scramble" rows="3" maxlength="420" placeholder="可留空，或粘贴这把的打乱公式"></textarea>
             </div>
@@ -536,6 +550,7 @@
             <button id="saveScrambleButton" type="button">保存打乱</button>
             <button id="saveTimeButton" type="button">保存成绩</button>
             <button id="saveDateButton" type="button">保存日期</button>
+            <button id="savePuzzleButton" type="button">保存类型</button>
             <button id="savePenaltyButton" type="button">保存罚时</button>
             <button id="saveTagsButton" type="button">保存标签</button>
             <button id="saveCommentButton" type="button">保存备注</button>

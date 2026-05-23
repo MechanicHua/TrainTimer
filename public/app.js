@@ -199,6 +199,7 @@ const elements = {
   solveDetailDateInput: document.querySelector('#solveDetailDateInput'),
   solveDetailError: document.querySelector('#solveDetailError'),
   solveDetailPenaltySelect: document.querySelector('#solveDetailPenaltySelect'),
+  solveDetailPuzzleSelect: document.querySelector('#solveDetailPuzzleSelect'),
   solveDetailScramble: document.querySelector('#solveDetailScramble'),
   solveDetailComment: document.querySelector('#solveDetailComment'),
   solveDetailTagsInput: document.querySelector('#solveDetailTagsInput'),
@@ -219,6 +220,7 @@ const elements = {
   saveScrambleButton: document.querySelector('#saveScrambleButton'),
   saveTimeButton: document.querySelector('#saveTimeButton'),
   saveDateButton: document.querySelector('#saveDateButton'),
+  savePuzzleButton: document.querySelector('#savePuzzleButton'),
   savePenaltyButton: document.querySelector('#savePenaltyButton'),
   saveTagsButton: document.querySelector('#saveTagsButton'),
   saveCommentButton: document.querySelector('#saveCommentButton'),
@@ -347,6 +349,7 @@ elements.saveScrambleButton.addEventListener('click', saveSolveScramble);
 elements.copyStatsSummaryButton.addEventListener('click', copyStatsSummary);
 elements.saveTimeButton.addEventListener('click', saveSolveTime);
 elements.saveDateButton.addEventListener('click', saveSolveDate);
+elements.savePuzzleButton.addEventListener('click', saveSolvePuzzle);
 elements.savePenaltyButton.addEventListener('click', saveSolvePenalty);
 elements.saveTagsButton.addEventListener('click', saveSolveTags);
 elements.saveCommentButton.addEventListener('click', saveSolveComment);
@@ -1277,6 +1280,7 @@ function renderSolveDialog() {
   elements.solveDetailDateInput.value = dateTimeLocalValue(solve.createdAt);
   elements.solveDetailError.textContent = '';
   elements.solveDetailPenaltySelect.value = solve.penalty || 'ok';
+  elements.solveDetailPuzzleSelect.value = solve.scramblePuzzle || 'three';
   elements.solveDetailScramble.value = solve.scramble || '';
   elements.solveDetailComment.value = solve.comment || '';
   elements.solveDetailTagsInput.value = formatTags(solve.tags);
@@ -1475,6 +1479,19 @@ async function saveSolvePenalty() {
     `罚时 ${displaySolveTime(solve)}`,
     '保存罚时失败',
     elements.savePenaltyButton,
+  );
+}
+
+async function saveSolvePuzzle() {
+  const solve = solves.find((item) => item.id === currentDetailSolveId);
+  if (!solve) return;
+  const scramblePuzzle = elements.solveDetailPuzzleSelect.value || 'three';
+  if ((solve.scramblePuzzle || 'three') === scramblePuzzle) return;
+  await saveSolveDetailUpdates(
+    { scramblePuzzle },
+    `打乱类型 ${displaySolveTime(solve)}`,
+    '保存类型失败',
+    elements.savePuzzleButton,
   );
 }
 

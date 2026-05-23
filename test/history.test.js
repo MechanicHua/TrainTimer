@@ -86,6 +86,9 @@ test('updates penalties and deletes solves', async () => {
   assert.equal(scrambleUpdate.solve.scramble, "R U R'");
   assert.equal(scrambleUpdate.solve.scrambleSource, 'manual-edit');
 
+  const puzzleUpdate = await updateSolve('a', { scramblePuzzle: 'four' }, file);
+  assert.equal(puzzleUpdate.solve.scramblePuzzle, 'four');
+
   const dateUpdate = await updateSolve('a', { createdAt: '2026-05-24T12:34:56.000Z' }, file);
   assert.equal(dateUpdate.solve.createdAt, '2026-05-24T12:34:56.000Z');
 

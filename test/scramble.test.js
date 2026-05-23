@@ -9,8 +9,19 @@ test('generates scrambles through bundled TNoodle CLI when available', async () 
   const moves = result.scramble.split(' ');
 
   assert.equal(result.source, 'bundled-tnoodle-cli-1.1.1');
+  assert.equal(result.puzzle, 'three');
   assert.ok(moves.length >= 17);
   assert.ok(moves.length <= 25);
+  for (const move of moves) assert.match(move, threeByThreeMovePattern);
+});
+
+test('generates requested TNoodle puzzle scrambles', async () => {
+  const result = await generateScramble('two');
+  const moves = result.scramble.split(' ');
+
+  assert.equal(result.source, 'bundled-tnoodle-cli-1.1.1');
+  assert.equal(result.puzzle, 'two');
+  assert.ok(moves.length >= 8);
   for (const move of moves) assert.match(move, threeByThreeMovePattern);
 });
 
@@ -32,6 +43,7 @@ test('draws scramble previews through bundled TNoodle CLI when available', async
   const result = await drawScrambleSvg('R U');
 
   assert.equal(result.source, 'bundled-tnoodle-cli-1.1.1');
+  assert.equal(result.puzzle, 'three');
   assert.match(result.svg, /^<svg[\s>]/);
   assert.match(result.svg, /viewBox="0 0 130 98"/);
 });

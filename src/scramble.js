@@ -18,30 +18,41 @@ const axes = {
 const faces = Object.keys(axes);
 const suffixes = ['', "'", '2'];
 
-export async function generateScramble() {
-  const external = await generateExternalScramble();
+export async function generateScramble(puzzle = defaultPuzzle()) {
+  const normalizedPuzzle = normalizePuzzle(puzzle);
+  const external = await generateExternalScramble(normalizedPuzzle);
   if (external) return external;
+
+  if (normalizedPuzzle !== 'three') {
+    return {
+      scramble: '',
+      puzzle: normalizedPuzzle,
+      source: 'unavailable',
+      warning: `${normalizedPuzzle} 打乱需要 TNoodle CLI，当前未能生成。`,
+    };
+  }
 
   return {
     scramble: generateFallbackThreeByThreeScramble(),
+    puzzle: normalizedPuzzle,
     source: 'fallback-333-random-moves',
     warning:
       '未检测到内置 TNoodle JAR、tnoodle 命令或 TNOODLE_JAR，当前使用本地备用 3x3 随机步打乱。',
   };
 }
 
-export async function drawScrambleSvg(scramble) {
+export async function drawScrambleSvg(scramble, puzzle = defaultPuzzle()) {
   const normalizedScramble = String(scramble || '').trim();
   if (!normalizedScramble) return null;
 
-  const puzzle = process.env.TNOODLE_PUZZLE || 'three';
-  const commands = tnoodleCommandCandidates('draw', puzzle, normalizedScramble);
+  const normalizedPuzzle = normalizePuzzle(puzzle);
+  const commands = tnoodleCommandCandidates('draw', normalizedPuzzle, normalizedScramble);
 
   for (const candidate of commands) {
     try {
       const { stdout } = await execFileAsync(candidate.command, candidate.args, { timeout: 15000, maxBuffer: 1024 * 1024 });
       const svg = normalizeSvgOutput(stdout);
-      if (svg) return { svg, source: candidate.source };
+      if (svg) return { svg, puzzle: normalizedPuzzle, source: candidate.source };
     } catch {
       // Try the next configured integration before letting the client use its local preview fallback.
     }
@@ -50,21 +61,28 @@ export async function drawScrambleSvg(scramble) {
   return null;
 }
 
-async function generateExternalScramble() {
-  const puzzle = process.env.TNOODLE_PUZZLE || 'three';
+async function generateExternalScramble(puzzle) {
   const commands = tnoodleCommandCandidates('scramble', puzzle);
 
   for (const candidate of commands) {
     try {
       const { stdout } = await execFileAsync(candidate.command, candidate.args, { timeout: 15000 });
       const scramble = normalizeExternalOutput(stdout);
-      if (scramble) return { scramble, source: candidate.source };
+      if (scramble) return { scramble, puzzle, source: candidate.source };
     } catch {
       // Try the next configured integration before falling back locally.
     }
   }
 
   return null;
+}
+
+function defaultPuzzle() {
+  return process.env.TNOODLE_PUZZLE || 'three';
+}
+
+function normalizePuzzle(puzzle) {
+  return String(puzzle || defaultPuzzle()).trim() || 'three';
 }
 
 function tnoodleCommandCandidates(command, puzzle, scramble = '') {

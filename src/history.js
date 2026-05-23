@@ -207,6 +207,7 @@ export function normalizeSolve(solve) {
     effectiveDuration,
     scramble: typeof solve.scramble === 'string' ? solve.scramble : '',
     scrambleSource: typeof solve.scrambleSource === 'string' ? solve.scrambleSource : '',
+    scramblePuzzle: typeof solve.scramblePuzzle === 'string' && solve.scramblePuzzle ? solve.scramblePuzzle : 'three',
     sessionId: typeof solve.sessionId === 'string' && solve.sessionId ? solve.sessionId : defaultSession.id,
     comment: typeof solve.comment === 'string' ? solve.comment : '',
     tags: normalizeTags(solve.tags),

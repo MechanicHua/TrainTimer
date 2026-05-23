@@ -10,6 +10,7 @@ test('builds copyable single-solve summary with metadata', () => {
       duration: '12.000',
       penalty: '+2',
       scramble: "R U R' U'",
+      scramblePuzzle: 'four',
       inspectionEnabled: true,
       timerSource: 'bluetooth',
       tags: ['PLL', '慢十字'],
@@ -28,6 +29,7 @@ test('builds copyable single-solve summary with metadata', () => {
   assert.match(text, /时间: -/);
   assert.match(text, /来源: 蓝牙停表/);
   assert.match(text, /观察: 开启/);
+  assert.match(text, /打乱类型: four/);
   assert.match(text, /打乱: R U R' U'/);
   assert.match(text, /标签: PLL, 慢十字/);
   assert.match(text, /备注: PLL lockup/);
@@ -51,6 +53,7 @@ test('builds DNF summary without optional sections', () => {
   assert.match(text, /罚时: DNF/);
   assert.match(text, /来源: 手动停表/);
   assert.match(text, /观察: 关闭/);
+  assert.match(text, /打乱类型: three/);
   assert.match(text, /打乱: -/);
   assert.doesNotMatch(text, /标签:/);
   assert.doesNotMatch(text, /蓝牙转动:/);

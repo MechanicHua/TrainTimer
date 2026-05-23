@@ -49,6 +49,17 @@ const facePositions = {
   B: [9, 3],
   D: [3, 6],
 };
+const puzzleLabels = new Map([
+  ['two', '2x2'],
+  ['three', '3x3'],
+  ['four', '4x4'],
+  ['five', '5x5'],
+  ['six', '6x6'],
+  ['seven', '7x7'],
+  ['clock', 'Clock'],
+  ['skewb', 'Skewb'],
+  ['sq1', 'Square-1'],
+]);
 
 const elements = {
   statusText: document.querySelector('#statusText'),
@@ -84,6 +95,7 @@ const elements = {
   mergeSessionButton: document.querySelector('#mergeSessionButton'),
   renameSessionButton: document.querySelector('#renameSessionButton'),
   deleteSessionButton: document.querySelector('#deleteSessionButton'),
+  scramblePuzzleSelect: document.querySelector('#scramblePuzzleSelect'),
   scrambleSource: document.querySelector('#scrambleSource'),
   scrambleText: document.querySelector('#scrambleText'),
   cubeNet: document.querySelector('#cubeNet'),
@@ -221,6 +233,7 @@ let solves = [];
 let sessions = [];
 let inspectionEnabled = localStorage.getItem('trainTimer.inspection') === '1';
 let currentSessionId = localStorage.getItem('trainTimer.session') || 'default';
+let scramblePuzzle = localStorage.getItem('trainTimer.scramblePuzzle') || 'three';
 let allSessionsEnabled = localStorage.getItem('trainTimer.allSessions') === '1';
 let startedAt = 0;
 let inspectionStartedAt = 0;
@@ -275,6 +288,7 @@ elements.duplicateSessionButton.addEventListener('click', duplicateCurrentSessio
 elements.mergeSessionButton.addEventListener('click', openMergeSessionDialog);
 elements.renameSessionButton.addEventListener('click', renameSession);
 elements.deleteSessionButton.addEventListener('click', deleteCurrentSession);
+elements.scramblePuzzleSelect.addEventListener('change', changeScramblePuzzle);
 elements.manualEntryButton.addEventListener('click', openManualEntryDialog);
 elements.exportButton.addEventListener('click', openExportDialog);
 elements.exportSessionJsonButton.addEventListener('click', () => exportSolves('json', 'session'));
@@ -390,8 +404,9 @@ await bootstrap();
 
 async function bootstrap() {
   try {
-    const data = await getJson('/api/bootstrap');
+    const data = await getJson(`/api/bootstrap?${new URLSearchParams({ puzzle: scramblePuzzle }).toString()}`);
     scramble = data.scramble;
+    scramblePuzzle = scramble.puzzle || scramblePuzzle;
     solves = data.solves;
     sessions = data.sessions;
     if (!sessions.some((session) => session.id === currentSessionId)) currentSessionId = 'default';
@@ -548,6 +563,7 @@ async function finishTiming() {
     durationMs,
     scramble: scramble.scramble,
     scrambleSource: scramble.source,
+    scramblePuzzle: scramble.puzzle || scramblePuzzle,
     inspectionEnabled,
     sessionId: currentSessionId,
     penalty: activePenalty,
@@ -570,11 +586,25 @@ async function nextSolve() {
   render();
 }
 
+async function changeScramblePuzzle() {
+  const nextPuzzle = elements.scramblePuzzleSelect.value || 'three';
+  if (nextPuzzle === scramblePuzzle) return;
+  scramblePuzzle = nextPuzzle;
+  localStorage.setItem('trainTimer.scramblePuzzle', scramblePuzzle);
+  if (appState === 'timing' || appState === 'inspection' || appState === 'hold' || appState === 'saving') {
+    render();
+    return;
+  }
+  await loadScramble();
+}
+
 async function loadScramble() {
   elements.scrambleButton.disabled = true;
   try {
-    const data = await postJson('/api/scramble', {});
+    const data = await postJson('/api/scramble', { puzzle: scramblePuzzle });
     scramble = data.scramble;
+    scramblePuzzle = scramble.puzzle || scramblePuzzle;
+    localStorage.setItem('trainTimer.scramblePuzzle', scramblePuzzle);
     resetBluetoothSolveTracking();
     render();
   } finally {
@@ -1125,7 +1155,7 @@ function renderSolveDialog() {
   const bluetoothMoveCount = solve.bluetoothMoveCount ?? (Array.isArray(solve.bluetoothMoves) ? solve.bluetoothMoves.length : 0);
   const bluetoothTps = Number.isFinite(solve.bluetoothTps) ? `${solve.bluetoothTps.toFixed(3)} TPS` : 'TPS -';
   const positionText = solveIndex >= 0 ? `第 ${solveNumber} / ${sessionSolves.length} 条` : '未知位置';
-  elements.solveDetailMeta.textContent = `${sessionNameForSolve(solve)} · ${positionText} · ${new Date(solve.createdAt).toLocaleString()} · ${timerSource} · ${solve.inspectionEnabled ? '开启观察' : '无观察'} · ${bluetoothMoveCount} 次蓝牙转动 · ${bluetoothTps} · ${solve.scrambleSource || 'unknown'}`;
+  elements.solveDetailMeta.textContent = `${sessionNameForSolve(solve)} · ${positionText} · ${new Date(solve.createdAt).toLocaleString()} · ${timerSource} · ${puzzleLabel(solve.scramblePuzzle || 'three')} · ${solve.inspectionEnabled ? '开启观察' : '无观察'} · ${bluetoothMoveCount} 次蓝牙转动 · ${bluetoothTps} · ${solve.scrambleSource || 'unknown'}`;
   elements.prevSolveButton.disabled = solveIndex <= 0;
   elements.nextSolveDetailButton.disabled = solveIndex < 0 || solveIndex >= sessionSolves.length - 1;
   elements.solveDetailTimeInput.value = solve.duration || formatTime(solve.durationMs);
@@ -2101,18 +2131,22 @@ function renderQuickActions() {
 
 function renderScramble() {
   if (!scramble) return;
-  elements.scrambleText.textContent = scramble.scramble;
-  elements.scrambleSource.textContent = scramble.source;
-  renderScramblePreview(scramble.scramble);
+  const currentPuzzle = scramble.puzzle || scramblePuzzle;
+  elements.scramblePuzzleSelect.value = currentPuzzle;
+  elements.scramblePuzzleSelect.disabled = appState === 'timing' || appState === 'inspection' || appState === 'hold' || appState === 'saving';
+  elements.scrambleText.textContent = scramble.scramble || '当前打乱类型暂不可用';
+  elements.scrambleSource.textContent = `${puzzleLabel(currentPuzzle)} · ${scramble.source}`;
+  renderScramblePreview(scramble.scramble, currentPuzzle);
 }
 
-function renderScramblePreview(scrambleText) {
-  if (previewScrambleText === scrambleText && elements.cubeNet.hasChildNodes()) return;
+function renderScramblePreview(scrambleText, puzzle = 'three') {
+  const cacheKey = `${puzzle}\n${scrambleText}`;
+  if (previewScrambleText === cacheKey && elements.cubeNet.hasChildNodes()) return;
 
-  previewScrambleText = scrambleText;
+  previewScrambleText = cacheKey;
   previewRequestId += 1;
   const requestId = previewRequestId;
-  const cached = previewCache.get(scrambleText);
+  const cached = previewCache.get(cacheKey);
 
   if (cached?.svg) {
     renderTnoodleCubeSvg(cached.svg);
@@ -2120,30 +2154,31 @@ function renderScramblePreview(scrambleText) {
   }
 
   if (cached?.fallback) {
-    renderCubeNet(scrambleText);
+    renderLocalScramblePreview(scrambleText, puzzle);
     return;
   }
 
   renderPreviewLoading();
-  loadScramblePreview(scrambleText, requestId);
+  loadScramblePreview(scrambleText, puzzle, requestId);
 }
 
-async function loadScramblePreview(scrambleText, requestId) {
+async function loadScramblePreview(scrambleText, puzzle, requestId) {
+  const cacheKey = `${puzzle}\n${scrambleText}`;
   try {
-    const data = await postJson('/api/scramble-preview', { scramble: scrambleText });
-    if (requestId !== previewRequestId || previewScrambleText !== scrambleText) return;
+    const data = await postJson('/api/scramble-preview', { scramble: scrambleText, puzzle });
+    if (requestId !== previewRequestId || previewScrambleText !== cacheKey) return;
 
     if (data.svg) {
-      previewCache.set(scrambleText, { svg: data.svg });
+      previewCache.set(cacheKey, { svg: data.svg });
       renderTnoodleCubeSvg(data.svg);
     } else {
-      previewCache.set(scrambleText, { fallback: true });
-      renderCubeNet(scrambleText);
+      previewCache.set(cacheKey, { fallback: true });
+      renderLocalScramblePreview(scrambleText, puzzle);
     }
   } catch {
-    if (requestId !== previewRequestId || previewScrambleText !== scrambleText) return;
-    previewCache.set(scrambleText, { fallback: true });
-    renderCubeNet(scrambleText);
+    if (requestId !== previewRequestId || previewScrambleText !== cacheKey) return;
+    previewCache.set(cacheKey, { fallback: true });
+    renderLocalScramblePreview(scrambleText, puzzle);
   }
 }
 
@@ -2621,6 +2656,7 @@ async function saveManualEntry() {
       durationMs,
       scramble: scrambleText,
       scrambleSource,
+      scramblePuzzle: scramble?.puzzle || scramblePuzzle,
       inspectionEnabled: false,
       sessionId: currentSessionId,
       penalty: elements.manualPenaltySelect.value,
@@ -2917,6 +2953,8 @@ function searchableSolveText(solve) {
     solve.comment,
     solve.scramble,
     solve.scrambleSource,
+    solve.scramblePuzzle,
+    puzzleLabel(solve.scramblePuzzle || 'three'),
     new Date(solve.createdAt).toLocaleString(),
   ].join(' ').toLowerCase();
 }
@@ -3019,7 +3057,7 @@ function renderTnoodleCubeSvg(svgText) {
   const documentFragment = new DOMParser().parseFromString(svgText, 'image/svg+xml');
   const svg = documentFragment.querySelector('svg');
   if (!svg || documentFragment.querySelector('parsererror')) {
-    renderCubeNet(previewScrambleText);
+    renderLocalScramblePreview(scramble?.scramble || '', scramble?.puzzle || scramblePuzzle);
     return;
   }
 
@@ -3030,6 +3068,24 @@ function renderTnoodleCubeSvg(svgText) {
   svg.classList.add('cube-svg');
   elements.cubeNet.className = 'cube-net official-preview';
   elements.cubeNet.replaceChildren(document.importNode(svg, true));
+}
+
+function renderLocalScramblePreview(scrambleText, puzzle = 'three') {
+  if (puzzle !== 'three') {
+    renderPreviewUnavailable(`${puzzleLabel(puzzle)} 预览需要 TNoodle draw`);
+    return;
+  }
+
+  try {
+    renderCubeNet(scrambleText);
+  } catch {
+    renderPreviewUnavailable('当前打乱无法用本地 3x3 预览解析');
+  }
+}
+
+function renderPreviewUnavailable(message) {
+  elements.cubeNet.className = 'cube-net preview-loading';
+  elements.cubeNet.textContent = message;
 }
 
 function renderCubeNet(scrambleText) {
@@ -3073,6 +3129,10 @@ function displaySolveTime(solve) {
   if (solve.penalty === 'dnf') return 'DNF';
   if (solve.penalty === '+2') return `${formatTime(solve.durationMs + 2000)}+`;
   return solve.duration || formatTime(solve.durationMs);
+}
+
+function puzzleLabel(puzzle) {
+  return puzzleLabels.get(puzzle) || puzzle || '3x3';
 }
 
 function timeOrDash(value) {

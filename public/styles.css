@@ -474,6 +474,26 @@ body[data-state="timing"] .timer-display {
   white-space: nowrap;
 }
 
+.scramble-puzzle-field {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.scramble-puzzle-field select {
+  min-height: 30px;
+  min-width: 96px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--ink);
+  padding: 0 28px 0 10px;
+}
+
 .scramble-text {
   display: -webkit-box;
   margin-top: 11px;

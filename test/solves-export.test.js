@@ -28,6 +28,7 @@ const solves = [
     effectiveDuration: '10.000',
     scramble: 'R U',
     scrambleSource: 'test',
+    scramblePuzzle: 'three',
     inspectionEnabled: false,
     comment: 'normal',
   },
@@ -42,6 +43,7 @@ const solves = [
     effectiveDuration: '14.000',
     scramble: 'F, R',
     scrambleSource: 'test',
+    scramblePuzzle: 'four',
     inspectionEnabled: true,
     timerSource: 'bluetooth',
     bluetoothMoves: ['R', 'U2', "F'"],
@@ -72,9 +74,9 @@ test('builds listed exports in provided order', () => {
 
 test('exports CSV with stable columns and quoting', () => {
   const csv = solvesToCsv([solves[1]], sessions);
-  assert.equal(csv.split('\n')[0], 'id,sessionId,sessionName,createdAt,durationMs,duration,penalty,effectiveDurationMs,effectiveDuration,scramble,scrambleSource,inspectionEnabled,timerSource,bluetoothMoves,bluetoothMoveCount,bluetoothTps,tags,comment');
+  assert.equal(csv.split('\n')[0], 'id,sessionId,sessionName,createdAt,durationMs,duration,penalty,effectiveDurationMs,effectiveDuration,scramble,scrambleSource,scramblePuzzle,inspectionEnabled,timerSource,bluetoothMoves,bluetoothMoveCount,bluetoothTps,tags,comment');
   assert.match(csv, /"F, R"/);
-  assert.match(csv, /bluetooth,R U2 F',3,0.25/);
+  assert.match(csv, /test,four,true,bluetooth,R U2 F',3,0.25/);
   assert.match(csv, /PLL;慢十字/);
   assert.match(csv, /"PLL ""lockup"""/);
 });

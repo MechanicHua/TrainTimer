@@ -7,6 +7,7 @@ export function buildSolveSummary(solve, sessionName = '') {
     `时间: ${formatDate(solve.createdAt)}`,
     `来源: ${solve.timerSource === 'bluetooth' ? '蓝牙停表' : '手动停表'}`,
     `观察: ${solve.inspectionEnabled ? '开启' : '关闭'}`,
+    `打乱类型: ${solve.scramblePuzzle || 'three'}`,
     `打乱: ${solve.scramble || '-'}`,
   ];
 

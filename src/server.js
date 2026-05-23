@@ -76,7 +76,8 @@ async function handleApi(request, response) {
   const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
 
   if (request.method === 'GET' && url.pathname === '/api/bootstrap') {
-    const [history, scramble] = await Promise.all([loadHistory(), generateScramble()]);
+    const puzzle = url.searchParams.get('puzzle') || undefined;
+    const [history, scramble] = await Promise.all([loadHistory(), generateScramble(puzzle)]);
     sendJson(response, 200, {
       scramble,
       solves: history.solves,
@@ -88,13 +89,14 @@ async function handleApi(request, response) {
   }
 
   if (request.method === 'POST' && url.pathname === '/api/scramble') {
-    sendJson(response, 200, { scramble: await generateScramble() });
+    const body = await readJsonBody(request);
+    sendJson(response, 200, { scramble: await generateScramble(body.puzzle) });
     return;
   }
 
   if (request.method === 'POST' && url.pathname === '/api/scramble-preview') {
     const body = await readJsonBody(request);
-    const preview = await drawScrambleSvg(body.scramble);
+    const preview = await drawScrambleSvg(body.scramble, body.puzzle);
     sendJson(response, 200, preview || { svg: null, source: 'local-js-preview' });
     return;
   }
@@ -237,6 +239,7 @@ async function handleApi(request, response) {
       duration: formatTime(durationMs),
       scramble: String(body.scramble || ''),
       scrambleSource: String(body.scrambleSource || 'unknown'),
+      scramblePuzzle: String(body.scramblePuzzle || 'three'),
       inspectionEnabled: Boolean(body.inspectionEnabled),
       sessionId: String(body.sessionId || 'default'),
       penalty: body.penalty,
@@ -273,6 +276,7 @@ async function handleApi(request, response) {
     if (Object.hasOwn(body, 'penalty')) updates.penalty = body.penalty;
     if (Object.hasOwn(body, 'scramble')) updates.scramble = String(body.scramble || '');
     if (Object.hasOwn(body, 'scrambleSource')) updates.scrambleSource = String(body.scrambleSource || '');
+    if (Object.hasOwn(body, 'scramblePuzzle')) updates.scramblePuzzle = String(body.scramblePuzzle || 'three');
     if (Object.hasOwn(body, 'comment')) updates.comment = body.comment;
     if (Object.hasOwn(body, 'tags')) updates.tags = body.tags;
     if (Object.hasOwn(body, 'sessionId')) updates.sessionId = String(body.sessionId || 'default');

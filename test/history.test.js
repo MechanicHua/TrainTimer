@@ -283,6 +283,7 @@ test('normalizes manually entered solve metadata', async () => {
     sessionId: 'manual-session',
     scramble: '',
     scrambleSource: 'manual',
+    scramblePuzzle: 'three',
     duration: '12.346',
     effectiveDurationMs: 14346,
     effectiveDuration: '14.346',

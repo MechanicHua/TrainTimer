@@ -10,8 +10,39 @@ const inspectionSeconds = 15;
 const inspectionDnfSeconds = 17;
 const holdToStartMs = 500;
 const reminderSeconds = new Set([8, 12]);
+const bluetoothUuidSuffix = '-0000-1000-8000-00805f9b34fb';
+const bluetoothBatteryLevelUuid = `00002a19${bluetoothUuidSuffix}`;
+const bluetoothGanV1MetaServiceUuid = `0000180a${bluetoothUuidSuffix}`;
+const bluetoothGanV1VersionUuid = `00002a28${bluetoothUuidSuffix}`;
+const bluetoothGanV1HardwareUuid = `00002a23${bluetoothUuidSuffix}`;
+const bluetoothGanV1DataServiceUuid = `0000fff0${bluetoothUuidSuffix}`;
+const bluetoothGanV1CubeStateUuid = `0000fff2${bluetoothUuidSuffix}`;
+const bluetoothGanV1PreviousMovesUuid = `0000fff3${bluetoothUuidSuffix}`;
+const bluetoothGanV1MoveStateUuid = `0000fff5${bluetoothUuidSuffix}`;
+const bluetoothGanV1TimingUuid = `0000fff6${bluetoothUuidSuffix}`;
+const bluetoothGanV1BatteryUuid = `0000fff7${bluetoothUuidSuffix}`;
+const bluetoothGanV2ServiceUuid = '6e400001-b5a3-f393-e0a9-e50e24dc4179';
+const bluetoothGanV2ReadUuid = '28be4cb6-cd67-11e9-a32f-2a2ae2dbcce4';
+const bluetoothGanV2WriteUuid = '28be4a4a-cd67-11e9-a32f-2a2ae2dbcce4';
+const bluetoothGanV3ServiceUuid = '8653000a-43e6-47b7-9cb0-5fc21d4ae340';
+const bluetoothGanV3ReadUuid = '8653000b-43e6-47b7-9cb0-5fc21d4ae340';
+const bluetoothGanV3WriteUuid = '8653000c-43e6-47b7-9cb0-5fc21d4ae340';
+const bluetoothGanV4ServiceUuid = '00000010-0000-fff7-fff6-fff5fff4fff0';
+const bluetoothGanV4ReadUuid = `0000fff6${bluetoothUuidSuffix}`;
+const bluetoothGanV4WriteUuid = `0000fff5${bluetoothUuidSuffix}`;
+const bluetoothGoCubeServiceUuid = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const bluetoothGoCubeWriteUuid = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+const bluetoothGoCubeReadUuid = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+const bluetoothGiikerDataServiceUuid = `0000ffe0${bluetoothUuidSuffix}`;
+const bluetoothMiSmartDataServiceUuid = `0000aadb${bluetoothUuidSuffix}`;
+const bluetoothGiikerBatteryServiceUuid = `0000aaaa${bluetoothUuidSuffix}`;
+const bluetoothGiikerBatteryReadUuid = `0000aaab${bluetoothUuidSuffix}`;
+const bluetoothGiikerBatteryWriteUuid = `0000aaac${bluetoothUuidSuffix}`;
+const bluetoothGanManufacturerData = Array.from({ length: 256 }, (_, index) => (index << 8) | 0x01);
 const bluetoothDeviceFilters = [
   { namePrefix: 'GAN' },
+  { namePrefix: 'MG' },
+  { namePrefix: 'AiCube' },
   { namePrefix: 'Gi' },
   { namePrefix: 'Giiker' },
   { namePrefix: 'Mi Smart' },
@@ -28,19 +59,68 @@ const bluetoothDeviceFilters = [
 const bluetoothOptionalServices = [
   'battery_service',
   'device_information',
-  '0000fff0-0000-1000-8000-00805f9b34fb',
-  '0000ffe0-0000-1000-8000-00805f9b34fb',
-  '0000aadb-0000-1000-8000-00805f9b34fb',
-  '0000aaaa-0000-1000-8000-00805f9b34fb',
-  '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
+  bluetoothGanV1MetaServiceUuid,
+  bluetoothGanV1DataServiceUuid,
+  bluetoothGanV2ServiceUuid,
+  bluetoothGanV3ServiceUuid,
+  bluetoothGanV4ServiceUuid,
+  bluetoothGiikerDataServiceUuid,
+  bluetoothMiSmartDataServiceUuid,
+  bluetoothGiikerBatteryServiceUuid,
+  bluetoothGoCubeServiceUuid,
 ];
-const bluetoothBatteryLevelUuid = '00002a19-0000-1000-8000-00805f9b34fb';
-const bluetoothGoCubeServiceUuid = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-const bluetoothGoCubeWriteUuid = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
-const bluetoothGoCubeReadUuid = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
-const bluetoothGiikerBatteryServiceUuid = '0000aaaa-0000-1000-8000-00805f9b34fb';
-const bluetoothGiikerBatteryReadUuid = '0000aaab-0000-1000-8000-00805f9b34fb';
-const bluetoothGiikerBatteryWriteUuid = '0000aaac-0000-1000-8000-00805f9b34fb';
+const bluetoothGanServiceLabels = new Map([
+  [bluetoothGanV1MetaServiceUuid, 'GAN Gen1 信息服务'],
+  [bluetoothGanV1DataServiceUuid, 'GAN Gen1 数据服务'],
+  [bluetoothGanV2ServiceUuid, 'GAN Gen2 数据服务'],
+  [bluetoothGanV3ServiceUuid, 'GAN Gen3 数据服务'],
+  [bluetoothGanV4ServiceUuid, 'GAN Gen4 数据服务'],
+]);
+const bluetoothGanServiceUuids = new Set(bluetoothGanServiceLabels.keys());
+const bluetoothGanCharacteristicUuids = new Set([
+  bluetoothGanV1VersionUuid,
+  bluetoothGanV1HardwareUuid,
+  bluetoothGanV1CubeStateUuid,
+  bluetoothGanV1PreviousMovesUuid,
+  bluetoothGanV1MoveStateUuid,
+  bluetoothGanV1TimingUuid,
+  bluetoothGanV1BatteryUuid,
+  bluetoothGanV2ReadUuid,
+  bluetoothGanV2WriteUuid,
+  bluetoothGanV3ReadUuid,
+  bluetoothGanV3WriteUuid,
+  bluetoothGanV4ReadUuid,
+  bluetoothGanV4WriteUuid,
+]);
+const bluetoothUuidLabels = new Map([
+  ['battery_service', '标准电量服务'],
+  ['device_information', '设备信息服务'],
+  [bluetoothBatteryLevelUuid, '标准电量特征'],
+  [bluetoothGanV1MetaServiceUuid, 'GAN Gen1 信息服务'],
+  [bluetoothGanV1VersionUuid, 'GAN Gen1 固件版本'],
+  [bluetoothGanV1HardwareUuid, 'GAN Gen1 硬件 ID'],
+  [bluetoothGanV1DataServiceUuid, 'GAN Gen1 数据服务'],
+  [bluetoothGanV1CubeStateUuid, 'GAN Gen1 魔方状态'],
+  [bluetoothGanV1PreviousMovesUuid, 'GAN Gen1 历史转动'],
+  [bluetoothGanV1MoveStateUuid, 'GAN Gen1 转动状态 / Gen4 写请求'],
+  [bluetoothGanV1TimingUuid, 'GAN Gen1 转动时间 / Gen4 读通知'],
+  [bluetoothGanV1BatteryUuid, 'GAN Gen1 电量'],
+  [bluetoothGanV2ServiceUuid, 'GAN Gen2 数据服务'],
+  [bluetoothGanV2ReadUuid, 'GAN Gen2 读通知'],
+  [bluetoothGanV2WriteUuid, 'GAN Gen2 写请求'],
+  [bluetoothGanV3ServiceUuid, 'GAN Gen3 数据服务'],
+  [bluetoothGanV3ReadUuid, 'GAN Gen3 读通知'],
+  [bluetoothGanV3WriteUuid, 'GAN Gen3 写请求'],
+  [bluetoothGanV4ServiceUuid, 'GAN Gen4 数据服务'],
+  [bluetoothGoCubeServiceUuid, 'GoCube / Rubik 数据服务'],
+  [bluetoothGoCubeReadUuid, 'GoCube / Rubik 读通知'],
+  [bluetoothGoCubeWriteUuid, 'GoCube / Rubik 写请求'],
+  [bluetoothGiikerDataServiceUuid, 'Giiker / Mi Smart 数据服务'],
+  [bluetoothMiSmartDataServiceUuid, 'Mi Smart 数据服务'],
+  [bluetoothGiikerBatteryServiceUuid, 'Giiker 电量服务'],
+  [bluetoothGiikerBatteryReadUuid, 'Giiker 电量读特征'],
+  [bluetoothGiikerBatteryWriteUuid, 'Giiker 电量写特征'],
+].map(([uuid, label]) => [String(uuid).toLowerCase(), label]));
 const facePositions = {
   U: [3, 0],
   L: [0, 3],
@@ -454,6 +534,8 @@ window.__trainTimerDebug = {
       bluetoothSolved,
       bluetoothState: elements.bluetoothStateMeta.textContent,
       bluetoothAvailability: bluetoothAvailability(),
+      bluetoothRequest: bluetoothRequestSummary(bluetoothRequestOptions(false)),
+      bluetoothOptionalServices,
     };
   },
 };
@@ -1755,8 +1837,7 @@ async function connectBluetoothCube(options = {}) {
 
     setBluetoothScanningState(true, compatibilityMode);
     resetBluetoothBattery();
-    addBluetoothLog('扫描', compatibilityMode ? '打开兼容设备选择器' : '打开设备选择器');
-    const device = await navigator.bluetooth.requestDevice(bluetoothRequestOptions(compatibilityMode));
+    const device = await requestBluetoothDevice(compatibilityMode);
     await connectBluetoothDevice(device, { reconnect: false });
     void refreshBluetoothReconnectDevices();
   } catch (error) {
@@ -1902,14 +1983,51 @@ function bluetoothAvailability() {
     canRequest: true,
     canReconnect: hasGetDevices,
     label: '未连接',
-    detail: `Web Bluetooth 可用 · ${bluetoothDeviceFilters.length} 个名称筛选 · 支持 GoCube / Rubik's Connected / Giiker / Mi Smart 数据解析`,
+    detail: `Web Bluetooth 可用 · ${bluetoothDeviceFilters.length} 个名称筛选 · 支持 GoCube / Rubik's Connected / Giiker / Mi Smart 解析 · 已授权 GAN 服务诊断`,
   };
 }
 
-function bluetoothRequestOptions(compatibilityMode) {
-  return compatibilityMode
+async function requestBluetoothDevice(compatibilityMode) {
+  const requestOptions = bluetoothRequestOptions(compatibilityMode);
+  addBluetoothLog(
+    '扫描',
+    compatibilityMode ? '打开兼容设备选择器' : '打开设备选择器',
+    bluetoothRequestSummary(requestOptions),
+  );
+
+  try {
+    return await navigator.bluetooth.requestDevice(requestOptions);
+  } catch (error) {
+    if (!isManufacturerDataOptionError(error)) throw error;
+    const fallbackOptions = bluetoothRequestOptions(compatibilityMode, { includeManufacturerData: false });
+    addBluetoothLog('警告', 'GAN manufacturer data 授权不可用', '已退回基础服务扫描');
+    return navigator.bluetooth.requestDevice(fallbackOptions);
+  }
+}
+
+function bluetoothRequestOptions(compatibilityMode, options = {}) {
+  const requestOptions = compatibilityMode
     ? { acceptAllDevices: true, optionalServices: bluetoothOptionalServices }
     : { filters: bluetoothDeviceFilters, optionalServices: bluetoothOptionalServices };
+  if (options.includeManufacturerData !== false) {
+    requestOptions.optionalManufacturerData = bluetoothGanManufacturerData;
+  }
+  return requestOptions;
+}
+
+function bluetoothRequestSummary(options) {
+  const selector = options.acceptAllDevices ? '兼容扫描' : `${options.filters?.length || 0} 个名称筛选`;
+  const serviceCount = Array.isArray(options.optionalServices) ? options.optionalServices.length : 0;
+  const manufacturerCount = Array.isArray(options.optionalManufacturerData) ? options.optionalManufacturerData.length : 0;
+  return [
+    selector,
+    `${serviceCount} 个服务授权`,
+    manufacturerCount > 0 ? `${manufacturerCount} 个 GAN manufacturer data 授权` : '',
+  ].filter(Boolean).join(' · ');
+}
+
+function isManufacturerDataOptionError(error) {
+  return error instanceof TypeError || error?.name === 'TypeError';
 }
 
 function setBluetoothScanningState(scanning, compatibilityMode, label = '') {
@@ -2003,11 +2121,17 @@ async function discoverBluetoothServices(server) {
 
   for (const service of services) {
     const characteristics = await service.getCharacteristics();
-    detail.push(`${shortUuid(service.uuid)}:${characteristics.length}`);
-    addBluetoothLog('服务', shortUuid(service.uuid), `${characteristics.length} 个特征`);
+    const serviceLabel = bluetoothUuidLabel(service.uuid);
+    detail.push(`${serviceLabel}:${characteristics.length}`);
+    addBluetoothLog('服务', serviceLabel, `${characteristics.length} 个特征`);
+    if (isGanServiceUuid(service.uuid)) {
+      addBluetoothLog('GAN', `${bluetoothGanServiceLabel(service.uuid)} 已发现`, '服务已授权，正在检查可订阅特征');
+    }
 
     for (const characteristic of characteristics) {
       const properties = characteristic.properties;
+      const propertyText = characteristicProperties(properties).join(', ') || '无属性';
+      addBluetoothLog('特征', bluetoothUuidLabel(characteristic.uuid), `${serviceLabel} · ${propertyText}`);
       if (isBatteryLevelCharacteristic(characteristic.uuid)) {
         await readBluetoothBatteryLevel(characteristic);
       }
@@ -2032,7 +2156,7 @@ async function readBluetoothBatteryLevel(characteristic) {
 
   try {
     const value = await characteristic.readValue();
-    if (!updateBluetoothBattery(decodeBatteryLevel(value), shortUuid(characteristic.uuid))) {
+    if (!updateBluetoothBattery(decodeBatteryLevel(value), bluetoothUuidLabel(characteristic.uuid))) {
       addBluetoothLog('警告', '电量数据无效', dataViewToHex(value));
     }
   } catch (error) {
@@ -2045,10 +2169,10 @@ async function subscribeBluetoothCharacteristic(characteristic) {
     await characteristic.startNotifications();
     characteristic.addEventListener('characteristicvaluechanged', handleBluetoothNotification);
     bluetoothSubscriptions.push(characteristic);
-    addBluetoothLog('通知', shortUuid(characteristic.uuid), characteristicProperties(characteristic.properties).join(', '));
+    addBluetoothLog('通知', bluetoothUuidLabel(characteristic.uuid), characteristicProperties(characteristic.properties).join(', '));
     return true;
   } catch (error) {
-    addBluetoothLog('警告', `订阅失败 ${shortUuid(characteristic.uuid)}`, error.message || String(error));
+    addBluetoothLog('警告', `订阅失败 ${bluetoothUuidLabel(characteristic.uuid)}`, error.message || String(error));
     console.warn('Bluetooth notification subscription failed', characteristic.uuid, error);
     return false;
   }
@@ -2068,7 +2192,7 @@ async function primeBluetoothService(service, characteristics) {
   });
 
   if (!writeCharacteristic) {
-    addBluetoothLog('警告', 'GoCube 写特征未找到', shortUuid(service.uuid));
+    addBluetoothLog('警告', 'GoCube 写特征未找到', bluetoothUuidLabel(service.uuid));
     return 0;
   }
 
@@ -2086,7 +2210,7 @@ async function primeGiikerBatteryService(service, characteristics) {
   });
 
   if (!writeCharacteristic) {
-    addBluetoothLog('警告', 'Giiker 电量写特征未找到', shortUuid(service.uuid));
+    addBluetoothLog('警告', 'Giiker 电量写特征未找到', bluetoothUuidLabel(service.uuid));
     return 0;
   }
 
@@ -2101,7 +2225,7 @@ async function writeBluetoothValue(characteristic, bytes, label) {
     } else {
       await characteristic.writeValue(payload);
     }
-    addBluetoothLog('写入', label, `${shortUuid(characteristic.uuid)} ${bytesToHex(payload)}`);
+    addBluetoothLog('写入', label, `${bluetoothUuidLabel(characteristic.uuid)} ${bytesToHex(payload)}`);
     return 1;
   } catch (error) {
     addBluetoothLog('警告', `${label} 写入失败`, error.message || String(error));
@@ -2116,7 +2240,8 @@ function handleBluetoothNotification(event) {
 
 function processBluetoothPacket(uuid, value, deviceName) {
   const hex = dataViewToHex(value);
-  const label = shortUuid(uuid);
+  const label = bluetoothUuidLabel(uuid);
+  const ganPacket = isGanPacketSource(uuid, deviceName);
   if (isBatteryLevelCharacteristic(uuid)) {
     const batteryLevel = decodeBatteryLevel(value);
     if (updateBluetoothBattery(batteryLevel, label)) {
@@ -2148,19 +2273,25 @@ function processBluetoothPacket(uuid, value, deviceName) {
   elements.bluetoothStatus.title = `${uuid} ${hex}`;
   if (trackingMoves) addBluetoothMoves(parsedMoves, label, decoded.protocol || '', deviceName);
   if (trackingMoves) finishTimingFromBluetooth();
+  const rawGanPacket = ganPacket && parsedMoves.length === 0 && decoded.protocol === 'raw';
   const statusDetail = parsedMoves.length > 0
     ? `${parsedMoves.join(' ')} · ${trackingMoves ? (bluetoothSolved ? '已复原' : '未复原') : '等待计时'}`
-    : (duplicateMovePacket
+    : (rawGanPacket
+      ? `GAN 原始数据 ${shortUuid(uuid)} ${hex.slice(0, 23)}`
+      : (duplicateMovePacket
       ? `${decoded.moves.join(' ')} · 重复状态包`
-      : (decoded.batteryLevel != null ? `电量 ${decoded.batteryLevel}%` : `${label} ${hex.slice(0, 17)}`));
+      : (decoded.batteryLevel != null ? `电量 ${decoded.batteryLevel}%` : `${label} ${hex.slice(0, 17)}`)));
   const ignoredReason = duplicateMovePacket
     ? '重复状态包'
     : (parsedMoves.length > 0 && !trackingMoves ? '等待计时' : '');
   elements.bluetoothStatus.textContent = `${deviceName} · ${statusDetail}`;
+  const logDetail = logBluetoothPacket(hex, decoded, ignoredReason);
   addBluetoothLog(
-    parsedMoves.length > 0 ? (trackingMoves ? '数据/转动' : '数据/预备转动') : (duplicateMovePacket ? '数据/重复' : '数据'),
+    parsedMoves.length > 0
+      ? (trackingMoves ? '数据/转动' : '数据/预备转动')
+      : (rawGanPacket ? '数据/GAN原始' : (duplicateMovePacket ? '数据/重复' : '数据')),
     label,
-    logBluetoothPacket(hex, decoded, ignoredReason),
+    rawGanPacket ? `${logDetail} · GAN 加密包暂未解析为转动` : logDetail,
   );
   console.info('Bluetooth cube notification', {
     characteristic: uuid,
@@ -2284,6 +2415,12 @@ function bluetoothLogPayload() {
       id: bluetoothDevice.id || '',
     } : null,
     batteryLevel: bluetoothBatteryLevel,
+    webBluetooth: bluetoothAvailability(),
+    request: {
+      summary: bluetoothRequestSummary(bluetoothRequestOptions(false)),
+      optionalServices: bluetoothOptionalServices,
+      ganManufacturerDataCount: bluetoothGanManufacturerData.length,
+    },
     solved: bluetoothSolved,
     moveCount: bluetoothMoves.length,
     moves: bluetoothMoves,
@@ -2417,6 +2554,33 @@ function logBluetoothPacket(hex, decoded, ignoredReason = '') {
   if (decoded.moves.length > 0) detail.push(`moves=${decoded.moves.join(' ')}`);
   if (ignoredReason) detail.push(`未计入=${ignoredReason}`);
   return detail.join(' · ');
+}
+
+function bluetoothUuidLabel(uuid) {
+  const normalized = normalizeBluetoothUuid(uuid);
+  const label = bluetoothUuidLabels.get(normalized);
+  const compact = shortUuid(uuid);
+  return label ? `${compact} ${label}` : compact;
+}
+
+function bluetoothGanServiceLabel(uuid) {
+  return bluetoothGanServiceLabels.get(normalizeBluetoothUuid(uuid)) || 'GAN 服务';
+}
+
+function isGanServiceUuid(uuid) {
+  return bluetoothGanServiceUuids.has(normalizeBluetoothUuid(uuid));
+}
+
+function isGanCharacteristicUuid(uuid) {
+  return bluetoothGanCharacteristicUuids.has(normalizeBluetoothUuid(uuid));
+}
+
+function isGanPacketSource(uuid, deviceName = '') {
+  return isGanCharacteristicUuid(uuid) || /^(gan|mg|aicube)/i.test(String(deviceName || ''));
+}
+
+function normalizeBluetoothUuid(uuid) {
+  return String(uuid).toLowerCase();
 }
 
 function shortUuid(uuid) {

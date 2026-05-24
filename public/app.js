@@ -133,6 +133,7 @@ const elements = {
   allSolvesSortBy: document.querySelector('#allSolvesSortBy'),
   allSolvesSortDirection: document.querySelector('#allSolvesSortDirection'),
   selectAllSessionSolves: document.querySelector('#selectAllSessionSolves'),
+  clearAllSolvesFiltersButton: document.querySelector('#clearAllSolvesFiltersButton'),
   allListedStatsButton: document.querySelector('#allListedStatsButton'),
   allSelectedStatsButton: document.querySelector('#allSelectedStatsButton'),
   allMarkSelectedButton: document.querySelector('#allMarkSelectedButton'),
@@ -410,6 +411,7 @@ elements.allSolvesTagFilter.addEventListener('change', handleAllSolvesFilterChan
 elements.allSessionsToggle.addEventListener('change', toggleAllSessions);
 elements.allSolvesSortBy.addEventListener('change', renderAllSolvesDialog);
 elements.allSolvesSortDirection.addEventListener('change', renderAllSolvesDialog);
+elements.clearAllSolvesFiltersButton.addEventListener('click', clearAllSolvesFilters);
 elements.allListedStatsButton.addEventListener('click', openListedStatsDialog);
 elements.historyRows.addEventListener('change', handleHistoryChange);
 elements.historyRows.addEventListener('click', handleHistoryClick);
@@ -1121,6 +1123,20 @@ function openAllSolvesDialog() {
 }
 
 function handleAllSolvesFilterChange() {
+  selectedSolveIds.clear();
+  render();
+}
+
+function clearAllSolvesFilters() {
+  if (!allSolvesFilterActive()) return;
+  elements.allSolvesSearch.value = '';
+  elements.allSolvesFromDate.value = '';
+  elements.allSolvesToDate.value = '';
+  elements.allSolvesRecordFilter.value = 'all';
+  elements.allSolvesPuzzleFilter.value = 'all';
+  elements.allSolvesPenaltyFilter.value = 'all';
+  elements.allSolvesSourceFilter.value = 'all';
+  elements.allSolvesTagFilter.value = 'all';
   selectedSolveIds.clear();
   render();
 }
@@ -3217,6 +3233,7 @@ function renderHistoryControls() {
 
 function renderAllSolvesControls() {
   const sessionIds = filteredAllSolves().map((solve) => solve.id);
+  elements.clearAllSolvesFiltersButton.disabled = !allSolvesFilterActive();
   elements.allListedStatsButton.disabled = sessionIds.length === 0;
   elements.allSelectedStatsButton.disabled = selectedSolveIds.size === 0;
   elements.allMarkSelectedButton.disabled = selectedSolveIds.size === 0;

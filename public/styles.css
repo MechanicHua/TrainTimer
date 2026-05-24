@@ -1018,6 +1018,10 @@ dialog[open] {
   padding: 0 12px;
 }
 
+.all-solves-toolbar .filter-clear-button {
+  color: var(--muted-strong);
+}
+
 .bluetooth-move-strip {
   display: grid;
   grid-template-columns: 54px minmax(0, 1fr) 88px;

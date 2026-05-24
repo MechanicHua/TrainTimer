@@ -924,6 +924,7 @@ dialog[open] {
 .all-solves-search,
 .all-solves-sort,
 .all-solves-date,
+.all-solves-date-shortcuts,
 .all-sessions-toggle {
   display: flex;
   align-items: center;
@@ -941,6 +942,15 @@ dialog[open] {
 
 .all-solves-date {
   flex: 0 0 auto;
+}
+
+.all-solves-date-shortcuts {
+  flex: 0 0 auto;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.68);
 }
 
 .all-solves-search span,
@@ -1016,6 +1026,22 @@ dialog[open] {
 .bluetooth-log-toolbar button {
   min-height: 32px;
   padding: 0 12px;
+}
+
+.all-solves-date-shortcuts button {
+  min-height: 26px;
+  padding: 0 9px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted-strong);
+  box-shadow: none;
+}
+
+.all-solves-date-shortcuts button.active {
+  border-color: var(--line-soft);
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--ink);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .all-solves-toolbar .filter-clear-button {

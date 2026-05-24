@@ -124,6 +124,10 @@ const elements = {
   allSolvesSearch: document.querySelector('#allSolvesSearch'),
   allSolvesFromDate: document.querySelector('#allSolvesFromDate'),
   allSolvesToDate: document.querySelector('#allSolvesToDate'),
+  allDateTodayButton: document.querySelector('#allDateTodayButton'),
+  allDateWeekButton: document.querySelector('#allDateWeekButton'),
+  allDateMonthButton: document.querySelector('#allDateMonthButton'),
+  allDateAllButton: document.querySelector('#allDateAllButton'),
   allSolvesRecordFilter: document.querySelector('#allSolvesRecordFilter'),
   allSolvesPuzzleFilter: document.querySelector('#allSolvesPuzzleFilter'),
   allSolvesPenaltyFilter: document.querySelector('#allSolvesPenaltyFilter'),
@@ -264,6 +268,7 @@ let inspectionEnabled = localStorage.getItem('trainTimer.inspection') === '1';
 let currentSessionId = localStorage.getItem('trainTimer.session') || 'default';
 let scramblePuzzle = localStorage.getItem('trainTimer.scramblePuzzle') || 'three';
 let allSessionsEnabled = localStorage.getItem('trainTimer.allSessions') === '1';
+let allSolvesDatePreset = 'all';
 let startedAt = 0;
 let inspectionStartedAt = 0;
 let holdStartedAt = 0;
@@ -404,6 +409,10 @@ elements.selectAllSessionSolves.addEventListener('change', toggleSelectAllSessio
 elements.allSolvesSearch.addEventListener('input', handleAllSolvesFilterChange);
 elements.allSolvesFromDate.addEventListener('change', handleAllSolvesFilterChange);
 elements.allSolvesToDate.addEventListener('change', handleAllSolvesFilterChange);
+elements.allDateTodayButton.addEventListener('click', () => setAllSolvesDatePreset('today'));
+elements.allDateWeekButton.addEventListener('click', () => setAllSolvesDatePreset('week'));
+elements.allDateMonthButton.addEventListener('click', () => setAllSolvesDatePreset('month'));
+elements.allDateAllButton.addEventListener('click', () => setAllSolvesDatePreset('all'));
 elements.allSolvesRecordFilter.addEventListener('change', handleAllSolvesFilterChange);
 elements.allSolvesPuzzleFilter.addEventListener('change', handleAllSolvesFilterChange);
 elements.allSolvesPenaltyFilter.addEventListener('change', handleAllSolvesFilterChange);
@@ -1132,6 +1141,7 @@ function openAllSolvesDialog() {
   elements.allSolvesSearch.value = '';
   elements.allSolvesFromDate.value = '';
   elements.allSolvesToDate.value = '';
+  allSolvesDatePreset = 'all';
   elements.allSolvesRecordFilter.value = 'all';
   elements.allSolvesPuzzleFilter.value = 'all';
   elements.allSolvesPenaltyFilter.value = 'all';
@@ -1146,7 +1156,19 @@ function openAllSolvesDialog() {
   elements.allSolvesSearch.focus();
 }
 
-function handleAllSolvesFilterChange() {
+function handleAllSolvesFilterChange(event) {
+  if ([elements.allSolvesFromDate, elements.allSolvesToDate].includes(event?.target)) {
+    allSolvesDatePreset = inferredQuickDatePreset();
+  }
+  selectedSolveIds.clear();
+  render();
+}
+
+function setAllSolvesDatePreset(preset) {
+  const range = quickDateRange(preset);
+  elements.allSolvesFromDate.value = range.from;
+  elements.allSolvesToDate.value = range.to;
+  allSolvesDatePreset = preset;
   selectedSolveIds.clear();
   render();
 }
@@ -1156,6 +1178,7 @@ function clearAllSolvesFilters() {
   elements.allSolvesSearch.value = '';
   elements.allSolvesFromDate.value = '';
   elements.allSolvesToDate.value = '';
+  allSolvesDatePreset = 'all';
   elements.allSolvesRecordFilter.value = 'all';
   elements.allSolvesPuzzleFilter.value = 'all';
   elements.allSolvesPenaltyFilter.value = 'all';
@@ -3257,6 +3280,7 @@ function renderHistoryControls() {
 
 function renderAllSolvesControls() {
   const sessionIds = filteredAllSolves().map((solve) => solve.id);
+  renderAllSolvesDateShortcuts();
   elements.clearAllSolvesFiltersButton.disabled = !allSolvesFilterActive();
   elements.allListedStatsButton.disabled = sessionIds.length === 0;
   elements.allSelectedStatsButton.disabled = selectedSolveIds.size === 0;
@@ -3276,6 +3300,19 @@ function renderAllSolvesControls() {
   elements.allExportCstimerJsonButton.disabled = sessionIds.length === 0;
   elements.selectAllSessionSolves.checked = sessionIds.length > 0 && sessionIds.every((id) => selectedSolveIds.has(id));
   elements.selectAllSessionSolves.indeterminate = sessionIds.some((id) => selectedSolveIds.has(id)) && !elements.selectAllSessionSolves.checked;
+}
+
+function renderAllSolvesDateShortcuts() {
+  const activePreset = activeQuickDatePreset();
+  for (const [preset, button] of [
+    ['today', elements.allDateTodayButton],
+    ['week', elements.allDateWeekButton],
+    ['month', elements.allDateMonthButton],
+    ['all', elements.allDateAllButton],
+  ]) {
+    button.classList.toggle('active', activePreset === preset);
+    button.setAttribute('aria-pressed', activePreset === preset ? 'true' : 'false');
+  }
 }
 
 function renderSelectionControls() {
@@ -3386,6 +3423,59 @@ function allSolvesDateBounds() {
   };
 }
 
+function quickDateRange(preset) {
+  if (preset === 'all') return { from: '', to: '' };
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (preset === 'today') {
+    const value = dateInputValue(today);
+    return { from: value, to: value };
+  }
+
+  if (preset === 'week') {
+    const day = today.getDay();
+    const mondayOffset = day === 0 ? -6 : 1 - day;
+    const start = new Date(today);
+    start.setDate(today.getDate() + mondayOffset);
+    return { from: dateInputValue(start), to: dateInputValue(today) };
+  }
+
+  if (preset === 'month') {
+    return {
+      from: dateInputValue(new Date(today.getFullYear(), today.getMonth(), 1)),
+      to: dateInputValue(today),
+    };
+  }
+
+  return { from: elements.allSolvesFromDate.value, to: elements.allSolvesToDate.value };
+}
+
+function activeQuickDatePreset() {
+  const current = currentAllSolvesDateRange();
+  if (sameDateRange(current, quickDateRange(allSolvesDatePreset))) return allSolvesDatePreset;
+  return inferredQuickDatePreset();
+}
+
+function inferredQuickDatePreset() {
+  const current = currentAllSolvesDateRange();
+  for (const preset of ['today', 'week', 'month', 'all']) {
+    if (sameDateRange(current, quickDateRange(preset))) return preset;
+  }
+  return '';
+}
+
+function currentAllSolvesDateRange() {
+  return {
+    from: elements.allSolvesFromDate.value,
+    to: elements.allSolvesToDate.value,
+  };
+}
+
+function sameDateRange(left, right) {
+  return left.from === right.from && left.to === right.to;
+}
+
 function parseDateInput(value) {
   const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return null;
@@ -3394,6 +3484,11 @@ function parseDateInput(value) {
   const day = Number(match[3]);
   const date = new Date(year, month, day);
   return date.getFullYear() === year && date.getMonth() === month && date.getDate() === day ? date : null;
+}
+
+function dateInputValue(date) {
+  const pad = (number) => String(number).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 function dateTimeLocalValue(value) {

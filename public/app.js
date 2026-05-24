@@ -170,21 +170,23 @@ const cube3dFallbackColors = {
   L: '#f97316',
   B: '#2563eb',
 };
-const cfopPairSlots = [
-  { key: 'FL', label: 'F1', name: 'F2L FL', cells: [['F', 1, 0], ['L', 1, 2], ['F', 2, 0], ['L', 2, 2], ['D', 0, 0]] },
-  { key: 'FR', label: 'F2', name: 'F2L FR', cells: [['F', 1, 2], ['R', 1, 0], ['F', 2, 2], ['R', 2, 0], ['D', 0, 2]] },
-  { key: 'BR', label: 'F3', name: 'F2L BR', cells: [['B', 1, 0], ['R', 1, 2], ['B', 2, 0], ['R', 2, 2], ['D', 2, 2]] },
-  { key: 'BL', label: 'F4', name: 'F2L BL', cells: [['B', 1, 2], ['L', 1, 0], ['B', 2, 2], ['L', 2, 0], ['D', 2, 0]] },
-];
-const cfopCrossCells = [
-  ['D', 0, 1], ['D', 1, 0], ['D', 1, 2], ['D', 2, 1],
-  ['F', 2, 1], ['R', 2, 1], ['B', 2, 1], ['L', 2, 1],
-];
-const cfopOllCells = [
-  ['U', 0, 0], ['U', 0, 1], ['U', 0, 2],
-  ['U', 1, 0], ['U', 1, 1], ['U', 1, 2],
-  ['U', 2, 0], ['U', 2, 1], ['U', 2, 2],
-];
+const cubeFaceNormals = {
+  U: [0, 1, 0],
+  R: [1, 0, 0],
+  F: [0, 0, 1],
+  D: [0, -1, 0],
+  L: [-1, 0, 0],
+  B: [0, 0, -1],
+};
+const cubeOppositeFaces = { U: 'D', D: 'U', R: 'L', L: 'R', F: 'B', B: 'F' };
+const cfopBottomFaceOrder = ['D', 'U', 'F', 'B', 'L', 'R'];
+const cfopFallbackPairSlots = Array.from({ length: 4 }, (_, index) => ({
+  key: `pair-${index + 1}`,
+  label: `F${index + 1}`,
+  name: `F2L Pair ${index + 1}`,
+  cells: [],
+}));
+const cfopDefinitions = createCfopDefinitions();
 const puzzleLabels = new Map([
   ['two', '2x2'],
   ['three', '3x3'],
@@ -1862,6 +1864,80 @@ function solveMoveRecords(solve) {
   return records.filter((record) => /^[UDRLFB](2|')?$/.test(record.move));
 }
 
+function createCfopDefinitions() {
+  const stickers = createSolvedCube();
+  const cubies = new Map();
+  for (const sticker of stickers) {
+    const key = sticker.pos.join(',');
+    if (!cubies.has(key)) cubies.set(key, []);
+    cubies.get(key).push({
+      color: sticker.face,
+      cell: cfopSolvedStickerCell(sticker),
+    });
+  }
+
+  const edgeCubies = [...cubies.values()].filter((cubie) => cubie.length === 2);
+  const cornerCubies = [...cubies.values()].filter((cubie) => cubie.length === 3);
+  const definitions = new Map();
+  for (const bottomFace of cube3dFaces) {
+    const topFace = cubeOppositeFaces[bottomFace];
+    const crossCells = edgeCubies
+      .filter((cubie) => cubie.some((sticker) => sticker.color === bottomFace))
+      .flatMap((cubie) => cubie.map((sticker) => sticker.cell));
+    const pairSlots = cornerCubies
+      .filter((corner) => corner.some((sticker) => sticker.color === bottomFace))
+      .map((corner, index) => {
+        const sideFaces = corner.map((sticker) => sticker.color).filter((face) => face !== bottomFace);
+        const edge = edgeCubies.find((candidate) => (
+          sideFaces.every((face) => candidate.some((sticker) => sticker.color === face))
+        ));
+        return {
+          key: `${bottomFace}-${sideFaces.join('')}`,
+          label: `F${index + 1}`,
+          name: `F2L ${sideFaces.join('/')}`,
+          cells: [
+            ...corner.map((sticker) => sticker.cell),
+            ...(edge ? edge.map((sticker) => sticker.cell) : []),
+          ],
+        };
+      });
+    const ollCells = Array.from({ length: 9 }, (_, index) => [topFace, Math.floor(index / 3), index % 3]);
+    definitions.set(bottomFace, { bottomFace, topFace, crossCells, pairSlots, ollCells });
+  }
+  return definitions;
+}
+
+function cfopSolvedStickerCell(sticker) {
+  const face = cfopFaceFromNormal(sticker.normal);
+  const [row, col] = cfopFaceGridPosition(face, sticker.pos);
+  return [face, row, col];
+}
+
+function cfopFaceFromNormal(normal) {
+  for (const [face, candidate] of Object.entries(cubeFaceNormals)) {
+    if (normal.every((value, index) => value === candidate[index])) return face;
+  }
+  throw new Error(`Invalid sticker normal: ${normal.join(',')}`);
+}
+
+function cfopFaceGridPosition(face, [x, y, z]) {
+  if (face === 'U') return [z + 1, x + 1];
+  if (face === 'D') return [1 - z, x + 1];
+  if (face === 'F') return [1 - y, x + 1];
+  if (face === 'B') return [1 - y, 1 - x];
+  if (face === 'R') return [1 - y, 1 - z];
+  if (face === 'L') return [1 - y, z + 1];
+  throw new Error(`Unsupported face: ${face}`);
+}
+
+function detectCfopCrossDefinition(faces) {
+  for (const face of cfopBottomFaceOrder) {
+    const definition = cfopDefinitions.get(face);
+    if (definition && isFaceletSetSolved(faces, definition.crossCells)) return definition;
+  }
+  return null;
+}
+
 function solveCfopAnalysis(solve) {
   const records = solveMoveRecords(solve);
   const stageTemplate = cfopStageTemplate();
@@ -1871,10 +1947,13 @@ function solveCfopAnalysis(solve) {
 
   const completions = {
     cross: null,
+    bottomFace: '',
     pairs: new Map(),
+    f2l: null,
     oll: null,
     pll: null,
   };
+  let cfopDefinition = null;
   let cube;
   try {
     cube = createSolvedCube();
@@ -1885,17 +1964,33 @@ function solveCfopAnalysis(solve) {
 
   const recordCompletion = (stepIndex) => {
     const faces = facesFromCube(cube);
-    if (completions.cross == null && isCfopCrossSolved(faces)) completions.cross = stepIndex;
-    for (const slot of cfopPairSlots) {
-      if (!completions.pairs.has(slot.key) && isFaceletSetSolved(faces, slot.cells)) {
-        completions.pairs.set(slot.key, stepIndex);
+    if (completions.cross == null) {
+      cfopDefinition = detectCfopCrossDefinition(faces);
+      if (cfopDefinition) {
+        completions.cross = stepIndex;
+        completions.bottomFace = cfopDefinition.bottomFace;
       }
+      else return;
     }
-    if (completions.oll == null && isFaceletSetSolved(faces, cfopOllCells)) completions.oll = stepIndex;
+
+    if (completions.f2l == null) {
+      for (const slot of cfopDefinition.pairSlots) {
+        if (!completions.pairs.has(slot.key) && isFaceletSetSolved(faces, slot.cells)) {
+          completions.pairs.set(slot.key, stepIndex);
+        }
+      }
+      if (completions.pairs.size === cfopDefinition.pairSlots.length) completions.f2l = stepIndex;
+      else return;
+    }
+
+    if (completions.oll == null) {
+      if (isFaceletSetSolved(faces, cfopDefinition.ollCells)) completions.oll = stepIndex;
+      else return;
+    }
+
     if (completions.pll == null && isSolvedFaces(faces)) completions.pll = stepIndex;
   };
 
-  recordCompletion(0);
   for (let index = 0; index < records.length; index += 1) {
     try {
       applyMove(cube, parseScramble(records[index].move)[0]);
@@ -1905,12 +2000,13 @@ function solveCfopAnalysis(solve) {
     }
   }
 
-  const orderedPairs = cfopPairSlots
+  const pairSlots = cfopDefinition?.pairSlots || cfopFallbackPairSlots;
+  const orderedPairs = pairSlots
     .map((slot) => ({ ...slot, completedAt: completions.pairs.get(slot.key) ?? null }))
     .sort((left, right) => {
       const leftStep = left.completedAt ?? Number.POSITIVE_INFINITY;
       const rightStep = right.completedAt ?? Number.POSITIVE_INFINITY;
-      return leftStep - rightStep || cfopPairSlots.findIndex((slot) => slot.key === left.key) - cfopPairSlots.findIndex((slot) => slot.key === right.key);
+      return leftStep - rightStep || pairSlots.findIndex((slot) => slot.key === left.key) - pairSlots.findIndex((slot) => slot.key === right.key);
     });
   const pairStages = orderedPairs.map((slot, index) => ({
     key: slot.key,
@@ -1936,13 +2032,14 @@ function solveCfopAnalysis(solve) {
     records,
     stages,
     finalSolved: completions.pll != null,
+    bottomFace: completions.bottomFace,
   };
 }
 
 function cfopStageTemplate() {
   return [
     { label: 'C', name: 'Cross', completed: false, turns: 0, durationMs: null, tps: null },
-    ...cfopPairSlots.map((slot, index) => ({ label: `F${index + 1}`, name: slot.name, completed: false, turns: 0, durationMs: null, tps: null })),
+    ...cfopFallbackPairSlots.map((slot, index) => ({ label: `F${index + 1}`, name: slot.name, completed: false, turns: 0, durationMs: null, tps: null })),
     { label: 'O', name: 'OLL', completed: false, turns: 0, durationMs: null, tps: null },
     { label: 'P', name: 'PLL', completed: false, turns: 0, durationMs: null, tps: null },
   ];
@@ -1974,10 +2071,6 @@ function elapsedAtSolveStep(records, step) {
   if (step <= 0) return 0;
   const record = records[step - 1];
   return Number.isFinite(record?.elapsedMs) ? record.elapsedMs : null;
-}
-
-function isCfopCrossSolved(faces) {
-  return isFaceletSetSolved(faces, cfopCrossCells);
 }
 
 function isFaceletSetSolved(faces, cells) {

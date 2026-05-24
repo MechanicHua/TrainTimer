@@ -5,6 +5,7 @@ import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { drawScrambleSvg, generateScramble } from './scramble.js';
+import { decodeGanBluetoothPacket, encodeGanBluetoothRequests } from './gan-bluetooth.js';
 import {
   clearSolves,
   createSession,
@@ -98,6 +99,29 @@ async function handleApi(request, response) {
     const body = await readJsonBody(request);
     const preview = await drawScrambleSvg(body.scramble, body.puzzle);
     sendJson(response, 200, preview || { svg: null, source: 'local-js-preview' });
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/bluetooth/gan/requests') {
+    const body = await readJsonBody(request);
+    sendJson(response, 200, {
+      requests: encodeGanBluetoothRequests({
+        protocol: body.protocol,
+        mac: body.mac,
+        keyVersion: body.keyVersion,
+      }),
+    });
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/bluetooth/gan/decode') {
+    const body = await readJsonBody(request);
+    sendJson(response, 200, decodeGanBluetoothPacket({
+      protocol: body.protocol,
+      mac: body.mac,
+      keyVersion: body.keyVersion,
+      bytes: body.bytes,
+    }));
     return;
   }
 

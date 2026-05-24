@@ -121,6 +121,35 @@ const bluetoothUuidLabels = new Map([
   [bluetoothGiikerBatteryReadUuid, 'Giiker 电量读特征'],
   [bluetoothGiikerBatteryWriteUuid, 'Giiker 电量写特征'],
 ].map(([uuid, label]) => [String(uuid).toLowerCase(), label]));
+const bluetoothGanProtocols = new Map([
+  [bluetoothGanV2ServiceUuid, {
+    protocol: 'v2',
+    label: 'GAN Gen2',
+    readUuid: bluetoothGanV2ReadUuid,
+    writeUuid: bluetoothGanV2WriteUuid,
+    requestBytes: 20,
+  }],
+  [bluetoothGanV3ServiceUuid, {
+    protocol: 'v3',
+    label: 'GAN Gen3',
+    readUuid: bluetoothGanV3ReadUuid,
+    writeUuid: bluetoothGanV3WriteUuid,
+    requestBytes: 16,
+  }],
+  [bluetoothGanV4ServiceUuid, {
+    protocol: 'v4',
+    label: 'GAN Gen4',
+    readUuid: bluetoothGanV4ReadUuid,
+    writeUuid: bluetoothGanV4WriteUuid,
+    requestBytes: 20,
+  }],
+]);
+const bluetoothGanCharacteristicProtocols = new Map(
+  [...bluetoothGanProtocols.values()].flatMap((entry) => [
+    [entry.readUuid, entry],
+    [entry.writeUuid, entry],
+  ]),
+);
 const facePositions = {
   U: [3, 0],
   L: [0, 3],
@@ -375,6 +404,10 @@ let bluetoothLog = [];
 let bluetoothMoves = [];
 let bluetoothSolved = false;
 let bluetoothBatteryLevel = null;
+let bluetoothGanMac = '';
+let bluetoothGanSession = null;
+let bluetoothGanLastMoveCounter = null;
+let bluetoothGanDecodeWarning = '';
 let lastBluetoothMovePacketSignature = '';
 let previewScrambleText = '';
 let previewRequestId = 0;
@@ -533,6 +566,12 @@ window.__trainTimerDebug = {
       bluetoothReconnectDevices: bluetoothReconnectDevices.length,
       bluetoothSolved,
       bluetoothState: elements.bluetoothStateMeta.textContent,
+      bluetoothGan: {
+        mac: bluetoothGanMac,
+        protocol: bluetoothGanSession?.protocol || '',
+        label: bluetoothGanSession?.label || '',
+        moveCounter: bluetoothGanLastMoveCounter,
+      },
       bluetoothAvailability: bluetoothAvailability(),
       bluetoothRequest: bluetoothRequestSummary(bluetoothRequestOptions(false)),
       bluetoothOptionalServices,
@@ -1883,6 +1922,7 @@ async function connectBluetoothDevice(device, options = {}) {
   cleanupBluetoothSubscriptions();
   setActiveBluetoothDevice(device);
   addBluetoothLog('设备', bluetoothDevice.name || '未命名设备', bluetoothDevice.id || '');
+  await resolveBluetoothGanMacFromAdvertisements(bluetoothDevice);
   addBluetoothLog('连接', options.reconnect ? '正在重连 GATT' : '正在连接 GATT');
   const server = await bluetoothDevice.gatt.connect();
   setBluetoothConnectedState(true);
@@ -1915,8 +1955,13 @@ function setActiveBluetoothDevice(device) {
   }
   bluetoothDevice = device;
   lastBluetoothMovePacketSignature = '';
+  bluetoothGanMac = cachedBluetoothGanMac(device);
+  bluetoothGanSession = null;
+  bluetoothGanLastMoveCounter = null;
+  bluetoothGanDecodeWarning = '';
   bluetoothDeviceDisconnectHandler = handleBluetoothDisconnected;
   bluetoothDevice.addEventListener('gattserverdisconnected', bluetoothDeviceDisconnectHandler);
+  if (bluetoothGanMac) addBluetoothLog('GAN', '已载入已保存 MAC', bluetoothGanMac);
 }
 
 function handleBluetoothDisconnected() {
@@ -2113,6 +2158,102 @@ function isSameBluetoothDevice(left, right) {
   return Boolean(left?.id && right?.id && left.id === right.id);
 }
 
+async function resolveBluetoothGanMacFromAdvertisements(device, timeoutMs = 1600) {
+  if (!isLikelyGanDevice(device) || bluetoothGanMac) return bluetoothGanMac;
+  if (typeof device.watchAdvertisements !== 'function') {
+    addBluetoothLog('GAN', '浏览器不能读取广播 MAC', '会在初始化时尝试手动输入 MAC');
+    return '';
+  }
+
+  elements.bluetoothStatus.textContent = '读取 GAN 广播...';
+  addBluetoothLog('GAN', '读取广播 MAC', '用于解密 GAN 加密包');
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (mac = '') => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      device.removeEventListener('advertisementreceived', handleAdvertisement);
+      if (mac) {
+        setBluetoothGanMac(mac, device);
+        addBluetoothLog('GAN', '已读取广播 MAC', mac);
+      } else {
+        addBluetoothLog('GAN', '未读取到广播 MAC', '会在初始化时尝试手动输入 MAC');
+      }
+      resolve(mac);
+    };
+    const handleAdvertisement = (event) => {
+      const mac = ganMacFromManufacturerData(event.manufacturerData);
+      if (mac) finish(mac);
+    };
+    const timer = setTimeout(() => finish(''), timeoutMs);
+    device.addEventListener('advertisementreceived', handleAdvertisement);
+    Promise.resolve(device.watchAdvertisements()).catch((error) => {
+      addBluetoothLog('GAN', '广播读取失败', error.message || String(error));
+      finish('');
+    });
+  });
+}
+
+function ganMacFromManufacturerData(manufacturerData) {
+  if (!manufacturerData) return '';
+  if (manufacturerData instanceof DataView) return ganMacFromAdvertisementData(dataViewBytes(manufacturerData).slice(2, 11));
+  for (const id of bluetoothGanManufacturerData) {
+    if (typeof manufacturerData.has === 'function' && manufacturerData.has(id)) {
+      return ganMacFromAdvertisementData(manufacturerData.get(id));
+    }
+  }
+  return '';
+}
+
+function ganMacFromAdvertisementData(value) {
+  const bytes = value instanceof DataView ? dataViewBytes(value) : Uint8Array.from(value || []);
+  if (bytes.length < 6) return '';
+  return [...bytes.slice(-6)].reverse().map((byte) => byte.toString(16).padStart(2, '0')).join(':');
+}
+
+async function ensureBluetoothGanMac(options = {}) {
+  if (bluetoothGanMac) return bluetoothGanMac;
+  const cached = cachedBluetoothGanMac(bluetoothDevice);
+  if (cached) {
+    setBluetoothGanMac(cached, bluetoothDevice);
+    return bluetoothGanMac;
+  }
+  if (!options.allowPrompt) return '';
+
+  const input = window.prompt('GAN 蓝牙魔方需要 MAC 地址解密转动和电量。请输入 6 组十六进制 MAC，例如 01:23:45:67:89:ab。');
+  const mac = normalizeBluetoothMac(input);
+  if (!mac) {
+    addBluetoothLog('GAN', '未提供有效 MAC', '无法解密 GAN 状态、电量和转动');
+    return '';
+  }
+  setBluetoothGanMac(mac, bluetoothDevice);
+  addBluetoothLog('GAN', '已保存手动 MAC', mac);
+  return mac;
+}
+
+function setBluetoothGanMac(mac, device) {
+  bluetoothGanMac = normalizeBluetoothMac(mac);
+  if (!bluetoothGanMac) return;
+  const key = bluetoothGanStorageKey(device);
+  if (key) localStorage.setItem(key, bluetoothGanMac);
+}
+
+function cachedBluetoothGanMac(device) {
+  const key = bluetoothGanStorageKey(device);
+  return key ? normalizeBluetoothMac(localStorage.getItem(key)) : '';
+}
+
+function bluetoothGanStorageKey(device) {
+  const identity = device?.id || device?.name || '';
+  return identity ? `trainTimer.ganMac.${identity}` : '';
+}
+
+function normalizeBluetoothMac(mac) {
+  const pairs = String(mac || '').match(/[0-9a-f]{2}/gi);
+  return pairs && pairs.length === 6 ? pairs.map((pair) => pair.toLowerCase()).join(':') : '';
+}
+
 async function discoverBluetoothServices(server) {
   const services = await server.getPrimaryServices();
   const detail = [];
@@ -2180,6 +2321,9 @@ async function subscribeBluetoothCharacteristic(characteristic) {
 
 async function primeBluetoothService(service, characteristics) {
   const serviceUuid = String(service.uuid).toLowerCase();
+  if (isGanServiceUuid(serviceUuid)) {
+    return primeGanBluetoothService(service, characteristics);
+  }
   if (serviceUuid === bluetoothGiikerBatteryServiceUuid) {
     return primeGiikerBatteryService(service, characteristics);
   }
@@ -2200,6 +2344,62 @@ async function primeBluetoothService(service, characteristics) {
   count += await writeBluetoothValue(writeCharacteristic, [51], 'GoCube 状态请求');
   count += await writeBluetoothValue(writeCharacteristic, [50], 'GoCube 电量请求');
   return count;
+}
+
+async function primeGanBluetoothService(service, characteristics) {
+  const protocol = bluetoothGanProtocolForService(service.uuid);
+  if (!protocol) {
+    addBluetoothLog('GAN', '暂未支持的 GAN 协议', bluetoothUuidLabel(service.uuid));
+    return 0;
+  }
+
+  const readCharacteristic = characteristics.find((characteristic) => (
+    normalizeBluetoothUuid(characteristic.uuid) === protocol.readUuid
+  ));
+  const writeCharacteristic = characteristics.find((characteristic) => (
+    normalizeBluetoothUuid(characteristic.uuid) === protocol.writeUuid
+    && (characteristic.properties.write || characteristic.properties.writeWithoutResponse)
+  ));
+  bluetoothGanSession = {
+    ...protocol,
+    keyVersion: String(bluetoothDevice?.name || '').startsWith('AiCube') && protocol.protocol === 'v2' ? 1 : 0,
+    readUuid: protocol.readUuid,
+    writeUuid: protocol.writeUuid,
+  };
+  bluetoothGanLastMoveCounter = null;
+  bluetoothGanDecodeWarning = '';
+
+  if (!readCharacteristic) {
+    addBluetoothLog('警告', `${protocol.label} 读特征未找到`, bluetoothUuidLabel(service.uuid));
+  }
+  if (!writeCharacteristic) {
+    addBluetoothLog('警告', `${protocol.label} 写特征未找到`, bluetoothUuidLabel(service.uuid));
+    return 0;
+  }
+
+  const mac = await ensureBluetoothGanMac({ allowPrompt: true });
+  if (!mac) {
+    elements.bluetoothStatus.textContent = `${bluetoothDevice?.name || 'GAN'} · 需要 MAC`;
+    elements.bluetoothStatus.title = 'GAN 加密包需要 MAC 地址才能解析状态、转动和电量';
+    addBluetoothLog('GAN', `${protocol.label} 初始化暂停`, '缺少 MAC，已禁止 Giiker 误解析');
+    return 0;
+  }
+
+  try {
+    const data = await postJson('/api/bluetooth/gan/requests', {
+      protocol: protocol.protocol,
+      mac,
+      keyVersion: bluetoothGanSession.keyVersion,
+    });
+    let count = 0;
+    for (const request of data.requests || []) {
+      count += await writeBluetoothValue(writeCharacteristic, request.bytes, `${protocol.label} ${request.label}`);
+    }
+    return count;
+  } catch (error) {
+    addBluetoothLog('错误', `${protocol.label} 初始化失败`, error.message || String(error));
+    return 0;
+  }
 }
 
 async function primeGiikerBatteryService(service, characteristics) {
@@ -2235,10 +2435,10 @@ async function writeBluetoothValue(characteristic, bytes, label) {
 
 function handleBluetoothNotification(event) {
   const characteristic = event.target;
-  processBluetoothPacket(characteristic.uuid, characteristic.value, bluetoothDevice?.name || '蓝牙魔方');
+  void processBluetoothPacket(characteristic.uuid, characteristic.value, bluetoothDevice?.name || '蓝牙魔方');
 }
 
-function processBluetoothPacket(uuid, value, deviceName) {
+async function processBluetoothPacket(uuid, value, deviceName) {
   const hex = dataViewToHex(value);
   const label = bluetoothUuidLabel(uuid);
   const ganPacket = isGanPacketSource(uuid, deviceName);
@@ -2249,6 +2449,11 @@ function processBluetoothPacket(uuid, value, deviceName) {
       elements.bluetoothStatus.title = `${uuid} ${hex}`;
       return;
     }
+  }
+
+  if (ganPacket) {
+    await processGanBluetoothPacket(uuid, value, deviceName, hex, label);
+    return;
   }
 
   if (isGiikerBatteryCharacteristic(uuid)) {
@@ -2302,6 +2507,111 @@ function processBluetoothPacket(uuid, value, deviceName) {
   });
 }
 
+async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
+  const protocol = bluetoothGanSession || bluetoothGanProtocolForCharacteristic(uuid) || bluetoothGanProtocolForDevice(deviceName);
+  if (!protocol) {
+    elements.bluetoothStatus.textContent = `${deviceName} · GAN 协议未知`;
+    addBluetoothLog('数据/GAN原始', label, `${hex} · 未识别 GAN 协议，已跳过通用 Giiker 解码`);
+    return;
+  }
+
+  const mac = await ensureBluetoothGanMac({ allowPrompt: false });
+  if (!mac) {
+    elements.bluetoothStatus.textContent = `${deviceName} · GAN 需要 MAC`;
+    elements.bluetoothStatus.title = '缺少 MAC，不能解密 GAN 状态、转动和电量';
+    if (bluetoothGanDecodeWarning !== 'missing-mac') {
+      bluetoothGanDecodeWarning = 'missing-mac';
+      addBluetoothLog('GAN', `${protocol.label} 缺少 MAC`, '已跳过通用 Giiker 解码，避免把加密字节误判成转动');
+    }
+    addBluetoothLog('数据/GAN原始', label, `${hex} · 缺少 MAC，未解析`);
+    return;
+  }
+
+  let decoded;
+  try {
+    decoded = await postJson('/api/bluetooth/gan/decode', {
+      protocol: protocol.protocol,
+      mac,
+      keyVersion: protocol.keyVersion || 0,
+      bytes: [...dataViewBytes(value)],
+    });
+  } catch (error) {
+    elements.bluetoothStatus.textContent = `${deviceName} · GAN 解码失败`;
+    elements.bluetoothStatus.title = error.message || String(error);
+    addBluetoothLog('错误', `${protocol.label} 解码失败`, `${label} · ${error.message || String(error)}`);
+    return;
+  }
+
+  if (decoded.batteryLevel != null) updateBluetoothBattery(decoded.batteryLevel, decoded.protocol || protocol.label);
+  const hasMoveCounter = Number.isInteger(decoded.moveCounter);
+  const duplicateMovePacket = hasMoveCounter
+    && decoded.moves?.length > 0
+    && decoded.moveCounter === bluetoothGanLastMoveCounter;
+  const parsedMoves = duplicateMovePacket ? [] : (Array.isArray(decoded.moves) ? decoded.moves : []);
+  if (hasMoveCounter && (decoded.mode === 'state' || decoded.mode === 'move' || parsedMoves.length > 0)) {
+    bluetoothGanLastMoveCounter = decoded.moveCounter;
+  }
+
+  const trackingMoves = parsedMoves.length > 0 && shouldTrackBluetoothMoves();
+  if (trackingMoves) addBluetoothMoves(parsedMoves, label, decoded.protocol || protocol.label, deviceName);
+  if (trackingMoves) finishTimingFromBluetooth();
+
+  const statusDetail = parsedMoves.length > 0
+    ? `${parsedMoves.join(' ')} · ${trackingMoves ? (bluetoothSolved ? '已复原' : '未复原') : '等待计时'}`
+    : ganBluetoothStatusDetail(decoded, label, hex, duplicateMovePacket);
+  const ignoredReason = duplicateMovePacket
+    ? '重复转动包'
+    : (parsedMoves.length > 0 && !trackingMoves ? '等待计时' : '');
+  elements.bluetoothStatus.textContent = `${deviceName} · ${statusDetail}`;
+  elements.bluetoothStatus.title = `${uuid} ${hex}`;
+  addBluetoothLog(
+    ganBluetoothLogKind(decoded, parsedMoves, trackingMoves, duplicateMovePacket),
+    label,
+    ganBluetoothPacketLog(hex, decoded, ignoredReason),
+  );
+  console.info('GAN Bluetooth cube notification', {
+    characteristic: uuid,
+    value: hex,
+    decoded,
+    moves: parsedMoves,
+    duplicate: duplicateMovePacket,
+    tracked: trackingMoves,
+  });
+}
+
+function ganBluetoothStatusDetail(decoded, label, hex, duplicateMovePacket) {
+  if (duplicateMovePacket) return `${decoded.moves.join(' ')} · 重复转动包`;
+  if (decoded.batteryLevel != null) return `电量 ${decoded.batteryLevel}%`;
+  if (decoded.mode === 'state') return `GAN 状态包 · counter=${decoded.moveCounter ?? '-'}`;
+  if (decoded.mode === 'hardware') return 'GAN 硬件信息';
+  if (decoded.mode === 'invalid') return `GAN 解密结果无效 · ${hex.slice(0, 23)}`;
+  return `${label} ${hex.slice(0, 17)}`;
+}
+
+function ganBluetoothLogKind(decoded, parsedMoves, trackingMoves, duplicateMovePacket) {
+  if (parsedMoves.length > 0) return trackingMoves ? '数据/转动' : '数据/预备转动';
+  if (duplicateMovePacket) return '数据/重复';
+  if (decoded.batteryLevel != null) return '数据/电量';
+  if (decoded.mode === 'state') return '数据/GAN状态';
+  if (decoded.mode === 'hardware') return '数据/GAN硬件';
+  return '数据/GAN';
+}
+
+function ganBluetoothPacketLog(hex, decoded, ignoredReason = '') {
+  const detail = [hex];
+  if (decoded.protocol) detail.push(`protocol=${decoded.protocol}`);
+  if (decoded.mode) detail.push(`mode=${decoded.mode}`);
+  if (Number.isInteger(decoded.moveCounter)) detail.push(`counter=${decoded.moveCounter}`);
+  if (decoded.batteryLevel != null) detail.push(`battery=${decoded.batteryLevel}%`);
+  if (Array.isArray(decoded.decryptedBytes)) detail.push(`decrypted=${bytesToHex(decoded.decryptedBytes)}`);
+  if (Array.isArray(decoded.historyMoves) && decoded.historyMoves.length > decoded.moves.length) {
+    detail.push(`history=${decoded.historyMoves.join(' ')}`);
+  }
+  if (Array.isArray(decoded.moves) && decoded.moves.length > 0) detail.push(`moves=${decoded.moves.join(' ')}`);
+  if (ignoredReason) detail.push(`未计入=${ignoredReason}`);
+  return detail.join(' · ');
+}
+
 function finishTimingFromBluetooth() {
   if (appState !== 'timing' || !bluetoothSolved) return;
   finishSource = 'bluetooth';
@@ -2330,7 +2640,7 @@ function resetBluetoothBattery() {
 
 function renderBluetoothBattery() {
   elements.bluetoothBattery.textContent = bluetoothBatteryLevel == null ? '电量 -' : `电量 ${bluetoothBatteryLevel}%`;
-  elements.bluetoothBattery.title = bluetoothBatteryLevel == null ? '未读取到标准蓝牙电量' : `标准蓝牙电量 ${bluetoothBatteryLevel}%`;
+  elements.bluetoothBattery.title = bluetoothBatteryLevel == null ? '未读取到蓝牙电量' : `蓝牙电量 ${bluetoothBatteryLevel}%`;
   elements.bluetoothBattery.classList.toggle('low', bluetoothBatteryLevel != null && bluetoothBatteryLevel <= 20);
 }
 
@@ -2381,6 +2691,8 @@ function clearBluetoothLog() {
   bluetoothMoves = [];
   bluetoothSolved = false;
   lastBluetoothMovePacketSignature = '';
+  bluetoothGanLastMoveCounter = null;
+  bluetoothGanDecodeWarning = '';
   renderBluetoothMoves();
   renderBluetoothLog();
 }
@@ -2415,6 +2727,12 @@ function bluetoothLogPayload() {
       id: bluetoothDevice.id || '',
     } : null,
     batteryLevel: bluetoothBatteryLevel,
+    gan: {
+      mac: bluetoothGanMac,
+      protocol: bluetoothGanSession?.protocol || '',
+      label: bluetoothGanSession?.label || '',
+      moveCounter: bluetoothGanLastMoveCounter,
+    },
     webBluetooth: bluetoothAvailability(),
     request: {
       summary: bluetoothRequestSummary(bluetoothRequestOptions(false)),
@@ -2577,6 +2895,25 @@ function isGanCharacteristicUuid(uuid) {
 
 function isGanPacketSource(uuid, deviceName = '') {
   return isGanCharacteristicUuid(uuid) || /^(gan|mg|aicube)/i.test(String(deviceName || ''));
+}
+
+function bluetoothGanProtocolForService(uuid) {
+  return bluetoothGanProtocols.get(normalizeBluetoothUuid(uuid)) || null;
+}
+
+function bluetoothGanProtocolForCharacteristic(uuid) {
+  return bluetoothGanCharacteristicProtocols.get(normalizeBluetoothUuid(uuid)) || null;
+}
+
+function bluetoothGanProtocolForDevice(deviceName = '') {
+  const name = String(deviceName || '').toLowerCase();
+  if (!/^(gan|mg|aicube)/.test(name)) return null;
+  if (name.includes('i4')) return bluetoothGanProtocols.get(bluetoothGanV4ServiceUuid);
+  return bluetoothGanSession;
+}
+
+function isLikelyGanDevice(device) {
+  return /^(gan|mg|aicube)/i.test(String(device?.name || ''));
 }
 
 function normalizeBluetoothUuid(uuid) {

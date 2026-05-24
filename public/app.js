@@ -223,6 +223,8 @@ const elements = {
   scrambleSource: document.querySelector('#scrambleSource'),
   scrambleText: document.querySelector('#scrambleText'),
   scrambleGuideMeta: document.querySelector('#scrambleGuideMeta'),
+  previewTitle: document.querySelector('#previewTitle'),
+  previewMeta: document.querySelector('#previewMeta'),
   cubeNet: document.querySelector('#cubeNet'),
   historyPath: document.querySelector('#historyPath'),
   historyRows: document.querySelector('#historyRows'),
@@ -429,11 +431,15 @@ let bluetoothSolved = false;
 let bluetoothSolvedByStatePacket = false;
 let bluetoothGyro = null;
 let bluetoothLastMoveText = '-';
+let bluetoothPhysicalFacelets = '';
+let bluetoothPhysicalFaces = null;
+let bluetoothPhysicalStateTime = '';
 let bluetoothBatteryLevel = null;
 let bluetoothGanMac = '';
 let bluetoothGanSession = null;
 let bluetoothGanLastMoveCounter = null;
 let bluetoothGanDecodeWarning = '';
+let bluetoothGanMacPromptAllowed = true;
 let lastBluetoothMovePacketSignature = '';
 let scrambleGuideMoves = [];
 let scrambleGuideInputMoves = [];
@@ -601,6 +607,10 @@ window.__trainTimerDebug = {
     updateBluetoothGyro({ quaternion, velocity });
     return this.state();
   },
+  setBluetoothFaceletsForTest(facelets = 'UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB') {
+    updateBluetoothPhysicalState({ facelets });
+    return this.state();
+  },
   addBluetoothMovesForTest(moves) {
     addBluetoothMoves(Array.isArray(moves) ? moves : String(moves || '').trim().split(/\s+/).filter(Boolean), 'debug', 'debug', '模拟蓝牙魔方');
     return this.state();
@@ -632,6 +642,7 @@ window.__trainTimerDebug = {
       bluetoothMoves: bluetoothMoveSequence(),
       bluetoothMetadata: bluetoothSolveMetadata(),
       bluetoothGyro,
+      bluetoothPhysicalFacelets,
       bluetoothReconnectDevices: bluetoothReconnectDevices.length,
       bluetoothSolved,
       bluetoothState: elements.bluetoothStateMeta.textContent,
@@ -680,7 +691,8 @@ async function bootstrap() {
     appState = 'ready';
     render();
     setBluetoothConnectedState(false);
-    void refreshBluetoothReconnectDevices();
+    await refreshBluetoothReconnectDevices();
+    void autoReconnectBluetoothCube();
   } catch (error) {
     appState = 'error';
     elements.statusText.textContent = '无法连接本地服务';
@@ -861,6 +873,7 @@ async function finishTiming() {
     penalty: activePenalty,
     timerSource: finishSource,
     bluetoothMoves: bluetoothMoveSequence(),
+    bluetoothMoveLog: bluetoothMoveRecordSequence(),
     bluetoothDeviceName: bluetoothMetadata.deviceName,
     bluetoothProtocols: bluetoothMetadata.protocols,
     bluetoothSources: bluetoothMetadata.sources,
@@ -1657,9 +1670,21 @@ function renderSolveDialog() {
   elements.solveDetailTagsInput.value = formatTags(solve.tags);
   elements.solveDetailBluetoothStats.textContent = ['蓝牙转动', `${bluetoothMoveCount} 次`, bluetoothTps, bluetoothDevice, bluetoothProtocols, bluetoothSources].filter(Boolean).join(' · ');
   elements.solveDetailBluetoothMoves.textContent = bluetoothMoves.length > 0
-    ? bluetoothMoves.join(' ')
+    ? solveBluetoothMoveLogText(solve)
     : (bluetoothMoveCount > 0 ? '未提供转动序列' : '-');
   renderSolveBluetoothReplay(solve);
+}
+
+function solveBluetoothMoveLogText(solve) {
+  const moveLog = Array.isArray(solve.bluetoothMoveLog) ? solve.bluetoothMoveLog : [];
+  if (moveLog.length === 0) return solve.bluetoothMoves.join(' ');
+  return moveLog.map((entry, index) => {
+    const step = entry.step || index + 1;
+    const elapsed = Number.isFinite(entry.elapsedMs) ? `${formatTime(entry.elapsedMs)}` : '--';
+    const protocol = entry.protocol ? ` · ${entry.protocol}` : '';
+    const source = entry.source ? ` · ${entry.source}` : '';
+    return `${String(step).padStart(2, '0')}. ${entry.move} · ${elapsed}${protocol}${source}`;
+  }).join('\n');
 }
 
 function openAverageDialog(solveId, size, kind = 'average') {
@@ -2011,11 +2036,29 @@ async function reconnectBluetoothCube() {
   }
 }
 
+async function autoReconnectBluetoothCube() {
+  const availability = bluetoothAvailability();
+  if (!availability.canReconnect || bluetoothDevice?.gatt?.connected) return;
+  const device = bluetoothReconnectDevices.find((candidate) => candidate?.gatt && !candidate.gatt.connected && isLikelyGanDevice(candidate))
+    || bluetoothReconnectDevices.find((candidate) => candidate?.gatt && !candidate.gatt.connected);
+  if (!device) return;
+
+  try {
+    addBluetoothLog('连接', '自动重连已授权设备', device.name || device.id || '');
+    await connectBluetoothDevice(device, { reconnect: true, auto: true, allowMacPrompt: false });
+  } catch (error) {
+    setBluetoothStatusText('自动重连失败', error.message || String(error));
+    setBluetoothConnectedState(false);
+    addBluetoothLog('警告', '自动重连失败', error.message || String(error));
+  }
+}
+
 async function connectBluetoothDevice(device, options = {}) {
   cleanupBluetoothSubscriptions();
   setActiveBluetoothDevice(device);
   addBluetoothLog('设备', bluetoothDevice.name || '未命名设备', bluetoothDevice.id || '');
-  await resolveBluetoothGanMacFromAdvertisements(bluetoothDevice);
+  bluetoothGanMacPromptAllowed = options.allowMacPrompt !== false;
+  await resolveBluetoothGanMacFromAdvertisements(bluetoothDevice, options.auto ? 5200 : 3200);
   addBluetoothLog('连接', options.reconnect ? '正在重连 GATT' : '正在连接 GATT');
   const server = await bluetoothDevice.gatt.connect();
   setBluetoothConnectedState(true);
@@ -2031,6 +2074,7 @@ async function connectBluetoothDevice(device, options = {}) {
       : `未发现通知 · ${discovery.detail || '未发现可订阅特征'}`,
   );
   addBluetoothLog('服务', `发现 ${discovery.serviceCount} 个服务`, `${discovery.notifyCount} 路通知 · ${discovery.writeCount} 次初始化 · ${discovery.detail}`);
+  bluetoothGanMacPromptAllowed = true;
 }
 
 function disconnectBluetoothDevice() {
@@ -2049,7 +2093,10 @@ function setActiveBluetoothDevice(device) {
   }
   bluetoothDevice = device;
   lastBluetoothMovePacketSignature = '';
-  bluetoothGanMac = cachedBluetoothGanMac(device);
+  bluetoothPhysicalFacelets = '';
+  bluetoothPhysicalFaces = null;
+  bluetoothPhysicalStateTime = '';
+  bluetoothGanMac = cachedBluetoothGanMac(device, { includeLast: false });
   bluetoothGanSession = null;
   bluetoothGanLastMoveCounter = null;
   bluetoothGanDecodeWarning = '';
@@ -2060,6 +2107,7 @@ function setActiveBluetoothDevice(device) {
 
 function handleBluetoothDisconnected() {
   cleanupBluetoothSubscriptions();
+  resetBluetoothPhysicalState();
   resetBluetoothBattery();
   resetBluetoothGyro();
   setBluetoothStatusText('已断开');
@@ -2070,6 +2118,8 @@ function handleBluetoothDisconnected() {
 
 function handleBluetoothConnectionError(error) {
   cleanupBluetoothSubscriptions();
+  bluetoothGanMacPromptAllowed = true;
+  resetBluetoothPhysicalState();
   resetBluetoothBattery();
   resetBluetoothGyro();
   if (bluetoothDevice?.gatt?.connected) bluetoothDevice.gatt.disconnect();
@@ -2203,6 +2253,7 @@ function setBluetoothConnectedState(connected) {
     setBluetoothDeviceNameStatus('已连接');
   }
   renderBluetoothReconnectButton();
+  renderPreviewMode();
 }
 
 function setBluetoothStatusText(text, title = '') {
@@ -2264,10 +2315,10 @@ function isSameBluetoothDevice(left, right) {
   return Boolean(left?.id && right?.id && left.id === right.id);
 }
 
-async function resolveBluetoothGanMacFromAdvertisements(device, timeoutMs = 1600) {
+async function resolveBluetoothGanMacFromAdvertisements(device, timeoutMs = 3200) {
   if (!isLikelyGanDevice(device) || bluetoothGanMac) return bluetoothGanMac;
   if (typeof device.watchAdvertisements !== 'function') {
-    addBluetoothLog('GAN', '浏览器不能读取广播 MAC', '会在初始化时尝试手动输入 MAC');
+    addBluetoothLog('GAN', '浏览器不能读取广播 MAC', bluetoothGanMacPromptAllowed ? '会在初始化时尝试手动输入 MAC' : '自动连接不会弹出手动输入');
     return '';
   }
 
@@ -2282,9 +2333,9 @@ async function resolveBluetoothGanMacFromAdvertisements(device, timeoutMs = 1600
       device.removeEventListener('advertisementreceived', handleAdvertisement);
       if (mac) {
         setBluetoothGanMac(mac, device);
-        addBluetoothLog('GAN', '已读取广播 MAC', mac);
+        addBluetoothLog('GAN', '已自动读取广播 MAC', mac);
       } else {
-        addBluetoothLog('GAN', '未读取到广播 MAC', '会在初始化时尝试手动输入 MAC');
+        addBluetoothLog('GAN', '未读取到广播 MAC', bluetoothGanMacPromptAllowed ? '会在初始化时尝试手动输入 MAC' : '自动连接已跳过手动输入');
       }
       resolve(mac);
     };
@@ -2325,7 +2376,7 @@ async function ensureBluetoothGanMac(options = {}) {
     setBluetoothGanMac(cached, bluetoothDevice);
     return bluetoothGanMac;
   }
-  if (!options.allowPrompt) return '';
+  if (!options.allowPrompt || !bluetoothGanMacPromptAllowed) return '';
 
   const input = window.prompt('GAN 蓝牙魔方需要 MAC 地址解密转动和电量。请输入 6 组十六进制 MAC，例如 01:23:45:67:89:ab。');
   const mac = normalizeBluetoothMac(input);
@@ -2343,16 +2394,29 @@ function setBluetoothGanMac(mac, device) {
   if (!bluetoothGanMac) return;
   const key = bluetoothGanStorageKey(device);
   if (key) localStorage.setItem(key, bluetoothGanMac);
+  const nameKey = bluetoothGanNameStorageKey(device);
+  if (nameKey) localStorage.setItem(nameKey, bluetoothGanMac);
+  localStorage.setItem('trainTimer.ganMac.last', bluetoothGanMac);
 }
 
-function cachedBluetoothGanMac(device) {
+function cachedBluetoothGanMac(device, options = {}) {
   const key = bluetoothGanStorageKey(device);
-  return key ? normalizeBluetoothMac(localStorage.getItem(key)) : '';
+  const nameKey = bluetoothGanNameStorageKey(device);
+  return normalizeBluetoothMac(
+    (key ? localStorage.getItem(key) : '')
+      || (nameKey ? localStorage.getItem(nameKey) : '')
+      || (options.includeLast === false ? '' : localStorage.getItem('trainTimer.ganMac.last')),
+  );
 }
 
 function bluetoothGanStorageKey(device) {
   const identity = device?.id || device?.name || '';
   return identity ? `trainTimer.ganMac.${identity}` : '';
+}
+
+function bluetoothGanNameStorageKey(device) {
+  const name = String(device?.name || '').trim();
+  return name ? `trainTimer.ganMac.name.${name}` : '';
 }
 
 function normalizeBluetoothMac(mac) {
@@ -2483,7 +2547,7 @@ async function primeGanBluetoothService(service, characteristics) {
     return 0;
   }
 
-  const mac = await ensureBluetoothGanMac({ allowPrompt: true });
+  const mac = await ensureBluetoothGanMac({ allowPrompt: bluetoothGanMacPromptAllowed });
   if (!mac) {
     setBluetoothDeviceNameStatus('GAN', 'GAN 加密包需要 MAC 地址才能解析状态、转动和电量');
     addBluetoothLog('GAN', `${protocol.label} 初始化暂停`, '缺少 MAC，已禁止 Giiker 误解析');
@@ -2644,6 +2708,7 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
 
   if (decoded.batteryLevel != null) updateBluetoothBattery(decoded.batteryLevel, decoded.protocol || protocol.label);
   if (decoded.gyro) updateBluetoothGyro(decoded.gyro);
+  if (decoded.facelets) updateBluetoothPhysicalState(decoded);
   const hasMoveCounter = Number.isInteger(decoded.moveCounter);
   const duplicateMovePacket = hasMoveCounter
     && decoded.moves?.length > 0
@@ -2686,7 +2751,7 @@ function ganBluetoothStatusDetail(decoded, label, hex, duplicateMovePacket) {
   if (decoded.gyro) return `GAN 陀螺仪 · q=${formatGyroQuaternion(decoded.gyro.quaternion)}`;
   if (decoded.mode === 'state') {
     const stateLabel = decoded.stateSolved === true ? '已复原' : '未复原';
-    return `GAN 状态包 · ${stateLabel} · counter=${decoded.moveCounter ?? '-'}`;
+    return `GAN 状态包 · ${stateLabel} · 色块已同步 · counter=${decoded.moveCounter ?? '-'}`;
   }
   if (decoded.mode === 'hardware') return 'GAN 硬件信息';
   if (decoded.mode === 'invalid') return `GAN 解密结果无效 · ${hex.slice(0, 23)}`;
@@ -2717,6 +2782,7 @@ function ganBluetoothPacketLog(hex, decoded, ignoredReason = '') {
   if (decoded.stateSignature) detail.push(`state=${decoded.stateSignature}`);
   if (decoded.stateSolved === true) detail.push('stateSolved=true');
   if (decoded.stateSolved === false) detail.push('stateSolved=false');
+  if (decoded.facelets) detail.push(`facelets=${decoded.facelets}`);
   if (Array.isArray(decoded.decryptedBytes)) detail.push(`decrypted=${bytesToHex(decoded.decryptedBytes)}`);
   if (Array.isArray(decoded.historyMoves) && decoded.historyMoves.length > decoded.moves.length) {
     detail.push(`history=${decoded.historyMoves.join(' ')}`);
@@ -2792,6 +2858,44 @@ function resetBluetoothGyro() {
   bluetoothGyro = null;
   if (cube3d?.targetQuaternion) cube3d.targetQuaternion.copy(cube3d.baseQuaternion);
   renderBluetoothCube3dTelemetry();
+}
+
+function updateBluetoothPhysicalState(decoded) {
+  const faces = facesFromFacelets(decoded.facelets);
+  if (!faces) return;
+  bluetoothPhysicalFacelets = decoded.facelets;
+  bluetoothPhysicalFaces = faces;
+  bluetoothPhysicalStateTime = new Date().toISOString();
+  renderBluetoothMoves();
+  renderPreviewMode();
+}
+
+function resetBluetoothPhysicalState() {
+  bluetoothPhysicalFacelets = '';
+  bluetoothPhysicalFaces = null;
+  bluetoothPhysicalStateTime = '';
+  renderPreviewMode();
+}
+
+function facesFromFacelets(facelets) {
+  const text = String(facelets || '');
+  if (!/^[URFDLB]{54}$/.test(text)) return null;
+  const output = {};
+  for (const [faceIndex, face] of cube3dFaces.entries()) {
+    output[face] = [];
+    const offset = faceIndex * 9;
+    for (let row = 0; row < 3; row += 1) {
+      output[face][row] = [];
+      for (let col = 0; col < 3; col += 1) {
+        const stickerFace = text[offset + row * 3 + col];
+        output[face][row][col] = {
+          face: stickerFace,
+          color: cube3dFallbackColors[stickerFace] || '#d1d5db',
+        };
+      }
+    }
+  }
+  return output;
 }
 
 function openBluetoothLogDialog() {
@@ -2937,6 +3041,8 @@ function bluetoothLogPayload() {
     },
     solved: bluetoothSolved,
     gyro: bluetoothGyro,
+    facelets: bluetoothPhysicalFacelets,
+    faceletsTime: bluetoothPhysicalStateTime,
     moveCount: bluetoothMoves.length,
     moves: bluetoothMoves,
     events: bluetoothLog,
@@ -2952,6 +3058,7 @@ function armBluetoothSolveTracking() {
 
 function addBluetoothMoves(moves, source, protocol = '', deviceName = '') {
   const now = new Date();
+  const elapsedMs = appState === 'timing' && startedAt > 0 ? Math.max(0, Math.round(performance.now() - startedAt)) : null;
   bluetoothMoves.unshift(...moves.map((move) => ({
     move,
     source,
@@ -2959,6 +3066,7 @@ function addBluetoothMoves(moves, source, protocol = '', deviceName = '') {
     deviceName,
     time: now.toLocaleTimeString(),
     isoTime: now.toISOString(),
+    elapsedMs,
   })).reverse());
   bluetoothMoves = bluetoothMoves.slice(0, 160);
   bluetoothSolved = isBluetoothSolved();
@@ -2988,6 +3096,19 @@ function renderBluetoothMoves() {
 
 function bluetoothMoveSequence() {
   return bluetoothMoves.slice().reverse().map((entry) => entry.move);
+}
+
+function bluetoothMoveRecordSequence() {
+  return bluetoothMoves.slice().reverse().map((entry, index) => ({
+    step: index + 1,
+    move: entry.move,
+    source: entry.source || '',
+    protocol: entry.protocol || '',
+    deviceName: entry.deviceName || '',
+    time: entry.time || '',
+    isoTime: entry.isoTime || '',
+    elapsedMs: Number.isFinite(entry.elapsedMs) ? entry.elapsedMs : null,
+  }));
 }
 
 function bluetoothSolveMetadata() {
@@ -3035,6 +3156,15 @@ function isBluetoothSolved() {
 
 function renderBluetoothStatePreview() {
   elements.bluetoothStateNet.replaceChildren();
+  if (bluetoothPhysicalFaces && bluetoothLivePreviewMode()) {
+    const solved = isSolvedFaces(bluetoothPhysicalFaces);
+    const metaText = `GAN 实时状态 · ${solved ? '已复原' : '未复原'}`;
+    renderCubeFacesNet(elements.bluetoothStateNet, bluetoothPhysicalFaces, 'bluetooth-state-net');
+    elements.bluetoothStateMeta.textContent = metaText;
+    renderBluetoothCube3d(bluetoothPhysicalFaces, metaText);
+    return;
+  }
+
   if (!scramble?.scramble) {
     elements.bluetoothStateMeta.textContent = '等待打乱';
     elements.bluetoothStateNet.className = 'bluetooth-state-net preview-loading';
@@ -3210,6 +3340,15 @@ function animateBluetoothCube3d() {
 
 function renderBluetoothCube3dCurrent() {
   if (!cube3d) return;
+  if (bluetoothLivePreviewMode()) {
+    if (bluetoothPhysicalFaces) {
+      renderBluetoothCube3d(bluetoothPhysicalFaces, `GAN 实时状态 · ${isSolvedFaces(bluetoothPhysicalFaces) ? '已复原' : '未复原'}`);
+    } else {
+      renderBluetoothCube3d(null, '等待 GAN 状态包');
+    }
+    return;
+  }
+
   if (!scramble?.scramble || (scramble.puzzle || scramblePuzzle) !== 'three') {
     renderBluetoothCube3d(null, scramble?.scramble ? '3D 仅支持 3x3' : '等待打乱');
     return;
@@ -3403,6 +3542,7 @@ function render() {
   renderTimer();
   renderBluetoothMoves();
   renderBluetoothFeed();
+  renderPreviewMode();
   renderSessions();
   renderScramble();
   renderStats();
@@ -3415,6 +3555,25 @@ function render() {
   renderImportDialog();
   renderTagSolvesDialog();
   renderMergeSessionDialog();
+}
+
+function renderPreviewMode() {
+  const liveMode = bluetoothLivePreviewMode();
+  elements.cubeNet.hidden = liveMode;
+  elements.bluetooth3dPanel.hidden = !liveMode;
+  elements.previewTitle.textContent = liveMode ? '蓝牙魔方状态' : '打乱结果预览';
+  elements.previewMeta.textContent = liveMode
+    ? (bluetoothPhysicalFacelets ? 'GAN 实时状态' : '等待状态包')
+    : 'TNoodle';
+
+  if (liveMode) {
+    resizeBluetoothCube3d();
+    renderBluetoothCube3dCurrent();
+  }
+}
+
+function bluetoothLivePreviewMode() {
+  return Boolean(bluetoothDevice?.gatt?.connected);
 }
 
 function renderSessions() {
@@ -3488,8 +3647,11 @@ function renderScramble() {
   renderScrambleText();
   renderScrambleGuideMeta();
   elements.scrambleSource.textContent = `${puzzleLabel(currentPuzzle)} · ${scramble.source}`;
-  renderScramblePreview(scramble.scramble, currentPuzzle);
-  renderBluetoothCube3dCurrent();
+  if (bluetoothLivePreviewMode()) {
+    renderBluetoothCube3dCurrent();
+  } else {
+    renderScramblePreview(scramble.scramble, currentPuzzle);
+  }
 }
 
 function renderScrambleText() {

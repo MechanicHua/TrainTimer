@@ -79,6 +79,11 @@ test('decodes GAN Gen4 solved state packets', () => {
   assert.equal(solved.moveCounter, 197);
   assert.equal(solved.stateSolved, true);
   assert.equal(solved.stateSignature, '05 39 70 00 00 09 1a 2b 3c 4d 00 00 00 00');
+  assert.equal(solved.facelets, 'UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB');
+  assert.deepEqual(solved.state.cp, [0, 1, 2, 3, 4, 5, 6, 7]);
+  assert.deepEqual(solved.state.co, [0, 0, 0, 0, 0, 0, 0, 0]);
+  assert.deepEqual(solved.state.ep, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  assert.deepEqual(solved.state.eo, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
   const unsolvedPlain = [
     0xed, 0x0e, 0xb6, 0x00, 0x05, 0x3b, 0xb8, 0x00, 0x00, 0x09,
@@ -91,6 +96,7 @@ test('decodes GAN Gen4 solved state packets', () => {
   });
   assert.equal(unsolved.mode, 'state');
   assert.equal(unsolved.stateSolved, false);
+  assert.notEqual(unsolved.facelets, solved.facelets);
 });
 
 test('decodes GAN Gen4 gyro packets', () => {

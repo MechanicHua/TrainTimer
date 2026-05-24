@@ -13,6 +13,31 @@ const ganAxisMasks = [2, 32, 8, 1, 16, 4];
 const ganFaces = 'URFDLB';
 const ganHistoryFaces = 'DUBFLR';
 const ganV4SolvedStateSignature = '05 39 70 00 00 09 1a 2b 3c 4d 00 00 00 00';
+const ganSolvedFacelets = 'UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB';
+const ganCornerFaceletMap = [
+  [8, 9, 20],
+  [6, 18, 38],
+  [0, 36, 47],
+  [2, 45, 11],
+  [29, 26, 15],
+  [27, 44, 24],
+  [33, 53, 42],
+  [35, 17, 51],
+];
+const ganEdgeFaceletMap = [
+  [5, 10],
+  [7, 19],
+  [3, 37],
+  [1, 46],
+  [32, 16],
+  [28, 25],
+  [30, 43],
+  [34, 52],
+  [23, 12],
+  [21, 41],
+  [50, 39],
+  [48, 14],
+];
 
 export function normalizeGanMac(mac) {
   const pairs = String(mac || '').match(/[0-9a-f]{2}/gi);
@@ -196,12 +221,16 @@ function parseGanV4(bits, bytes = []) {
   }
   if (mode === 0xed) {
     const stateSignature = normalizeBytes(bytes).slice(4, 18).map((byte) => byte.toString(16).padStart(2, '0')).join(' ');
+    const state = parseGanV4FaceletState(bits);
+    const facelets = ganStateToFacelets(state);
     return {
       mode: 'state',
       moveCounter: bitNumber(bits, 24, 32) << 8 | bitNumber(bits, 16, 24),
       counterModulo: 256,
       stateSignature,
-      stateSolved: stateSignature === ganV4SolvedStateSignature,
+      stateSolved: facelets === ganSolvedFacelets || stateSignature === ganV4SolvedStateSignature,
+      facelets,
+      state,
     };
   }
   if (mode === 0xec) {
@@ -256,6 +285,55 @@ function parseGanHistoryMoves(bits, start, count, faces) {
     if (move) moves.push(move);
   }
   return moves;
+}
+
+function parseGanV4FaceletState(bits) {
+  const cp = [];
+  const co = [];
+  const ep = [];
+  const eo = [];
+
+  for (let index = 0; index < 7; index += 1) {
+    cp.push(bitNumber(bits, 32 + index * 3, 35 + index * 3));
+    co.push(bitNumber(bits, 53 + index * 2, 55 + index * 2));
+  }
+  cp.push(28 - sumNumbers(cp));
+  co.push((3 - (sumNumbers(co) % 3)) % 3);
+
+  for (let index = 0; index < 11; index += 1) {
+    ep.push(bitNumber(bits, 69 + index * 4, 73 + index * 4));
+    eo.push(bitNumber(bits, 113 + index, 114 + index));
+  }
+  ep.push(66 - sumNumbers(ep));
+  eo.push((2 - (sumNumbers(eo) % 2)) % 2);
+
+  return { cp, co, ep, eo };
+}
+
+function ganStateToFacelets({ cp, co, ep, eo }) {
+  const facelets = Array.from({ length: 54 }, (_, index) => ganFaces[Math.floor(index / 9)]);
+
+  for (let index = 0; index < 8; index += 1) {
+    for (let part = 0; part < 3; part += 1) {
+      const target = ganCornerFaceletMap[index][(part + co[index]) % 3];
+      const source = ganCornerFaceletMap[cp[index]][part];
+      facelets[target] = ganFaces[Math.floor(source / 9)];
+    }
+  }
+
+  for (let index = 0; index < 12; index += 1) {
+    for (let part = 0; part < 2; part += 1) {
+      const target = ganEdgeFaceletMap[index][(part + eo[index]) % 2];
+      const source = ganEdgeFaceletMap[ep[index]][part];
+      facelets[target] = ganFaces[Math.floor(source / 9)];
+    }
+  }
+
+  return facelets.join('');
+}
+
+function sumNumbers(values) {
+  return values.reduce((sum, value) => sum + value, 0);
 }
 
 function moveFromFacePower(face, power) {

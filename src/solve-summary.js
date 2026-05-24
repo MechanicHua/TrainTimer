@@ -19,6 +19,13 @@ export function buildSolveSummary(solve, sessionName = '') {
   if (bluetoothMoves.length > 0) {
     lines.push(`蓝牙转动: ${bluetoothMoves.join(' ')}`);
     lines.push(`转动数: ${solve.bluetoothMoveCount ?? bluetoothMoves.length}`);
+    const moveLog = Array.isArray(solve.bluetoothMoveLog) ? solve.bluetoothMoveLog : [];
+    if (moveLog.length > 0) {
+      lines.push('复原过程:');
+      lines.push(...moveLog.map((entry, index) => (
+        `${String(entry.step || index + 1).padStart(2, '0')}. ${entry.move} ${Number.isFinite(entry.elapsedMs) ? formatMilliseconds(entry.elapsedMs) : '--'}`
+      )));
+    }
     if (Number.isFinite(solve.bluetoothTps)) lines.push(`TPS: ${solve.bluetoothTps.toFixed(3)}`);
     if (solve.bluetoothDeviceName) lines.push(`蓝牙设备: ${solve.bluetoothDeviceName}`);
     const protocols = formatList(solve.bluetoothProtocols);

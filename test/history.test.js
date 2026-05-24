@@ -278,6 +278,7 @@ test('normalizes and updates solve tags', async () => {
   assert.deepEqual(history.solves.find((solve) => solve.id === 'b').tags, []);
   assert.equal(history.solves.find((solve) => solve.id === 'a').timerSource, 'manual');
   assert.deepEqual(history.solves.find((solve) => solve.id === 'b').bluetoothMoves, ['R', 'U2', "F'"]);
+  assert.deepEqual(history.solves.find((solve) => solve.id === 'b').bluetoothMoveLog.map((entry) => entry.move), ['R', 'U2', "F'"]);
   assert.equal(history.solves.find((solve) => solve.id === 'b').bluetoothMoveCount, 3);
   assert.equal(history.solves.find((solve) => solve.id === 'b').bluetoothTps, 0.25);
 
@@ -302,6 +303,10 @@ test('normalizes manually entered solve metadata', async () => {
     tags: ['PLL', '慢十字'],
     timerSource: 'bluetooth',
     bluetoothMoves: ['R', 'U2'],
+    bluetoothMoveLog: [
+      { step: 1, move: 'R', elapsedMs: 120, source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', time: '12:00:00', isoTime: '2026-05-24T08:15:31.000Z' },
+      { step: 2, move: 'U2', elapsedMs: 480, source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', time: '12:00:01', isoTime: '2026-05-24T08:15:32.000Z' },
+    ],
     bluetoothMoveCount: 2,
     bluetoothTps: 0.162,
     bluetoothDeviceName: 'Giiker Super Cube',
@@ -324,6 +329,10 @@ test('normalizes manually entered solve metadata', async () => {
     tags: ['PLL', '慢十字'],
     timerSource: 'bluetooth',
     bluetoothMoves: ['R', 'U2'],
+    bluetoothMoveLog: [
+      { step: 1, move: 'R', source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', time: '12:00:00', isoTime: '2026-05-24T08:15:31.000Z', elapsedMs: 120 },
+      { step: 2, move: 'U2', source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', time: '12:00:01', isoTime: '2026-05-24T08:15:32.000Z', elapsedMs: 480 },
+    ],
     bluetoothMoveCount: 2,
     bluetoothTps: 0.162,
     bluetoothDeviceName: 'Giiker Super Cube',

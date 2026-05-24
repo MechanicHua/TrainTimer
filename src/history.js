@@ -195,6 +195,7 @@ export function normalizeSolve(solve) {
   const effectiveDurationMs = penalty === 'dnf' ? null : durationMs + (penalty === '+2' ? 2000 : 0);
   const effectiveDuration = effectiveDurationMs == null ? 'DNF' : formatTime(effectiveDurationMs);
   const bluetoothMoves = normalizeBluetoothMoves(solve.bluetoothMoves);
+  const bluetoothMoveLog = normalizeBluetoothMoveLog(solve.bluetoothMoveLog, bluetoothMoves);
   const importedBluetoothMoveCount = Number(solve.bluetoothMoveCount);
   const bluetoothMoveCount = bluetoothMoves.length > 0
     ? bluetoothMoves.length
@@ -224,6 +225,7 @@ export function normalizeSolve(solve) {
     tags: normalizeTags(solve.tags),
     timerSource: solve.timerSource === 'bluetooth' ? 'bluetooth' : 'manual',
     bluetoothMoves,
+    bluetoothMoveLog,
     bluetoothMoveCount,
     bluetoothTps,
     bluetoothDeviceName: typeof solve.bluetoothDeviceName === 'string' ? solve.bluetoothDeviceName : '',
@@ -264,6 +266,42 @@ export function normalizeBluetoothMoves(moves) {
   }
 
   return normalized;
+}
+
+function normalizeBluetoothMoveLog(moveLog, fallbackMoves = []) {
+  const rawEntries = Array.isArray(moveLog) ? moveLog : [];
+  const entries = rawEntries
+    .map((entry, index) => normalizeBluetoothMoveLogEntry(entry, index))
+    .filter(Boolean);
+
+  if (entries.length > 0) return entries.map((entry, index) => ({ ...entry, step: index + 1 }));
+
+  return fallbackMoves.map((move, index) => ({
+    step: index + 1,
+    move,
+    source: '',
+    protocol: '',
+    deviceName: '',
+    time: '',
+    isoTime: '',
+    elapsedMs: null,
+  }));
+}
+
+function normalizeBluetoothMoveLogEntry(entry, index) {
+  const move = normalizeBluetoothMoves([entry])[0];
+  if (!move) return null;
+  const elapsedMs = Number(entry?.elapsedMs);
+  return {
+    step: Number.isFinite(Number(entry?.step)) ? Math.max(1, Math.round(Number(entry.step))) : index + 1,
+    move,
+    source: typeof entry?.source === 'string' ? entry.source : '',
+    protocol: typeof entry?.protocol === 'string' ? entry.protocol : '',
+    deviceName: typeof entry?.deviceName === 'string' ? entry.deviceName : '',
+    time: typeof entry?.time === 'string' ? entry.time : '',
+    isoTime: typeof entry?.isoTime === 'string' ? entry.isoTime : '',
+    elapsedMs: Number.isFinite(elapsedMs) ? Math.max(0, Math.round(elapsedMs)) : null,
+  };
 }
 
 function normalizeStringList(values) {

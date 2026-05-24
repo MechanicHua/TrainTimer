@@ -3277,11 +3277,19 @@ function renderBluetoothFeed() {
     const row = document.createElement('div');
     row.className = 'bluetooth-feed-row';
     row.title = '暂无蓝牙命令';
-    for (const text of ['-', '状态', '暂无蓝牙命令']) {
-      const span = document.createElement('span');
-      span.textContent = text;
-      row.append(span);
-    }
+    const time = document.createElement('span');
+    time.className = 'feed-time';
+    time.textContent = '-';
+    const kind = document.createElement('span');
+    kind.className = 'feed-kind';
+    kind.textContent = '状态';
+    const message = document.createElement('span');
+    message.className = 'feed-message';
+    message.textContent = '暂无蓝牙命令';
+    const detail = document.createElement('span');
+    detail.className = 'feed-detail';
+    detail.textContent = '等待蓝牙连接或通知数据';
+    row.append(time, kind, message, detail);
     elements.bluetoothFeedRows.replaceChildren(row);
     return;
   }
@@ -3292,11 +3300,19 @@ function renderBluetoothFeed() {
       row.className = `bluetooth-feed-row ${bluetoothFeedKindClass(entry.kind)}`.trim();
       const detail = [entry.message, entry.detail].filter(Boolean).join(' · ');
       row.title = [entry.isoTime, entry.kind, detail].filter(Boolean).join(' · ');
-      for (const text of [entry.time, entry.kind, detail]) {
-        const span = document.createElement('span');
-        span.textContent = text;
-        row.append(span);
-      }
+      const time = document.createElement('span');
+      time.className = 'feed-time';
+      time.textContent = entry.time;
+      const kind = document.createElement('span');
+      kind.className = 'feed-kind';
+      kind.textContent = entry.kind;
+      const message = document.createElement('span');
+      message.className = 'feed-message';
+      message.textContent = entry.message || '-';
+      const detailLine = document.createElement('span');
+      detailLine.className = 'feed-detail';
+      detailLine.textContent = entry.detail || entry.message || '-';
+      row.append(time, kind, message, detailLine);
       return row;
     }),
   );

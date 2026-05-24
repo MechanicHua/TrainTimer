@@ -616,17 +616,22 @@ body[data-state="timing"] .timer-display {
 
 .bluetooth-feed-row {
   display: grid;
-  grid-template-columns: 52px 68px minmax(0, 1fr);
-  gap: 7px;
-  align-items: center;
-  min-height: 24px;
-  padding: 2px 0;
-  border: 0;
+  grid-template-columns: 58px 82px minmax(0, 1fr);
+  gap: 2px 8px;
+  align-items: start;
+  min-height: 0;
+  padding: 6px 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
   border-radius: 0;
   background: transparent;
   color: #dbeafe;
   font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
+  line-height: 1.34;
+}
+
+.bluetooth-feed-row:first-child {
+  border-top: 0;
 }
 
 .bluetooth-feed-row.warning {
@@ -646,29 +651,39 @@ body[data-state="timing"] .timer-display {
 
 .bluetooth-feed-row span {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.bluetooth-feed-row .feed-time {
+  color: #7dd3fc;
   white-space: nowrap;
 }
 
-.bluetooth-feed-row span:first-child {
-  color: #7dd3fc;
-}
-
-.bluetooth-feed-row span:nth-child(2) {
+.bluetooth-feed-row .feed-kind {
   color: #34d399;
+  white-space: nowrap;
 }
 
-.bluetooth-feed-row.warning span:nth-child(2) {
+.bluetooth-feed-row .feed-message {
+  color: #f8fafc;
+  overflow-wrap: anywhere;
+}
+
+.bluetooth-feed-row .feed-detail {
+  grid-column: 3;
+  color: #cbd5e1;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.bluetooth-feed-row.warning .feed-kind {
   color: #facc15;
 }
 
-.bluetooth-feed-row.error span:nth-child(2) {
+.bluetooth-feed-row.error .feed-kind {
   color: #fb7185;
-}
-
-.bluetooth-feed-row span:last-child {
-  color: #f8fafc;
 }
 
 .bluetooth-state-panel {

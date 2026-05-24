@@ -1,6 +1,6 @@
 import { cubeStateFromScramble, isSolvedFaces } from '/cube-state.js';
 import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from '/bluetooth-moves.js';
-import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv, solvesToCstimerJson } from '/solves-export.js';
+import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv, solvesToCstimerJson, solvesToTextTable } from '/solves-export.js';
 import { parseSolveImport } from '/solves-import.js';
 import { buildStatsSummary } from '/stats-summary.js';
 import { buildSolveSummary } from '/solve-summary.js';
@@ -134,6 +134,7 @@ const elements = {
   allSolvesSortDirection: document.querySelector('#allSolvesSortDirection'),
   selectAllSessionSolves: document.querySelector('#selectAllSessionSolves'),
   clearAllSolvesFiltersButton: document.querySelector('#clearAllSolvesFiltersButton'),
+  allCopyListButton: document.querySelector('#allCopyListButton'),
   allListedStatsButton: document.querySelector('#allListedStatsButton'),
   allSelectedStatsButton: document.querySelector('#allSelectedStatsButton'),
   allMarkSelectedButton: document.querySelector('#allMarkSelectedButton'),
@@ -412,6 +413,7 @@ elements.allSessionsToggle.addEventListener('change', toggleAllSessions);
 elements.allSolvesSortBy.addEventListener('change', renderAllSolvesDialog);
 elements.allSolvesSortDirection.addEventListener('change', renderAllSolvesDialog);
 elements.clearAllSolvesFiltersButton.addEventListener('click', clearAllSolvesFilters);
+elements.allCopyListButton.addEventListener('click', copyListedSolves);
 elements.allListedStatsButton.addEventListener('click', openListedStatsDialog);
 elements.historyRows.addEventListener('change', handleHistoryChange);
 elements.historyRows.addEventListener('click', handleHistoryClick);
@@ -1015,6 +1017,28 @@ function exportListedSolves(format) {
   const scopeName = allSessionsEnabled ? 'all-sessions' : (currentSession?.name || currentSessionId);
   const suffix = `${safeExportFilename(scopeName)}-${scope}-${listedSolves.length}`;
   downloadSolvesExport(format, scope, suffix, exportHistoryForSolves(listedSolves, sessions));
+}
+
+async function copyListedSolves() {
+  const listedSolves = filteredAllSolves();
+  if (listedSolves.length === 0) return;
+
+  const baseSolves = allSolvesBaseSolves();
+  const currentSession = sessions.find((session) => session.id === currentSessionId);
+  const scopeName = allSessionsEnabled ? `全部会话 · ${sessions.length} 个会话` : (currentSession?.name || currentSessionId);
+  const scope = allSolvesFilterActive()
+    ? `${scopeName} · 筛选 ${listedSolves.length} / ${baseSolves.length} 条`
+    : `${scopeName} · ${listedSolves.length} 条`;
+  const text = solvesToTextTable(listedSolves, sessions, { scope });
+  try {
+    await navigator.clipboard.writeText(text);
+    elements.allCopyListButton.textContent = '已复制';
+    setTimeout(() => {
+      elements.allCopyListButton.textContent = '复制列表';
+    }, 900);
+  } catch {
+    alert(text);
+  }
 }
 
 function downloadSolvesExport(format, scope, suffix, exportHistory) {
@@ -3245,6 +3269,7 @@ function renderAllSolvesControls() {
     && sessions.some((session) => !selectedSolves.every((solve) => (solve.sessionId || 'default') === session.id));
   elements.allMoveSelectedButton.disabled = !canMoveSelected;
   elements.allDeleteSelectedButton.disabled = selectedSolveIds.size === 0;
+  elements.allCopyListButton.disabled = sessionIds.length === 0;
   elements.allExportJsonButton.disabled = sessionIds.length === 0;
   elements.allExportCsvButton.disabled = sessionIds.length === 0;
   elements.allExportCstimerButton.disabled = sessionIds.length === 0;

@@ -9,6 +9,7 @@ import {
   solvesToCsv,
   solvesToCstimerCsv,
   solvesToCstimerJson,
+  solvesToTextTable,
 } from '../src/solves-export.js';
 
 const sessions = [
@@ -92,6 +93,21 @@ test('exports csTimer-compatible CSV rows', () => {
   assert.match(rows[0], /;/);
   assert.match(rows[1], /^1;10\.000;normal;R U;.+;$/);
   assert.match(rows[2], /^2;12\.000\+;"PLL ""lockup""";F, R;.+;$/);
+});
+
+test('builds copyable text tables with solve metadata', () => {
+  const text = solvesToTextTable(solves, sessions, {
+    scope: '全部会话 · 筛选 2 / 2 条',
+    exportedAt: '2026-05-23T12:00:00.000Z',
+  });
+  const rows = text.trim().split('\n');
+
+  assert.equal(rows[0], 'TrainTimer 成绩列表');
+  assert.equal(rows[1], '范围: 全部会话 · 筛选 2 / 2 条');
+  assert.equal(rows[2], '数量: 2');
+  assert.equal(rows[5], '#\t成绩\t罚时\t来源\t转动\tTPS\t时间\t会话\t类型\t标签\t备注\t打乱');
+  assert.equal(rows[6], '1\t10.000\tOK\t手动\t\t\t2026-05-23T10:00:00.000Z\tDefault\t3x3\t\tnormal\tR U');
+  assert.equal(rows[7], '2\t14.000+\t+2\t蓝牙\t3\t0.250\t2026-05-23T10:01:00.000Z\tOne Handed\t4x4\tPLL, 慢十字\tPLL "lockup"\tF, R');
 });
 
 test('exports DNF solves with csTimer raw time wrapper', () => {

@@ -138,6 +138,39 @@ export function solvesToCstimerJson(solves, sessions = []) {
   return `${JSON.stringify(output, null, 2)}\n`;
 }
 
+export function solvesToTextTable(solves, sessions = [], options = {}) {
+  const sessionNames = new Map(sessions.map((session) => [session.id, session.name]));
+  const title = options.title || 'TrainTimer 成绩列表';
+  const scope = String(options.scope || '').trim();
+  const exportedAt = options.exportedAt || new Date().toISOString();
+  const metadataRows = [
+    [title],
+    scope ? [`范围: ${scope}`] : null,
+    [`数量: ${solves.length}`],
+    [`导出: ${exportedAt}`],
+    [],
+  ].filter((row) => row !== null);
+  const rows = [
+    ['#', '成绩', '罚时', '来源', '转动', 'TPS', '时间', '会话', '类型', '标签', '备注', '打乱'],
+    ...solves.map((solve, index) => [
+      index + 1,
+      displaySolveTime(solve),
+      penaltyLabel(solve.penalty),
+      solve.timerSource === 'bluetooth' ? '蓝牙' : '手动',
+      bluetoothMoveCount(solve),
+      bluetoothTpsText(solve),
+      solve.createdAt || '',
+      sessionNames.get(solve.sessionId) || solve.sessionId || 'default',
+      puzzleLabel(solve.scramblePuzzle || 'three'),
+      Array.isArray(solve.tags) ? solve.tags.join(', ') : '',
+      solve.comment || '',
+      solve.scramble || '',
+    ]),
+  ];
+
+  return `${[...metadataRows, ...rows].map((row) => row.map(textCell).join('\t')).join('\n')}\n`;
+}
+
 export function safeExportFilename(value) {
   return String(value).replaceAll(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'session';
 }
@@ -199,6 +232,43 @@ function cstimerScrambleType(scramblePuzzle) {
   return map.get(scramblePuzzle) || '333';
 }
 
+function displaySolveTime(solve) {
+  if (solve.penalty === 'dnf') return 'DNF';
+  const rawMs = Math.max(0, Math.round(Number(solve.durationMs) || 0));
+  if (solve.penalty === '+2') return `${formatMilliseconds(rawMs + 2000)}+`;
+  return solve.duration || formatMilliseconds(rawMs);
+}
+
+function penaltyLabel(penalty) {
+  if (penalty === '+2') return '+2';
+  if (penalty === 'dnf') return 'DNF';
+  return 'OK';
+}
+
+function bluetoothMoveCount(solve) {
+  if (Number.isFinite(solve.bluetoothMoveCount)) return solve.bluetoothMoveCount;
+  return Array.isArray(solve.bluetoothMoves) ? solve.bluetoothMoves.length : '';
+}
+
+function bluetoothTpsText(solve) {
+  return Number.isFinite(solve.bluetoothTps) ? solve.bluetoothTps.toFixed(3) : '';
+}
+
+function puzzleLabel(scramblePuzzle) {
+  const map = new Map([
+    ['two', '2x2'],
+    ['three', '3x3'],
+    ['four', '4x4'],
+    ['five', '5x5'],
+    ['six', '6x6'],
+    ['seven', '7x7'],
+    ['clock', 'Clock'],
+    ['skewb', 'Skewb'],
+    ['sq1', 'Square-1'],
+  ]);
+  return map.get(scramblePuzzle) || scramblePuzzle || '3x3';
+}
+
 function formatMilliseconds(value) {
   const ms = Math.max(0, Math.round(Number(value) || 0));
   const minutes = Math.floor(ms / 60000);
@@ -212,4 +282,8 @@ function csvCell(value, delimiter = ',') {
   const text = String(value ?? '');
   const pattern = new RegExp(`[${delimiter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"\\n]`);
   return pattern.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+function textCell(value) {
+  return String(value ?? '').replaceAll(/\s*\r?\n\s*/g, ' ').replaceAll('\t', ' ').trim();
 }

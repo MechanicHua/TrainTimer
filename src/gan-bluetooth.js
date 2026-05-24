@@ -12,6 +12,7 @@ const ganBaseKeys = [
 const ganAxisMasks = [2, 32, 8, 1, 16, 4];
 const ganFaces = 'URFDLB';
 const ganHistoryFaces = 'DUBFLR';
+const ganV4SolvedStateSignature = '05 39 70 00 00 09 1a 2b 3c 4d 00 00 00 00';
 
 export function normalizeGanMac(mac) {
   const pairs = String(mac || '').match(/[0-9a-f]{2}/gi);
@@ -42,7 +43,7 @@ export function decodeGanBluetoothPacket({ protocol, mac, keyVersion = 0, bytes 
 
   if (normalizedProtocol === 'v2') return { ...base, ...parseGanV2(bits) };
   if (normalizedProtocol === 'v3') return { ...base, ...parseGanV3(bits) };
-  if (normalizedProtocol === 'v4') return { ...base, ...parseGanV4(bits) };
+  if (normalizedProtocol === 'v4') return { ...base, ...parseGanV4(bits, decryptedBytes) };
   return base;
 }
 
@@ -179,7 +180,7 @@ function parseGanV3(bits) {
   return { mode: `mode-${mode}` };
 }
 
-function parseGanV4(bits) {
+function parseGanV4(bits, bytes = []) {
   const mode = bitNumber(bits, 0, 8);
   const length = bitNumber(bits, 8, 16);
   if (mode === 0x01) {
@@ -194,7 +195,14 @@ function parseGanV4(bits) {
     };
   }
   if (mode === 0xed) {
-    return { mode: 'state', moveCounter: bitNumber(bits, 24, 32) << 8 | bitNumber(bits, 16, 24), counterModulo: 256 };
+    const stateSignature = normalizeBytes(bytes).slice(4, 18).map((byte) => byte.toString(16).padStart(2, '0')).join(' ');
+    return {
+      mode: 'state',
+      moveCounter: bitNumber(bits, 24, 32) << 8 | bitNumber(bits, 16, 24),
+      counterModulo: 256,
+      stateSignature,
+      stateSolved: stateSignature === ganV4SolvedStateSignature,
+    };
   }
   if (mode === 0xd1) {
     const startMoveCounter = bitNumber(bits, 16, 24);

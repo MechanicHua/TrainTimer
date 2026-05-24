@@ -410,6 +410,7 @@ let bluetoothSubscriptions = [];
 let bluetoothLog = [];
 let bluetoothMoves = [];
 let bluetoothSolved = false;
+let bluetoothSolvedByStatePacket = false;
 let bluetoothBatteryLevel = null;
 let bluetoothGanMac = '';
 let bluetoothGanSession = null;
@@ -2618,6 +2619,7 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
 
   const moveHandling = handleBluetoothMovesForCurrentState(parsedMoves, label, decoded.protocol || protocol.label, deviceName);
   const trackingMoves = moveHandling.trackingMoves;
+  const statePacketSolved = markGanBluetoothStateSolved(decoded);
 
   const statusDetail = parsedMoves.length > 0
     ? `${parsedMoves.join(' ')} · ${moveHandling.statusLabel || (trackingMoves ? (bluetoothSolved ? '已复原' : '未复原') : '等待计时')}`
@@ -2631,6 +2633,7 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
     label,
     ganBluetoothPacketLog(hex, decoded, ignoredReason),
   );
+  if (statePacketSolved) finishTimingFromBluetooth();
   console.info('GAN Bluetooth cube notification', {
     characteristic: uuid,
     value: hex,
@@ -2644,7 +2647,10 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
 function ganBluetoothStatusDetail(decoded, label, hex, duplicateMovePacket) {
   if (duplicateMovePacket) return `${decoded.moves.join(' ')} · 重复转动包`;
   if (decoded.batteryLevel != null) return `电量 ${decoded.batteryLevel}%`;
-  if (decoded.mode === 'state') return `GAN 状态包 · counter=${decoded.moveCounter ?? '-'}`;
+  if (decoded.mode === 'state') {
+    const stateLabel = decoded.stateSolved === true ? '已复原' : '未复原';
+    return `GAN 状态包 · ${stateLabel} · counter=${decoded.moveCounter ?? '-'}`;
+  }
   if (decoded.mode === 'hardware') return 'GAN 硬件信息';
   if (decoded.mode === 'invalid') return `GAN 解密结果无效 · ${hex.slice(0, 23)}`;
   return `${label} ${hex.slice(0, 17)}`;
@@ -2654,6 +2660,7 @@ function ganBluetoothLogKind(decoded, parsedMoves, trackingMoves, duplicateMoveP
   if (parsedMoves.length > 0) return trackingMoves ? '数据/转动' : '数据/预备转动';
   if (duplicateMovePacket) return '数据/重复';
   if (decoded.batteryLevel != null) return '数据/电量';
+  if (decoded.stateSolved === true) return '数据/GAN已复原';
   if (decoded.mode === 'state') return '数据/GAN状态';
   if (decoded.mode === 'hardware') return '数据/GAN硬件';
   return '数据/GAN';
@@ -2665,6 +2672,9 @@ function ganBluetoothPacketLog(hex, decoded, ignoredReason = '') {
   if (decoded.mode) detail.push(`mode=${decoded.mode}`);
   if (Number.isInteger(decoded.moveCounter)) detail.push(`counter=${decoded.moveCounter}`);
   if (decoded.batteryLevel != null) detail.push(`battery=${decoded.batteryLevel}%`);
+  if (decoded.stateSignature) detail.push(`state=${decoded.stateSignature}`);
+  if (decoded.stateSolved === true) detail.push('stateSolved=true');
+  if (decoded.stateSolved === false) detail.push('stateSolved=false');
   if (Array.isArray(decoded.decryptedBytes)) detail.push(`decrypted=${bytesToHex(decoded.decryptedBytes)}`);
   if (Array.isArray(decoded.historyMoves) && decoded.historyMoves.length > decoded.moves.length) {
     detail.push(`history=${decoded.historyMoves.join(' ')}`);
@@ -2672,6 +2682,14 @@ function ganBluetoothPacketLog(hex, decoded, ignoredReason = '') {
   if (Array.isArray(decoded.moves) && decoded.moves.length > 0) detail.push(`moves=${decoded.moves.join(' ')}`);
   if (ignoredReason) detail.push(`未计入=${ignoredReason}`);
   return detail.join(' · ');
+}
+
+function markGanBluetoothStateSolved(decoded) {
+  if (decoded.stateSolved !== true || appState !== 'timing') return false;
+  bluetoothSolved = true;
+  bluetoothSolvedByStatePacket = true;
+  renderBluetoothMoves();
+  return true;
 }
 
 function finishTimingFromBluetooth() {
@@ -2874,6 +2892,7 @@ function addBluetoothMoves(moves, source, protocol = '', deviceName = '') {
   })).reverse());
   bluetoothMoves = bluetoothMoves.slice(0, 160);
   bluetoothSolved = isBluetoothSolved();
+  bluetoothSolvedByStatePacket = false;
   renderBluetoothMoves();
 }
 
@@ -2881,7 +2900,7 @@ function renderBluetoothMoves() {
   elements.bluetoothMoveCount.textContent = String(bluetoothMoves.length);
   elements.bluetoothSolveStatus.parentElement.classList.toggle('solved', bluetoothSolved);
   elements.bluetoothSolveStatus.textContent = bluetoothMoves.length === 0
-    ? (appState === 'timing' ? '未同步' : '等待计时')
+    ? (bluetoothSolved ? '已复原' : (appState === 'timing' ? '未同步' : '等待计时'))
     : (bluetoothSolved ? '已复原' : '未复原');
   if (bluetoothMoves.length === 0) {
     elements.bluetoothMoveRows.textContent = appState === 'timing' ? '暂无解析出的转动' : '计时开始后记录转动';
@@ -2927,6 +2946,7 @@ function uniqueText(values) {
 function resetBluetoothSolveTracking() {
   bluetoothMoves = [];
   bluetoothSolved = false;
+  bluetoothSolvedByStatePacket = false;
   renderBluetoothMoves();
 }
 
@@ -2954,10 +2974,11 @@ function renderBluetoothStatePreview() {
   const stateText = [scramble.scramble, moveText].filter(Boolean).join(' ');
   try {
     const faces = cubeStateFromScramble(stateText);
+    const replaySolved = isSolvedFaces(faces);
     renderCubeFacesNet(elements.bluetoothStateNet, faces, 'bluetooth-state-net');
     elements.bluetoothStateMeta.textContent = bluetoothMoves.length === 0
-      ? (appState === 'timing' ? '打乱状态' : '计时开始后同步')
-      : `${bluetoothMoves.length} 步 · ${isSolvedFaces(faces) ? '已复原' : '未复原'}`;
+      ? (bluetoothSolvedByStatePacket ? 'GAN 状态已复原' : (appState === 'timing' ? '打乱状态' : '计时开始后同步'))
+      : `${bluetoothMoves.length} 步 · ${bluetoothSolvedByStatePacket && !replaySolved ? 'GAN 状态已复原' : (replaySolved ? '已复原' : '未复原')}`;
   } catch (error) {
     elements.bluetoothStateMeta.textContent = '状态无效';
     elements.bluetoothStateNet.className = 'bluetooth-state-net preview-loading';

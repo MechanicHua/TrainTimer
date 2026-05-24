@@ -10,6 +10,7 @@ const inspectionSeconds = 15;
 const inspectionDnfSeconds = 17;
 const holdToStartMs = 500;
 const reminderSeconds = new Set([8, 12]);
+const compactHistoryLimit = 16;
 const bluetoothUuidSuffix = '-0000-1000-8000-00805f9b34fb';
 const bluetoothBatteryLevelUuid = `00002a19${bluetoothUuidSuffix}`;
 const bluetoothGanV1MetaServiceUuid = `0000180a${bluetoothUuidSuffix}`;
@@ -199,6 +200,8 @@ const elements = {
   bluetoothLogButton: document.querySelector('#bluetoothLogButton'),
   bluetoothBattery: document.querySelector('#bluetoothBattery'),
   bluetoothStatus: document.querySelector('#bluetoothStatus'),
+  bluetoothFeedMeta: document.querySelector('#bluetoothFeedMeta'),
+  bluetoothFeedRows: document.querySelector('#bluetoothFeedRows'),
   sessionSelect: document.querySelector('#sessionSelect'),
   newSessionButton: document.querySelector('#newSessionButton'),
   duplicateSessionButton: document.querySelector('#duplicateSessionButton'),
@@ -2475,7 +2478,6 @@ async function processBluetoothPacket(uuid, value, deviceName) {
   if (isBatteryLevelCharacteristic(uuid)) {
     const batteryLevel = decodeBatteryLevel(value);
     if (updateBluetoothBattery(batteryLevel, label)) {
-      elements.bluetoothStatus.textContent = `${deviceName} · 电量更新`;
       elements.bluetoothStatus.title = `${uuid} ${hex}`;
       return;
     }
@@ -2489,7 +2491,6 @@ async function processBluetoothPacket(uuid, value, deviceName) {
   if (isGiikerBatteryCharacteristic(uuid)) {
     const batteryLevel = decodeGiikerBatteryLevel(value);
     if (updateBluetoothBattery(batteryLevel, label)) {
-      elements.bluetoothStatus.textContent = `${deviceName} · 电量 ${batteryLevel}%`;
       elements.bluetoothStatus.title = `${uuid} ${hex}`;
       addBluetoothLog('数据/电量', label, `${hex} · battery=${batteryLevel}%`);
       return;
@@ -2518,7 +2519,7 @@ async function processBluetoothPacket(uuid, value, deviceName) {
   const ignoredReason = duplicateMovePacket
     ? '重复状态包'
     : (moveHandling.ignoredReason || (parsedMoves.length > 0 && !trackingMoves ? '等待计时' : ''));
-  elements.bluetoothStatus.textContent = `${deviceName} · ${statusDetail}`;
+  elements.bluetoothStatus.title = `${deviceName} · ${statusDetail} · ${uuid} ${hex}`;
   const logDetail = logBluetoothPacket(hex, decoded, ignoredReason);
   addBluetoothLog(
     moveHandling.logKind || (parsedMoves.length > 0
@@ -2590,8 +2591,7 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
   const ignoredReason = duplicateMovePacket
     ? '重复转动包'
     : (moveHandling.ignoredReason || (parsedMoves.length > 0 && !trackingMoves ? '等待计时' : ''));
-  elements.bluetoothStatus.textContent = `${deviceName} · ${statusDetail}`;
-  elements.bluetoothStatus.title = `${uuid} ${hex}`;
+  elements.bluetoothStatus.title = `${deviceName} · ${statusDetail} · ${uuid} ${hex}`;
   addBluetoothLog(
     moveHandling.logKind || ganBluetoothLogKind(decoded, parsedMoves, trackingMoves, duplicateMovePacket),
     label,
@@ -2670,6 +2670,7 @@ function renderBluetoothBattery() {
   elements.bluetoothBattery.textContent = bluetoothBatteryLevel == null ? '电量 -' : `电量 ${bluetoothBatteryLevel}%`;
   elements.bluetoothBattery.title = bluetoothBatteryLevel == null ? '未读取到蓝牙电量' : `蓝牙电量 ${bluetoothBatteryLevel}%`;
   elements.bluetoothBattery.classList.toggle('low', bluetoothBatteryLevel != null && bluetoothBatteryLevel <= 20);
+  renderBluetoothFeed();
 }
 
 function openBluetoothLogDialog() {
@@ -2686,7 +2687,52 @@ function addBluetoothLog(kind, message, detail = '') {
     detail,
   });
   bluetoothLog = bluetoothLog.slice(0, 120);
+  renderBluetoothFeed();
   renderBluetoothLog();
+}
+
+function renderBluetoothFeed() {
+  if (!elements.bluetoothFeedMeta || !elements.bluetoothFeedRows) return;
+  const connected = bluetoothDevice?.gatt?.connected ? '已连接' : '未连接';
+  const battery = bluetoothBatteryLevel == null ? '' : ` · 电量 ${bluetoothBatteryLevel}%`;
+  elements.bluetoothFeedMeta.textContent = bluetoothLog.length === 0
+    ? `${connected}${battery}`
+    : `${connected}${battery} · ${bluetoothLog.length} 条`;
+
+  if (bluetoothLog.length === 0) {
+    const row = document.createElement('div');
+    row.className = 'bluetooth-feed-row';
+    row.title = '暂无蓝牙命令';
+    for (const text of ['-', '状态', '暂无蓝牙命令']) {
+      const span = document.createElement('span');
+      span.textContent = text;
+      row.append(span);
+    }
+    elements.bluetoothFeedRows.replaceChildren(row);
+    return;
+  }
+
+  elements.bluetoothFeedRows.replaceChildren(
+    ...bluetoothLog.slice(0, 24).map((entry) => {
+      const row = document.createElement('div');
+      row.className = `bluetooth-feed-row ${bluetoothFeedKindClass(entry.kind)}`.trim();
+      const detail = [entry.message, entry.detail].filter(Boolean).join(' · ');
+      row.title = [entry.isoTime, entry.kind, detail].filter(Boolean).join(' · ');
+      for (const text of [entry.time, entry.kind, detail]) {
+        const span = document.createElement('span');
+        span.textContent = text;
+        row.append(span);
+      }
+      return row;
+    }),
+  );
+}
+
+function bluetoothFeedKindClass(kind) {
+  if (/错误/.test(kind)) return 'error';
+  if (/警告/.test(kind)) return 'warning';
+  if (/转动|预备/.test(kind)) return 'move';
+  return '';
 }
 
 function renderBluetoothLog() {
@@ -2722,6 +2768,7 @@ function clearBluetoothLog() {
   bluetoothGanLastMoveCounter = null;
   bluetoothGanDecodeWarning = '';
   renderBluetoothMoves();
+  renderBluetoothFeed();
   renderBluetoothLog();
 }
 
@@ -2984,6 +3031,7 @@ function bytesToHex(bytes) {
 function render() {
   renderTimer();
   renderBluetoothMoves();
+  renderBluetoothFeed();
   renderSessions();
   renderScramble();
   renderStats();
@@ -3900,7 +3948,7 @@ async function saveManualEntry() {
 
 function renderHistory() {
   const sessionSolves = filteredSolves();
-  const latest = sessionSolves.slice(-3).reverse();
+  const latest = sessionSolves.slice(-compactHistoryLimit).reverse();
   renderHistoryControls();
   elements.historyRows.replaceChildren(
     ...latest.map((solve, index) => renderSolveRow(solve, sessionSolves.length - index, sessionSolves)),

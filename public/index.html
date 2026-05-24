@@ -172,6 +172,20 @@
           </div>
           <div id="historyRows" class="history-rows"></div>
         </div>
+        <aside id="bluetooth3dPanel" class="bluetooth-3d-panel" aria-label="蓝牙魔方 3D 状态">
+          <div class="bluetooth-3d-head">
+            <div>
+              <strong>3D 状态</strong>
+              <span id="bluetooth3dMeta">等待蓝牙同步</span>
+            </div>
+            <em id="bluetooth3dMove">-</em>
+          </div>
+          <canvas id="bluetooth3dCanvas" class="bluetooth-3d-canvas" aria-label="3D 魔方状态"></canvas>
+          <div class="bluetooth-3d-telemetry">
+            <span id="bluetooth3dGyro">Gyro -</span>
+            <span id="bluetooth3dVelocity">Turn -</span>
+          </div>
+        </aside>
       </section>
 
       <dialog id="allSolvesDialog" class="all-solves-dialog">

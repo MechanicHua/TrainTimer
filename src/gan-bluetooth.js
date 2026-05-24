@@ -204,6 +204,32 @@ function parseGanV4(bits, bytes = []) {
       stateSolved: stateSignature === ganV4SolvedStateSignature,
     };
   }
+  if (mode === 0xec) {
+    const qw = bitNumber(bits, 16, 32);
+    const qx = bitNumber(bits, 32, 48);
+    const qy = bitNumber(bits, 48, 64);
+    const qz = bitNumber(bits, 64, 80);
+    const vx = bitNumber(bits, 80, 84);
+    const vy = bitNumber(bits, 84, 88);
+    const vz = bitNumber(bits, 88, 92);
+    return {
+      mode: 'gyro',
+      gyro: {
+        quaternion: {
+          x: signedMagnitude(qx, 0x8000, 0x7fff),
+          y: signedMagnitude(qy, 0x8000, 0x7fff),
+          z: signedMagnitude(qz, 0x8000, 0x7fff),
+          w: signedMagnitude(qw, 0x8000, 0x7fff),
+        },
+        velocity: {
+          x: signedMagnitude(vx, 0x8, 0x7),
+          y: signedMagnitude(vy, 0x8, 0x7),
+          z: signedMagnitude(vz, 0x8, 0x7),
+        },
+        raw: { qw, qx, qy, qz, vx, vy, vz },
+      },
+    };
+  }
   if (mode === 0xd1) {
     const startMoveCounter = bitNumber(bits, 16, 24);
     const historyMoves = parseGanHistoryMoves(bits, 24, Math.max(0, (length - 1) * 2), ganHistoryFaces);
@@ -238,6 +264,10 @@ function moveFromFacePower(face, power) {
   if (power === 1) return `${face}'`;
   if (power === 2) return `${face}2`;
   return null;
+}
+
+function signedMagnitude(value, signMask, valueMask) {
+  return (value & signMask ? -1 : 1) * (value & valueMask) / valueMask;
 }
 
 function ganKeyIv(mac, keyVersion) {

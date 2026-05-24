@@ -93,6 +93,30 @@ test('decodes GAN Gen4 solved state packets', () => {
   assert.equal(unsolved.stateSolved, false);
 });
 
+test('decodes GAN Gen4 gyro packets', () => {
+  const gyroPlain = [
+    0xec, 0x0a, 0x81, 0x54, 0xa7, 0xff, 0xf9, 0x8e, 0x82, 0x39,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xb9, 0x1b,
+  ];
+  const gyro = decodeGanBluetoothPacket({
+    protocol: 'v4',
+    mac,
+    bytes: encodeGanPayload(gyroPlain, { mac }),
+  });
+
+  assert.equal(gyro.mode, 'gyro');
+  assert.equal(gyro.gyro.raw.qw, 0x8154);
+  assert.equal(gyro.gyro.velocity.x, 0);
+  assert.equal(gyro.gyro.velocity.y, 0);
+  assert.equal(gyro.gyro.velocity.z, 0);
+  assert.equal(Math.hypot(
+    gyro.gyro.quaternion.x,
+    gyro.gyro.quaternion.y,
+    gyro.gyro.quaternion.z,
+    gyro.gyro.quaternion.w,
+  ) > 0.99, true);
+});
+
 test('decodes GAN Gen2 battery packets', () => {
   const batteryPlain = [0x90, 77, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
   const battery = decodeGanBluetoothPacket({

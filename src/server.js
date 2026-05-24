@@ -29,7 +29,11 @@ import { createExportPayload, safeExportFilename, scopedExportHistory, solvesToC
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const publicRoot = join(projectRoot, 'public');
 const srcRoot = join(projectRoot, 'src');
+const nodeModulesRoot = join(projectRoot, 'node_modules');
 const publicSrcModules = new Set(['bluetooth-moves.js', 'cube-state.js', 'rolling-averages.js', 'solve-summary.js', 'solves-export.js', 'solves-import.js', 'stats-summary.js']);
+const vendorModules = new Map([
+  ['three.module.js', join(nodeModulesRoot, 'three', 'build', 'three.module.js')],
+]);
 const requestedPort = Number(process.env.PORT || 3000);
 const host = process.env.HOST || '127.0.0.1';
 
@@ -419,8 +423,9 @@ async function serveStatic(request, response) {
   const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
   const pathname = decodeURIComponent(url.pathname);
   const relativePath = pathname === '/' ? 'index.html' : pathname.slice(1);
-  const root = publicSrcModules.has(relativePath) ? srcRoot : publicRoot;
-  const filePath = normalize(join(root, publicSrcModules.has(relativePath) ? relativePath : relativePath));
+  const vendorPath = relativePath.startsWith('vendor/') ? vendorModules.get(relativePath.slice('vendor/'.length)) : null;
+  const root = vendorPath ? nodeModulesRoot : (publicSrcModules.has(relativePath) ? srcRoot : publicRoot);
+  const filePath = normalize(vendorPath || join(root, relativePath));
 
   if (!filePath.startsWith(root)) {
     response.writeHead(403);

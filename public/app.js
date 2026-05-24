@@ -11,6 +11,7 @@ const inspectionDnfSeconds = 17;
 const holdToStartMs = 500;
 const reminderSeconds = new Set([8, 12]);
 const compactHistoryLimit = 16;
+const bluetoothNextSolveGestureWindowMs = 700;
 const bluetoothUuidSuffix = '-0000-1000-8000-00805f9b34fb';
 const bluetoothBatteryLevelUuid = `00002a19${bluetoothUuidSuffix}`;
 const bluetoothGanV1MetaServiceUuid = `0000180a${bluetoothUuidSuffix}`;
@@ -423,6 +424,9 @@ let scrambleGuideErrorIndex = null;
 let scrambleGuideErrorMove = '';
 let scrambleGuideCompleted = false;
 let scrambleGuideSupported = false;
+let bluetoothNextSolveGestureCandidate = null;
+let bluetoothNextSolveGestureFlushTimer = 0;
+let bluetoothNextSolveGestureLoading = false;
 let previewScrambleText = '';
 let previewRequestId = 0;
 const previewCache = new Map();
@@ -575,8 +579,20 @@ window.__trainTimerDebug = {
     scramble = { scramble: String(text || ''), source: 'debug', puzzle: 'three' };
     resetBluetoothSolveTracking();
     resetScrambleGuide();
+    resetBluetoothNextSolveGesture();
     renderScramble();
     renderTimer();
+    return this.state();
+  },
+  setStateForTest(nextState) {
+    appState = String(nextState || appState);
+    render();
+    return this.state();
+  },
+  setBluetoothDeviceForTest(name = '模拟蓝牙魔方') {
+    bluetoothDevice = { name: String(name || '模拟蓝牙魔方'), id: 'debug-device', gatt: { connected: true } };
+    setBluetoothDeviceNameStatus('已连接', 'debug');
+    renderBluetoothFeed();
     return this.state();
   },
   state() {
@@ -778,6 +794,7 @@ function cancelHold() {
 }
 
 function startTiming() {
+  clearBluetoothNextSolveGestureCandidate();
   cancelAnimationFrame(inspectionFrame);
   cancelAnimationFrame(holdFrame);
   activePenalty = currentInspectionPenalty();
@@ -825,6 +842,7 @@ async function finishTiming() {
 }
 
 async function nextSolve() {
+  clearBluetoothNextSolveGestureCandidate();
   await loadScramble();
   activePenalty = 'ok';
   inspectionStartedAt = 0;
@@ -866,6 +884,7 @@ async function changeScramblePuzzle() {
 
 async function loadScramble() {
   applyCurrentSessionPuzzle();
+  clearBluetoothNextSolveGestureCandidate();
   elements.scrambleButton.disabled = true;
   try {
     const data = await postJson('/api/scramble', { puzzle: scramblePuzzle });
@@ -1903,8 +1922,7 @@ async function connectBluetoothCube(options = {}) {
   const compatibilityMode = Boolean(options.compatibilityMode);
   const availability = bluetoothAvailability();
   if (!availability.canRequest) {
-    elements.bluetoothStatus.textContent = availability.label;
-    elements.bluetoothStatus.title = availability.detail;
+    setBluetoothStatusText(availability.label, availability.detail);
     setBluetoothConnectedState(false);
     addBluetoothLog('错误', availability.label, availability.detail);
     return;
@@ -1912,7 +1930,7 @@ async function connectBluetoothCube(options = {}) {
 
   try {
     if (bluetoothDevice?.gatt?.connected) {
-      elements.bluetoothStatus.textContent = '已连接';
+      setBluetoothDeviceNameStatus('已连接');
       return;
     }
 
@@ -1929,8 +1947,7 @@ async function connectBluetoothCube(options = {}) {
 async function reconnectBluetoothCube() {
   const availability = bluetoothAvailability();
   if (!availability.canRequest) {
-    elements.bluetoothStatus.textContent = availability.label;
-    elements.bluetoothStatus.title = availability.detail;
+    setBluetoothStatusText(availability.label, availability.detail);
     setBluetoothConnectedState(false);
     addBluetoothLog('错误', availability.label, availability.detail);
     return;
@@ -1938,7 +1955,7 @@ async function reconnectBluetoothCube() {
 
   try {
     if (bluetoothDevice?.gatt?.connected) {
-      elements.bluetoothStatus.textContent = '已连接';
+      setBluetoothDeviceNameStatus('已连接');
       return;
     }
 
@@ -1946,7 +1963,7 @@ async function reconnectBluetoothCube() {
     resetBluetoothBattery();
     const device = await bluetoothReconnectCandidate();
     if (!device) {
-      elements.bluetoothStatus.textContent = '无已授权设备';
+      setBluetoothStatusText('无已授权设备', '先用连接或兼容扫描授权一次');
       addBluetoothLog('连接', '无可重连设备', '先用连接或兼容扫描授权一次');
       setBluetoothConnectedState(false);
       return;
@@ -1968,16 +1985,17 @@ async function connectBluetoothDevice(device, options = {}) {
   addBluetoothLog('连接', options.reconnect ? '正在重连 GATT' : '正在连接 GATT');
   const server = await bluetoothDevice.gatt.connect();
   setBluetoothConnectedState(true);
-  elements.bluetoothStatus.textContent = '读取服务...';
+  setBluetoothDeviceNameStatus('读取服务...');
   addBluetoothLog('连接', 'GATT 已连接', bluetoothDevice.name || '');
 
   const discovery = await discoverBluetoothServices(server);
-  const deviceName = bluetoothDevice.name || '已连接';
   const initDetail = discovery.writeCount > 0 ? ` · ${discovery.writeCount} 次初始化` : '';
-  elements.bluetoothStatus.textContent = discovery.notifyCount > 0
-    ? `${deviceName} · ${discovery.notifyCount} 路通知${initDetail}`
-    : `${deviceName} · 未发现通知`;
-  elements.bluetoothStatus.title = discovery.detail || '未发现可订阅特征';
+  setBluetoothDeviceNameStatus(
+    '已连接',
+    discovery.notifyCount > 0
+      ? `${discovery.notifyCount} 路通知${initDetail} · ${discovery.detail || ''}`
+      : `未发现通知 · ${discovery.detail || '未发现可订阅特征'}`,
+  );
   addBluetoothLog('服务', `发现 ${discovery.serviceCount} 个服务`, `${discovery.notifyCount} 路通知 · ${discovery.writeCount} 次初始化 · ${discovery.detail}`);
 }
 
@@ -2009,8 +2027,7 @@ function setActiveBluetoothDevice(device) {
 function handleBluetoothDisconnected() {
   cleanupBluetoothSubscriptions();
   resetBluetoothBattery();
-  elements.bluetoothStatus.textContent = '已断开';
-  elements.bluetoothStatus.title = '';
+  setBluetoothStatusText('已断开');
   setBluetoothConnectedState(false);
   void refreshBluetoothReconnectDevices();
   addBluetoothLog('连接', '设备已断开', bluetoothDevice?.name || '');
@@ -2020,8 +2037,7 @@ function handleBluetoothConnectionError(error) {
   cleanupBluetoothSubscriptions();
   resetBluetoothBattery();
   if (bluetoothDevice?.gatt?.connected) bluetoothDevice.gatt.disconnect();
-  elements.bluetoothStatus.textContent = error.name === 'NotFoundError' ? '已取消' : '连接失败';
-  elements.bluetoothStatus.title = '';
+  setBluetoothStatusText(error.name === 'NotFoundError' ? '已取消' : '连接失败');
   setBluetoothConnectedState(false);
   void refreshBluetoothReconnectDevices();
   addBluetoothLog('错误', error.name || 'BluetoothError', error.message || String(error));
@@ -2122,7 +2138,7 @@ function setBluetoothScanningState(scanning, compatibilityMode, label = '') {
   elements.bluetoothAnyButton.disabled = scanning;
   elements.bluetoothReconnectButton.disabled = scanning;
   elements.bluetoothDisconnectButton.disabled = true;
-  elements.bluetoothStatus.textContent = label || (compatibilityMode ? '兼容扫描中...' : '扫描中...');
+  setBluetoothStatusText(label || (compatibilityMode ? '兼容扫描中...' : '扫描中...'));
 }
 
 function setBluetoothConnectedState(connected) {
@@ -2135,8 +2151,7 @@ function setBluetoothConnectedState(connected) {
   if (!connected && !availability.canRequest) {
     elements.bluetoothButton.disabled = true;
     elements.bluetoothAnyButton.disabled = true;
-    elements.bluetoothStatus.textContent = availability.label;
-    elements.bluetoothStatus.title = availability.detail;
+    setBluetoothStatusText(availability.label, availability.detail);
   } else if (!connected) {
     elements.bluetoothButton.disabled = false;
     elements.bluetoothAnyButton.disabled = false;
@@ -2145,11 +2160,24 @@ function setBluetoothConnectedState(connected) {
       || elements.bluetoothStatus.textContent === '需要安全环境'
       || elements.bluetoothStatus.textContent === '设备选择不可用'
     ) {
-      elements.bluetoothStatus.textContent = availability.label;
+      setBluetoothStatusText(availability.label, availability.detail);
     }
     if (!elements.bluetoothStatus.title) elements.bluetoothStatus.title = availability.detail;
+  } else {
+    setBluetoothDeviceNameStatus('已连接');
   }
   renderBluetoothReconnectButton();
+}
+
+function setBluetoothStatusText(text, title = '') {
+  elements.bluetoothStatus.textContent = text;
+  elements.bluetoothStatus.title = title;
+}
+
+function setBluetoothDeviceNameStatus(fallback = '已连接', title = '') {
+  const name = bluetoothDevice?.name || bluetoothDevice?.id || fallback;
+  elements.bluetoothStatus.textContent = name;
+  elements.bluetoothStatus.title = title || name;
 }
 
 async function bluetoothReconnectCandidate() {
@@ -2207,7 +2235,7 @@ async function resolveBluetoothGanMacFromAdvertisements(device, timeoutMs = 1600
     return '';
   }
 
-  elements.bluetoothStatus.textContent = '读取 GAN 广播...';
+  setBluetoothDeviceNameStatus('读取 GAN 广播...', '读取 GAN 广播 MAC，用于解密 GAN 加密包');
   addBluetoothLog('GAN', '读取广播 MAC', '用于解密 GAN 加密包');
   return new Promise((resolve) => {
     let done = false;
@@ -2421,8 +2449,7 @@ async function primeGanBluetoothService(service, characteristics) {
 
   const mac = await ensureBluetoothGanMac({ allowPrompt: true });
   if (!mac) {
-    elements.bluetoothStatus.textContent = `${bluetoothDevice?.name || 'GAN'} · 需要 MAC`;
-    elements.bluetoothStatus.title = 'GAN 加密包需要 MAC 地址才能解析状态、转动和电量';
+    setBluetoothDeviceNameStatus('GAN', 'GAN 加密包需要 MAC 地址才能解析状态、转动和电量');
     addBluetoothLog('GAN', `${protocol.label} 初始化暂停`, '缺少 MAC，已禁止 Giiker 误解析');
     return 0;
   }
@@ -2549,14 +2576,13 @@ async function processBluetoothPacket(uuid, value, deviceName) {
 async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
   const protocol = bluetoothGanSession || bluetoothGanProtocolForCharacteristic(uuid) || bluetoothGanProtocolForDevice(deviceName);
   if (!protocol) {
-    elements.bluetoothStatus.textContent = `${deviceName} · GAN 协议未知`;
+    elements.bluetoothStatus.title = `${deviceName} · GAN 协议未知`;
     addBluetoothLog('数据/GAN原始', label, `${hex} · 未识别 GAN 协议，已跳过通用 Giiker 解码`);
     return;
   }
 
   const mac = await ensureBluetoothGanMac({ allowPrompt: false });
   if (!mac) {
-    elements.bluetoothStatus.textContent = `${deviceName} · GAN 需要 MAC`;
     elements.bluetoothStatus.title = '缺少 MAC，不能解密 GAN 状态、转动和电量';
     if (bluetoothGanDecodeWarning !== 'missing-mac') {
       bluetoothGanDecodeWarning = 'missing-mac';
@@ -2575,7 +2601,6 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
       bytes: [...dataViewBytes(value)],
     });
   } catch (error) {
-    elements.bluetoothStatus.textContent = `${deviceName} · GAN 解码失败`;
     elements.bluetoothStatus.title = error.message || String(error);
     addBluetoothLog('错误', `${protocol.label} 解码失败`, `${label} · ${error.message || String(error)}`);
     return;
@@ -3256,7 +3281,7 @@ function scrambleGuideReadyHint() {
 }
 
 function handleBluetoothMovesForCurrentState(moves, source, protocol = '', deviceName = '') {
-  const parsedMoves = moves.filter(Boolean);
+  let parsedMoves = moves.filter(Boolean);
   const result = {
     trackingMoves: false,
     consumed: false,
@@ -3264,6 +3289,22 @@ function handleBluetoothMovesForCurrentState(moves, source, protocol = '', devic
     statusLabel: '',
     logKind: '',
   };
+  if (parsedMoves.length === 0) return result;
+
+  if (appState === 'ready' || appState === 'done') {
+    const gesture = processBluetoothNextSolveGesture(parsedMoves, source, protocol, deviceName);
+    parsedMoves = gesture.moves;
+    if (gesture.triggered || (gesture.consumed && parsedMoves.length === 0)) {
+      return {
+        ...result,
+        consumed: true,
+        ignoredReason: gesture.triggered ? '下一把手势' : '下一把手势待确认',
+        statusLabel: gesture.triggered ? '下一把' : '手势待确认',
+        logKind: gesture.triggered ? '手势/下一把' : '数据/手势',
+      };
+    }
+  }
+
   if (parsedMoves.length === 0) return result;
 
   if (appState === 'ready') {
@@ -3301,6 +3342,153 @@ function handleBluetoothMovesForCurrentState(moves, source, protocol = '', devic
   }
 
   return result;
+}
+
+function processBluetoothNextSolveGesture(moves, source, protocol = '', deviceName = '') {
+  const outputMoves = [];
+  let consumed = false;
+  let triggered = false;
+
+  for (const move of moves) {
+    const now = performance.now();
+    const gestureMove = normalizeBluetoothNextSolveGestureMove(move);
+    const candidate = currentBluetoothNextSolveGestureCandidate(now);
+
+    if (candidate && gestureMove && isOppositeBluetoothNextSolveGesture(candidate, gestureMove)) {
+      clearBluetoothNextSolveGestureCandidate();
+      triggerBluetoothNextSolveGesture(source, protocol, deviceName);
+      consumed = true;
+      triggered = true;
+      continue;
+    }
+
+    if (candidate?.deferred) outputMoves.push(candidate.move);
+    if (candidate) clearBluetoothNextSolveGestureCandidate();
+
+    if (appState === 'done') {
+      if (gestureMove) {
+        setBluetoothNextSolveGestureCandidate({
+          ...gestureMove,
+          move,
+          source,
+          protocol,
+          deviceName,
+          time: now,
+          deferred: false,
+        });
+      }
+      consumed = true;
+      continue;
+    }
+
+    if (gestureMove && bluetoothNextSolveGestureReadyCanStart()) {
+      const staysOnRoute = scrambleGuideMoveWouldStayOnRoute(move);
+      setBluetoothNextSolveGestureCandidate({
+        ...gestureMove,
+        move,
+        source,
+        protocol,
+        deviceName,
+        time: now,
+        deferred: !staysOnRoute,
+      });
+      if (!staysOnRoute) {
+        consumed = true;
+        continue;
+      }
+    }
+
+    outputMoves.push(move);
+  }
+
+  return { moves: outputMoves, consumed, triggered };
+}
+
+function normalizeBluetoothNextSolveGestureMove(move) {
+  const match = String(move || '').match(/^([UDRLFB])('?|)$/);
+  if (!match) return null;
+  return {
+    face: match[1],
+    direction: match[2] === "'" ? -1 : 1,
+  };
+}
+
+function currentBluetoothNextSolveGestureCandidate(now = performance.now()) {
+  if (!bluetoothNextSolveGestureCandidate) return null;
+  if (now - bluetoothNextSolveGestureCandidate.time <= bluetoothNextSolveGestureWindowMs) {
+    return bluetoothNextSolveGestureCandidate;
+  }
+  if (bluetoothNextSolveGestureCandidate.deferred) flushDeferredBluetoothNextSolveGesture();
+  else clearBluetoothNextSolveGestureCandidate();
+  return null;
+}
+
+function isOppositeBluetoothNextSolveGesture(candidate, move) {
+  return candidate.face === move.face && candidate.direction === -move.direction;
+}
+
+function bluetoothNextSolveGestureReadyCanStart() {
+  return appState === 'ready'
+    && !bluetoothNextSolveGestureLoading
+    && !scrambleGuideCompleted
+    && scrambleGuideInputMoves.length === 0
+    && scrambleGuideErrorIndex == null;
+}
+
+function scrambleGuideMoveWouldStayOnRoute(move) {
+  if (!scrambleGuideSupported || scrambleGuideRoute.length === 0) return false;
+  try {
+    const nextMoves = [...scrambleGuideInputMoves, move].join(' ');
+    const signature = cubeFacesSignature(cubeStateFromScramble(nextMoves));
+    return scrambleGuideRoute.some((entry) => entry.signature === signature);
+  } catch {
+    return false;
+  }
+}
+
+function setBluetoothNextSolveGestureCandidate(candidate) {
+  clearBluetoothNextSolveGestureCandidate();
+  bluetoothNextSolveGestureCandidate = candidate;
+  if (candidate.deferred) {
+    bluetoothNextSolveGestureFlushTimer = window.setTimeout(
+      flushDeferredBluetoothNextSolveGesture,
+      bluetoothNextSolveGestureWindowMs + 40,
+    );
+  }
+}
+
+function clearBluetoothNextSolveGestureCandidate() {
+  if (bluetoothNextSolveGestureFlushTimer) {
+    clearTimeout(bluetoothNextSolveGestureFlushTimer);
+    bluetoothNextSolveGestureFlushTimer = 0;
+  }
+  bluetoothNextSolveGestureCandidate = null;
+}
+
+function resetBluetoothNextSolveGesture() {
+  clearBluetoothNextSolveGestureCandidate();
+  bluetoothNextSolveGestureLoading = false;
+}
+
+function flushDeferredBluetoothNextSolveGesture() {
+  const candidate = bluetoothNextSolveGestureCandidate;
+  clearBluetoothNextSolveGestureCandidate();
+  if (!candidate?.deferred || appState !== 'ready') return;
+  applyScrambleGuideMoves([candidate.move], candidate.source, candidate.protocol, candidate.deviceName);
+}
+
+async function triggerBluetoothNextSolveGesture(source, protocol = '', deviceName = '') {
+  if (bluetoothNextSolveGestureLoading || (appState !== 'done' && appState !== 'ready')) return;
+  bluetoothNextSolveGestureLoading = true;
+  addBluetoothLog('手势/下一把', '检测到快速来回转动', [deviceName, protocol, source].filter(Boolean).join(' · '));
+  try {
+    await nextSolve();
+  } catch (error) {
+    addBluetoothLog('错误', '蓝牙手势启动下一把失败', error.message || String(error));
+    render();
+  } finally {
+    bluetoothNextSolveGestureLoading = false;
+  }
 }
 
 function applyScrambleGuideMoves(moves, source, protocol = '', deviceName = '') {

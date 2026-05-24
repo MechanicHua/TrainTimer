@@ -17,13 +17,17 @@ export function buildSolveSummary(solve, sessionName = '') {
 
   const bluetoothMoves = Array.isArray(solve.bluetoothMoves) ? solve.bluetoothMoves : [];
   if (bluetoothMoves.length > 0) {
-    lines.push(`蓝牙转动: ${bluetoothMoves.join(' ')}`);
+    lines.push(`完整解法: ${bluetoothMoves.join(' ')}`);
     lines.push(`转动数: ${solve.bluetoothMoveCount ?? bluetoothMoves.length}`);
     const moveLog = Array.isArray(solve.bluetoothMoveLog) ? solve.bluetoothMoveLog : [];
-    if (moveLog.length > 0) {
-      lines.push('复原过程:');
-      lines.push(...moveLog.map((entry, index) => (
-        `${String(entry.step || index + 1).padStart(2, '0')}. ${entry.move} ${Number.isFinite(entry.elapsedMs) ? formatMilliseconds(entry.elapsedMs) : '--'}`
+    if (moveLog.length > 0 && moveLog.length !== bluetoothMoves.length) {
+      lines.push(`完整解法: ${moveLog.map((entry) => entry.move).filter(Boolean).join(' ')}`);
+    }
+    const cfopStages = Array.isArray(solve.cfopStages) ? solve.cfopStages : [];
+    if (cfopStages.length > 0) {
+      lines.push('CFOP 分段:');
+      lines.push(...cfopStages.map((stage) => (
+        `${stage.label || '-'} ${stage.name || ''}: ${stage.completed ? stageTimeText(stage.durationMs) : '未完成'} · ${stage.turns ?? 0} 手 · ${Number.isFinite(stage.tps) ? `${stage.tps.toFixed(2)} TPS` : 'TPS --'}`
       )));
     }
     if (Number.isFinite(solve.bluetoothTps)) lines.push(`TPS: ${solve.bluetoothTps.toFixed(3)}`);
@@ -65,4 +69,8 @@ function formatMilliseconds(value) {
   const millis = totalMs % 1000;
   if (minutes > 0) return `${minutes}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
   return `${seconds}.${String(millis).padStart(3, '0')}`;
+}
+
+function stageTimeText(value) {
+  return Number.isFinite(value) ? formatMilliseconds(value) : '--';
 }

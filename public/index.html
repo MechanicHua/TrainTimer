@@ -178,6 +178,7 @@
             <span><input id="selectAllSolves" type="checkbox" aria-label="选择可见成绩" /></span>
             <span>#</span>
             <span>成绩</span>
+            <span>TPS</span>
             <span>ao5</span>
             <span>ao12</span>
             <span>罚时</span>
@@ -312,6 +313,7 @@
               <span><input id="selectAllSessionSolves" type="checkbox" aria-label="选择当前筛选成绩" /></span>
               <span>#</span>
               <span>成绩</span>
+              <span>TPS</span>
               <span>ao5</span>
               <span>ao12</span>
               <span>罚时</span>
@@ -638,17 +640,17 @@
               <label for="solveDetailTagsInput">标签</label>
               <input id="solveDetailTagsInput" type="text" autocomplete="off" placeholder="用逗号分隔，例如 PLL, 慢十字" />
             </div>
-            <div class="wide">
-              <span id="solveDetailBluetoothStats">蓝牙转动</span>
-              <p id="solveDetailBluetoothMoves" class="solve-detail-scramble">-</p>
-            </div>
-            <div id="solveBluetoothReplay" class="solve-bluetooth-replay wide" hidden>
-              <div class="bluetooth-state-head">
-                <strong>蓝牙复盘状态</strong>
-                <span id="solveBluetoothReplayMeta">-</span>
+            <section id="solveSolutionPanel" class="solve-solution-panel wide" hidden>
+              <div class="solve-solution-head">
+                <div>
+                  <strong id="solveDetailBluetoothStats">完整解法</strong>
+                  <span id="solveBluetoothReplayMeta">-</span>
+                </div>
+                <button id="solveReplayButton" type="button">播放</button>
               </div>
-              <div id="solveBluetoothReplayNet" class="solve-bluetooth-state-net" aria-label="本把蓝牙复盘魔方状态"></div>
-            </div>
+              <div id="solveCfopStages" class="solve-cfop-stages" aria-label="CFOP 分段"></div>
+              <div id="solveDetailBluetoothMoves" class="solve-move-sequence" aria-label="完整复原解法"></div>
+            </section>
           </div>
           <div class="dialog-actions">
             <button id="copySolveSummaryButton" type="button">复制详情</button>

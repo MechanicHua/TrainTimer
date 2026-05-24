@@ -21,6 +21,10 @@ test('builds copyable single-solve summary with metadata', () => {
       bluetoothDeviceName: 'GoCube',
       bluetoothProtocols: ['gocube-move'],
       bluetoothSources: ['0x0003'],
+      cfopStages: [
+        { label: 'C', name: 'Cross', completed: true, durationMs: 2500, turns: 8, tps: 3.2 },
+        { label: 'P', name: 'PLL', completed: false, durationMs: null, turns: 0, tps: null },
+      ],
     },
     '默认',
   );
@@ -36,8 +40,11 @@ test('builds copyable single-solve summary with metadata', () => {
   assert.match(text, /打乱: R U R' U'/);
   assert.match(text, /标签: PLL, 慢十字/);
   assert.match(text, /备注: PLL lockup/);
-  assert.match(text, /蓝牙转动: R U2 F'/);
+  assert.match(text, /完整解法: R U2 F'/);
   assert.match(text, /转动数: 3/);
+  assert.match(text, /CFOP 分段:/);
+  assert.match(text, /C Cross: 2\.500 · 8 手 · 3\.20 TPS/);
+  assert.match(text, /P PLL: 未完成 · 0 手 · TPS --/);
   assert.match(text, /TPS: 0\.250/);
   assert.match(text, /蓝牙设备: GoCube/);
   assert.match(text, /蓝牙协议: gocube-move/);
@@ -62,5 +69,5 @@ test('builds DNF summary without optional sections', () => {
   assert.match(text, /打乱类型: three/);
   assert.match(text, /打乱: -/);
   assert.doesNotMatch(text, /标签:/);
-  assert.doesNotMatch(text, /蓝牙转动:/);
+  assert.doesNotMatch(text, /完整解法:/);
 });

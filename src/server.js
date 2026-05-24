@@ -291,6 +291,7 @@ async function handleApi(request, response) {
       timerSource: body.timerSource === 'bluetooth' ? 'bluetooth' : 'manual',
       bluetoothMoves: Array.isArray(body.bluetoothMoves) ? body.bluetoothMoves : [],
       bluetoothMoveLog: Array.isArray(body.bluetoothMoveLog) ? body.bluetoothMoveLog : [],
+      cfopStages: Array.isArray(body.cfopStages) ? body.cfopStages : [],
       bluetoothDeviceName: typeof body.bluetoothDeviceName === 'string' ? body.bluetoothDeviceName : '',
       bluetoothProtocols: Array.isArray(body.bluetoothProtocols) ? body.bluetoothProtocols : [],
       bluetoothSources: Array.isArray(body.bluetoothSources) ? body.bluetoothSources : [],
@@ -328,6 +329,7 @@ async function handleApi(request, response) {
     if (Object.hasOwn(body, 'tags')) updates.tags = body.tags;
     if (Object.hasOwn(body, 'bluetoothDeviceName')) updates.bluetoothDeviceName = String(body.bluetoothDeviceName || '');
     if (Object.hasOwn(body, 'bluetoothMoveLog')) updates.bluetoothMoveLog = body.bluetoothMoveLog;
+    if (Object.hasOwn(body, 'cfopStages')) updates.cfopStages = body.cfopStages;
     if (Object.hasOwn(body, 'bluetoothProtocols')) updates.bluetoothProtocols = body.bluetoothProtocols;
     if (Object.hasOwn(body, 'bluetoothSources')) updates.bluetoothSources = body.bluetoothSources;
     if (Object.hasOwn(body, 'createdAt')) {

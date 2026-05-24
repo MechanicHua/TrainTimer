@@ -333,6 +333,7 @@ test('normalizes manually entered solve metadata', async () => {
       { step: 1, move: 'R', source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', time: '12:00:00', isoTime: '2026-05-24T08:15:31.000Z', elapsedMs: 120 },
       { step: 2, move: 'U2', source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', time: '12:00:01', isoTime: '2026-05-24T08:15:32.000Z', elapsedMs: 480 },
     ],
+    cfopStages: [],
     bluetoothMoveCount: 2,
     bluetoothTps: 0.162,
     bluetoothDeviceName: 'Giiker Super Cube',

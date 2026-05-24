@@ -208,6 +208,7 @@ export function normalizeSolve(solve) {
   const bluetoothTps = bluetoothTpsText && Number.isFinite(importedBluetoothTps)
     ? Math.max(0, importedBluetoothTps)
     : computedBluetoothTps;
+  const cfopStages = normalizeCfopStages(solve.cfopStages);
 
   return {
     ...solve,
@@ -226,6 +227,7 @@ export function normalizeSolve(solve) {
     timerSource: solve.timerSource === 'bluetooth' ? 'bluetooth' : 'manual',
     bluetoothMoves,
     bluetoothMoveLog,
+    cfopStages,
     bluetoothMoveCount,
     bluetoothTps,
     bluetoothDeviceName: typeof solve.bluetoothDeviceName === 'string' ? solve.bluetoothDeviceName : '',
@@ -302,6 +304,26 @@ function normalizeBluetoothMoveLogEntry(entry, index) {
     isoTime: typeof entry?.isoTime === 'string' ? entry.isoTime : '',
     elapsedMs: Number.isFinite(elapsedMs) ? Math.max(0, Math.round(elapsedMs)) : null,
   };
+}
+
+function normalizeCfopStages(stages) {
+  if (!Array.isArray(stages)) return [];
+  return stages.map((stage) => {
+    const turns = Number(stage?.turns);
+    const durationMs = Number(stage?.durationMs);
+    const tps = Number(stage?.tps);
+    const completedAt = Number(stage?.completedAt);
+    return {
+      key: typeof stage?.key === 'string' ? stage.key : '',
+      label: typeof stage?.label === 'string' ? stage.label : '',
+      name: typeof stage?.name === 'string' ? stage.name : '',
+      completed: Boolean(stage?.completed),
+      completedAt: Number.isFinite(completedAt) ? Math.max(0, Math.round(completedAt)) : null,
+      turns: Number.isFinite(turns) ? Math.max(0, Math.round(turns)) : 0,
+      durationMs: Number.isFinite(durationMs) ? Math.max(0, Math.round(durationMs)) : null,
+      tps: Number.isFinite(tps) ? Math.max(0, tps) : null,
+    };
+  }).filter((stage) => stage.label || stage.name);
 }
 
 function normalizeStringList(values) {

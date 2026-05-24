@@ -886,7 +886,7 @@ body[data-state="timing"] .timer-display {
 .history-head,
 .history-row {
   display: grid;
-  grid-template-columns: 20px 24px minmax(70px, 0.95fr) minmax(58px, 0.7fr) minmax(58px, 0.7fr) 54px minmax(58px, 1fr) 60px;
+  grid-template-columns: 20px 24px minmax(70px, 0.9fr) 48px minmax(58px, 0.68fr) minmax(58px, 0.68fr) 54px minmax(58px, 1fr) 60px;
   gap: 4px;
   align-items: center;
   min-height: 37px;
@@ -943,6 +943,12 @@ body[data-state="timing"] .timer-display {
   gap: 4px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+.history-row .row-tps {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  font-weight: 720;
 }
 
 .average-detail-button {
@@ -1169,7 +1175,13 @@ dialog[open] {
 
 .dialog-header-actions {
   align-items: center;
+  flex-wrap: nowrap;
   gap: 8px;
+}
+
+.dialog-header-actions button {
+  min-width: 68px;
+  white-space: nowrap;
 }
 
 .all-solves-toolbar,
@@ -1771,12 +1783,13 @@ dialog[open] {
   margin-top: 16px;
 }
 
-.solve-detail-grid > div {
+.solve-detail-grid > div,
+.solve-detail-grid > section {
   min-width: 0;
 }
 
-.solve-detail-grid span,
-.solve-detail-grid label {
+.solve-detail-grid > div > span,
+.solve-detail-grid > div > label {
   display: block;
   margin-bottom: 7px;
 }
@@ -1793,48 +1806,138 @@ dialog[open] {
   line-height: 1.35;
 }
 
-#solveDetailBluetoothMoves {
-  max-height: 190px;
-  overflow: auto;
-  font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, monospace;
-  font-size: 13px;
-  font-weight: 650;
-  white-space: pre-wrap;
+.solve-solution-panel {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(245, 245, 247, 0.72));
 }
 
-.solve-bluetooth-replay {
-  display: grid;
-  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
-  gap: 12px;
+.solve-solution-panel[hidden] {
+  display: none;
+}
+
+.solve-solution-head {
+  display: flex;
   align-items: center;
-  padding: 12px;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.solve-solution-head div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.solve-solution-head strong {
+  color: var(--ink-strong);
+  font-size: 14px;
+}
+
+.solve-solution-head span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.solve-solution-head button {
+  min-width: 70px;
+  min-height: 32px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.solve-cfop-stages {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(72px, 1fr));
+  gap: 7px;
+}
+
+.solve-cfop-card {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid rgba(0, 113, 227, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 113, 227, 0.06);
+}
+
+.solve-cfop-card.pending {
+  border-color: rgba(142, 142, 147, 0.18);
+  background: rgba(142, 142, 147, 0.07);
+}
+
+.solve-cfop-card strong {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 820;
+}
+
+.solve-cfop-card span,
+.solve-cfop-card small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.solve-cfop-card em {
+  color: var(--ink-strong);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.solve-move-sequence {
+  display: flex;
+  max-height: 148px;
+  overflow: auto;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px;
   border: 1px solid var(--line-soft);
   border-radius: var(--radius);
   background: rgba(245, 245, 247, 0.78);
 }
 
-.solve-bluetooth-replay[hidden] {
-  display: none;
+.solve-move-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid rgba(0, 113, 227, 0.13);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--ink);
+  font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 720;
+  white-space: nowrap;
 }
 
-.solve-bluetooth-replay.solved {
-  border-color: rgba(52, 199, 89, 0.42);
-  background: rgba(52, 199, 89, 0.08);
+.solve-move-chip span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 760;
 }
 
-.solve-bluetooth-replay.invalid {
-  border-color: rgba(255, 59, 48, 0.34);
-}
-
-.solve-bluetooth-state-net {
-  display: grid;
-  width: 100%;
-  max-width: 360px;
-  grid-template-columns: repeat(12, minmax(10px, 1fr));
-  grid-template-rows: repeat(9, minmax(10px, 1fr));
-  gap: 2px;
-  aspect-ratio: 4 / 3;
-  justify-self: end;
+.solve-move-chip.active {
+  border-color: rgba(0, 113, 227, 0.46);
+  background: rgba(0, 113, 227, 0.14);
+  color: var(--accent);
+  transform: translateY(-1px);
 }
 
 .solve-detail-grid textarea {
@@ -1853,12 +1956,15 @@ dialog[open] {
 
 .dialog-actions {
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 14px;
 }
 
 .dialog-actions button {
   min-height: 34px;
+  padding: 0 12px;
+  white-space: nowrap;
 }
 
 .dialog-actions button:last-child,
@@ -1999,20 +2105,22 @@ dialog[open] {
 
   .history-head,
   .history-row {
-    grid-template-columns: 26px 34px 76px 72px minmax(90px, 1fr);
+    grid-template-columns: 26px 34px 76px 48px minmax(90px, 1fr);
   }
 
-  .history-head span:nth-child(4),
-  .history-row span:nth-child(4),
   .history-head span:nth-child(5),
   .history-row span:nth-child(5),
-  .history-head span:nth-child(8),
-  .history-row span:nth-child(8) {
+  .history-head span:nth-child(6),
+  .history-row span:nth-child(6),
+  .history-head span:nth-child(7),
+  .history-row span:nth-child(7),
+  .history-head span:nth-child(9),
+  .history-row span:nth-child(9) {
     display: none;
   }
 
-  .history-head span:nth-child(6),
-  .history-row span:nth-child(6) {
+  .history-head span:nth-child(4),
+  .history-row span:nth-child(4) {
     display: block;
   }
 
@@ -2020,12 +2128,8 @@ dialog[open] {
     grid-template-columns: 1fr;
   }
 
-  .solve-bluetooth-replay {
-    grid-template-columns: 1fr;
-  }
-
-  .solve-bluetooth-state-net {
-    justify-self: stretch;
+  .solve-cfop-stages {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .stats-detail-grid {

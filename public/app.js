@@ -417,6 +417,7 @@ let bluetoothGanDecodeWarning = '';
 let lastBluetoothMovePacketSignature = '';
 let scrambleGuideMoves = [];
 let scrambleGuideInputMoves = [];
+let scrambleGuideRoute = [];
 let scrambleGuideCorrectPrefix = 0;
 let scrambleGuideErrorIndex = null;
 let scrambleGuideErrorMove = '';
@@ -569,6 +570,14 @@ window.__trainTimerDebug = {
   emitBluetoothBytes(bytes, uuid = bluetoothGoCubeReadUuid) {
     const packet = Uint8Array.from(bytes);
     processBluetoothPacket(uuid, new DataView(packet.buffer), '模拟蓝牙魔方');
+  },
+  setScrambleForTest(text) {
+    scramble = { scramble: String(text || ''), source: 'debug', puzzle: 'three' };
+    resetBluetoothSolveTracking();
+    resetScrambleGuide();
+    renderScramble();
+    renderTimer();
+    return this.state();
   },
   state() {
     return {
@@ -3182,6 +3191,7 @@ function renderScrambleGuideMeta() {
 function resetScrambleGuide() {
   scrambleGuideMoves = [];
   scrambleGuideInputMoves = [];
+  scrambleGuideRoute = [];
   scrambleGuideCorrectPrefix = 0;
   scrambleGuideErrorIndex = null;
   scrambleGuideErrorMove = '';
@@ -3192,16 +3202,49 @@ function resetScrambleGuide() {
   if (currentPuzzle !== 'three' || !scramble?.scramble) return;
 
   try {
-    scrambleGuideMoves = parseScramble(scramble.scramble).map(scrambleMoveNotation);
+    const parsedMoves = parseScramble(scramble.scramble);
+    scrambleGuideMoves = parsedMoves.map(scrambleMoveNotation);
+    scrambleGuideRoute = buildScrambleGuideRoute(parsedMoves);
     scrambleGuideSupported = scrambleGuideMoves.length > 0;
   } catch {
     scrambleGuideMoves = [];
+    scrambleGuideRoute = [];
     scrambleGuideSupported = false;
   }
 }
 
 function scrambleMoveNotation(move) {
   return `${move.face}${move.suffix || ''}`;
+}
+
+function buildScrambleGuideRoute(moves) {
+  const route = [{
+    signature: cubeFacesSignature(cubeStateFromScramble('')),
+    correctPrefix: 0,
+    displayIndex: 0,
+    partial: false,
+  }];
+  const tokens = [];
+
+  moves.forEach((move, index) => {
+    const atomicMoves = scrambleMoveAtomicTokens(move);
+    atomicMoves.forEach((token, atomicIndex) => {
+      tokens.push(token);
+      route.push({
+        signature: cubeFacesSignature(cubeStateFromScramble(tokens.join(' '))),
+        correctPrefix: atomicIndex === atomicMoves.length - 1 ? index + 1 : index,
+        displayIndex: index,
+        partial: atomicIndex < atomicMoves.length - 1,
+      });
+    });
+  });
+
+  return route;
+}
+
+function scrambleMoveAtomicTokens(move) {
+  if (move.suffix === '2') return [move.face, move.face];
+  return [scrambleMoveNotation(move)];
 }
 
 function scrambleGuideReadyHint() {
@@ -3266,15 +3309,13 @@ function applyScrambleGuideMoves(moves, source, protocol = '', deviceName = '') 
   }
 
   let firstError = false;
+  let recovered = false;
   for (const move of moves) {
+    const wasError = scrambleGuideErrorIndex != null;
     scrambleGuideInputMoves.push(move);
-    if (scrambleGuideErrorIndex == null && move === scrambleGuideMoves[scrambleGuideCorrectPrefix]) {
-      scrambleGuideCorrectPrefix += 1;
-    } else if (scrambleGuideErrorIndex == null) {
-      scrambleGuideErrorIndex = scrambleGuideCorrectPrefix;
-      scrambleGuideErrorMove = move;
-      firstError = true;
-    }
+    updateScrambleGuideProgress(move);
+    if (!wasError && scrambleGuideErrorIndex != null) firstError = true;
+    if (wasError && scrambleGuideErrorIndex == null) recovered = true;
 
     if (scrambleGuideStateMatchesTarget()) {
       completeScrambleGuide(source, protocol, deviceName);
@@ -3282,13 +3323,16 @@ function applyScrambleGuideMoves(moves, source, protocol = '', deviceName = '') 
     }
   }
 
-  if (firstError) {
+  if (firstError && scrambleGuideErrorIndex != null) {
     beep();
     addBluetoothLog(
       '打乱/错误',
       `第 ${scrambleGuideErrorIndex + 1} 步不匹配`,
       `应为 ${scrambleGuideMoves[scrambleGuideErrorIndex] || '-'} · 实际 ${scrambleGuideErrorMove}`,
     );
+  }
+  if (recovered && !scrambleGuideCompleted) {
+    addBluetoothLog('打乱/恢复', '蓝牙状态回到公式路径', `当前 ${scrambleGuideCorrectPrefix}/${scrambleGuideMoves.length}`);
   }
 
   renderScrambleText();
@@ -3308,14 +3352,40 @@ function applyScrambleGuideMoves(moves, source, protocol = '', deviceName = '') 
   };
 }
 
+function updateScrambleGuideProgress(latestMove = '') {
+  const match = scrambleGuideRouteMatch();
+  if (match) {
+    scrambleGuideCorrectPrefix = match.correctPrefix;
+    scrambleGuideErrorIndex = null;
+    scrambleGuideErrorMove = '';
+    return;
+  }
+
+  if (scrambleGuideErrorIndex == null) {
+    scrambleGuideErrorIndex = Math.min(scrambleGuideCorrectPrefix, scrambleGuideMoves.length - 1);
+    scrambleGuideErrorMove = latestMove;
+  }
+}
+
+function scrambleGuideRouteMatch() {
+  if (!scrambleGuideSupported) return null;
+  try {
+    const signature = cubeFacesSignature(cubeStateFromScramble(scrambleGuideInputMoves.join(' ')));
+    let match = null;
+    for (const entry of scrambleGuideRoute) {
+      if (entry.signature === signature) match = entry;
+    }
+    return match;
+  } catch {
+    return null;
+  }
+}
+
 function scrambleGuideStateMatchesTarget() {
   if (!scrambleGuideSupported || scrambleGuideInputMoves.length === 0) return false;
-  if (scrambleGuideErrorIndex == null && scrambleGuideCorrectPrefix >= scrambleGuideMoves.length) return true;
   try {
-    return cubeFacesEqual(
-      cubeStateFromScramble(scrambleGuideInputMoves.join(' ')),
-      cubeStateFromScramble(scrambleGuideMoves.join(' ')),
-    );
+    return cubeFacesSignature(cubeStateFromScramble(scrambleGuideInputMoves.join(' ')))
+      === scrambleGuideRoute.at(-1)?.signature;
   } catch {
     return false;
   }
@@ -3339,11 +3409,10 @@ function completeScrambleGuide(source, protocol = '', deviceName = '') {
   renderScrambleGuideMeta();
 }
 
-function cubeFacesEqual(left, right) {
-  return ['U', 'R', 'F', 'D', 'L', 'B'].every((face) => (
-    left?.[face]?.flat().map((sticker) => sticker?.face).join('')
-    === right?.[face]?.flat().map((sticker) => sticker?.face).join('')
-  ));
+function cubeFacesSignature(faces) {
+  return ['U', 'R', 'F', 'D', 'L', 'B'].map((face) => (
+    faces?.[face]?.flat().map((sticker) => sticker?.face || '-').join('') || '---------'
+  )).join('|');
 }
 
 function renderScramblePreview(scrambleText, puzzle = 'three') {

@@ -886,8 +886,8 @@ body[data-state="timing"] .timer-display {
 .history-head,
 .history-row {
   display: grid;
-  grid-template-columns: 20px 24px minmax(70px, 0.9fr) 48px minmax(58px, 0.68fr) minmax(58px, 0.68fr) 54px minmax(58px, 1fr) 60px;
-  gap: 4px;
+  grid-template-columns: 20px 26px minmax(86px, 1.15fr) 54px minmax(62px, 0.8fr) minmax(62px, 0.8fr) 56px 74px;
+  gap: 6px;
   align-items: center;
   min-height: 37px;
   padding: 0 7px;
@@ -935,6 +935,10 @@ body[data-state="timing"] .timer-display {
   color: var(--ink);
   font-variant-numeric: tabular-nums;
   font-weight: 760;
+}
+
+.history-row .time > span:first-child {
+  min-width: 0;
 }
 
 .history-row .rolling-average {
@@ -1071,12 +1075,13 @@ body[data-state="timing"] .timer-display {
 
 .row-actions {
   display: flex;
-  gap: 3px;
+  justify-content: flex-end;
+  gap: 4px;
 }
 
 .row-actions button {
   min-width: 0;
-  padding: 0 5px;
+  padding: 0 7px;
 }
 
 .solve-dialog,
@@ -1114,6 +1119,10 @@ body[data-state="timing"] .timer-display {
   width: min(820px, calc(100vw - 32px));
 }
 
+.solve-dialog {
+  width: min(860px, calc(100vw - 32px));
+}
+
 .solve-dialog::backdrop,
 .all-solves-dialog::backdrop,
 .stats-dialog::backdrop,
@@ -1141,6 +1150,11 @@ dialog[open] {
 .manual-entry-inner,
 .bluetooth-log-inner {
   padding: 18px;
+}
+
+.solve-dialog-inner {
+  max-height: calc(100vh - 40px);
+  overflow: hidden;
 }
 
 .all-solves-inner,
@@ -1778,9 +1792,9 @@ dialog[open] {
 
 .solve-detail-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 16px;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 0.9fr);
+  gap: 10px 12px;
+  margin-top: 12px;
 }
 
 .solve-detail-grid > div,
@@ -1795,8 +1809,8 @@ dialog[open] {
 }
 
 .solve-detail-scramble {
-  min-height: 78px;
-  padding: 12px;
+  min-height: 70px;
+  padding: 10px 11px;
   border: 1px solid var(--line-soft);
   border-radius: var(--radius);
   background: rgba(245, 245, 247, 0.78);
@@ -1808,8 +1822,8 @@ dialog[open] {
 
 .solve-solution-panel {
   display: grid;
-  gap: 12px;
-  padding: 12px;
+  gap: 9px;
+  padding: 10px;
   border: 1px solid var(--line-soft);
   border-radius: var(--radius);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(245, 245, 247, 0.72));
@@ -1856,14 +1870,14 @@ dialog[open] {
 .solve-cfop-stages {
   display: grid;
   grid-template-columns: repeat(7, minmax(72px, 1fr));
-  gap: 7px;
+  gap: 6px;
 }
 
 .solve-cfop-card {
   display: grid;
   min-width: 0;
-  gap: 3px;
-  padding: 8px;
+  gap: 2px;
+  padding: 7px;
   border: 1px solid rgba(0, 113, 227, 0.14);
   border-radius: 8px;
   background: rgba(0, 113, 227, 0.06);
@@ -1900,11 +1914,11 @@ dialog[open] {
 
 .solve-move-sequence {
   display: flex;
-  max-height: 148px;
+  max-height: 94px;
   overflow: auto;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 10px;
+  padding: 8px;
   border: 1px solid var(--line-soft);
   border-radius: var(--radius);
   background: rgba(245, 245, 247, 0.78);
@@ -1942,15 +1956,15 @@ dialog[open] {
 
 .solve-detail-grid textarea {
   width: 100%;
-  min-height: 104px;
+  min-height: 86px;
   resize: none;
-  padding: 10px 12px;
+  padding: 9px 11px;
 }
 
 .solve-detail-grid input,
 .solve-detail-grid select {
   width: 100%;
-  min-height: 40px;
+  min-height: 36px;
   padding: 0 12px;
 }
 
@@ -1958,7 +1972,7 @@ dialog[open] {
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 14px;
+  margin-top: 10px;
 }
 
 .dialog-actions button {
@@ -2105,22 +2119,22 @@ dialog[open] {
 
   .history-head,
   .history-row {
-    grid-template-columns: 26px 34px 76px 48px minmax(90px, 1fr);
+    grid-template-columns: 26px 34px 78px 48px minmax(64px, 1fr);
   }
 
   .history-head span:nth-child(5),
   .history-row span:nth-child(5),
   .history-head span:nth-child(6),
   .history-row span:nth-child(6),
-  .history-head span:nth-child(7),
-  .history-row span:nth-child(7),
-  .history-head span:nth-child(9),
-  .history-row span:nth-child(9) {
+  .history-head span:nth-child(8),
+  .history-row span:nth-child(8) {
     display: none;
   }
 
   .history-head span:nth-child(4),
-  .history-row span:nth-child(4) {
+  .history-row span:nth-child(4),
+  .history-head span:nth-child(7),
+  .history-row span:nth-child(7) {
     display: block;
   }
 

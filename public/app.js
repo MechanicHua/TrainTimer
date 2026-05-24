@@ -359,7 +359,6 @@ const elements = {
   solveDetailTitle: document.querySelector('#solveDetailTitle'),
   solveDetailMeta: document.querySelector('#solveDetailMeta'),
   solveDetailTimeInput: document.querySelector('#solveDetailTimeInput'),
-  solveDetailDateInput: document.querySelector('#solveDetailDateInput'),
   solveDetailError: document.querySelector('#solveDetailError'),
   solveDetailPenaltySelect: document.querySelector('#solveDetailPenaltySelect'),
   solveDetailPuzzleSelect: document.querySelector('#solveDetailPuzzleSelect'),
@@ -381,13 +380,7 @@ const elements = {
   nextSolveDetailButton: document.querySelector('#nextSolveDetailButton'),
   copySolveSummaryButton: document.querySelector('#copySolveSummaryButton'),
   copyScrambleButton: document.querySelector('#copyScrambleButton'),
-  saveScrambleButton: document.querySelector('#saveScrambleButton'),
   saveTimeButton: document.querySelector('#saveTimeButton'),
-  saveDateButton: document.querySelector('#saveDateButton'),
-  savePuzzleButton: document.querySelector('#savePuzzleButton'),
-  savePenaltyButton: document.querySelector('#savePenaltyButton'),
-  saveTagsButton: document.querySelector('#saveTagsButton'),
-  saveCommentButton: document.querySelector('#saveCommentButton'),
   deleteSolveDetailButton: document.querySelector('#deleteSolveDetailButton'),
   bluetoothLogDialog: document.querySelector('#bluetoothLogDialog'),
   bluetoothLogMeta: document.querySelector('#bluetoothLogMeta'),
@@ -439,6 +432,9 @@ let currentAverageDetail = null;
 let solveReplayTimer = 0;
 let solveReplayStep = -1;
 let solveReplayPlaying = false;
+let solveReplayPreviewActive = false;
+let solveReplayCube = null;
+let solveReplayPreviewLabel = '';
 let statsScope = 'session';
 let bluetoothDevice = null;
 let bluetoothDeviceDisconnectHandler = null;
@@ -553,14 +549,8 @@ elements.nextSolveDetailButton.addEventListener('click', () => navigateSolveDeta
 elements.solveReplayButton.addEventListener('click', toggleSolveReplay);
 elements.copySolveSummaryButton.addEventListener('click', copySelectedSolveSummary);
 elements.copyScrambleButton.addEventListener('click', copySelectedScramble);
-elements.saveScrambleButton.addEventListener('click', saveSolveScramble);
 elements.copyStatsSummaryButton.addEventListener('click', copyStatsSummary);
-elements.saveTimeButton.addEventListener('click', saveSolveTime);
-elements.saveDateButton.addEventListener('click', saveSolveDate);
-elements.savePuzzleButton.addEventListener('click', saveSolvePuzzle);
-elements.savePenaltyButton.addEventListener('click', saveSolvePenalty);
-elements.saveTagsButton.addEventListener('click', saveSolveTags);
-elements.saveCommentButton.addEventListener('click', saveSolveComment);
+elements.saveTimeButton.addEventListener('click', saveSolveDetails);
 elements.deleteSolveDetailButton.addEventListener('click', deleteCurrentDetailSolve);
 elements.saveManualEntryButton.addEventListener('click', saveManualEntry);
 elements.copyAverageSummaryButton.addEventListener('click', copyAverageSummary);
@@ -1691,7 +1681,6 @@ function renderSolveDialog() {
   elements.prevSolveButton.disabled = solveIndex <= 0;
   elements.nextSolveDetailButton.disabled = solveIndex < 0 || solveIndex >= sessionSolves.length - 1;
   elements.solveDetailTimeInput.value = solve.duration || formatTime(solve.durationMs);
-  elements.solveDetailDateInput.value = dateTimeLocalValue(solve.createdAt);
   elements.solveDetailError.textContent = '';
   elements.solveDetailPenaltySelect.value = solve.penalty || 'ok';
   elements.solveDetailPuzzleSelect.value = solve.scramblePuzzle || 'three';
@@ -1759,8 +1748,10 @@ function renderSolveMoveChip(record, index) {
   button.title = `第 ${index + 1} 步 · ${record.move} · ${elapsed}`;
   button.innerHTML = `<span>${index + 1}</span><strong>${escapeHtml(record.move)}</strong>`;
   button.addEventListener('click', () => {
+    const solve = solves.find((item) => item.id === currentDetailSolveId);
     stopSolveReplay({ keepStep: true });
     solveReplayStep = index;
+    showSolveReplayPreview(solve, index + 1);
     updateSolveReplayHighlight();
   });
   return button;
@@ -1782,10 +1773,11 @@ function startSolveReplay() {
   solveReplayPlaying = true;
   solveReplayStep = solveReplayStep >= 0 && solveReplayStep < records.length - 1 ? solveReplayStep : -1;
   elements.solveReplayButton.textContent = '暂停';
-  advanceSolveReplay(records);
+  showSolveReplayPreview(solve, Math.max(0, solveReplayStep + 1));
+  advanceSolveReplay(solve, records);
 }
 
-function advanceSolveReplay(records) {
+function advanceSolveReplay(solve, records) {
   if (!solveReplayPlaying) return;
   solveReplayStep += 1;
   if (solveReplayStep >= records.length) {
@@ -1794,13 +1786,20 @@ function advanceSolveReplay(records) {
   }
   updateSolveReplayHighlight();
   const current = records[solveReplayStep];
-  triggerBluetoothCube3dTurnAnimation(current.move);
+  const stepToApply = solveReplayStep + 1;
+  const animationDelay = current.move.endsWith('2') ? 470 : 330;
+  triggerBluetoothCube3dTurnAnimation(current.move, {
+    onComplete: () => showSolveReplayPreview(solve, stepToApply),
+  });
+  window.setTimeout(() => {
+    if (solveReplayPreviewActive && solveReplayStep >= stepToApply - 1) showSolveReplayPreview(solve, stepToApply);
+  }, animationDelay);
   const currentElapsed = Number.isFinite(current.elapsedMs) ? current.elapsedMs : null;
   const nextElapsed = Number.isFinite(records[solveReplayStep + 1]?.elapsedMs) ? records[solveReplayStep + 1].elapsedMs : null;
   const delay = currentElapsed != null && nextElapsed != null
-    ? Math.min(900, Math.max(120, nextElapsed - currentElapsed))
-    : 240;
-  solveReplayTimer = window.setTimeout(() => advanceSolveReplay(records), delay);
+    ? Math.min(900, Math.max(animationDelay, nextElapsed - currentElapsed))
+    : animationDelay;
+  solveReplayTimer = window.setTimeout(() => advanceSolveReplay(solve, records), delay);
 }
 
 function stopSolveReplay(options = {}) {
@@ -1809,7 +1808,34 @@ function stopSolveReplay(options = {}) {
   solveReplayPlaying = false;
   if (!options.keepStep) solveReplayStep = -1;
   if (elements.solveReplayButton) elements.solveReplayButton.textContent = '播放';
+  if (!options.keepStep) clearSolveReplayPreview();
   updateSolveReplayHighlight();
+}
+
+function showSolveReplayPreview(solve, stepCount = 0) {
+  const records = solveMoveRecords(solve);
+  try {
+    const cube = createSolvedCube();
+    for (const move of parseScramble(solve?.scramble || '')) applyMove(cube, move);
+    for (const record of records.slice(0, Math.max(0, stepCount))) {
+      applyMove(cube, parseScramble(record.move)[0]);
+    }
+    solveReplayCube = cube;
+    solveReplayPreviewActive = true;
+    solveReplayPreviewLabel = stepCount <= 0
+      ? '打乱状态'
+      : `回放 ${Math.min(stepCount, records.length)} / ${records.length} · ${records[Math.min(stepCount, records.length) - 1]?.move || ''}`;
+    renderPreviewMode();
+  } catch (error) {
+    addBluetoothLog('警告', '复原回放无法渲染', error.message || String(error));
+  }
+}
+
+function clearSolveReplayPreview() {
+  solveReplayPreviewActive = false;
+  solveReplayCube = null;
+  solveReplayPreviewLabel = '';
+  renderPreviewMode();
 }
 
 function updateSolveReplayHighlight() {
@@ -2074,7 +2100,7 @@ function navigateSolveDetail(offset) {
   renderSolveDialog();
 }
 
-async function saveSolveTime() {
+async function saveSolveDetails() {
   const solve = solves.find((item) => item.id === currentDetailSolveId);
   if (!solve) return;
   let durationMs;
@@ -2087,104 +2113,38 @@ async function saveSolveTime() {
   }
 
   const duration = formatTime(durationMs);
-  if (Math.round(Number(solve.durationMs) || 0) === durationMs && solve.duration === duration) return;
-  await saveSolveDetailUpdates(
-    { durationMs, duration },
-    `原始成绩 ${displaySolveTime(solve)}`,
-    '保存失败',
-    elements.saveTimeButton,
-  );
-}
-
-async function saveSolveDate() {
-  const solve = solves.find((item) => item.id === currentDetailSolveId);
-  if (!solve) return;
-  let createdAt;
-  try {
-    createdAt = parseDateTimeLocalInput(elements.solveDetailDateInput.value);
-  } catch (error) {
-    elements.solveDetailError.textContent = error.message;
-    elements.solveDetailDateInput.focus();
-    return;
-  }
-
-  if (dateTimeLocalValue(solve.createdAt) === elements.solveDetailDateInput.value) return;
-  await saveSolveDetailUpdates(
-    { createdAt },
-    `复原时间 ${displaySolveTime(solve)}`,
-    '保存日期失败',
-    elements.saveDateButton,
-  );
-}
-
-async function saveSolveComment() {
-  const solve = solves.find((item) => item.id === currentDetailSolveId);
-  if (!solve) return;
-  const comment = elements.solveDetailComment.value;
-  if ((solve.comment || '') === comment) return;
-  await saveSolveDetailUpdates(
-    { comment },
-    `备注 ${displaySolveTime(solve)}`,
-    '保存备注失败',
-    elements.saveCommentButton,
-  );
-}
-
-async function saveSolvePenalty() {
-  const solve = solves.find((item) => item.id === currentDetailSolveId);
-  if (!solve) return;
   const penalty = ['ok', '+2', 'dnf'].includes(elements.solveDetailPenaltySelect.value)
     ? elements.solveDetailPenaltySelect.value
     : 'ok';
-  if ((solve.penalty || 'ok') === penalty) return;
-  await saveSolveDetailUpdates(
-    { penalty },
-    `罚时 ${displaySolveTime(solve)}`,
-    '保存罚时失败',
-    elements.savePenaltyButton,
-  );
-}
-
-async function saveSolvePuzzle() {
-  const solve = solves.find((item) => item.id === currentDetailSolveId);
-  if (!solve) return;
   const scramblePuzzle = elements.solveDetailPuzzleSelect.value || 'three';
-  if ((solve.scramblePuzzle || 'three') === scramblePuzzle) return;
-  await saveSolveDetailUpdates(
-    { scramblePuzzle },
-    `打乱类型 ${displaySolveTime(solve)}`,
-    '保存类型失败',
-    elements.savePuzzleButton,
-  );
-}
-
-async function saveSolveTags() {
-  const solve = solves.find((item) => item.id === currentDetailSolveId);
-  if (!solve) return;
-  const tags = parseTagsInput(elements.solveDetailTagsInput.value);
-  if (sameStringArray(solve.tags, tags)) return;
-  await saveSolveDetailUpdates(
-    { tags },
-    `标签 ${displaySolveTime(solve)}`,
-    '保存标签失败',
-    elements.saveTagsButton,
-  );
-}
-
-async function saveSolveScramble() {
-  const solve = solves.find((item) => item.id === currentDetailSolveId);
-  if (!solve) return;
   const scrambleText = elements.solveDetailScramble.value.trim();
-  const scrambleSource = scrambleText ? 'manual-edit' : '';
-  if ((solve.scramble || '') === scrambleText && (solve.scrambleSource || '') === scrambleSource) return;
+  const scrambleSource = scrambleText ? ((solve.scramble || '') === scrambleText ? (solve.scrambleSource || '') : 'manual-edit') : '';
+  const comment = elements.solveDetailComment.value;
+  const tags = parseTagsInput(elements.solveDetailTagsInput.value);
+  const updates = {
+    durationMs,
+    duration,
+    penalty,
+    scramblePuzzle,
+    scramble: scrambleText,
+    scrambleSource,
+    comment,
+    tags,
+  };
+  const unchanged = Math.round(Number(solve.durationMs) || 0) === durationMs
+    && (solve.duration || formatTime(solve.durationMs)) === duration
+    && (solve.penalty || 'ok') === penalty
+    && (solve.scramblePuzzle || 'three') === scramblePuzzle
+    && (solve.scramble || '') === scrambleText
+    && (solve.scrambleSource || '') === scrambleSource
+    && (solve.comment || '') === comment
+    && sameStringArray(solve.tags, tags);
+  if (unchanged) return;
   await saveSolveDetailUpdates(
-    {
-      scramble: scrambleText,
-      scrambleSource,
-    },
-    `打乱 ${displaySolveTime(solve)}`,
-    '保存打乱失败',
-    elements.saveScrambleButton,
+    updates,
+    `成绩详情 ${displaySolveTime(solve)}`,
+    '保存失败',
+    elements.saveTimeButton,
   );
 }
 
@@ -3515,6 +3475,8 @@ function initBluetoothCube3d() {
         });
         const sticker = new THREE.Mesh(stickerGeometry, material);
         applyCube3dStickerTransform(sticker, face, row, col);
+        sticker.userData.basePosition = sticker.position.clone();
+        sticker.userData.baseQuaternion = sticker.quaternion.clone();
         group.add(sticker);
         stickers.set(`${face}${row}${col}`, sticker);
       }
@@ -3542,7 +3504,7 @@ function initBluetoothCube3d() {
     resizeObserver: null,
     needsRender: true,
     lastRenderAt: 0,
-    moveKick: null,
+    turnAnimation: null,
   };
   group.quaternion.copy(baseQuaternion);
 
@@ -3600,7 +3562,7 @@ function resizeBluetoothCube3d() {
 function animateBluetoothCube3d(time = performance.now()) {
   if (!cube3d) return;
   const visible = isBluetoothCube3dVisible();
-  const activeMove = Boolean(cube3d.moveKick);
+  const activeMove = Boolean(cube3d.turnAnimation);
   const interval = bluetoothGyro || activeMove ? 1000 / 40 : 1000 / 20;
   if (!visible || time - cube3d.lastRenderAt < interval) {
     requestAnimationFrame(animateBluetoothCube3d);
@@ -3633,17 +3595,10 @@ function updateBluetoothCube3dPose(time) {
     }
   }
 
-  if (cube3d.moveKick) {
-    const progress = Math.min(1, Math.max(0, (time - cube3d.moveKick.startedAt) / cube3d.moveKick.duration));
-    const remaining = 1 - (1 - progress) ** 3;
-    const angle = cube3d.moveKick.angle * (1 - remaining);
-    nextQuaternion.multiply(new THREE.Quaternion().setFromAxisAngle(cube3d.moveKick.axis, angle));
-    if (progress >= 1) cube3d.moveKick = null;
-  }
-
   const changed = cube3d.group.quaternion.angleTo(nextQuaternion) > 0.0005;
   if (changed) cube3d.group.quaternion.copy(nextQuaternion);
-  return changed || Boolean(cube3d.moveKick) || (!bluetoothGyro && bluetoothLivePreviewMode());
+  const turnChanged = updateBluetoothCube3dTurnAnimation(time);
+  return changed || turnChanged || Boolean(cube3d.turnAnimation) || (!bluetoothGyro && bluetoothLivePreviewMode());
 }
 
 function isBluetoothCube3dVisible() {
@@ -3658,6 +3613,10 @@ function markBluetoothCube3dDirty() {
 
 function renderBluetoothCube3dCurrent() {
   if (!cube3d) return;
+  if (solveReplayPreviewActive && solveReplayCube) {
+    renderBluetoothCube3d(facesFromCube(solveReplayCube), solveReplayPreviewLabel || '完整解法回放');
+    return;
+  }
   if (bluetoothLivePreviewMode()) {
     if (bluetoothPhysicalFaces) {
       renderBluetoothCube3d(bluetoothPhysicalFaces, `GAN 实时状态 · ${isSolvedFaces(bluetoothPhysicalFaces) ? '已复原' : '未复原'}`);
@@ -3730,28 +3689,66 @@ function updateBluetooth3dMove(move) {
   renderBluetoothCube3dTelemetry();
 }
 
-function triggerBluetoothCube3dTurnAnimation(move) {
+function triggerBluetoothCube3dTurnAnimation(move, options = {}) {
   if (!cube3d) return;
   const match = String(move || '').match(/^([UDRLFB])(2|')?$/);
   if (!match) return;
-  const axes = {
-    U: new THREE.Vector3(0, 1, 0),
-    D: new THREE.Vector3(0, -1, 0),
-    R: new THREE.Vector3(1, 0, 0),
-    L: new THREE.Vector3(-1, 0, 0),
-    F: new THREE.Vector3(0, 0, 1),
-    B: new THREE.Vector3(0, 0, -1),
+  completeBluetoothCube3dTurnAnimation(false);
+  const definitions = {
+    U: { axisName: 'y', axis: new THREE.Vector3(0, 1, 0), sign: 1 },
+    D: { axisName: 'y', axis: new THREE.Vector3(0, -1, 0), sign: -1 },
+    R: { axisName: 'x', axis: new THREE.Vector3(1, 0, 0), sign: 1 },
+    L: { axisName: 'x', axis: new THREE.Vector3(-1, 0, 0), sign: -1 },
+    F: { axisName: 'z', axis: new THREE.Vector3(0, 0, 1), sign: 1 },
+    B: { axisName: 'z', axis: new THREE.Vector3(0, 0, -1), sign: -1 },
   };
+  const definition = definitions[match[1]];
   const suffix = match[2] || '';
   const direction = suffix === "'" ? -1 : 1;
   const amount = suffix === '2' ? 2 : 1;
-  cube3d.moveKick = {
-    axis: axes[match[1]],
-    angle: direction * amount * Math.PI * 0.16,
+  const stickers = [...cube3d.stickers.values()]
+    .filter((sticker) => sticker.userData.basePosition[definition.axisName] * definition.sign > 0.55)
+    .map((sticker) => ({
+      sticker,
+      position: sticker.userData.basePosition.clone(),
+      quaternion: sticker.userData.baseQuaternion.clone(),
+    }));
+  if (stickers.length === 0) return;
+  cube3d.turnAnimation = {
+    axis: definition.axis,
+    angle: direction * amount * Math.PI / 2,
     startedAt: performance.now(),
-    duration: suffix === '2' ? 260 : 210,
+    duration: suffix === '2' ? 420 : 280,
+    stickers,
+    onComplete: options.onComplete || null,
   };
   markBluetoothCube3dDirty();
+}
+
+function updateBluetoothCube3dTurnAnimation(time) {
+  const turn = cube3d?.turnAnimation;
+  if (!turn) return false;
+  const progress = Math.min(1, Math.max(0, (time - turn.startedAt) / turn.duration));
+  const eased = 1 - (1 - progress) ** 3;
+  const quaternion = new THREE.Quaternion().setFromAxisAngle(turn.axis, turn.angle * eased);
+  for (const item of turn.stickers) {
+    item.sticker.position.copy(item.position).applyAxisAngle(turn.axis, turn.angle * eased);
+    item.sticker.quaternion.copy(quaternion).multiply(item.quaternion);
+  }
+  if (progress >= 1) completeBluetoothCube3dTurnAnimation(true);
+  return true;
+}
+
+function completeBluetoothCube3dTurnAnimation(runCallback = true) {
+  if (!cube3d?.turnAnimation) return;
+  const turn = cube3d.turnAnimation;
+  cube3d.turnAnimation = null;
+  for (const item of turn.stickers) {
+    item.sticker.position.copy(item.position);
+    item.sticker.quaternion.copy(item.quaternion);
+  }
+  markBluetoothCube3dDirty();
+  if (runCallback && typeof turn.onComplete === 'function') turn.onComplete();
 }
 
 function renderBluetoothCube3dTelemetry() {
@@ -3902,13 +3899,16 @@ function render() {
 }
 
 function renderPreviewMode() {
-  const liveMode = bluetoothLivePreviewMode();
+  const replayMode = solveReplayPreviewActive && solveReplayCube;
+  const liveMode = replayMode || bluetoothLivePreviewMode();
   elements.cubeNet.hidden = liveMode;
   elements.bluetooth3dPanel.hidden = !liveMode;
-  elements.previewTitle.textContent = liveMode ? '蓝牙魔方状态' : '打乱结果预览';
-  elements.previewMeta.textContent = liveMode
+  elements.previewTitle.textContent = replayMode ? '复原回放' : (liveMode ? '蓝牙魔方状态' : '打乱结果预览');
+  elements.previewMeta.textContent = replayMode
+    ? '完整解法播放'
+    : (liveMode
     ? (bluetoothPhysicalFacelets ? 'GAN 实时状态' : '等待状态包')
-    : 'TNoodle';
+    : 'TNoodle');
 
   if (liveMode) {
     markBluetoothCube3dDirty();
@@ -5118,10 +5118,11 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
   const recordTitle = formatRecordTitle(recordMarks);
   const row = document.createElement('div');
   row.className = recordMarks.length > 0 ? 'history-row has-record' : 'history-row';
-  if (recordTitle) row.title = recordTitle;
   const sessionLabel = options.showSession ? sessionNameForSolve(solve) : '';
   const createdAtText = new Date(solve.createdAt).toLocaleString();
   const metadataText = solveRowMetadataText(solve);
+  const rowTitle = [recordTitle, sessionLabel, createdAtText, metadataText].filter(Boolean).join(' · ');
+  if (rowTitle) row.title = rowTitle;
   row.innerHTML = `
         <span><input class="solve-check" data-id="${solve.id}" type="checkbox" ${selectedSolveIds.has(solve.id) ? 'checked' : ''} aria-label="选择第 ${solveNumber} 条成绩" /></span>
         <span>${solveNumber}</span>
@@ -5142,13 +5143,6 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
             <option value="+2" ${solve.penalty === '+2' ? 'selected' : ''}>+2</option>
             <option value="dnf" ${solve.penalty === 'dnf' ? 'selected' : ''}>DNF</option>
           </select>
-        </span>
-        <span class="row-date" title="${escapeHtml([sessionLabel, createdAtText, metadataText].filter(Boolean).join(' · '))}">
-          <span class="row-date-main">
-            ${sessionLabel ? `<small>${escapeHtml(sessionLabel)}</small>` : ''}
-            <span>${escapeHtml(createdAtText)}</span>
-          </span>
-          ${metadataText ? `<span class="row-meta">${escapeHtml(metadataText)}</span>` : ''}
         </span>
         <span class="row-actions">
           <button data-detail-id="${solve.id}" type="button">详情</button>

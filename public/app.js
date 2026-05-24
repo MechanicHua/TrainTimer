@@ -447,6 +447,8 @@ let bluetoothMoves = [];
 let bluetoothSolved = false;
 let bluetoothSolvedByStatePacket = false;
 let bluetoothGyro = null;
+let bluetoothGyroReferenceInverse = null;
+let bluetoothGyroLastRawQuaternion = null;
 let bluetoothLastMoveText = '-';
 let bluetoothPhysicalFacelets = '';
 let bluetoothPhysicalFaces = null;
@@ -3155,31 +3157,56 @@ function renderBluetoothBattery() {
 
 function updateBluetoothGyro(gyro) {
   if (!gyro?.quaternion) return;
+  const rawQuaternion = bluetoothGyroQuaternionFromPacket(gyro.quaternion);
+  if (!rawQuaternion) return;
+  if (bluetoothGyroLastRawQuaternion && bluetoothGyroLastRawQuaternion.dot(rawQuaternion) < 0) {
+    rawQuaternion.set(-rawQuaternion.x, -rawQuaternion.y, -rawQuaternion.z, -rawQuaternion.w);
+  }
+  if (!bluetoothGyroReferenceInverse) {
+    bluetoothGyroReferenceInverse = rawQuaternion.clone().invert();
+    if (cube3d?.targetQuaternion) cube3d.targetQuaternion.copy(cube3d.baseQuaternion);
+    addBluetoothLog('陀螺仪', '姿态已校准', '以当前魔方朝向作为 3D 模型参考方向');
+  }
+  bluetoothGyroLastRawQuaternion = rawQuaternion.clone();
+  const relativeQuaternion = rawQuaternion.clone().multiply(bluetoothGyroReferenceInverse);
+  const displayQuaternion = cube3d
+    ? cube3d.baseQuaternion.clone().premultiply(relativeQuaternion)
+    : relativeQuaternion;
   bluetoothGyro = {
     quaternion: { ...gyro.quaternion },
+    displayQuaternion: {
+      x: displayQuaternion.x,
+      y: displayQuaternion.y,
+      z: displayQuaternion.z,
+      w: displayQuaternion.w,
+    },
     velocity: { ...(gyro.velocity || {}) },
     raw: gyro.raw ? { ...gyro.raw } : null,
     isoTime: new Date().toISOString(),
   };
   if (cube3d?.targetQuaternion) {
-    const { x, y, z, w } = bluetoothGyro.quaternion;
-    if ([x, y, z, w].every(Number.isFinite)) {
-      const nextQuaternion = new THREE.Quaternion(x, y, z, w);
-      if (nextQuaternion.lengthSq() > 0.01) {
-        nextQuaternion.normalize();
-        cube3d.targetQuaternion.copy(cube3d.gyroCorrection).multiply(nextQuaternion);
-        markBluetoothCube3dDirty();
-      }
-    }
+    cube3d.targetQuaternion.copy(displayQuaternion);
+    markBluetoothCube3dDirty();
   }
   renderBluetoothCube3dTelemetry();
 }
 
 function resetBluetoothGyro() {
   bluetoothGyro = null;
+  bluetoothGyroReferenceInverse = null;
+  bluetoothGyroLastRawQuaternion = null;
   if (cube3d?.targetQuaternion) cube3d.targetQuaternion.copy(cube3d.baseQuaternion);
   markBluetoothCube3dDirty();
   renderBluetoothCube3dTelemetry();
+}
+
+function bluetoothGyroQuaternionFromPacket(quaternion = {}) {
+  const { x, y, z, w } = quaternion;
+  if (![x, y, z, w].every(Number.isFinite)) return null;
+  const output = new THREE.Quaternion(x, y, z, w);
+  if (output.lengthSq() <= 0.01) return null;
+  output.normalize();
+  return output;
 }
 
 function updateBluetoothPhysicalState(decoded) {
@@ -3593,7 +3620,6 @@ function initBluetoothCube3d() {
     stickers,
     baseQuaternion,
     targetQuaternion: baseQuaternion.clone(),
-    gyroCorrection: baseQuaternion.clone(),
     resizeObserver: null,
     needsRender: true,
     lastRenderAt: 0,

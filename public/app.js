@@ -453,6 +453,7 @@ window.__trainTimerDebug = {
       bluetoothReconnectDevices: bluetoothReconnectDevices.length,
       bluetoothSolved,
       bluetoothState: elements.bluetoothStateMeta.textContent,
+      bluetoothAvailability: bluetoothAvailability(),
     };
   },
 };
@@ -477,6 +478,7 @@ async function bootstrap() {
     elements.historyPath.textContent = data.historyPath;
     appState = 'ready';
     render();
+    setBluetoothConnectedState(false);
     void refreshBluetoothReconnectDevices();
   } catch (error) {
     appState = 'error';
@@ -1736,9 +1738,12 @@ async function copySelectedSolveSummary() {
 
 async function connectBluetoothCube(options = {}) {
   const compatibilityMode = Boolean(options.compatibilityMode);
-  if (!isBluetoothAvailable()) {
-    elements.bluetoothStatus.textContent = '浏览器不支持';
-    addBluetoothLog('错误', '浏览器不支持 Web Bluetooth', window.location.protocol);
+  const availability = bluetoothAvailability();
+  if (!availability.canRequest) {
+    elements.bluetoothStatus.textContent = availability.label;
+    elements.bluetoothStatus.title = availability.detail;
+    setBluetoothConnectedState(false);
+    addBluetoothLog('错误', availability.label, availability.detail);
     return;
   }
 
@@ -1760,9 +1765,12 @@ async function connectBluetoothCube(options = {}) {
 }
 
 async function reconnectBluetoothCube() {
-  if (!isBluetoothAvailable()) {
-    elements.bluetoothStatus.textContent = '浏览器不支持';
-    addBluetoothLog('错误', '浏览器不支持 Web Bluetooth', window.location.protocol);
+  const availability = bluetoothAvailability();
+  if (!availability.canRequest) {
+    elements.bluetoothStatus.textContent = availability.label;
+    elements.bluetoothStatus.title = availability.detail;
+    setBluetoothConnectedState(false);
+    addBluetoothLog('错误', availability.label, availability.detail);
     return;
   }
 
@@ -1853,7 +1861,49 @@ function handleBluetoothConnectionError(error) {
 }
 
 function isBluetoothAvailable() {
-  return Boolean(navigator.bluetooth);
+  return bluetoothAvailability().canRequest;
+}
+
+function bluetoothAvailability() {
+  const secureContext = window.isSecureContext;
+  const bluetooth = navigator.bluetooth;
+  const hasBluetooth = Boolean(bluetooth);
+  const hasRequestDevice = hasBluetooth && typeof bluetooth.requestDevice === 'function';
+  const hasGetDevices = hasBluetooth && typeof bluetooth.getDevices === 'function';
+
+  if (!secureContext) {
+    return {
+      canRequest: false,
+      canReconnect: false,
+      label: '需要安全环境',
+      detail: 'Web Bluetooth 需要 HTTPS、localhost 或 127.0.0.1，当前页面不能打开设备选择器。',
+    };
+  }
+
+  if (!hasBluetooth) {
+    return {
+      canRequest: false,
+      canReconnect: false,
+      label: '浏览器不支持',
+      detail: '当前浏览器没有 Web Bluetooth。请使用支持 Web Bluetooth 的 Chrome 或 Edge，并从本地服务地址打开页面。',
+    };
+  }
+
+  if (!hasRequestDevice) {
+    return {
+      canRequest: false,
+      canReconnect: false,
+      label: '设备选择不可用',
+      detail: '当前浏览器暴露了 Web Bluetooth，但缺少 requestDevice，不能打开蓝牙设备选择器。',
+    };
+  }
+
+  return {
+    canRequest: true,
+    canReconnect: hasGetDevices,
+    label: '未连接',
+    detail: `Web Bluetooth 可用 · ${bluetoothDeviceFilters.length} 个名称筛选 · 支持 GoCube / Rubik's Connected / Giiker / Mi Smart 数据解析`,
+  };
 }
 
 function bluetoothRequestOptions(compatibilityMode) {
@@ -1871,11 +1921,29 @@ function setBluetoothScanningState(scanning, compatibilityMode, label = '') {
 }
 
 function setBluetoothConnectedState(connected) {
+  const availability = bluetoothAvailability();
   elements.bluetoothButton.disabled = connected;
   elements.bluetoothButton.textContent = '连接蓝牙魔方';
   elements.bluetoothAnyButton.disabled = connected;
   elements.bluetoothDisconnectButton.disabled = !connected;
   elements.bluetoothDisconnectButton.title = connected ? '断开当前蓝牙魔方' : '当前没有已连接设备';
+  if (!connected && !availability.canRequest) {
+    elements.bluetoothButton.disabled = true;
+    elements.bluetoothAnyButton.disabled = true;
+    elements.bluetoothStatus.textContent = availability.label;
+    elements.bluetoothStatus.title = availability.detail;
+  } else if (!connected) {
+    elements.bluetoothButton.disabled = false;
+    elements.bluetoothAnyButton.disabled = false;
+    if (
+      elements.bluetoothStatus.textContent === '浏览器不支持'
+      || elements.bluetoothStatus.textContent === '需要安全环境'
+      || elements.bluetoothStatus.textContent === '设备选择不可用'
+    ) {
+      elements.bluetoothStatus.textContent = availability.label;
+    }
+    if (!elements.bluetoothStatus.title) elements.bluetoothStatus.title = availability.detail;
+  }
   renderBluetoothReconnectButton();
 }
 
@@ -1886,7 +1954,8 @@ async function bluetoothReconnectCandidate() {
 
 async function refreshBluetoothReconnectDevices() {
   const devices = [];
-  if (navigator.bluetooth && typeof navigator.bluetooth.getDevices === 'function') {
+  const availability = bluetoothAvailability();
+  if (availability.canReconnect) {
     try {
       devices.push(...await navigator.bluetooth.getDevices());
     } catch (error) {
@@ -1904,17 +1973,17 @@ async function refreshBluetoothReconnectDevices() {
 
 function renderBluetoothReconnectButton() {
   const connected = Boolean(bluetoothDevice?.gatt?.connected);
-  const supported = isBluetoothAvailable();
+  const availability = bluetoothAvailability();
   const count = bluetoothReconnectDevices.length;
-  elements.bluetoothReconnectButton.disabled = !supported || connected || count === 0;
-  if (!supported) {
-    elements.bluetoothReconnectButton.title = '浏览器不支持 Web Bluetooth';
+  elements.bluetoothReconnectButton.disabled = !availability.canReconnect || connected || count === 0;
+  if (!availability.canRequest) {
+    elements.bluetoothReconnectButton.title = availability.detail;
   } else if (connected) {
     elements.bluetoothReconnectButton.title = '当前已连接蓝牙魔方';
   } else if (count > 0) {
     const names = bluetoothReconnectDevices.map((device) => device.name || device.id || '未命名设备').join(', ');
     elements.bluetoothReconnectButton.title = `重连：${names}`;
-  } else if (typeof navigator.bluetooth.getDevices === 'function') {
+  } else if (availability.canReconnect) {
     elements.bluetoothReconnectButton.title = '没有已授权设备';
   } else {
     elements.bluetoothReconnectButton.title = '当前浏览器不支持读取已授权设备';

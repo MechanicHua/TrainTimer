@@ -34,6 +34,10 @@ const statsChartLabels = {
   ao12: 'ao12',
   tps: 'TPS',
 };
+const algorithmTrainerSetLabels = {
+  pll: 'PLL',
+  oll2: '2-Look OLL',
+};
 const bluetoothUuidSuffix = '-0000-1000-8000-00805f9b34fb';
 const bluetoothBatteryLevelUuid = `00002a19${bluetoothUuidSuffix}`;
 const bluetoothGanV1MetaServiceUuid = `0000180a${bluetoothUuidSuffix}`;
@@ -255,6 +259,16 @@ const algorithmTrainerCases = [
   { id: 'pll-gb', set: 'pll', name: 'Gb Perm', group: 'G Perms', algorithm: "R' U' R U D' R2 U R' U R U' R U' R2 D", hint: 'G 形换位之二' },
   { id: 'pll-gc', set: 'pll', name: 'Gc Perm', group: 'G Perms', algorithm: "R2 U' R U' R U R' U R2 D' U R U' R' D", hint: 'G 形换位之三' },
   { id: 'pll-gd', set: 'pll', name: 'Gd Perm', group: 'G Perms', algorithm: "R U R' U' D R2 U' R U' R' U R' U R2 D'", hint: 'G 形换位之四' },
+  { id: 'oll2-edge-line', set: 'oll2', name: 'Edge Line', group: 'Edges', algorithm: "F R U R' U' F'", hint: '顶层棱块成一条线' },
+  { id: 'oll2-edge-l', set: 'oll2', name: 'Edge L', group: 'Edges', algorithm: "f R U R' U' f'", hint: '顶层棱块成 L 形' },
+  { id: 'oll2-edge-dot', set: 'oll2', name: 'Edge Dot', group: 'Edges', algorithm: "F R U R' U' F' f R U R' U' f'", hint: '顶层没有已翻好的棱块' },
+  { id: 'oll2-corner-sune', set: 'oll2', name: 'Sune', group: 'Corners', algorithm: "R U R' U R U2 R'", hint: '一个角块朝上，右手 Sune' },
+  { id: 'oll2-corner-antisune', set: 'oll2', name: 'Anti-Sune', group: 'Corners', algorithm: "R U2 R' U' R U' R'", hint: '一个角块朝上，反 Sune' },
+  { id: 'oll2-corner-pi', set: 'oll2', name: 'Pi', group: 'Corners', algorithm: "R U2 R2 U' R2 U' R2 U2 R", hint: '两个前角朝前，形状像 Pi' },
+  { id: 'oll2-corner-h', set: 'oll2', name: 'H', group: 'Corners', algorithm: "R U R' U R U' R' U R U2 R'", hint: '没有角块朝上，左右对称' },
+  { id: 'oll2-corner-l', set: 'oll2', name: 'L', group: 'Corners', algorithm: "F R' F' r U R U' r'", hint: '两个相邻角块形成 L 形' },
+  { id: 'oll2-corner-t', set: 'oll2', name: 'T', group: 'Corners', algorithm: "r U R' U' r' F R F'", hint: '两个角块朝上，形状像 T' },
+  { id: 'oll2-corner-u', set: 'oll2', name: 'U', group: 'Corners', algorithm: "R2 D R' U2 R D' R' U2 R'", hint: '两个角块朝上，形状像 U' },
 ];
 const untaggedFilterValue = '__untagged';
 
@@ -507,6 +521,7 @@ if (!['single', 'tps', 'ao5', 'ao12'].includes(historySortKey) || !['asc', 'desc
   historySortDirection = '';
 }
 let algorithmTrainerSet = localStorage.getItem('trainTimer.algorithmTrainerSet') || 'pll';
+if (!algorithmTrainerCases.some((item) => item.set === algorithmTrainerSet)) algorithmTrainerSet = 'pll';
 let algorithmTrainerCurrentId = localStorage.getItem('trainTimer.algorithmTrainerCurrentId') || '';
 let algorithmTrainerStats = loadAlgorithmTrainerStats();
 let startedAt = 0;
@@ -5433,9 +5448,13 @@ function renderAlgorithmTrainerDialog() {
   elements.algorithmTrainerSet.value = algorithmTrainerSet;
   const cases = algorithmTrainerCasesForSet();
   const current = algorithmTrainerCurrentCase() || cases[0];
-  if (current && !algorithmTrainerCurrentId) algorithmTrainerCurrentId = current.id;
+  if (current && current.id !== algorithmTrainerCurrentId) {
+    algorithmTrainerCurrentId = current.id;
+    localStorage.setItem('trainTimer.algorithmTrainerCurrentId', algorithmTrainerCurrentId);
+  }
   const totals = algorithmTrainerTotals(cases);
-  elements.algorithmTrainerMeta.textContent = `${algorithmTrainerSet.toUpperCase()} · ${cases.length} 条 · ${totals.success}/${totals.total} 掌握`;
+  const setLabel = algorithmTrainerSetLabels[algorithmTrainerSet] || algorithmTrainerSet.toUpperCase();
+  elements.algorithmTrainerMeta.textContent = `${setLabel} · ${cases.length} 条 · ${totals.success}/${totals.total} 掌握`;
   elements.algorithmTrainerName.textContent = current?.name || '-';
   elements.algorithmTrainerGroup.textContent = current?.group || '-';
   elements.algorithmTrainerAlg.textContent = current?.algorithm || '-';

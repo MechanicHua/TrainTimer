@@ -380,20 +380,19 @@ body[data-state="timing"] .timer-display {
 }
 
 .action-row button {
+  border: 0;
   background: rgba(255, 255, 255, 0.055);
-  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
   color: rgba(255, 255, 255, 0.92);
 }
 
 .action-row button:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.26);
   box-shadow: none;
 }
 
 .action-row button:first-child {
   background: var(--accent);
-  border-color: var(--accent);
   color: #001315;
 }
 

@@ -19,11 +19,13 @@ const compactHistoryLimit = 48;
 const allSolvesRenderBatchSize = 180;
 const bluetoothNextSolveGestureWindowMs = 700;
 const historyBottomFadeRangePx = 180;
-const cube3dActiveFrameMs = 1000 / 120;
-const cube3dIdleFrameMs = 1000 / 24;
+const cube3dActiveFrameMs = 1000 / 240;
+const cube3dIdleFrameMs = 1000 / 30;
 const cube3dGyroActiveWindowMs = 900;
-const cube3dGyroSmoothingMs = 16;
+const cube3dGyroSmoothingMs = 12;
 const cube3dTelemetryFrameMs = 1000 / 15;
+const cube3dTurnDurationMs = 132;
+const cube3dDoubleTurnDurationMs = 184;
 const bluetoothGyroLogIntervalMs = 500;
 const statsChartModes = new Set(['single', 'ao5', 'ao12', 'tps']);
 const statsChartLabels = {
@@ -4069,6 +4071,10 @@ function initBluetoothCube3d() {
     needsRender: true,
     lastRenderAt: 0,
     turnAnimation: null,
+    nextQuaternion: new THREE.Quaternion(),
+    idleQuaternion: new THREE.Quaternion(),
+    idleEuler: new THREE.Euler(),
+    turnQuaternion: new THREE.Quaternion(),
   };
   group.quaternion.copy(baseQuaternion);
 
@@ -4148,11 +4154,28 @@ function animateBluetoothCube3d(time = performance.now()) {
   if (!visible) return;
 
   const activeGyro = hasRecentBluetoothGyro(time);
-  const interval = activeGyro || activeMove ? cube3dActiveFrameMs : cube3dIdleFrameMs;
-  const waitMs = interval - (time - cube3d.lastRenderAt);
-  if (waitMs > 0) {
-    if (shouldContinueBluetoothCube3dAnimation(false, time)) scheduleBluetoothCube3dAnimation(waitMs);
-    return;
+  if (!activeGyro && !activeMove && !cube3d.needsRender) {
+    const waitMs = cube3dIdleFrameMs - (time - cube3d.lastRenderAt);
+    if (waitMs > 0) {
+      if (shouldContinueBluetoothCube3dAnimation(false, time)) scheduleBluetoothCube3dAnimation(waitMs);
+      return;
+    }
+  }
+
+  if (cube3dActiveFrameMs > 0 && (activeGyro || activeMove)) {
+    const waitMs = cube3dActiveFrameMs - (time - cube3d.lastRenderAt);
+    if (waitMs > 0) {
+      if (shouldContinueBluetoothCube3dAnimation(false, time)) scheduleBluetoothCube3dAnimation(waitMs);
+      return;
+    }
+  }
+
+  if (cube3dActiveFrameMs > 0 && !activeGyro && !activeMove && cube3d.needsRender) {
+    const waitMs = cube3dActiveFrameMs - (time - cube3d.lastRenderAt);
+    if (waitMs > 0) {
+      if (shouldContinueBluetoothCube3dAnimation(false, time)) scheduleBluetoothCube3dAnimation(waitMs);
+      return;
+    }
   }
 
   const changed = updateBluetoothCube3dPose(time);
@@ -4176,21 +4199,22 @@ function shouldContinueBluetoothCube3dAnimation(changed, time = performance.now(
 }
 
 function updateBluetoothCube3dPose(time) {
-  const nextQuaternion = cube3d.group.quaternion.clone();
+  const nextQuaternion = cube3d.nextQuaternion.copy(cube3d.group.quaternion);
   if (bluetoothGyro) {
-    const deltaMs = Math.max(0, time - cube3d.lastRenderAt);
-    const slerpFactor = Math.min(0.92, 1 - Math.exp(-deltaMs / cube3dGyroSmoothingMs));
+    const deltaMs = cube3d.lastRenderAt > 0 ? Math.max(0, time - cube3d.lastRenderAt) : 16;
+    const slerpFactor = Math.min(0.96, 1 - Math.exp(-deltaMs / cube3dGyroSmoothingMs));
     nextQuaternion.slerp(cube3d.targetQuaternion, slerpFactor);
   } else {
     const seconds = time / 1000;
     nextQuaternion.copy(cube3d.baseQuaternion);
     if (bluetoothLivePreviewMode()) {
-      const idle = new THREE.Quaternion().setFromEuler(new THREE.Euler(
+      cube3d.idleEuler.set(
         Math.cos(seconds * 0.56) * 0.018,
         Math.sin(seconds * 0.72) * 0.048,
         0,
-      ));
-      nextQuaternion.multiply(idle);
+      );
+      cube3d.idleQuaternion.setFromEuler(cube3d.idleEuler);
+      nextQuaternion.multiply(cube3d.idleQuaternion);
     }
   }
 
@@ -4213,7 +4237,7 @@ function isBluetoothCube3dVisible() {
 function markBluetoothCube3dDirty() {
   if (cube3d) {
     cube3d.needsRender = true;
-    cube3d.lastRenderAt = Math.min(cube3d.lastRenderAt, performance.now() - cube3dActiveFrameMs);
+    cube3d.lastRenderAt = Math.min(cube3d.lastRenderAt, performance.now() - cube3dIdleFrameMs);
     scheduleBluetoothCube3dAnimation();
   }
 }
@@ -4325,7 +4349,7 @@ function triggerBluetoothCube3dTurnAnimation(move, options = {}) {
     axis: definition.axis,
     angle: direction * amount * Math.PI / 2,
     startedAt: performance.now(),
-    duration: suffix === '2' ? 88 : 58,
+    duration: suffix === '2' ? cube3dDoubleTurnDurationMs : cube3dTurnDurationMs,
     stickers,
     onComplete: options.onComplete || null,
   };
@@ -4337,7 +4361,7 @@ function updateBluetoothCube3dTurnAnimation(time) {
   if (!turn) return false;
   const progress = Math.min(1, Math.max(0, (time - turn.startedAt) / turn.duration));
   const eased = 1 - (1 - progress) ** 3;
-  const quaternion = new THREE.Quaternion().setFromAxisAngle(turn.axis, turn.angle * eased);
+  const quaternion = cube3d.turnQuaternion.setFromAxisAngle(turn.axis, turn.angle * eased);
   for (const item of turn.stickers) {
     item.sticker.position.copy(item.position).applyAxisAngle(turn.axis, turn.angle * eased);
     item.sticker.quaternion.copy(quaternion).multiply(item.quaternion);

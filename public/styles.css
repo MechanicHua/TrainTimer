@@ -1369,7 +1369,8 @@ body[data-state="timing"] .timer-display {
 }
 
 .icon-delete-button,
-.icon-lock-button {
+.icon-lock-button,
+.icon-more-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1396,6 +1397,20 @@ body[data-state="timing"] .timer-display {
   transform: translateY(-1px);
 }
 
+.icon-more-button span {
+  display: inline-flex;
+  align-items: center;
+  color: rgba(245, 245, 247, 0.72);
+  font-size: 11px;
+  font-weight: 760;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+.icon-more-button:hover span {
+  color: var(--accent-strong);
+}
+
 .action-row .icon-delete-button {
   width: 34px;
   color: #ffb4ad;
@@ -1416,6 +1431,12 @@ body[data-state="timing"] .timer-display {
 }
 
 .history-row .icon-delete-button {
+  width: 26px;
+  min-height: 24px;
+  padding: 0;
+}
+
+.history-row .icon-more-button {
   width: 26px;
   min-height: 24px;
   padding: 0;

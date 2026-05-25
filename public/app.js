@@ -5922,7 +5922,9 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
           ${renderAverageButton(solve.id, solveNumber, 12, ao12, ao12Marks)}
         </span>
         <span class="row-actions">
-          <button data-detail-id="${solve.id}" type="button" aria-label="查看第 ${solveNumber} 条详情" title="详情">详</button>
+          <button class="icon-more-button" data-detail-id="${solve.id}" type="button" aria-label="查看第 ${solveNumber} 条详情" title="详情">
+            <span aria-hidden="true">•••</span>
+          </button>
           ${renderDeleteSolveButton(solve.id, `删除第 ${solveNumber} 条成绩`)}
         </span>
       ` : `
@@ -5947,7 +5949,9 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
           </select>
         </span>
         <span class="row-actions">
-          <button data-detail-id="${solve.id}" type="button">详情</button>
+          <button class="icon-more-button" data-detail-id="${solve.id}" type="button" aria-label="查看第 ${solveNumber} 条详情" title="详情">
+            <span aria-hidden="true">•••</span>
+          </button>
           ${renderDeleteSolveButton(solve.id, `删除第 ${solveNumber} 条成绩`)}
         </span>
       `;

@@ -1296,8 +1296,11 @@ body[data-state="timing"] .history-panel,
 body[data-state="timing"] .stats-panel,
 body[data-state="timing"] .action-row {
   opacity: 0.12;
-  filter: blur(1.2px);
   pointer-events: none;
+}
+
+body[data-state="timing"] .timer-hint {
+  opacity: 0.12;
 }
 
 body[data-state="timing"] .timer-band {
@@ -1305,8 +1308,7 @@ body[data-state="timing"] .timer-band {
 }
 
 body[data-state="timing"] .scramble-band {
-  opacity: 0.18;
-  filter: blur(1.2px);
+  opacity: 0.12;
   pointer-events: none;
 }
 

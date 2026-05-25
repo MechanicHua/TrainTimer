@@ -22,7 +22,8 @@ const historyBottomFadeRangePx = 180;
 const cube3dActiveFrameMs = 0;
 const cube3dIdleFrameMs = 1000 / 30;
 const cube3dGyroActiveWindowMs = 900;
-const cube3dGyroSmoothingMs = 6;
+const cube3dGyroSmoothingMs = 14;
+const cube3dGyroFastSmoothingMs = 7;
 const cube3dPoseEpsilon = 0.00005;
 const cube3dTelemetryFrameMs = 1000 / 15;
 const cube3dTurnDurationMs = 96;
@@ -3824,8 +3825,8 @@ function updateBluetoothPhysicalState(decoded, options = {}) {
     return faces;
   }
   if (!changed) return faces;
-  renderBluetoothMoves();
-  renderPreviewMode();
+  renderBluetoothCube3dLiveFaces(faces);
+  renderBluetoothMoves({ skipStatePreview: !elements.bluetoothLogDialog?.open });
   return faces;
 }
 
@@ -4106,7 +4107,8 @@ function updateBluetoothSolvedFromMoves(moves) {
   return isBluetoothSolved();
 }
 
-function renderBluetoothMoves() {
+function renderBluetoothMoves(options = {}) {
+  const shouldRenderState = !options.skipStatePreview;
   const moveText = bluetoothMoveSequence().slice(-40).join(' ');
   const rowText = bluetoothMoves.length === 0
     ? (appState === 'timing' ? '暂无解析出的转动' : '计时开始后记录转动')
@@ -4120,7 +4122,7 @@ function renderBluetoothMoves() {
     appState,
     rowText,
     statusText,
-    bluetoothStatePreviewKey(),
+    shouldRenderState ? bluetoothStatePreviewKey() : 'skip-state-preview',
   ].join('|');
   if (renderKey === bluetoothMovesRenderKey) return;
   bluetoothMovesRenderKey = renderKey;
@@ -4130,7 +4132,15 @@ function renderBluetoothMoves() {
   elements.bluetoothSolveStatus.textContent = statusText;
   elements.bluetoothMoveRows.textContent = rowText;
   elements.bluetoothMoveRows.title = bluetoothMoves.length === 0 ? '' : moveText;
-  renderBluetoothStatePreview();
+  if (shouldRenderState) renderBluetoothStateSurface();
+}
+
+function renderBluetoothStateSurface() {
+  if (elements.bluetoothLogDialog?.open) {
+    renderBluetoothStatePreview();
+    return;
+  }
+  renderBluetoothCube3dCurrent();
 }
 
 function bluetoothMoveSequence() {
@@ -4479,7 +4489,9 @@ function updateBluetoothCube3dPose(time) {
   const nextQuaternion = cube3d.nextQuaternion.copy(cube3d.group.quaternion);
   if (bluetoothGyro) {
     const deltaMs = cube3d.lastRenderAt > 0 ? Math.max(0, time - cube3d.lastRenderAt) : 16;
-    const slerpFactor = Math.min(0.96, 1 - Math.exp(-deltaMs / cube3dGyroSmoothingMs));
+    const angle = nextQuaternion.angleTo(cube3d.targetQuaternion);
+    const smoothingMs = angle > 0.22 ? cube3dGyroFastSmoothingMs : cube3dGyroSmoothingMs;
+    const slerpFactor = Math.min(0.9, 1 - Math.exp(-deltaMs / smoothingMs));
     nextQuaternion.slerp(cube3d.targetQuaternion, slerpFactor);
   } else {
     const seconds = time / 1000;

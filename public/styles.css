@@ -1082,6 +1082,10 @@ body[data-state="timing"] .timer-display {
 }
 
 .history-rows {
+  --history-mask-solid: 58%;
+  --history-mask-soft: 78%;
+  --history-mask-soft-alpha: 0.34;
+  --history-mask-end-alpha: 0;
   flex: 1;
   min-height: 0;
   overflow-x: hidden;
@@ -1091,8 +1095,20 @@ body[data-state="timing"] .timer-display {
   scroll-behavior: smooth;
   scrollbar-color: rgba(0, 173, 181, 0.34) transparent;
   scrollbar-width: thin;
-  mask-image: linear-gradient(to bottom, black 0, black 58%, rgba(0, 0, 0, 0.34) 78%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black 0, black 58%, rgba(0, 0, 0, 0.34) 78%, transparent 100%);
+  mask-image: linear-gradient(
+    to bottom,
+    black 0,
+    black var(--history-mask-solid),
+    rgba(0, 0, 0, var(--history-mask-soft-alpha)) var(--history-mask-soft),
+    rgba(0, 0, 0, var(--history-mask-end-alpha)) 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    black 0,
+    black var(--history-mask-solid),
+    rgba(0, 0, 0, var(--history-mask-soft-alpha)) var(--history-mask-soft),
+    rgba(0, 0, 0, var(--history-mask-end-alpha)) 100%
+  );
 }
 
 .history-rows::-webkit-scrollbar {
@@ -1454,6 +1470,24 @@ body[data-focus="true"] .timer-surface > :not(.timer-display) {
 body[data-focus="true"] .timer-display {
   opacity: 1;
   filter: none;
+}
+
+body[data-focus="true"][data-inspection-enter="true"] .app-shell > :not(.timer-band),
+body[data-focus="true"][data-inspection-enter="true"] .timer-layout > :not(.timer-surface),
+body[data-focus="true"][data-inspection-enter="true"] .timer-surface > :not(.timer-display) {
+  animation: inspection-dim-in 480ms var(--ease) both;
+}
+
+body[data-inspection-enter="true"]:not([data-state="timing"]) .timer-band {
+  animation: inspection-stage-in 460ms var(--ease) both;
+}
+
+body[data-inspection-enter="true"]:not([data-state="timing"]) .timer-display {
+  animation: inspection-number-in 460ms var(--ease) both;
+}
+
+body[data-inspection-enter="true"]:not([data-state="timing"]) .timer-hint {
+  animation: inspection-hint-in 420ms var(--ease) both;
 }
 
 body[data-state="timing"] .timer-band {
@@ -2612,6 +2646,52 @@ dialog[open] {
   }
 }
 
+@keyframes inspection-dim-in {
+  from {
+    opacity: 0.86;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0.045;
+    transform: translateY(0);
+  }
+}
+
+@keyframes inspection-stage-in {
+  from {
+    transform: translateY(8px) scale(0.992);
+  }
+  to {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes inspection-number-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.94);
+  }
+  62% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.012);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes inspection-hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes dialog-in {
   from {
     opacity: 0;
@@ -2702,7 +2782,6 @@ dialog[open] {
     grid-template-rows: auto minmax(210px, auto) minmax(140px, auto);
   }
 
-  .history-rows,
   .bluetooth-feed-rows {
     mask-image: linear-gradient(to bottom, black 0, black calc(100% - 34px), transparent 100%);
     -webkit-mask-image: linear-gradient(to bottom, black 0, black calc(100% - 34px), transparent 100%);

@@ -17,6 +17,7 @@ const holdToStartMs = 500;
 const reminderSeconds = new Set([8, 12]);
 const compactHistoryLimit = 48;
 const bluetoothNextSolveGestureWindowMs = 700;
+const historyBottomFadeRangePx = 180;
 const statsChartModes = new Set(['single', 'ao5', 'ao12', 'tps']);
 const statsChartLabels = {
   single: '单次',
@@ -500,6 +501,7 @@ let holdConfirmed = false;
 let timerFrame = null;
 let inspectionFrame = null;
 let holdFrame = null;
+let inspectionEntryTimer = 0;
 let holdReturnState = 'ready';
 let reminded = new Set();
 let activePenalty = 'ok';
@@ -708,6 +710,7 @@ elements.allCopyListButton.addEventListener('click', copyListedSolves);
 elements.allListedStatsButton.addEventListener('click', openListedStatsDialog);
 elements.historyRows.addEventListener('change', handleHistoryChange);
 elements.historyRows.addEventListener('click', handleHistoryClick);
+elements.historyRows.addEventListener('scroll', updateHistoryRowsMask, { passive: true });
 elements.historySortButtons.forEach((button) => {
   button.addEventListener('click', () => cycleHistorySort(button.dataset.historySort || ''));
 });
@@ -715,6 +718,7 @@ elements.allSolvesRows.addEventListener('change', handleHistoryChange);
 elements.allSolvesRows.addEventListener('click', handleHistoryClick);
 elements.statsRecordList.addEventListener('click', handleStatsRecordClick);
 elements.sessionOverviewList.addEventListener('click', handleSessionOverviewClick);
+window.addEventListener('resize', updateHistoryRowsMask);
 
 window.__trainTimerDebug = {
   emitBluetoothText(text, uuid = '0000fff1-0000-1000-8000-00805f9b34fb') {
@@ -926,8 +930,18 @@ function startInspection(options = {}) {
     : 0;
   reminded = new Set();
   activePenalty = 'ok';
+  triggerInspectionEntryAnimation();
   cancelAnimationFrame(inspectionFrame);
   inspectionTick();
+}
+
+function triggerInspectionEntryAnimation() {
+  document.body.dataset.inspectionEnter = 'true';
+  window.clearTimeout(inspectionEntryTimer);
+  inspectionEntryTimer = window.setTimeout(() => {
+    delete document.body.dataset.inspectionEnter;
+    inspectionEntryTimer = 0;
+  }, 520);
 }
 
 function inspectionTick() {
@@ -976,6 +990,9 @@ function cancelHold() {
 
 function startTiming() {
   clearBluetoothNextSolveGestureCandidate();
+  delete document.body.dataset.inspectionEnter;
+  window.clearTimeout(inspectionEntryTimer);
+  inspectionEntryTimer = 0;
   cancelAnimationFrame(inspectionFrame);
   cancelAnimationFrame(holdFrame);
   activePenalty = currentInspectionPenalty();
@@ -5797,6 +5814,22 @@ function renderHistory() {
   elements.historyRows.replaceChildren(
     ...listed.map((entry) => renderSolveRow(entry.solve, entry.index + 1, sessionSolves, { compact: true })),
   );
+  requestAnimationFrame(updateHistoryRowsMask);
+}
+
+function updateHistoryRowsMask() {
+  const rows = elements.historyRows;
+  if (!rows) return;
+  const maxScrollTop = Math.max(0, rows.scrollHeight - rows.clientHeight);
+  const remaining = Math.max(0, maxScrollTop - rows.scrollTop);
+  const rawProgress = maxScrollTop <= 1
+    ? 1
+    : Math.max(0, Math.min(1, 1 - remaining / historyBottomFadeRangePx));
+  const progress = 1 - (1 - rawProgress) ** 2;
+  rows.style.setProperty('--history-mask-solid', `${(58 + progress * 30).toFixed(1)}%`);
+  rows.style.setProperty('--history-mask-soft', `${(78 + progress * 18).toFixed(1)}%`);
+  rows.style.setProperty('--history-mask-soft-alpha', (0.34 + progress * 0.66).toFixed(3));
+  rows.style.setProperty('--history-mask-end-alpha', progress.toFixed(3));
 }
 
 function listedHistoryEntries(sessionSolves) {

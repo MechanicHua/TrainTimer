@@ -652,9 +652,7 @@ let timerDisplayTextKey = '';
 
 elements.inspectionToggle.checked = inspectionEnabled;
 elements.inspectionToggle.addEventListener('change', () => {
-  inspectionEnabled = elements.inspectionToggle.checked;
-  localStorage.setItem('trainTimer.inspection', inspectionEnabled ? '1' : '0');
-  render();
+  setInspectionEnabled(elements.inspectionToggle.checked);
 });
 elements.nextButton.addEventListener('click', nextSolve);
 elements.scrambleButton.addEventListener('click', loadScramble);
@@ -979,6 +977,8 @@ function handleKeyDown(event) {
     return;
   }
 
+  if (handleGlobalShortcut(event)) return;
+
   if (event.code !== 'Space' && appState === 'timing') {
     event.preventDefault();
     finishTiming();
@@ -1002,6 +1002,56 @@ function handleKeyDown(event) {
   } else if (appState === 'timing') {
     finishTiming();
   }
+}
+
+function handleGlobalShortcut(event) {
+  if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) return false;
+  if (['timing', 'inspection', 'hold', 'saving', 'loading', 'error'].includes(appState)) return false;
+
+  if (event.code === 'KeyN') {
+    event.preventDefault();
+    void nextSolve();
+    return true;
+  }
+
+  if (event.code === 'KeyR' && !scrambleChangeLocked()) {
+    event.preventDefault();
+    void loadScramble();
+    return true;
+  }
+
+  if (event.code === 'KeyI' && !elements.inspectionToggle.disabled) {
+    event.preventDefault();
+    setInspectionEnabled(!inspectionEnabled);
+    return true;
+  }
+
+  if (event.code === 'KeyS' && filteredSolves().length > 0) {
+    event.preventDefault();
+    openStatsDialog();
+    return true;
+  }
+
+  if (event.code === 'KeyA' && solves.length > 0) {
+    event.preventDefault();
+    openAllSolvesDialog();
+    return true;
+  }
+
+  if (event.code === 'KeyP') {
+    event.preventDefault();
+    openTimerSettingsDialog();
+    return true;
+  }
+
+  return false;
+}
+
+function setInspectionEnabled(enabled) {
+  inspectionEnabled = Boolean(enabled);
+  elements.inspectionToggle.checked = inspectionEnabled;
+  localStorage.setItem('trainTimer.inspection', inspectionEnabled ? '1' : '0');
+  render();
 }
 
 function handleDoneQuickAction(event) {

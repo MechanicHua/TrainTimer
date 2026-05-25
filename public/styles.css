@@ -1770,6 +1770,50 @@ dialog[open] {
   color: var(--ink);
 }
 
+.timer-shortcut-panel {
+  margin-top: 14px;
+}
+
+.timer-shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.timer-shortcut-grid span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  padding: 8px 9px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.timer-shortcut-grid kbd {
+  min-width: 34px;
+  border-radius: 6px;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--ink-strong);
+  font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 760;
+  text-align: center;
+}
+
+.timer-shortcut-grid em {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .algorithm-trainer-toolbar {
   display: flex;
   align-items: center;

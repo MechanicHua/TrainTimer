@@ -212,7 +212,7 @@ h2 {
   border: 0;
   border-radius: 0;
   box-shadow: var(--shadow-sm);
-  backdrop-filter: blur(22px) saturate(1.12);
+  backdrop-filter: none;
   transition:
     opacity 180ms var(--ease),
     filter 180ms var(--ease),
@@ -1016,6 +1016,8 @@ body[data-state="timing"] .timer-display {
   border-radius: calc(var(--radius) - 2px);
   background: rgba(255, 255, 255, 0.035);
   contain: strict;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 .bluetooth-3d-telemetry {
@@ -1831,13 +1833,24 @@ dialog[open] {
   font-weight: 700;
 }
 
-.algorithm-trainer-toolbar select {
+.algorithm-trainer-search-field {
+  flex: 1 1 220px;
+}
+
+.algorithm-trainer-toolbar select,
+.algorithm-trainer-toolbar input {
   min-height: 32px;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
   padding: 0 28px 0 10px;
   background: rgba(255, 255, 255, 0.07);
   color: var(--ink);
+}
+
+.algorithm-trainer-toolbar input {
+  width: 100%;
+  min-width: 0;
+  padding-right: 10px;
 }
 
 .algorithm-trainer-card {

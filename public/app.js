@@ -22,7 +22,7 @@ const historyBottomFadeRangePx = 180;
 const cube3dActiveFrameMs = 0;
 const cube3dIdleFrameMs = 1000 / 30;
 const cube3dGyroActiveWindowMs = 900;
-const cube3dGyroSmoothingMs = 12;
+const cube3dGyroSmoothingMs = 6;
 const cube3dPoseEpsilon = 0.00005;
 const cube3dTelemetryFrameMs = 1000 / 15;
 const cube3dTurnDurationMs = 96;
@@ -335,6 +335,7 @@ const elements = {
   algorithmTrainerMeta: document.querySelector('#algorithmTrainerMeta'),
   algorithmTrainerSet: document.querySelector('#algorithmTrainerSet'),
   algorithmTrainerFocus: document.querySelector('#algorithmTrainerFocus'),
+  algorithmTrainerSearch: document.querySelector('#algorithmTrainerSearch'),
   algorithmTrainerAddButton: document.querySelector('#algorithmTrainerAddButton'),
   algorithmTrainerDeleteButton: document.querySelector('#algorithmTrainerDeleteButton'),
   algorithmTrainerNextButton: document.querySelector('#algorithmTrainerNextButton'),
@@ -555,6 +556,7 @@ let algorithmTrainerSet = localStorage.getItem('trainTimer.algorithmTrainerSet')
 if (!algorithmTrainerAllCases().some((item) => item.set === algorithmTrainerSet)) algorithmTrainerSet = 'pll';
 let algorithmTrainerFocus = localStorage.getItem('trainTimer.algorithmTrainerFocus') || 'all';
 if (!Object.hasOwn(algorithmTrainerFocusLabels, algorithmTrainerFocus)) algorithmTrainerFocus = 'all';
+let algorithmTrainerSearch = localStorage.getItem('trainTimer.algorithmTrainerSearch') || '';
 let algorithmTrainerCurrentId = localStorage.getItem('trainTimer.algorithmTrainerCurrentId') || '';
 let algorithmTrainerStats = loadAlgorithmTrainerStats();
 let algorithmTrainerTimerStartedAt = 0;
@@ -677,6 +679,11 @@ elements.algorithmTrainerFocus.addEventListener('change', () => {
   if (!Object.hasOwn(algorithmTrainerFocusLabels, algorithmTrainerFocus)) algorithmTrainerFocus = 'all';
   localStorage.setItem('trainTimer.algorithmTrainerFocus', algorithmTrainerFocus);
   chooseNextAlgorithmTrainerCase();
+});
+elements.algorithmTrainerSearch.addEventListener('input', () => {
+  algorithmTrainerSearch = elements.algorithmTrainerSearch.value.trim();
+  localStorage.setItem('trainTimer.algorithmTrainerSearch', algorithmTrainerSearch);
+  chooseNextAlgorithmTrainerCase({ renderOnly: true });
 });
 elements.algorithmTrainerNextButton.addEventListener('click', chooseNextAlgorithmTrainerCase);
 elements.algorithmTrainerPassButton.addEventListener('click', () => recordAlgorithmTrainerResult(true));
@@ -3759,7 +3766,7 @@ function updateBluetoothGyro(gyro) {
   };
   if (cube3d?.targetQuaternion) {
     cube3d.targetQuaternion.copy(displayQuaternion);
-    markBluetoothCube3dDirty();
+    scheduleBluetoothCube3dAnimation();
   }
   scheduleBluetoothCube3dTelemetryRender();
 }
@@ -5686,9 +5693,15 @@ function openAlgorithmTrainerDialog() {
 function renderAlgorithmTrainerDialog() {
   elements.algorithmTrainerSet.value = algorithmTrainerSet;
   elements.algorithmTrainerFocus.value = algorithmTrainerFocus;
+  if (elements.algorithmTrainerSearch.value !== algorithmTrainerSearch) {
+    elements.algorithmTrainerSearch.value = algorithmTrainerSearch;
+  }
   const allCases = algorithmTrainerCasesForSet();
   const scopedCases = algorithmTrainerCasesForFocus(allCases);
-  const effectiveCases = scopedCases.length > 0 ? scopedCases : allCases;
+  const searchActive = algorithmTrainerSearchQuery() !== '';
+  const focusBaseCases = scopedCases.length > 0 || algorithmTrainerFocus === 'all' ? scopedCases : allCases;
+  const visibleCases = algorithmTrainerCasesForSearch(focusBaseCases);
+  const effectiveCases = searchActive ? visibleCases : (scopedCases.length > 0 ? scopedCases : allCases);
   const current = algorithmTrainerCurrentCase(effectiveCases) || effectiveCases[0];
   if (current && current.id !== algorithmTrainerCurrentId) {
     algorithmTrainerCurrentId = current.id;
@@ -5699,22 +5712,27 @@ function renderAlgorithmTrainerDialog() {
   const setLabel = algorithmTrainerSetLabels[algorithmTrainerSet] || algorithmTrainerSet.toUpperCase();
   const focusLabel = algorithmTrainerFocusLabels[algorithmTrainerFocus] || '全部';
   const focusText = algorithmTrainerFocus === 'all' ? '' : ` · ${focusLabel} ${scopedCases.length}/${allCases.length}`;
-  elements.algorithmTrainerMeta.textContent = `${setLabel} · ${allCases.length} 条${focusText} · ${totals.success}/${totals.total} 掌握`;
+  const searchText = searchActive ? ` · 搜索 ${visibleCases.length}/${focusBaseCases.length}` : '';
+  elements.algorithmTrainerMeta.textContent = `${setLabel} · ${allCases.length} 条${focusText}${searchText} · ${totals.success}/${totals.total} 掌握`;
   elements.algorithmTrainerName.textContent = current?.name || '-';
   elements.algorithmTrainerGroup.textContent = current?.group || '-';
   elements.algorithmTrainerAlg.textContent = current?.algorithm || '-';
-  elements.algorithmTrainerHint.textContent = scopedCases.length === 0 && algorithmTrainerFocus !== 'all'
+  elements.algorithmTrainerHint.textContent = searchActive && visibleCases.length === 0
+    ? `没有匹配“${algorithmTrainerSearchQuery()}”的公式`
+    : (scopedCases.length === 0 && algorithmTrainerFocus !== 'all'
     ? `${focusLabel}范围暂无案例，随机会从全部中选择`
-    : (current?.hint || '选择随机下一条开始练习');
+    : (current?.hint || '选择随机下一条开始练习'));
   const currentStats = algorithmTrainerStats[current?.id] || { success: 0, total: 0, streak: 0 };
   elements.algorithmTrainerScore.textContent = algorithmTrainerProgressText(currentStats);
   elements.algorithmTrainerDeleteButton.disabled = current?.set !== 'custom';
   renderAlgorithmTrainerTimer(currentStats);
-  const listRows = scopedCases.length > 0 || algorithmTrainerFocus === 'all'
+  const listRows = searchActive
+    ? visibleCases
+    : (scopedCases.length > 0 || algorithmTrainerFocus === 'all'
     ? scopedCases
-    : [];
+    : []);
   elements.algorithmTrainerList.replaceChildren(
-    ...(listRows.length > 0 ? listRows.map(renderAlgorithmTrainerListItem) : [renderAlgorithmTrainerEmpty(focusLabel)]),
+    ...(listRows.length > 0 ? listRows.map(renderAlgorithmTrainerListItem) : [renderAlgorithmTrainerEmpty(searchActive ? '搜索' : focusLabel)]),
   );
 }
 
@@ -5742,7 +5760,9 @@ function renderAlgorithmTrainerListItem(item) {
 function renderAlgorithmTrainerEmpty(focusLabel) {
   const row = document.createElement('div');
   row.className = 'algorithm-trainer-empty';
-  row.textContent = `${focusLabel}范围暂无案例`;
+  row.textContent = focusLabel === '搜索'
+    ? `没有匹配“${algorithmTrainerSearchQuery()}”的公式`
+    : `${focusLabel}范围暂无案例`;
   return row;
 }
 
@@ -5750,7 +5770,9 @@ function chooseNextAlgorithmTrainerCase(options = {}) {
   cancelAlgorithmTrainerTimer();
   const allCases = algorithmTrainerCasesForSet();
   const focusedCases = algorithmTrainerCasesForFocus(allCases);
-  const cases = focusedCases.length > 0 ? focusedCases : allCases;
+  const baseCases = focusedCases.length > 0 || algorithmTrainerFocus === 'all' ? focusedCases : allCases;
+  const searchActive = algorithmTrainerSearchQuery() !== '';
+  const cases = searchActive ? algorithmTrainerCasesForSearch(baseCases) : baseCases;
   if (cases.length === 0) {
     algorithmTrainerCurrentId = '';
     localStorage.setItem('trainTimer.algorithmTrainerCurrentId', algorithmTrainerCurrentId);
@@ -5948,6 +5970,25 @@ function algorithmTrainerCasesForFocus(cases) {
     return cases.filter((item) => algorithmTrainerCaseNeedsReview(item));
   }
   return cases;
+}
+
+function algorithmTrainerCasesForSearch(cases) {
+  const query = algorithmTrainerSearchQuery();
+  if (!query) return cases;
+  return cases.filter((item) => algorithmTrainerSearchText(item).includes(query));
+}
+
+function algorithmTrainerSearchQuery() {
+  return algorithmTrainerSearch.trim().toLowerCase();
+}
+
+function algorithmTrainerSearchText(item) {
+  return [
+    item.name,
+    item.group,
+    item.algorithm,
+    item.hint,
+  ].filter(Boolean).join(' ').toLowerCase();
 }
 
 function algorithmTrainerCaseNeedsReview(item) {

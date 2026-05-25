@@ -431,7 +431,7 @@ let allSessionsEnabled = localStorage.getItem('trainTimer.allSessions') === '1';
 let allSolvesDatePreset = 'all';
 let historySortKey = localStorage.getItem('trainTimer.historySortKey') || '';
 let historySortDirection = localStorage.getItem('trainTimer.historySortDirection') || '';
-if (!['single', 'ao5', 'ao12'].includes(historySortKey) || !['asc', 'desc'].includes(historySortDirection)) {
+if (!['single', 'tps', 'ao5', 'ao12'].includes(historySortKey) || !['asc', 'desc'].includes(historySortDirection)) {
   historySortKey = '';
   historySortDirection = '';
 }
@@ -4906,8 +4906,11 @@ async function loadScramblePreview(scrambleText, puzzle, requestId) {
 }
 
 function renderStats() {
-  const sessionSummary = summarizeSolves(filteredSolves());
-  elements.countStat.textContent = sessionSummary.count ?? 0;
+  const sessionSolves = filteredSolves();
+  const sessionSummary = summarizeSolves(sessionSolves);
+  const dnfCount = sessionSolves.filter((solve) => solve.penalty === 'dnf').length;
+  const successCount = sessionSolves.length - dnfCount;
+  elements.countStat.textContent = `${successCount}/${dnfCount}`;
   elements.bestStat.textContent = sessionSummary.best == null ? '-' : formatTime(sessionSummary.best);
   elements.averageStat.textContent = sessionSummary.average == null ? '-' : formatTime(sessionSummary.average);
   elements.mo3Stat.textContent = sessionSummary.mo3 == null ? '-' : formatTime(sessionSummary.mo3);
@@ -5476,6 +5479,7 @@ function listedHistoryEntries(sessionSolves) {
     solve,
     index,
     single: effectiveDurationMs(solve),
+    tps: Number.isFinite(solve.bluetoothTps) ? solve.bluetoothTps : null,
     ao5: rollingAverageAt(sessionSolves, index, 5),
     ao12: rollingAverageAt(sessionSolves, index, 12),
   }));
@@ -5489,14 +5493,15 @@ function listedHistoryEntries(sessionSolves) {
     if (leftMissing && !rightMissing) return 1;
     if (!leftMissing && rightMissing) return -1;
     if (!leftMissing && !rightMissing && leftValue !== rightValue) {
-      return (leftValue - rightValue) * direction;
+      const keyDirection = historySortKey === 'tps' ? -direction : direction;
+      return (leftValue - rightValue) * keyDirection;
     }
     return right.index - left.index;
   });
 }
 
 function cycleHistorySort(key) {
-  if (!['single', 'ao5', 'ao12'].includes(key)) return;
+  if (!['single', 'tps', 'ao5', 'ao12'].includes(key)) return;
   if (historySortKey !== key) {
     historySortKey = key;
     historySortDirection = 'asc';
@@ -5566,9 +5571,9 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
   const ao5 = rollingAverageAt(sessionSolves, solveIndex, 5);
   const ao12 = rollingAverageAt(sessionSolves, solveIndex, 12);
   const recordMarks = recordMarksAt(sessionSolves, solveIndex);
-  const singleMarks = recordMarks.filter((mark) => ['single', 'mo3', 'ao50', 'ao100'].includes(mark.type));
-  const ao5Marks = recordMarks.filter((mark) => mark.type === 'ao5');
-  const ao12Marks = recordMarks.filter((mark) => mark.type === 'ao12');
+  const singleMarks = recordMarks.filter((mark) => mark.type === 'single').slice(0, 1);
+  const ao5Marks = recordMarks.filter((mark) => mark.type === 'ao5').slice(0, 1);
+  const ao12Marks = recordMarks.filter((mark) => mark.type === 'ao12').slice(0, 1);
   const recordTitle = formatRecordTitle(recordMarks);
   const row = document.createElement('div');
   row.className = recordMarks.length > 0 ? 'history-row has-record' : 'history-row';
@@ -5593,7 +5598,7 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
         </span>
         <span class="row-actions">
           <button data-detail-id="${solve.id}" type="button">详情</button>
-          <button data-delete-id="${solve.id}" type="button">删</button>
+          ${renderDeleteSolveButton(solve.id, `删除第 ${solveNumber} 条成绩`)}
         </span>
       ` : `
         <span><input class="solve-check" data-id="${solve.id}" type="checkbox" ${selectedSolveIds.has(solve.id) ? 'checked' : ''} aria-label="选择第 ${solveNumber} 条成绩" /></span>
@@ -5618,10 +5623,28 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
         </span>
         <span class="row-actions">
           <button data-detail-id="${solve.id}" type="button">详情</button>
-          <button data-delete-id="${solve.id}" type="button">删</button>
+          ${renderDeleteSolveButton(solve.id, `删除第 ${solveNumber} 条成绩`)}
         </span>
       `;
   return row;
+}
+
+function renderDeleteSolveButton(solveId, label = '删除成绩') {
+  return `
+    <button class="icon-delete-button" data-delete-id="${escapeHtml(solveId)}" type="button" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">
+      ${trashIconSvg()}
+    </button>
+  `;
+}
+
+function trashIconSvg() {
+  return `
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M9 3h6l1 2h4v2H4V5h4l1-2Z"></path>
+      <path d="M7 9h10l-.7 11H7.7L7 9Z"></path>
+      <path d="M10 11v7M14 11v7"></path>
+    </svg>
+  `;
 }
 
 function solveRowMetadataText(solve) {
@@ -5665,8 +5688,7 @@ function renderRecordBadges(marks) {
 }
 
 function recordBadgeText(mark) {
-  if (mark.type === 'single') return 'PB';
-  return mark.type;
+  return mark ? 'PB' : '';
 }
 
 function formatRecordTitle(marks) {
@@ -5730,7 +5752,7 @@ function renderHistoryControls() {
 }
 
 function renderHistorySortControls() {
-  const labels = { single: '单次', ao5: 'ao5', ao12: 'ao12' };
+  const labels = { single: '成绩', tps: 'TPS', ao5: 'ao5', ao12: 'ao12' };
   elements.historySortButtons.forEach((button) => {
     const key = button.dataset.historySort || '';
     const active = key === historySortKey && Boolean(historySortDirection);

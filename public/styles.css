@@ -1124,7 +1124,8 @@ body[data-state="timing"] .timer-display {
 
 .history-panel .history-head,
 .history-panel .history-row {
-  grid-template-columns: 22px minmax(76px, 1fr) 42px 50px 50px 58px;
+  grid-template-columns: 22px minmax(64px, 0.88fr) 34px minmax(58px, 0.84fr) minmax(60px, 0.9fr) 44px;
+  gap: 3px;
 }
 
 .history-head {
@@ -1364,6 +1365,35 @@ body[data-state="timing"] .timer-display {
 .row-actions button {
   min-width: 0;
   padding: 0 7px;
+}
+
+.icon-delete-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  padding: 0;
+}
+
+.icon-delete-button svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.action-row .icon-delete-button {
+  width: 34px;
+  color: #ffb4ad;
+}
+
+.history-row .icon-delete-button {
+  width: 26px;
+  min-height: 24px;
+  padding: 0;
 }
 
 body[data-state="timing"] .app-shell > :not(.timer-band),

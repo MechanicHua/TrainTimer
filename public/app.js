@@ -3242,12 +3242,11 @@ function updateBluetoothGyro(gyro) {
     basisQuaternion.set(-basisQuaternion.x, -basisQuaternion.y, -basisQuaternion.z, -basisQuaternion.w);
   }
   if (!bluetoothGyroReferenceInverse) {
-    bluetoothGyroReferenceInverse = basisQuaternion.clone().invert();
-    if (cube3d?.targetQuaternion) cube3d.targetQuaternion.copy(cube3d.baseQuaternion);
-    addBluetoothLog('陀螺仪', '姿态已校准', '以当前魔方朝向作为 3D 模型参考方向');
+    bluetoothGyroReferenceInverse = new THREE.Quaternion();
+    addBluetoothLog('陀螺仪', '绝对姿态已同步', '白面/黄面朝上由 GAN q 参数直接驱动');
   }
   bluetoothGyroLastBasisQuaternion = basisQuaternion.clone();
-  const relativeQuaternion = bluetoothGyroReferenceInverse.clone().multiply(basisQuaternion);
+  const relativeQuaternion = basisQuaternion.clone();
   const displayQuaternion = cube3d
     ? cube3d.baseQuaternion.clone().multiply(relativeQuaternion)
     : relativeQuaternion;
@@ -3525,17 +3524,16 @@ function addBluetoothMoves(moves, source, protocol = '', deviceName = '') {
     elapsedMs,
   })).reverse());
   bluetoothMoves = bluetoothMoves.slice(0, 160);
+  updateBluetooth3dMove(latestMove);
   bluetoothSolved = updateBluetoothSolvedFromMoves(moves);
   bluetoothSolvedByStatePacket = false;
   if (appState === 'timing' && bluetoothSolved) {
     finishTimingFromBluetooth(moveReceivedAt);
     requestAnimationFrame(() => {
-      updateBluetooth3dMove(latestMove);
       renderBluetoothMoves();
     });
     return;
   }
-  updateBluetooth3dMove(latestMove);
   renderBluetoothMoves();
 }
 
@@ -3710,7 +3708,7 @@ function initBluetoothCube3d() {
   scene.add(group);
 
   const shell = new THREE.Mesh(
-    new THREE.BoxGeometry(2.12, 2.12, 2.12),
+    new THREE.BoxGeometry(2.075, 2.075, 2.075),
     new THREE.MeshBasicMaterial({
       color: 0x1d1d1f,
     }),
@@ -3718,13 +3716,13 @@ function initBluetoothCube3d() {
   group.add(shell);
 
   const edges = new THREE.LineSegments(
-    new THREE.EdgesGeometry(new THREE.BoxGeometry(2.11, 2.11, 2.11)),
-    new THREE.LineBasicMaterial({ color: 0x25262b, transparent: true, opacity: 0.24 }),
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(2.065, 2.065, 2.065)),
+    new THREE.LineBasicMaterial({ color: 0x25262b, transparent: true, opacity: 0.2 }),
   );
   group.add(edges);
 
   const stickers = new Map();
-  const stickerGeometry = new THREE.PlaneGeometry(0.67, 0.67);
+  const stickerGeometry = new THREE.PlaneGeometry(0.668, 0.668);
   for (const face of cube3dFaces) {
     for (let row = 0; row < 3; row += 1) {
       for (let col = 0; col < 3; col += 1) {
@@ -3769,8 +3767,8 @@ function initBluetoothCube3d() {
 }
 
 function applyCube3dStickerTransform(sticker, face, row, col) {
-  const spacing = 0.672;
-  const surface = 1.075;
+  const spacing = 0.676;
+  const surface = 1.046;
   const a = (col - 1) * spacing;
   const b = (1 - row) * spacing;
 
@@ -3813,7 +3811,7 @@ function animateBluetoothCube3d(time = performance.now()) {
   if (!cube3d) return;
   const visible = isBluetoothCube3dVisible();
   const activeMove = Boolean(cube3d.turnAnimation);
-  const interval = bluetoothGyro || activeMove ? 1000 / 60 : 1000 / 24;
+  const interval = bluetoothGyro || activeMove ? 1000 / 75 : 1000 / 30;
   if (!visible || time - cube3d.lastRenderAt < interval) {
     requestAnimationFrame(animateBluetoothCube3d);
     return;
@@ -3831,7 +3829,7 @@ function animateBluetoothCube3d(time = performance.now()) {
 function updateBluetoothCube3dPose(time) {
   const nextQuaternion = cube3d.group.quaternion.clone();
   if (bluetoothGyro) {
-    nextQuaternion.slerp(cube3d.targetQuaternion, 0.42);
+    nextQuaternion.slerp(cube3d.targetQuaternion, 0.62);
   } else {
     const seconds = time / 1000;
     nextQuaternion.copy(cube3d.baseQuaternion);
@@ -3971,7 +3969,7 @@ function triggerBluetoothCube3dTurnAnimation(move, options = {}) {
     axis: definition.axis,
     angle: direction * amount * Math.PI / 2,
     startedAt: performance.now(),
-    duration: suffix === '2' ? 260 : 170,
+    duration: suffix === '2' ? 190 : 125,
     stickers,
     onComplete: options.onComplete || null,
   };
@@ -4219,6 +4217,7 @@ function renderSessions() {
 function renderTimer() {
   document.body.dataset.state = appState;
   document.body.dataset.holdReady = appState === 'hold' && holdConfirmed ? 'true' : 'false';
+  document.body.dataset.focus = timerFocusActive() ? 'true' : 'false';
   elements.inspectionToggle.disabled = appState === 'timing' || appState === 'inspection' || appState === 'hold';
 
   if (appState === 'ready') {
@@ -4249,6 +4248,12 @@ function renderTimer() {
     elements.statusText.textContent = '已记录';
     elements.timerHint.textContent = 'Space 下一把 · O/2/D 快速改上一把';
   }
+}
+
+function timerFocusActive() {
+  return appState === 'timing'
+    || appState === 'inspection'
+    || (appState === 'hold' && holdReturnState === 'inspection');
 }
 
 function renderQuickActions() {
@@ -5632,17 +5637,15 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
 function renderDeleteSolveButton(solveId, label = '删除成绩') {
   return `
     <button class="icon-delete-button" data-delete-id="${escapeHtml(solveId)}" type="button" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">
-      ${trashIconSvg()}
+      ${deleteIconSvg()}
     </button>
   `;
 }
 
-function trashIconSvg() {
+function deleteIconSvg() {
   return `
     <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M9 3h6l1 2h4v2H4V5h4l1-2Z"></path>
-      <path d="M7 9h10l-.7 11H7.7L7 9Z"></path>
-      <path d="M10 11v7M14 11v7"></path>
+      <path d="M6 6l12 12M18 6L6 18"></path>
     </svg>
   `;
 }

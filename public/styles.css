@@ -1124,8 +1124,8 @@ body[data-state="timing"] .timer-display {
 
 .history-panel .history-head,
 .history-panel .history-row {
-  grid-template-columns: 22px minmax(64px, 0.88fr) 34px minmax(58px, 0.84fr) minmax(60px, 0.9fr) 44px;
-  gap: 3px;
+  grid-template-columns: 24px minmax(66px, 1fr) minmax(42px, 0.72fr) minmax(58px, 0.88fr) minmax(60px, 0.9fr) 34px;
+  gap: 5px;
 }
 
 .history-head {
@@ -1376,13 +1376,13 @@ body[data-state="timing"] .timer-display {
 }
 
 .icon-delete-button svg {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 1.8;
+  stroke-width: 2.4;
 }
 
 .action-row .icon-delete-button {
@@ -1396,19 +1396,15 @@ body[data-state="timing"] .timer-display {
   padding: 0;
 }
 
-body[data-state="timing"] .app-shell > :not(.timer-band),
-body[data-state="inspection"] .app-shell > :not(.timer-band),
-body[data-state="timing"] .timer-layout > :not(.timer-surface),
-body[data-state="inspection"] .timer-layout > :not(.timer-surface),
-body[data-state="timing"] .timer-surface > :not(.timer-display),
-body[data-state="inspection"] .timer-surface > :not(.timer-display) {
+body[data-focus="true"] .app-shell > :not(.timer-band),
+body[data-focus="true"] .timer-layout > :not(.timer-surface),
+body[data-focus="true"] .timer-surface > :not(.timer-display) {
   animation: none;
   opacity: 0.06;
   pointer-events: none;
 }
 
-body[data-state="timing"] .timer-display,
-body[data-state="inspection"] .timer-display {
+body[data-focus="true"] .timer-display {
   opacity: 1;
   filter: none;
 }
@@ -2497,12 +2493,8 @@ dialog[open] {
 
   .history-panel .history-head,
   .history-panel .history-row {
-    grid-template-columns: 28px minmax(82px, 1fr) 48px 54px 58px;
-  }
-
-  .history-panel .history-head span:nth-child(5),
-  .history-panel .history-row span:nth-child(5) {
-    display: none;
+    grid-template-columns: 24px minmax(64px, 1fr) 42px 58px 60px 34px;
+    gap: 4px;
   }
 
   .solve-detail-grid {

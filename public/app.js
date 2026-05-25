@@ -3170,9 +3170,9 @@ function updateBluetoothGyro(gyro) {
     addBluetoothLog('陀螺仪', '姿态已校准', '以当前魔方朝向作为 3D 模型参考方向');
   }
   bluetoothGyroLastBasisQuaternion = basisQuaternion.clone();
-  const relativeQuaternion = basisQuaternion.clone().multiply(bluetoothGyroReferenceInverse);
+  const relativeQuaternion = bluetoothGyroReferenceInverse.clone().multiply(basisQuaternion);
   const displayQuaternion = cube3d
-    ? cube3d.baseQuaternion.clone().premultiply(relativeQuaternion)
+    ? cube3d.baseQuaternion.clone().multiply(relativeQuaternion)
     : relativeQuaternion;
   const mappedVelocity = ganGyroVelocityToCube3dBasis(gyro.velocity || {});
   bluetoothGyro = {
@@ -4150,7 +4150,7 @@ function renderScrambleText() {
     return;
   }
 
-  if (!scrambleGuideSupported || scrambleGuideMoves.length === 0) {
+  if (!scrambleGuideSupported || !bluetoothScrambleGuideActive() || scrambleGuideMoves.length === 0) {
     elements.scrambleText.textContent = text;
     return;
   }
@@ -4186,6 +4186,10 @@ function renderScrambleGuideMeta() {
   elements.scrambleGuideMeta.classList.remove('error', 'complete');
   if (!scrambleGuideSupported) {
     elements.scrambleGuideMeta.textContent = '当前打乱类型暂不支持蓝牙校验';
+    return;
+  }
+  if (!bluetoothScrambleGuideActive()) {
+    elements.scrambleGuideMeta.textContent = '连接蓝牙魔方后启用打乱校验';
     return;
   }
   if (scrambleGuideCompleted) {
@@ -4262,11 +4266,15 @@ function scrambleMoveAtomicTokens(move) {
 }
 
 function scrambleGuideReadyHint() {
-  if (!scrambleGuideSupported || appState !== 'ready') return '';
+  if (!bluetoothScrambleGuideActive() || appState !== 'ready') return '';
   if (scrambleGuideCompleted) return '打乱完成，观察中转动魔方即可开始计时';
   if (scrambleGuideErrorIndex != null) return '打乱公式不匹配，请检查红色步骤';
   if (scrambleGuideCorrectPrefix > 0) return `继续打乱：${scrambleGuideCorrectPrefix}/${scrambleGuideMoves.length}`;
   return '转动蓝牙魔方开始打乱校验';
+}
+
+function bluetoothScrambleGuideActive() {
+  return scrambleGuideSupported && Boolean(bluetoothDevice?.gatt?.connected);
 }
 
 function handleBluetoothMovesForCurrentState(moves, source, protocol = '', deviceName = '') {

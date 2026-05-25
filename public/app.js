@@ -6347,7 +6347,10 @@ function renderHistory() {
   const listed = listedHistoryEntries(sessionSolves).slice(0, compactHistoryLimit);
   renderHistoryControls();
   elements.historyRows.replaceChildren(
-    ...listed.map((entry) => renderSolveRow(entry.solve, entry.index + 1, sessionSolves, { compact: true })),
+    ...listed.map((entry) => renderSolveRow(entry.solve, entry.index + 1, sessionSolves, {
+      compact: true,
+      metrics: solveRowMetrics(sessionSolves, entry.index, entry),
+    })),
   );
   requestAnimationFrame(updateHistoryRowsMask);
 }
@@ -6429,7 +6432,10 @@ function renderAllSolvesDialog() {
       const rowData = rowContext.get(solve.id);
       const solveSessionSolves = rowData?.sessionSolves || solvesForSession(solve.sessionId);
       const solveNumber = rowData ? rowData.index + 1 : solveSessionSolves.indexOf(solve) + 1;
-      return renderSolveRow(solve, solveNumber, solveSessionSolves, { showSession: allSessionsEnabled });
+      return renderSolveRow(solve, solveNumber, solveSessionSolves, {
+        showSession: allSessionsEnabled,
+        metrics: rowData?.metrics,
+      });
     }),
   );
   if (listedSolves.length === 0) {
@@ -6445,11 +6451,18 @@ function renderAllSolvesDialog() {
 
 function solveRowRenderContext(rows) {
   const sessionIds = [...new Set(rows.map((solve) => solve.sessionId || 'default'))];
+  const rowIds = new Set(rows.map((solve) => solve.id));
   const context = new Map();
   for (const sessionId of sessionIds) {
     const sessionSolves = solvesForSession(sessionId);
     sessionSolves.forEach((solve, index) => {
-      context.set(solve.id, { sessionSolves, index });
+      if (rowIds.has(solve.id)) {
+        context.set(solve.id, {
+          sessionSolves,
+          index,
+          metrics: solveRowMetrics(sessionSolves, index),
+        });
+      }
     });
   }
   return context;
@@ -6491,11 +6504,20 @@ function renderAllSolvesTagFilter(baseSolves) {
     : 'all';
 }
 
+function solveRowMetrics(sessionSolves, solveIndex, seed = {}) {
+  return {
+    ao5: Object.hasOwn(seed, 'ao5') ? seed.ao5 : rollingAverageAt(sessionSolves, solveIndex, 5),
+    ao12: Object.hasOwn(seed, 'ao12') ? seed.ao12 : rollingAverageAt(sessionSolves, solveIndex, 12),
+    recordMarks: Object.hasOwn(seed, 'recordMarks') ? seed.recordMarks : recordMarksAt(sessionSolves, solveIndex),
+  };
+}
+
 function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
   const solveIndex = Math.max(0, solveNumber - 1);
-  const ao5 = rollingAverageAt(sessionSolves, solveIndex, 5);
-  const ao12 = rollingAverageAt(sessionSolves, solveIndex, 12);
-  const recordMarks = recordMarksAt(sessionSolves, solveIndex);
+  const metrics = options.metrics || solveRowMetrics(sessionSolves, solveIndex);
+  const ao5 = metrics.ao5;
+  const ao12 = metrics.ao12;
+  const recordMarks = metrics.recordMarks || [];
   const singleMarks = recordMarks.filter((mark) => mark.type === 'single').slice(0, 1);
   const ao5Marks = recordMarks.filter((mark) => mark.type === 'ao5').slice(0, 1);
   const ao12Marks = recordMarks.filter((mark) => mark.type === 'ao12').slice(0, 1);

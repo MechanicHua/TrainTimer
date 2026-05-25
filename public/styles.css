@@ -484,6 +484,7 @@ body[data-state="timing"] .timer-display {
 }
 
 .stats-panel div {
+  position: relative;
   display: flex;
   min-height: 48px;
   min-width: 0;
@@ -497,6 +498,57 @@ body[data-state="timing"] .timer-display {
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.055);
   backdrop-filter: blur(16px) saturate(1.1);
+}
+
+.stats-panel .session-progress-stat {
+  cursor: pointer;
+  transition: background-color 160ms var(--ease), transform 160ms var(--ease);
+}
+
+.stats-panel .session-progress-stat:hover,
+.stats-panel .session-progress-stat:focus-visible {
+  background: rgba(0, 173, 181, 0.12);
+  outline: 0;
+  transform: translateY(-1px);
+}
+
+.stats-panel .session-progress-stat em {
+  max-width: 100%;
+  overflow: hidden;
+  color: rgba(199, 199, 204, 0.72);
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 680;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-panel .session-progress-stat.done em {
+  color: #8dffbe;
+}
+
+.stats-panel .session-progress-stat i {
+  position: absolute;
+  right: 8px;
+  bottom: 5px;
+  left: 8px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.stats-panel .session-progress-stat i::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), #8dffbe);
+  content: "";
+  transform: scaleX(var(--session-goal-progress, 0));
+  transform-origin: left center;
+  transition: transform 220ms var(--ease);
 }
 
 .stats-panel span {

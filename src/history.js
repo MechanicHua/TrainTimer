@@ -4,7 +4,7 @@ import { homedir } from 'node:os';
 import { averageOfLast, bestAverageOf, bestMeanOf, meanOfLast } from './rolling-averages.js';
 
 const defaultHistoryPath = join(homedir(), '.train-timer', 'solves.json');
-const defaultSession = { id: 'default', name: '默认', scramblePuzzle: 'three' };
+const defaultSession = { id: 'default', name: '默认', scramblePuzzle: 'three', targetCount: null };
 
 export function getHistoryPath() {
   return process.env.TRAIN_TIMER_HISTORY || defaultHistoryPath;
@@ -104,7 +104,12 @@ export async function clearSolves(historyPath = getHistoryPath()) {
 
 export async function createSession(name, historyPath = getHistoryPath(), options = {}) {
   const history = await loadHistory(historyPath);
-  const session = normalizeSession({ id: randomId('session'), name, scramblePuzzle: options.scramblePuzzle });
+  const session = normalizeSession({
+    id: randomId('session'),
+    name,
+    scramblePuzzle: options.scramblePuzzle,
+    targetCount: options.targetCount,
+  });
   const nextHistory = normalizeHistory({
     ...history,
     sessions: [...history.sessions, session],
@@ -123,6 +128,7 @@ export async function duplicateSession(id, name, historyPath = getHistoryPath())
     id: randomId('session'),
     name: typeof name === 'string' && name.trim() ? name : `${sourceSession.name} 副本`,
     scramblePuzzle: sourceSession.scramblePuzzle,
+    targetCount: sourceSession.targetCount,
   });
   const copiedSolves = history.solves
     .filter((solve) => solve.sessionId === sourceSessionId)
@@ -498,7 +504,14 @@ function normalizeSession(session) {
   const scramblePuzzle = typeof session.scramblePuzzle === 'string' && session.scramblePuzzle
     ? session.scramblePuzzle
     : 'three';
-  return { id, name, scramblePuzzle };
+  const targetCount = normalizeSessionTargetCount(session.targetCount);
+  return { id, name, scramblePuzzle, targetCount };
+}
+
+function normalizeSessionTargetCount(value) {
+  const count = Number(value);
+  if (!Number.isInteger(count) || count <= 0 || count > 9999) return null;
+  return count;
 }
 
 function dedupeSolveId(solve, usedIds) {

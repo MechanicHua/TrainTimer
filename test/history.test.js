@@ -187,23 +187,31 @@ test('duplicates a session with copied solve ids and metadata', async () => {
   assert.equal(await duplicateSession('missing-session', 'missing', file), null);
 });
 
-test('stores session scramble puzzle preferences', async () => {
+test('stores session preferences', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'train-timer-'));
   const file = join(dir, 'solves.json');
 
-  const created = await createSession('2x2', file, { scramblePuzzle: 'two' });
+  const created = await createSession('2x2', file, { scramblePuzzle: 'two', targetCount: 40 });
   assert.equal(created.session.scramblePuzzle, 'two');
+  assert.equal(created.session.targetCount, 40);
 
-  const updated = await updateSession(created.session.id, { scramblePuzzle: 'four' }, file);
+  const updated = await updateSession(created.session.id, { scramblePuzzle: 'four', targetCount: 100 }, file);
   assert.equal(updated.session.scramblePuzzle, 'four');
+  assert.equal(updated.session.targetCount, 100);
 
   const duplicated = await duplicateSession(created.session.id, '4x4 备份', file);
   assert.equal(duplicated.session.scramblePuzzle, 'four');
+  assert.equal(duplicated.session.targetCount, 100);
 
   const history = await loadHistory(file);
   assert.equal(history.sessions.find((session) => session.id === 'default').scramblePuzzle, 'three');
+  assert.equal(history.sessions.find((session) => session.id === 'default').targetCount, null);
   assert.equal(history.sessions.find((session) => session.id === created.session.id).scramblePuzzle, 'four');
-  assert.equal(await updateSession('missing-session', { scramblePuzzle: 'two' }, file), null);
+  assert.equal(history.sessions.find((session) => session.id === created.session.id).targetCount, 100);
+
+  const cleared = await updateSession(created.session.id, { targetCount: null }, file);
+  assert.equal(cleared.session.targetCount, null);
+  assert.equal(await updateSession('missing-session', { scramblePuzzle: 'two', targetCount: 20 }, file), null);
 });
 
 test('merges a non-default session into another session', async () => {

@@ -270,7 +270,10 @@ const elements = {
   lastPlusTwoButton: document.querySelector('#lastPlusTwoButton'),
   lastDnfButton: document.querySelector('#lastDnfButton'),
   lastDeleteButton: document.querySelector('#lastDeleteButton'),
+  sessionGoalButton: document.querySelector('#sessionGoalButton'),
   countStat: document.querySelector('#countStat'),
+  sessionGoalStat: document.querySelector('#sessionGoalStat'),
+  sessionGoalBar: document.querySelector('#sessionGoalBar'),
   bestStat: document.querySelector('#bestStat'),
   averageStat: document.querySelector('#averageStat'),
   mo3Stat: document.querySelector('#mo3Stat'),
@@ -642,6 +645,13 @@ elements.importButton.addEventListener('click', () => elements.importFile.click(
 elements.importFile.addEventListener('change', importSolves);
 elements.appendImportButton.addEventListener('click', () => confirmImport('append'));
 elements.replaceImportButton.addEventListener('click', () => confirmImport('replace'));
+elements.sessionGoalButton.addEventListener('click', openSessionGoalPrompt);
+elements.sessionGoalButton.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  event.stopPropagation();
+  openSessionGoalPrompt();
+});
 elements.statsDetailButton.addEventListener('click', openStatsDialog);
 elements.statsChartModeButtons.forEach((button) => {
   button.addEventListener('click', () => {
@@ -1167,6 +1177,53 @@ async function changeScramblePuzzle() {
     return;
   }
   await loadScramble();
+}
+
+async function openSessionGoalPrompt() {
+  const currentSession = sessions.find((session) => session.id === currentSessionId);
+  if (!currentSession) return;
+
+  const currentTarget = sessionTargetCountForId(currentSessionId);
+  const input = prompt(
+    `设置“${currentSession.name}”的本会话目标次数。留空可清除目标。`,
+    currentTarget == null ? '' : String(currentTarget),
+  );
+  if (input === null) return;
+
+  const trimmed = input.trim();
+  const nextTarget = trimmed === '' ? null : normalizeSessionTargetCount(trimmed);
+  if (trimmed !== '' && nextTarget == null) {
+    alert('请输入 1 到 9999 之间的整数。');
+    return;
+  }
+
+  const previousTarget = currentTarget;
+  updateLocalSession(currentSessionId, { targetCount: nextTarget });
+  renderStats();
+
+  try {
+    const data = await requestJson(`/api/sessions/${encodeURIComponent(currentSessionId)}`, {
+      method: 'PATCH',
+      body: { targetCount: nextTarget },
+    });
+    sessions = data.sessions;
+    render();
+  } catch (error) {
+    updateLocalSession(currentSessionId, { targetCount: previousTarget });
+    renderStats();
+    alert(`保存会话目标失败：${error.message}`);
+  }
+}
+
+function sessionTargetCountForId(sessionId) {
+  const session = sessions.find((item) => item.id === sessionId);
+  return normalizeSessionTargetCount(session?.targetCount);
+}
+
+function normalizeSessionTargetCount(value) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number <= 0 || number > 9999) return null;
+  return number;
 }
 
 function canToggleScrambleLock() {
@@ -5336,6 +5393,7 @@ function renderStats() {
   const dnfCount = sessionSolves.filter((solve) => solve.penalty === 'dnf').length;
   const successCount = sessionSolves.length - dnfCount;
   elements.countStat.textContent = `${successCount}/${sessionSolves.length}`;
+  renderSessionGoalProgress(successCount, sessionSolves.length);
   elements.bestStat.textContent = sessionSummary.best == null ? '-' : formatTime(sessionSummary.best);
   elements.averageStat.textContent = sessionSummary.average == null ? '-' : formatTime(sessionSummary.average);
   elements.mo3Stat.textContent = sessionSummary.mo3 == null ? '-' : formatTime(sessionSummary.mo3);
@@ -5346,6 +5404,23 @@ function renderStats() {
   elements.bestAo12Stat.textContent = sessionSummary.bestAo12 == null ? '-' : formatTime(sessionSummary.bestAo12);
   elements.latestStat.textContent = sessionSummary.latest == null ? '-' : formatTime(sessionSummary.latest);
   elements.statsDetailButton.disabled = sessionSummary.count === 0;
+}
+
+function renderSessionGoalProgress(successCount, totalCount) {
+  const goal = sessionTargetCountForId(currentSessionId);
+  const progress = goal == null ? 0 : Math.min(1, successCount / goal);
+  const done = goal != null && successCount >= goal;
+  const label = goal == null
+    ? '设目标'
+    : `${done ? '达成' : '目标'} ${goal} · ${Math.round(progress * 100)}%`;
+
+  elements.sessionGoalStat.textContent = label;
+  elements.sessionGoalButton.classList.toggle('done', done);
+  elements.sessionGoalButton.title = goal == null
+    ? `本会话 ${successCount}/${totalCount}，点击设置目标`
+    : `本会话 ${successCount}/${totalCount}，目标 ${goal}，完成 ${Math.round(progress * 100)}%`;
+  elements.sessionGoalButton.setAttribute('aria-label', elements.sessionGoalButton.title);
+  elements.sessionGoalBar.style.setProperty('--session-goal-progress', progress.toFixed(3));
 }
 
 function openAlgorithmTrainerDialog() {

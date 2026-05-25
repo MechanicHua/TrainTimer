@@ -156,6 +156,7 @@ async function handleApi(request, response) {
     const body = await readJsonBody(request);
     const result = await createSession(String(body.name || '新会话'), undefined, {
       scramblePuzzle: String(body.scramblePuzzle || 'three'),
+      targetCount: body.targetCount,
     });
     sendJson(response, 201, {
       session: result.session,
@@ -209,6 +210,7 @@ async function handleApi(request, response) {
     const updates = {};
     if (Object.hasOwn(body, 'name')) updates.name = String(body.name || id);
     if (Object.hasOwn(body, 'scramblePuzzle')) updates.scramblePuzzle = String(body.scramblePuzzle || 'three');
+    if (Object.hasOwn(body, 'targetCount')) updates.targetCount = body.targetCount;
     const result = await updateSession(id, updates);
     if (!result) {
       sendJson(response, 404, { error: 'Session not found' });

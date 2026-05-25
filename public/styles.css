@@ -595,6 +595,10 @@ body[data-state="timing"] .timer-display {
   font-weight: 650;
 }
 
+.scramble-guide-meta:empty {
+  display: none;
+}
+
 .scramble-guide-meta.error {
   color: #ffb4ad;
 }

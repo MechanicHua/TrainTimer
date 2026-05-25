@@ -4220,11 +4220,11 @@ function scrambleMoveTitle(index, move) {
 function renderScrambleGuideMeta() {
   elements.scrambleGuideMeta.classList.remove('error', 'complete');
   if (!scrambleGuideSupported) {
-    elements.scrambleGuideMeta.textContent = '当前打乱类型暂不支持蓝牙校验';
+    elements.scrambleGuideMeta.textContent = '';
     return;
   }
   if (!bluetoothScrambleGuideActive()) {
-    elements.scrambleGuideMeta.textContent = '连接蓝牙魔方后启用打乱校验';
+    elements.scrambleGuideMeta.textContent = '';
     return;
   }
   if (scrambleGuideCompleted) {

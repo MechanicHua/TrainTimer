@@ -617,6 +617,7 @@ body[data-state="timing"] .timer-display {
 .bluetooth-feed-row {
   display: grid;
   grid-template-columns: 58px 82px minmax(0, 1fr);
+  flex: 0 0 auto;
   gap: 2px 8px;
   align-items: start;
   min-height: 0;
@@ -672,7 +673,7 @@ body[data-state="timing"] .timer-display {
 }
 
 .bluetooth-feed-row .feed-detail {
-  grid-column: 3;
+  grid-column: 1 / -1;
   color: #cbd5e1;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -901,11 +902,11 @@ body[data-state="timing"] .timer-display {
 .history-head,
 .history-row {
   display: grid;
-  grid-template-columns: 20px 26px minmax(86px, 1.15fr) 54px minmax(62px, 0.8fr) minmax(62px, 0.8fr) 56px 74px;
-  gap: 6px;
+  grid-template-columns: 18px 22px minmax(62px, 1fr) 38px 48px 48px 42px 62px;
+  gap: 4px;
   align-items: center;
   min-height: 37px;
-  padding: 0 7px;
+  padding: 0 6px;
 }
 
 .history-head {
@@ -1067,14 +1068,14 @@ body[data-state="timing"] .timer-display {
 }
 
 .history-row select {
-  width: 56px;
+  width: 42px;
   border: 1px solid var(--line-soft);
   background: rgba(255, 255, 255, 0.82);
   color: var(--ink);
 }
 
 .history-row button {
-  padding: 0 6px;
+  padding: 0 5px;
 }
 
 .history-row .average-detail-button {
@@ -1091,7 +1092,7 @@ body[data-state="timing"] .timer-display {
 .row-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 4px;
+  gap: 2px;
 }
 
 .row-actions button {
@@ -1410,7 +1411,7 @@ dialog[open] {
 
 .all-solves-table .history-head,
 .all-solves-table .history-row {
-  grid-template-columns: 28px 44px 86px 76px 76px 78px minmax(170px, 1fr) 96px;
+  grid-template-columns: 28px 40px minmax(86px, 1fr) 64px 72px 72px 58px 78px;
 }
 
 .history-empty {

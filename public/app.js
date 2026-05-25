@@ -1774,11 +1774,12 @@ function startSolveReplay() {
   const records = solveMoveRecords(solve);
   if (records.length === 0) return;
   clearTimeout(solveReplayTimer);
+  completeBluetoothCube3dTurnAnimation(false);
   solveReplayPlaying = true;
-  solveReplayStep = solveReplayStep >= 0 && solveReplayStep < records.length - 1 ? solveReplayStep : -1;
+  solveReplayStep = solveReplayStep >= 0 && solveReplayStep < records.length ? solveReplayStep : -1;
   elements.solveReplayButton.textContent = '暂停';
   showSolveReplayPreview(solve, Math.max(0, solveReplayStep + 1));
-  advanceSolveReplay(solve, records);
+  solveReplayTimer = window.setTimeout(() => advanceSolveReplay(solve, records), 120);
 }
 
 function advanceSolveReplay(solve, records) {

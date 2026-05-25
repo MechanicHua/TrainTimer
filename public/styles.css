@@ -473,9 +473,9 @@ body[data-state="timing"] .timer-display {
   min-width: 0;
   align-self: stretch;
   padding: 78px 0 0;
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.018);
-  opacity: 0.82;
+  border-radius: 0;
+  background: transparent;
+  opacity: 0.86;
   mask-image: linear-gradient(to bottom, transparent 0, black 34px, black 86%, transparent 100%);
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 34px, black 86%, transparent 100%);
 }
@@ -487,9 +487,9 @@ body[data-state="timing"] .timer-display {
   flex-direction: column;
   align-self: stretch;
   padding: 78px 0 0;
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.026);
-  opacity: 0.86;
+  border-radius: 0;
+  background: transparent;
+  opacity: 0.9;
   backdrop-filter: none;
 }
 
@@ -621,10 +621,10 @@ body[data-state="timing"] .timer-display {
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
-  padding: 10px 12px;
+  padding: 10px 8px 0;
   border: 0;
-  border-radius: var(--radius);
-  background: rgba(3, 8, 14, 0.54);
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(3, 8, 14, 0.36) 0%, rgba(3, 8, 14, 0.14) 70%, transparent 100%);
   box-shadow: none;
   backdrop-filter: blur(16px) saturate(1.06);
 }
@@ -787,10 +787,10 @@ body[data-state="timing"] .timer-display {
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 8px;
   overflow: hidden;
-  padding: 11px;
+  padding: 8px 0;
   border: 0;
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.04);
+  border-radius: 0;
+  background: transparent;
   box-shadow: none;
   backdrop-filter: blur(20px) saturate(1.28);
   pointer-events: none;
@@ -971,7 +971,7 @@ body[data-state="timing"] .timer-display {
 }
 
 .history-head {
-  background: rgba(255, 255, 255, 0.025);
+  background: transparent;
   color: rgba(199, 199, 204, 0.62);
   font-size: 12px;
   font-weight: 720;

@@ -341,6 +341,7 @@ const elements = {
   algorithmTrainerGroupFilter: document.querySelector('#algorithmTrainerGroupFilter'),
   algorithmTrainerSearch: document.querySelector('#algorithmTrainerSearch'),
   algorithmTrainerAddButton: document.querySelector('#algorithmTrainerAddButton'),
+  algorithmTrainerEditButton: document.querySelector('#algorithmTrainerEditButton'),
   algorithmTrainerDeleteButton: document.querySelector('#algorithmTrainerDeleteButton'),
   algorithmTrainerExportButton: document.querySelector('#algorithmTrainerExportButton'),
   algorithmTrainerImportButton: document.querySelector('#algorithmTrainerImportButton'),
@@ -713,6 +714,7 @@ elements.algorithmTrainerStarButton.addEventListener('click', toggleAlgorithmTra
 elements.algorithmTrainerCopySetupButton.addEventListener('click', copyAlgorithmTrainerSetup);
 elements.algorithmTrainerApplySetupButton.addEventListener('click', applyAlgorithmTrainerSetupToTimer);
 elements.algorithmTrainerAddButton.addEventListener('click', addAlgorithmTrainerCustomCase);
+elements.algorithmTrainerEditButton.addEventListener('click', editAlgorithmTrainerCustomCase);
 elements.algorithmTrainerDeleteButton.addEventListener('click', deleteAlgorithmTrainerCustomCase);
 elements.algorithmTrainerExportButton.addEventListener('click', exportAlgorithmTrainerCustomCases);
 elements.algorithmTrainerImportButton.addEventListener('click', () => elements.algorithmTrainerImportFile.click());
@@ -5864,7 +5866,9 @@ function renderAlgorithmTrainerDialog() {
     : (current?.hint || '选择随机下一条开始练习'));
   const currentStats = algorithmTrainerStats[current?.id] || { success: 0, total: 0, streak: 0 };
   elements.algorithmTrainerScore.textContent = algorithmTrainerProgressText(currentStats);
-  elements.algorithmTrainerDeleteButton.disabled = current?.set !== 'custom';
+  const customSelected = current?.set === 'custom';
+  elements.algorithmTrainerEditButton.disabled = !customSelected;
+  elements.algorithmTrainerDeleteButton.disabled = !customSelected;
   elements.algorithmTrainerExportButton.disabled = algorithmTrainerCustomCases.length === 0;
   renderAlgorithmTrainerStarButton(current);
   renderAlgorithmTrainerSetup(current);
@@ -6184,6 +6188,50 @@ function addAlgorithmTrainerCustomCase() {
   algorithmTrainerCurrentId = item.id;
   localStorage.setItem('trainTimer.algorithmTrainerSet', algorithmTrainerSet);
   localStorage.setItem('trainTimer.algorithmTrainerFocus', algorithmTrainerFocus);
+  localStorage.setItem('trainTimer.algorithmTrainerCurrentId', algorithmTrainerCurrentId);
+  renderAlgorithmTrainerDialog();
+}
+
+function editAlgorithmTrainerCustomCase() {
+  const current = algorithmTrainerCurrentCase();
+  if (!current || current.set !== 'custom') return;
+
+  const name = prompt('编辑公式名称。', current.name || '');
+  if (name === null) return;
+  const cleanName = name.trim();
+  if (!cleanName) return;
+
+  const algorithm = prompt('编辑公式。', current.algorithm || '');
+  if (algorithm === null) return;
+  const cleanAlgorithm = algorithm.trim().replace(/\s+/g, ' ');
+  if (!cleanAlgorithm) return;
+
+  const group = prompt('编辑分组名称，可留空。', current.group || 'Custom');
+  if (group === null) return;
+  const hint = prompt('编辑提示或识别要点，可留空。', current.hint || '');
+  if (hint === null) return;
+
+  const updated = {
+    ...current,
+    name: cleanName.slice(0, 80),
+    group: (group.trim() || 'Custom').slice(0, 80),
+    algorithm: cleanAlgorithm.slice(0, 220),
+    hint: hint.trim().slice(0, 160),
+  };
+  const duplicate = algorithmTrainerCustomCases.some((item) => (
+    item.id !== current.id && algorithmTrainerCustomCaseKey(item) === algorithmTrainerCustomCaseKey(updated)
+  ));
+  if (duplicate) {
+    alert('已存在相同名称、分组和公式的自定义公式。');
+    return;
+  }
+
+  cancelAlgorithmTrainerTimer();
+  algorithmTrainerCustomCases = algorithmTrainerCustomCases.map((item) => (
+    item.id === current.id ? updated : item
+  ));
+  saveAlgorithmTrainerCustomCases();
+  algorithmTrainerCurrentId = updated.id;
   localStorage.setItem('trainTimer.algorithmTrainerCurrentId', algorithmTrainerCurrentId);
   renderAlgorithmTrainerDialog();
 }

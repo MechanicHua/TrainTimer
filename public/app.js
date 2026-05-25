@@ -22,7 +22,8 @@ const historyBottomFadeRangePx = 180;
 const cube3dActiveFrameMs = 0;
 const cube3dIdleFrameMs = 1000 / 30;
 const cube3dGyroActiveWindowMs = 900;
-const cube3dGyroSmoothingMs = 7;
+const cube3dGyroSmoothingMs = 12;
+const cube3dPoseEpsilon = 0.00005;
 const cube3dTelemetryFrameMs = 1000 / 15;
 const cube3dTurnDurationMs = 96;
 const cube3dDoubleTurnDurationMs = 136;
@@ -41,6 +42,7 @@ const statsChartLabels = {
 const algorithmTrainerSetLabels = {
   pll: 'PLL',
   oll2: '2-Look OLL',
+  custom: 'Custom',
 };
 const algorithmTrainerFocusLabels = {
   all: '全部',
@@ -327,6 +329,8 @@ const elements = {
   algorithmTrainerMeta: document.querySelector('#algorithmTrainerMeta'),
   algorithmTrainerSet: document.querySelector('#algorithmTrainerSet'),
   algorithmTrainerFocus: document.querySelector('#algorithmTrainerFocus'),
+  algorithmTrainerAddButton: document.querySelector('#algorithmTrainerAddButton'),
+  algorithmTrainerDeleteButton: document.querySelector('#algorithmTrainerDeleteButton'),
   algorithmTrainerNextButton: document.querySelector('#algorithmTrainerNextButton'),
   algorithmTrainerResetButton: document.querySelector('#algorithmTrainerResetButton'),
   algorithmTrainerName: document.querySelector('#algorithmTrainerName'),
@@ -537,8 +541,9 @@ if (!['single', 'tps', 'ao5', 'ao12'].includes(historySortKey) || !['asc', 'desc
   historySortKey = '';
   historySortDirection = '';
 }
+let algorithmTrainerCustomCases = loadAlgorithmTrainerCustomCases();
 let algorithmTrainerSet = localStorage.getItem('trainTimer.algorithmTrainerSet') || 'pll';
-if (!algorithmTrainerCases.some((item) => item.set === algorithmTrainerSet)) algorithmTrainerSet = 'pll';
+if (!algorithmTrainerAllCases().some((item) => item.set === algorithmTrainerSet)) algorithmTrainerSet = 'pll';
 let algorithmTrainerFocus = localStorage.getItem('trainTimer.algorithmTrainerFocus') || 'all';
 if (!Object.hasOwn(algorithmTrainerFocusLabels, algorithmTrainerFocus)) algorithmTrainerFocus = 'all';
 let algorithmTrainerCurrentId = localStorage.getItem('trainTimer.algorithmTrainerCurrentId') || '';
@@ -583,6 +588,8 @@ let bluetoothSolved = false;
 let bluetoothSolvedByStatePacket = false;
 let bluetoothSolveCube = null;
 let bluetoothSolveCubeValid = false;
+let bluetoothMoveDerivedFaces = null;
+let bluetoothMoveDerivedStateTime = 0;
 let bluetoothGyro = null;
 let bluetoothGyroLastUpdateAt = 0;
 let bluetoothGyroReferenceInverse = null;
@@ -592,6 +599,7 @@ let bluetoothLastMoveText = '-';
 let bluetoothPhysicalFacelets = '';
 let bluetoothPhysicalFaces = null;
 let bluetoothPhysicalStateTime = '';
+let bluetoothPhysicalStateReceivedAt = 0;
 let bluetoothMovesRenderKey = '';
 let bluetoothStatePreviewRenderKey = '';
 let bluetoothBatteryLevel = null;
@@ -600,6 +608,8 @@ let bluetoothGanSession = null;
 let bluetoothGanMacReadPromise = null;
 let bluetoothGanPendingInit = null;
 let bluetoothGanLastMoveCounter = null;
+let bluetoothGanPacketSequence = 0;
+let bluetoothGanLatestAppliedGyroSequence = 0;
 let bluetoothGanDecodeWarning = '';
 let bluetoothGanMacPromptAllowed = true;
 let lastBluetoothMovePacketSignature = '';
@@ -646,6 +656,7 @@ elements.scrambleLockButton.addEventListener('click', toggleScrambleLock);
 elements.algorithmTrainerButton.addEventListener('click', openAlgorithmTrainerDialog);
 elements.algorithmTrainerSet.addEventListener('change', () => {
   algorithmTrainerSet = elements.algorithmTrainerSet.value || 'pll';
+  if (!Object.hasOwn(algorithmTrainerSetLabels, algorithmTrainerSet)) algorithmTrainerSet = 'pll';
   localStorage.setItem('trainTimer.algorithmTrainerSet', algorithmTrainerSet);
   chooseNextAlgorithmTrainerCase();
 });
@@ -659,6 +670,8 @@ elements.algorithmTrainerNextButton.addEventListener('click', chooseNextAlgorith
 elements.algorithmTrainerPassButton.addEventListener('click', () => recordAlgorithmTrainerResult(true));
 elements.algorithmTrainerFailButton.addEventListener('click', () => recordAlgorithmTrainerResult(false));
 elements.algorithmTrainerTimerButton.addEventListener('click', toggleAlgorithmTrainerTimer);
+elements.algorithmTrainerAddButton.addEventListener('click', addAlgorithmTrainerCustomCase);
+elements.algorithmTrainerDeleteButton.addEventListener('click', deleteAlgorithmTrainerCustomCase);
 elements.algorithmTrainerResetButton.addEventListener('click', resetAlgorithmTrainerStats);
 elements.bluetoothButton.addEventListener('click', () => connectBluetoothCube());
 elements.bluetoothAnyButton.addEventListener('click', () => connectBluetoothCube({ compatibilityMode: true }));
@@ -3428,6 +3441,7 @@ async function processBluetoothPacket(uuid, value, deviceName) {
 }
 
 async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
+  const packetSequence = ++bluetoothGanPacketSequence;
   const packetReceivedAt = performance.now();
   const protocol = bluetoothGanSession || bluetoothGanProtocolForCharacteristic(uuid) || bluetoothGanProtocolForDevice(deviceName);
   if (!protocol) {
@@ -3482,6 +3496,10 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
   const stoppedFromMoves = wasTimingBeforeMoves && appState !== 'timing' && bluetoothSolved;
   const solvedByStatePacket = stoppedFromStatePacket || markGanBluetoothStateSolved(decoded);
   const gyroOnlyPacket = isGanGyroOnlyPacket(decoded, parsedMoves);
+  if (gyroOnlyPacket) {
+    if (packetSequence < bluetoothGanLatestAppliedGyroSequence) return;
+    bluetoothGanLatestAppliedGyroSequence = packetSequence;
+  }
   const updatePacketUi = () => {
     if (decoded.batteryLevel != null) updateBluetoothBattery(decoded.batteryLevel, decoded.protocol || protocol.label);
     if (decoded.gyro) updateBluetoothGyro(decoded.gyro);
@@ -3711,6 +3729,7 @@ function updateBluetoothPhysicalState(decoded, options = {}) {
   bluetoothPhysicalFacelets = decoded.facelets;
   bluetoothPhysicalFaces = faces;
   bluetoothPhysicalStateTime = new Date().toISOString();
+  bluetoothPhysicalStateReceivedAt = performance.now();
   if (options.render === false) {
     if (changed) renderBluetoothCube3dLiveFaces(faces);
     return faces;
@@ -3730,6 +3749,7 @@ function resetBluetoothPhysicalState() {
   bluetoothPhysicalFacelets = '';
   bluetoothPhysicalFaces = null;
   bluetoothPhysicalStateTime = '';
+  bluetoothPhysicalStateReceivedAt = 0;
   renderPreviewMode();
 }
 
@@ -3961,12 +3981,16 @@ function addBluetoothMoves(moves, source, protocol = '', deviceName = '') {
 function initializeBluetoothSolveCube() {
   bluetoothSolveCube = null;
   bluetoothSolveCubeValid = false;
+  bluetoothMoveDerivedFaces = null;
+  bluetoothMoveDerivedStateTime = 0;
   if (!scramble?.scramble || (scramble.puzzle || scramblePuzzle) !== 'three') return;
   try {
     const cube = createSolvedCube();
     for (const move of parseScramble(scramble.scramble)) applyMove(cube, move);
     bluetoothSolveCube = cube;
     bluetoothSolveCubeValid = true;
+    bluetoothMoveDerivedFaces = facesFromCube(bluetoothSolveCube);
+    bluetoothMoveDerivedStateTime = performance.now();
   } catch (error) {
     addBluetoothLog('警告', '蓝牙复原状态初始化失败', error.message || String(error));
   }
@@ -3979,9 +4003,14 @@ function updateBluetoothSolvedFromMoves(moves) {
         const move = parseScramble(moveText)[0];
         applyMove(bluetoothSolveCube, move);
       }
-      return isSolvedFaces(facesFromCube(bluetoothSolveCube));
+      const faces = facesFromCube(bluetoothSolveCube);
+      bluetoothMoveDerivedFaces = faces;
+      bluetoothMoveDerivedStateTime = performance.now();
+      return isSolvedFaces(faces);
     } catch (error) {
       bluetoothSolveCubeValid = false;
+      bluetoothMoveDerivedFaces = null;
+      bluetoothMoveDerivedStateTime = 0;
       addBluetoothLog('警告', '蓝牙增量复原判定失败，已回退完整判定', error.message || String(error));
     }
   }
@@ -4062,6 +4091,8 @@ function resetBluetoothSolveTracking() {
   bluetoothSolvedByStatePacket = false;
   bluetoothSolveCube = null;
   bluetoothSolveCubeValid = false;
+  bluetoothMoveDerivedFaces = null;
+  bluetoothMoveDerivedStateTime = 0;
   updateBluetooth3dMove('-');
   renderBluetoothMoves();
 }
@@ -4070,8 +4101,13 @@ function isBluetoothSolved() {
   if (!scramble?.scramble || bluetoothMoves.length === 0) return false;
   try {
     const moves = bluetoothMoves.slice().reverse().map((entry) => entry.move).join(' ');
-    return isSolvedFaces(cubeStateFromScramble(`${scramble.scramble} ${moves}`));
+    const faces = cubeStateFromScramble(`${scramble.scramble} ${moves}`);
+    bluetoothMoveDerivedFaces = faces;
+    bluetoothMoveDerivedStateTime = performance.now();
+    return isSolvedFaces(faces);
   } catch (error) {
+    bluetoothMoveDerivedFaces = null;
+    bluetoothMoveDerivedStateTime = 0;
     addBluetoothLog('警告', '蓝牙转动无法应用到当前打乱', error.message || String(error));
     return false;
   }
@@ -4083,12 +4119,15 @@ function renderBluetoothStatePreview() {
   bluetoothStatePreviewRenderKey = renderKey;
 
   elements.bluetoothStateNet.replaceChildren();
-  if (bluetoothPhysicalFaces && bluetoothLivePreviewMode()) {
-    const solved = isSolvedFaces(bluetoothPhysicalFaces);
-    const metaText = `GAN 实时状态 · ${solved ? '已复原' : '未复原'}`;
-    renderCubeFacesNet(elements.bluetoothStateNet, bluetoothPhysicalFaces, 'bluetooth-state-net');
+  const liveFaces = bluetooth3dPreferredLiveFaces();
+  if (liveFaces && bluetoothLivePreviewMode()) {
+    const solved = isSolvedFaces(liveFaces);
+    const metaText = bluetoothMoveDerivedPreviewActive()
+      ? `蓝牙转动实时状态 · ${bluetoothMoves.length} 步 · ${solved ? '已复原' : '未复原'}`
+      : `GAN 实时状态 · ${solved ? '已复原' : '未复原'}`;
+    renderCubeFacesNet(elements.bluetoothStateNet, liveFaces, 'bluetooth-state-net');
     elements.bluetoothStateMeta.textContent = metaText;
-    renderBluetoothCube3d(bluetoothPhysicalFaces, metaText);
+    renderBluetoothCube3d(liveFaces, metaText);
     return;
   }
 
@@ -4123,6 +4162,9 @@ function bluetoothStatePreviewKey() {
   return [
     bluetoothLivePreviewMode() ? 1 : 0,
     bluetoothPhysicalFacelets || '-',
+    Math.round(bluetoothPhysicalStateReceivedAt),
+    cubeFacesSignature(bluetoothMoveDerivedFaces),
+    Math.round(bluetoothMoveDerivedStateTime),
     bluetoothSolved ? 1 : 0,
     bluetoothSolvedByStatePacket ? 1 : 0,
     appState,
@@ -4130,6 +4172,21 @@ function bluetoothStatePreviewKey() {
     scramble?.puzzle || scramblePuzzle || 'three',
     bluetoothMoveSequence().join(' '),
   ].join('|');
+}
+
+function bluetoothMoveDerivedPreviewActive() {
+  return Boolean(
+    bluetoothMoveDerivedFaces
+    && bluetoothMoves.length > 0
+    && (appState === 'timing' || appState === 'saving')
+    && bluetoothMoveDerivedStateTime >= bluetoothPhysicalStateReceivedAt
+  );
+}
+
+function bluetooth3dPreferredLiveFaces() {
+  return bluetoothMoveDerivedPreviewActive()
+    ? bluetoothMoveDerivedFaces
+    : bluetoothPhysicalFaces;
 }
 
 function initBluetoothCube3d() {
@@ -4349,7 +4406,7 @@ function updateBluetoothCube3dPose(time) {
     }
   }
 
-  const changed = cube3d.group.quaternion.angleTo(nextQuaternion) > 0.0005;
+  const changed = cube3d.group.quaternion.angleTo(nextQuaternion) > cube3dPoseEpsilon;
   if (changed) cube3d.group.quaternion.copy(nextQuaternion);
   const turnChanged = updateBluetoothCube3dTurnAnimation(time);
   return changed || turnChanged || Boolean(cube3d.turnAnimation) || (!bluetoothGyro && bluetoothLivePreviewMode());
@@ -4378,8 +4435,10 @@ function renderBluetoothCube3dCurrent() {
     return;
   }
   if (bluetoothLivePreviewMode()) {
-    if (bluetoothPhysicalFaces) {
-      renderBluetoothCube3d(bluetoothPhysicalFaces, `GAN 实时状态 · ${isSolvedFaces(bluetoothPhysicalFaces) ? '已复原' : '未复原'}`);
+    const liveFaces = bluetooth3dPreferredLiveFaces();
+    if (liveFaces) {
+      const source = bluetoothMoveDerivedPreviewActive() ? `蓝牙转动实时状态 · ${bluetoothMoves.length} 步` : 'GAN 实时状态';
+      renderBluetoothCube3d(liveFaces, `${source} · ${isSolvedFaces(liveFaces) ? '已复原' : '未复原'}`);
     } else {
       renderBluetoothCube3d(null, '等待 GAN 状态包');
     }
@@ -4698,7 +4757,7 @@ function renderPreviewMode() {
   elements.previewMeta.textContent = replayMode
     ? '完整解法播放'
     : (liveMode
-    ? (bluetoothPhysicalFacelets ? 'GAN 实时状态' : '等待状态包')
+    ? (bluetoothMoveDerivedPreviewActive() ? '转动实时状态' : (bluetoothPhysicalFacelets ? 'GAN 实时状态' : '等待状态包'))
     : 'TNoodle');
 
   if (liveMode) {
@@ -5526,6 +5585,7 @@ function renderAlgorithmTrainerDialog() {
     : (current?.hint || '选择随机下一条开始练习');
   const currentStats = algorithmTrainerStats[current?.id] || { success: 0, total: 0, streak: 0 };
   elements.algorithmTrainerScore.textContent = algorithmTrainerProgressText(currentStats);
+  elements.algorithmTrainerDeleteButton.disabled = current?.set !== 'custom';
   renderAlgorithmTrainerTimer(currentStats);
   const listRows = scopedCases.length > 0 || algorithmTrainerFocus === 'all'
     ? scopedCases
@@ -5568,7 +5628,12 @@ function chooseNextAlgorithmTrainerCase(options = {}) {
   const allCases = algorithmTrainerCasesForSet();
   const focusedCases = algorithmTrainerCasesForFocus(allCases);
   const cases = focusedCases.length > 0 ? focusedCases : allCases;
-  if (cases.length === 0) return;
+  if (cases.length === 0) {
+    algorithmTrainerCurrentId = '';
+    localStorage.setItem('trainTimer.algorithmTrainerCurrentId', algorithmTrainerCurrentId);
+    if (!options.renderOnly) renderAlgorithmTrainerDialog();
+    return;
+  }
   const weighted = cases.flatMap((item) => {
     const stats = algorithmTrainerStats[item.id] || { success: 0, total: 0, streak: 0 };
     const misses = Math.max(0, stats.total - stats.success);
@@ -5691,8 +5756,62 @@ function resetAlgorithmTrainerStats() {
   renderAlgorithmTrainerDialog();
 }
 
+function addAlgorithmTrainerCustomCase() {
+  const name = prompt('自定义公式名称，例如 Jb Perm 或 左手 OLL。');
+  if (name === null) return;
+  const cleanName = name.trim();
+  if (!cleanName) return;
+
+  const algorithm = prompt("输入公式，例如 R U R' U'。");
+  if (algorithm === null) return;
+  const cleanAlgorithm = algorithm.trim().replace(/\s+/g, ' ');
+  if (!cleanAlgorithm) return;
+
+  const group = prompt('分组名称，可留空。', 'Custom');
+  if (group === null) return;
+  const hint = prompt('提示或识别要点，可留空。', '');
+  if (hint === null) return;
+
+  const item = {
+    id: `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    set: 'custom',
+    name: cleanName.slice(0, 80),
+    group: (group.trim() || 'Custom').slice(0, 80),
+    algorithm: cleanAlgorithm.slice(0, 220),
+    hint: hint.trim().slice(0, 160),
+  };
+  algorithmTrainerCustomCases = [...algorithmTrainerCustomCases, item];
+  saveAlgorithmTrainerCustomCases();
+  cancelAlgorithmTrainerTimer();
+  algorithmTrainerSet = 'custom';
+  algorithmTrainerFocus = 'all';
+  algorithmTrainerCurrentId = item.id;
+  localStorage.setItem('trainTimer.algorithmTrainerSet', algorithmTrainerSet);
+  localStorage.setItem('trainTimer.algorithmTrainerFocus', algorithmTrainerFocus);
+  localStorage.setItem('trainTimer.algorithmTrainerCurrentId', algorithmTrainerCurrentId);
+  renderAlgorithmTrainerDialog();
+}
+
+function deleteAlgorithmTrainerCustomCase() {
+  const current = algorithmTrainerCurrentCase();
+  if (!current || current.set !== 'custom') return;
+  if (!confirm(`删除自定义公式“${current.name}”？`)) return;
+  cancelAlgorithmTrainerTimer();
+  algorithmTrainerCustomCases = algorithmTrainerCustomCases.filter((item) => item.id !== current.id);
+  delete algorithmTrainerStats[current.id];
+  saveAlgorithmTrainerCustomCases();
+  saveAlgorithmTrainerStats();
+  algorithmTrainerCurrentId = algorithmTrainerCustomCases[0]?.id || '';
+  localStorage.setItem('trainTimer.algorithmTrainerCurrentId', algorithmTrainerCurrentId);
+  renderAlgorithmTrainerDialog();
+}
+
+function algorithmTrainerAllCases() {
+  return [...algorithmTrainerCases, ...algorithmTrainerCustomCases];
+}
+
 function algorithmTrainerCasesForSet() {
-  return algorithmTrainerCases.filter((item) => item.set === algorithmTrainerSet);
+  return algorithmTrainerAllCases().filter((item) => item.set === algorithmTrainerSet);
 }
 
 function algorithmTrainerCasesForFocus(cases) {
@@ -5781,6 +5900,38 @@ function algorithmTrainerTotals(cases) {
     total.total += stats.total || 0;
     return total;
   }, { success: 0, total: 0 });
+}
+
+function loadAlgorithmTrainerCustomCases() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem('trainTimer.algorithmTrainerCustomCases') || '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map(normalizeAlgorithmTrainerCustomCase)
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function normalizeAlgorithmTrainerCustomCase(item, index) {
+  if (!item || typeof item !== 'object') return null;
+  const name = String(item.name || '').trim().slice(0, 80);
+  const algorithm = String(item.algorithm || '').trim().replace(/\s+/g, ' ').slice(0, 220);
+  if (!name || !algorithm) return null;
+  const rawId = String(item.id || '').trim();
+  return {
+    id: rawId.startsWith('custom-') ? rawId : `custom-import-${index}`,
+    set: 'custom',
+    name,
+    group: String(item.group || 'Custom').trim().slice(0, 80) || 'Custom',
+    algorithm,
+    hint: String(item.hint || '').trim().slice(0, 160),
+  };
+}
+
+function saveAlgorithmTrainerCustomCases() {
+  localStorage.setItem('trainTimer.algorithmTrainerCustomCases', JSON.stringify(algorithmTrainerCustomCases));
 }
 
 function loadAlgorithmTrainerStats() {

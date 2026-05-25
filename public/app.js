@@ -335,6 +335,7 @@ const elements = {
   algorithmTrainerMeta: document.querySelector('#algorithmTrainerMeta'),
   algorithmTrainerSet: document.querySelector('#algorithmTrainerSet'),
   algorithmTrainerFocus: document.querySelector('#algorithmTrainerFocus'),
+  algorithmTrainerGroupFilter: document.querySelector('#algorithmTrainerGroupFilter'),
   algorithmTrainerSearch: document.querySelector('#algorithmTrainerSearch'),
   algorithmTrainerAddButton: document.querySelector('#algorithmTrainerAddButton'),
   algorithmTrainerDeleteButton: document.querySelector('#algorithmTrainerDeleteButton'),
@@ -559,6 +560,7 @@ let algorithmTrainerSet = localStorage.getItem('trainTimer.algorithmTrainerSet')
 if (!algorithmTrainerAllCases().some((item) => item.set === algorithmTrainerSet)) algorithmTrainerSet = 'pll';
 let algorithmTrainerFocus = localStorage.getItem('trainTimer.algorithmTrainerFocus') || 'all';
 if (!Object.hasOwn(algorithmTrainerFocusLabels, algorithmTrainerFocus)) algorithmTrainerFocus = 'all';
+let algorithmTrainerGroup = localStorage.getItem('trainTimer.algorithmTrainerGroup') || 'all';
 let algorithmTrainerSearch = localStorage.getItem('trainTimer.algorithmTrainerSearch') || '';
 let algorithmTrainerCurrentId = localStorage.getItem('trainTimer.algorithmTrainerCurrentId') || '';
 let algorithmTrainerStats = loadAlgorithmTrainerStats();
@@ -681,6 +683,11 @@ elements.algorithmTrainerFocus.addEventListener('change', () => {
   algorithmTrainerFocus = elements.algorithmTrainerFocus.value || 'all';
   if (!Object.hasOwn(algorithmTrainerFocusLabels, algorithmTrainerFocus)) algorithmTrainerFocus = 'all';
   localStorage.setItem('trainTimer.algorithmTrainerFocus', algorithmTrainerFocus);
+  chooseNextAlgorithmTrainerCase();
+});
+elements.algorithmTrainerGroupFilter.addEventListener('change', () => {
+  algorithmTrainerGroup = elements.algorithmTrainerGroupFilter.value || 'all';
+  localStorage.setItem('trainTimer.algorithmTrainerGroup', algorithmTrainerGroup);
   chooseNextAlgorithmTrainerCase();
 });
 elements.algorithmTrainerSearch.addEventListener('input', () => {
@@ -5708,10 +5715,12 @@ function renderAlgorithmTrainerDialog() {
   if (!elements.algorithmTrainerDialog.open) return;
   elements.algorithmTrainerSet.value = algorithmTrainerSet;
   elements.algorithmTrainerFocus.value = algorithmTrainerFocus;
+  const allSetCases = algorithmTrainerCasesForSet();
+  renderAlgorithmTrainerGroupOptions(allSetCases);
   if (elements.algorithmTrainerSearch.value !== algorithmTrainerSearch) {
     elements.algorithmTrainerSearch.value = algorithmTrainerSearch;
   }
-  const allCases = algorithmTrainerCasesForSet();
+  const allCases = algorithmTrainerCasesForGroup(allSetCases);
   const scopedCases = algorithmTrainerCasesForFocus(allCases);
   const searchActive = algorithmTrainerSearchQuery() !== '';
   const focusBaseCases = scopedCases.length > 0 || algorithmTrainerFocus === 'all' ? scopedCases : allCases;
@@ -5726,9 +5735,10 @@ function renderAlgorithmTrainerDialog() {
   const totals = algorithmTrainerTotals(allCases);
   const setLabel = algorithmTrainerSetLabels[algorithmTrainerSet] || algorithmTrainerSet.toUpperCase();
   const focusLabel = algorithmTrainerFocusLabels[algorithmTrainerFocus] || '全部';
+  const groupLabel = algorithmTrainerGroup === 'all' ? '' : ` · ${algorithmTrainerGroup} ${allCases.length}/${allSetCases.length}`;
   const focusText = algorithmTrainerFocus === 'all' ? '' : ` · ${focusLabel} ${scopedCases.length}/${allCases.length}`;
   const searchText = searchActive ? ` · 搜索 ${visibleCases.length}/${focusBaseCases.length}` : '';
-  elements.algorithmTrainerMeta.textContent = `${setLabel} · ${allCases.length} 条${focusText}${searchText} · ${totals.success}/${totals.total} 掌握`;
+  elements.algorithmTrainerMeta.textContent = `${setLabel} · ${allSetCases.length} 条${groupLabel}${focusText}${searchText} · ${totals.success}/${totals.total} 掌握`;
   elements.algorithmTrainerName.textContent = current?.name || '-';
   elements.algorithmTrainerGroup.textContent = current?.group || '-';
   elements.algorithmTrainerAlg.textContent = current?.algorithm || '-';
@@ -5784,7 +5794,7 @@ function renderAlgorithmTrainerEmpty(focusLabel) {
 
 function chooseNextAlgorithmTrainerCase(options = {}) {
   cancelAlgorithmTrainerTimer();
-  const allCases = algorithmTrainerCasesForSet();
+  const allCases = algorithmTrainerCasesForGroup(algorithmTrainerCasesForSet());
   const focusedCases = algorithmTrainerCasesForFocus(allCases);
   const baseCases = focusedCases.length > 0 || algorithmTrainerFocus === 'all' ? focusedCases : allCases;
   const searchActive = algorithmTrainerSearchQuery() !== '';
@@ -6058,6 +6068,36 @@ function algorithmTrainerAllCases() {
 
 function algorithmTrainerCasesForSet() {
   return algorithmTrainerAllCases().filter((item) => item.set === algorithmTrainerSet);
+}
+
+function renderAlgorithmTrainerGroupOptions(cases) {
+  const groups = algorithmTrainerGroupOptions(cases);
+  if (algorithmTrainerGroup !== 'all' && !groups.includes(algorithmTrainerGroup)) {
+    algorithmTrainerGroup = 'all';
+    localStorage.setItem('trainTimer.algorithmTrainerGroup', algorithmTrainerGroup);
+  }
+  elements.algorithmTrainerGroupFilter.replaceChildren(
+    optionNode('all', '全部分组', algorithmTrainerGroup === 'all'),
+    ...groups.map((group) => optionNode(group, `${group} (${cases.filter((item) => item.group === group).length})`, group === algorithmTrainerGroup)),
+  );
+}
+
+function optionNode(value, label, selected = false) {
+  const option = document.createElement('option');
+  option.value = value;
+  option.textContent = label;
+  option.selected = selected;
+  return option;
+}
+
+function algorithmTrainerGroupOptions(cases) {
+  return [...new Set(cases.map((item) => item.group).filter(Boolean))]
+    .sort((left, right) => left.localeCompare(right, 'zh-CN', { numeric: true, sensitivity: 'base' }));
+}
+
+function algorithmTrainerCasesForGroup(cases) {
+  if (algorithmTrainerGroup === 'all') return cases;
+  return cases.filter((item) => item.group === algorithmTrainerGroup);
 }
 
 function algorithmTrainerCasesForFocus(cases) {

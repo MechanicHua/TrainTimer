@@ -2193,7 +2193,10 @@ dialog[open] {
 .stats-chart-modes {
   display: inline-flex;
   flex: 0 0 auto;
+  max-width: min(100%, 420px);
+  flex-wrap: wrap;
   gap: 4px;
+  justify-content: flex-end;
   padding: 2px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.055);
@@ -2203,7 +2206,7 @@ dialog[open] {
   min-height: 26px;
   border: 0;
   border-radius: 999px;
-  padding: 0 9px;
+  padding: 0 8px;
   background: transparent;
   color: var(--muted);
   box-shadow: none;

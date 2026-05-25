@@ -5,7 +5,7 @@ import { ganGyroQuaternionToCube3dBasis, ganGyroVelocityToCube3dBasis } from './
 import { parseSolveImport } from './solves-import.js';
 import { buildStatsSummary } from './stats-summary.js';
 import { buildSolveSummary } from './solve-summary.js';
-import { bestAverageRecord, bestMeanRecord, bestSingleRecord, recordMarksAt, rollingAverageAt, rollingAverageDetailAt, rollingMeanDetailAt } from './rolling-averages.js';
+import { bestAverageRecord, bestMeanRecord, bestSingleRecord, recordMarksAt, rollingAverageAt, rollingAverageDetailAt, rollingMeanAt, rollingMeanDetailAt } from './rolling-averages.js';
 import * as THREE from './vendor/three.module.js';
 
 const localApiOrigin = 'http://127.0.0.1:3211';
@@ -28,11 +28,14 @@ const cube3dTurnDurationMs = 96;
 const cube3dDoubleTurnDurationMs = 136;
 const cube3dMaxPixelRatio = 1;
 const bluetoothGyroLogIntervalMs = 500;
-const statsChartModes = new Set(['single', 'ao5', 'ao12', 'tps']);
+const statsChartModes = new Set(['single', 'mo3', 'ao5', 'ao12', 'ao50', 'ao100', 'tps']);
 const statsChartLabels = {
   single: '单次',
+  mo3: 'mo3',
   ao5: 'ao5',
   ao12: 'ao12',
+  ao50: 'ao50',
+  ao100: 'ao100',
   tps: 'TPS',
 };
 const algorithmTrainerSetLabels = {
@@ -6168,8 +6171,11 @@ function renderStatsChartModeControls() {
 function statsChartValueAt(sessionSolves, index, mode) {
   const solve = sessionSolves[index];
   if (!solve) return null;
+  if (mode === 'mo3') return rollingMeanAt(sessionSolves, index, 3);
   if (mode === 'ao5') return rollingAverageAt(sessionSolves, index, 5);
   if (mode === 'ao12') return rollingAverageAt(sessionSolves, index, 12);
+  if (mode === 'ao50') return rollingAverageAt(sessionSolves, index, 50);
+  if (mode === 'ao100') return rollingAverageAt(sessionSolves, index, 100);
   if (mode === 'tps') return Number.isFinite(solve.bluetoothTps) ? solve.bluetoothTps : null;
   return effectiveDurationMs(solve);
 }

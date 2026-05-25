@@ -816,6 +816,7 @@ elements.averageDialog.addEventListener('close', () => {
 elements.statsDialog.addEventListener('close', () => {
   statsScope = 'session';
 });
+elements.algorithmTrainerDialog.addEventListener('keydown', handleAlgorithmTrainerKeyDown);
 elements.algorithmTrainerDialog.addEventListener('close', cancelAlgorithmTrainerTimer);
 elements.allSolvesDialog.addEventListener('close', () => {
   selectedSolveIds.clear();
@@ -5798,6 +5799,32 @@ function openAlgorithmTrainerDialog() {
   renderAlgorithmTrainerDialog();
 }
 
+function handleAlgorithmTrainerKeyDown(event) {
+  if (!elements.algorithmTrainerDialog.open || shouldIgnoreAlgorithmTrainerShortcut(event)) return;
+
+  const actions = {
+    Space: () => toggleAlgorithmTrainerTimer(),
+    Enter: () => recordAlgorithmTrainerResult(true),
+    Backspace: () => recordAlgorithmTrainerResult(false),
+    KeyF: () => recordAlgorithmTrainerResult(false),
+    KeyN: () => chooseNextAlgorithmTrainerCase(),
+    KeyS: () => toggleAlgorithmTrainerStarred(),
+    KeyC: () => { void copyAlgorithmTrainerSetup(); },
+    KeyA: () => applyAlgorithmTrainerSetupToTimer(),
+  };
+  const action = actions[event.code];
+  if (!action) return;
+  event.preventDefault();
+  event.stopPropagation();
+  action();
+}
+
+function shouldIgnoreAlgorithmTrainerShortcut(event) {
+  if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) return true;
+  const target = event.target;
+  return target instanceof HTMLElement && Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
+}
+
 function renderAlgorithmTrainerDialog() {
   if (!elements.algorithmTrainerDialog.open) return;
   elements.algorithmTrainerSet.value = algorithmTrainerSet;
@@ -5941,7 +5968,7 @@ function renderAlgorithmTrainerStarButton(current) {
   elements.algorithmTrainerStarButton.setAttribute('aria-pressed', starred ? 'true' : 'false');
   elements.algorithmTrainerStarButton.setAttribute('aria-label', starred ? '取消收藏当前公式' : '收藏当前公式');
   elements.algorithmTrainerStarButton.title = current
-    ? (starred ? '已加入收藏专项' : '加入收藏专项')
+    ? (starred ? 'S 取消收藏专项' : 'S 加入收藏专项')
     : '没有可收藏的公式';
 }
 
@@ -5968,7 +5995,7 @@ function renderAlgorithmTrainerSetup(current) {
   elements.algorithmTrainerCopySetupButton.textContent = '复制打乱';
   elements.algorithmTrainerApplySetupButton.disabled = !supported || !canApplyAlgorithmTrainerSetup();
   elements.algorithmTrainerApplySetupButton.title = supported
-    ? (canApplyAlgorithmTrainerSetup() ? '把训练打乱套用到主计时器并锁定当前打乱' : '计时、观察或保存中不能套用')
+    ? (canApplyAlgorithmTrainerSetup() ? 'A 把训练打乱套用到主计时器并锁定当前打乱' : '计时、观察或保存中不能套用')
     : '只有基础面转 UDRLFB 才能直接套用到计时器';
 }
 
@@ -6111,6 +6138,7 @@ function renderAlgorithmTrainerTimer(stats = {}) {
     elements.algorithmTrainerTimerButton.classList.remove('running');
   }
   elements.algorithmTrainerTimerButton.disabled = !algorithmTrainerCurrentCase();
+  elements.algorithmTrainerTimerButton.title = running ? 'Space 完成训练计时' : 'Space 开始训练计时';
   elements.algorithmTrainerTimerStats.textContent = count > 0 && Number.isFinite(lastMs) && Number.isFinite(bestMs) && Number.isFinite(averageMs)
     ? `最近 ${formatTime(lastMs)} · 最佳 ${formatTime(bestMs)} · 平均 ${formatTime(averageMs)} · ${count} 次`
     : '计时练习未开始';

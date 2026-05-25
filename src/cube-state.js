@@ -23,6 +23,18 @@ const moveDefinitions = {
   L: { axis: 'x', layer: -1, turns: 1 },
   F: { axis: 'z', layer: 1, turns: -1 },
   B: { axis: 'z', layer: -1, turns: 1 },
+  M: { axis: 'x', layer: 0, turns: 1 },
+  E: { axis: 'y', layer: 0, turns: 1 },
+  S: { axis: 'z', layer: 0, turns: -1 },
+  x: { axis: 'x', layer: 'all', turns: -1 },
+  y: { axis: 'y', layer: 'all', turns: -1 },
+  z: { axis: 'z', layer: 'all', turns: -1 },
+  r: { axis: 'x', layers: [1, 0], turns: -1 },
+  l: { axis: 'x', layers: [-1, 0], turns: 1 },
+  u: { axis: 'y', layers: [1, 0], turns: -1 },
+  d: { axis: 'y', layers: [-1, 0], turns: 1 },
+  f: { axis: 'z', layers: [1, 0], turns: -1 },
+  b: { axis: 'z', layers: [-1, 0], turns: 1 },
 };
 
 const faceOrder = ['U', 'L', 'F', 'R', 'B', 'D'];
@@ -64,25 +76,38 @@ export function parseScramble(scramble) {
     .split(/\s+/)
     .filter(Boolean)
     .map((token) => {
-      const match = token.match(/^([UDRLFB])(2|')?$/);
+      const match = token.match(/^([UDRLFBMESxyzudrlfb]|[UDRLFB]w)(2|')?$/);
       if (!match) throw new Error(`Unsupported scramble move: ${token}`);
-      return { face: match[1], suffix: match[2] || '' };
+      return { face: normalizeMoveFace(match[1]), suffix: match[2] || '' };
     });
 }
 
 export function applyMove(cube, move) {
   const definition = moveDefinitions[move.face];
+  if (!definition) throw new Error(`Unsupported scramble move: ${move.face}${move.suffix || ''}`);
   const amount = move.suffix === '2' ? 2 : 1;
   const direction = move.suffix === "'" ? -definition.turns : definition.turns;
   const turns = ((direction * amount) % 4 + 4) % 4;
 
   for (let index = 0; index < turns; index += 1) {
     for (const sticker of cube) {
-      if (coordinate(sticker.pos, definition.axis) !== definition.layer) continue;
+      if (!moveAffectsSticker(sticker, definition)) continue;
       sticker.pos = rotateVector(sticker.pos, definition.axis);
       sticker.normal = rotateVector(sticker.normal, definition.axis);
     }
   }
+}
+
+function normalizeMoveFace(face) {
+  if (face.length === 2 && face[1] === 'w') return face[0].toLowerCase();
+  return face;
+}
+
+function moveAffectsSticker(sticker, definition) {
+  if (definition.layer === 'all') return true;
+  const value = coordinate(sticker.pos, definition.axis);
+  if (Array.isArray(definition.layers)) return definition.layers.includes(value);
+  return value === definition.layer;
 }
 
 export function facesFromCube(cube) {

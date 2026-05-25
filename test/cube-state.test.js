@@ -3,10 +3,14 @@ import assert from 'node:assert/strict';
 import { cubeStateFromScramble, createSolvedCube, facesFromCube, isSolvedFaces, parseScramble } from '../src/cube-state.js';
 
 test('parses WCA-style 3x3 moves', () => {
-  assert.deepEqual(parseScramble("R U2 F'"), [
+  assert.deepEqual(parseScramble("R U2 F' M x r Uw2"), [
     { face: 'R', suffix: '' },
     { face: 'U', suffix: '2' },
     { face: 'F', suffix: "'" },
+    { face: 'M', suffix: '' },
+    { face: 'x', suffix: '' },
+    { face: 'r', suffix: '' },
+    { face: 'u', suffix: '2' },
   ]);
 });
 
@@ -20,9 +24,9 @@ test('cube preview keeps nine stickers on each face', () => {
 });
 
 test('four quarter turns return the preview to solved state', () => {
-  assert.deepEqual(cubeStateFromScramble('R R R R'), facesFromCube(createSolvedCube()));
-  assert.deepEqual(cubeStateFromScramble('U U U U'), facesFromCube(createSolvedCube()));
-  assert.deepEqual(cubeStateFromScramble('F F F F'), facesFromCube(createSolvedCube()));
+  for (const move of ['R', 'U', 'F', 'M', 'E', 'S', 'x', 'y', 'z', 'r', 'u', 'f']) {
+    assert.deepEqual(cubeStateFromScramble(`${move} ${move} ${move} ${move}`), facesFromCube(createSolvedCube()));
+  }
 });
 
 test('detects solved state after applying inverse moves', () => {
@@ -42,4 +46,12 @@ test('single R and U moves follow standard face-turn direction', () => {
   assert.equal(u.R[0].map((sticker) => sticker.face).join(''), 'BBB');
   assert.equal(u.B[0].map((sticker) => sticker.face).join(''), 'LLL');
   assert.equal(u.L[0].map((sticker) => sticker.face).join(''), 'FFF');
+});
+
+test('slice, wide, and rotation moves match equivalent layer turns', () => {
+  assert.deepEqual(cubeStateFromScramble('x'), cubeStateFromScramble("R M' L'"));
+  assert.deepEqual(cubeStateFromScramble('y'), cubeStateFromScramble("U E' D'"));
+  assert.deepEqual(cubeStateFromScramble('z'), cubeStateFromScramble("F S B'"));
+  assert.deepEqual(cubeStateFromScramble('r'), cubeStateFromScramble("R M'"));
+  assert.deepEqual(cubeStateFromScramble('Uw'), cubeStateFromScramble("U E'"));
 });

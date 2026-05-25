@@ -44,6 +44,7 @@ const algorithmTrainerSetLabels = {
 };
 const algorithmTrainerFocusLabels = {
   all: '全部',
+  review: '复习',
   new: '未练',
   weak: '薄弱',
 };
@@ -5539,7 +5540,8 @@ function renderAlgorithmTrainerListItem(item) {
   const row = document.createElement('button');
   row.type = 'button';
   row.className = item.id === algorithmTrainerCurrentId ? 'algorithm-trainer-item active' : 'algorithm-trainer-item';
-  row.title = item.algorithm;
+  const reviewReason = algorithmTrainerFocus === 'review' ? algorithmTrainerReviewReason(item) : '';
+  row.title = [item.algorithm, reviewReason].filter(Boolean).join(' · ');
   row.innerHTML = `
     <strong>${escapeHtml(item.name)}</strong>
     <span>${escapeHtml(item.group)}</span>
@@ -5694,6 +5696,9 @@ function algorithmTrainerCasesForSet() {
 }
 
 function algorithmTrainerCasesForFocus(cases) {
+  if (algorithmTrainerFocus === 'review') {
+    return cases.filter((item) => algorithmTrainerCaseNeedsReviewQueue(item, cases));
+  }
   if (algorithmTrainerFocus === 'new') {
     return cases.filter((item) => (algorithmTrainerStats[item.id]?.total || 0) === 0);
   }
@@ -5708,6 +5713,52 @@ function algorithmTrainerCaseNeedsReview(item) {
   if ((stats.total || 0) === 0) return false;
   const accuracy = (stats.success || 0) / stats.total;
   return accuracy < 0.85 || (stats.streak || 0) === 0;
+}
+
+function algorithmTrainerCaseNeedsReviewQueue(item, cases = algorithmTrainerCasesForSet()) {
+  const stats = algorithmTrainerStats[item.id] || {};
+  if ((stats.total || 0) === 0) return true;
+  if (algorithmTrainerCaseNeedsReview(item)) return true;
+  if (algorithmTrainerCaseIsStale(stats)) return true;
+  return algorithmTrainerCaseIsSlow(item, cases);
+}
+
+function algorithmTrainerReviewReason(item) {
+  const stats = algorithmTrainerStats[item.id] || {};
+  if ((stats.total || 0) === 0) return '未练';
+  if (algorithmTrainerCaseNeedsReview(item)) return '准确率或连续掌握不足';
+  if (algorithmTrainerCaseIsStale(stats)) return '超过 7 天未练';
+  if (algorithmTrainerCaseIsSlow(item, algorithmTrainerCasesForSet())) return '计时慢于本组平均';
+  return '';
+}
+
+function algorithmTrainerCaseIsStale(stats = {}) {
+  const updatedAt = Date.parse(stats.updatedAt || '');
+  if (!Number.isFinite(updatedAt)) return true;
+  return Date.now() - updatedAt >= 7 * 24 * 60 * 60 * 1000;
+}
+
+function algorithmTrainerCaseIsSlow(item, cases) {
+  const stats = algorithmTrainerStats[item.id] || {};
+  const count = Math.max(0, Number(stats.timedCount) || 0);
+  const totalMs = Number(stats.timedTotalMs);
+  if (count < 2 || !Number.isFinite(totalMs)) return false;
+  const averageMs = totalMs / count;
+  const setAverageMs = algorithmTrainerTimedSetAverage(cases);
+  return Number.isFinite(setAverageMs) && averageMs > setAverageMs * 1.18;
+}
+
+function algorithmTrainerTimedSetAverage(cases) {
+  const averages = cases
+    .map((item) => {
+      const stats = algorithmTrainerStats[item.id] || {};
+      const count = Math.max(0, Number(stats.timedCount) || 0);
+      const totalMs = Number(stats.timedTotalMs);
+      return count > 0 && Number.isFinite(totalMs) ? totalMs / count : null;
+    })
+    .filter((value) => Number.isFinite(value));
+  if (averages.length < 3) return null;
+  return averages.reduce((sum, value) => sum + value, 0) / averages.length;
 }
 
 function algorithmTrainerCurrentCase(cases = algorithmTrainerCasesForSet()) {

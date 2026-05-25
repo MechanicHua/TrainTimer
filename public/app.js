@@ -20,6 +20,10 @@ const bluetoothNextSolveGestureWindowMs = 700;
 const historyBottomFadeRangePx = 180;
 const cube3dActiveFrameMs = 1000 / 120;
 const cube3dIdleFrameMs = 1000 / 24;
+const cube3dGyroActiveWindowMs = 900;
+const cube3dGyroSmoothingMs = 16;
+const cube3dTelemetryFrameMs = 1000 / 15;
+const bluetoothGyroLogIntervalMs = 500;
 const statsChartModes = new Set(['single', 'ao5', 'ao12', 'tps']);
 const statsChartLabels = {
   single: '单次',
@@ -532,8 +536,10 @@ let bluetoothSolvedByStatePacket = false;
 let bluetoothSolveCube = null;
 let bluetoothSolveCubeValid = false;
 let bluetoothGyro = null;
+let bluetoothGyroLastUpdateAt = 0;
 let bluetoothGyroReferenceInverse = null;
 let bluetoothGyroLastBasisQuaternion = null;
+let bluetoothGyroLastLogAt = 0;
 let bluetoothLastMoveText = '-';
 let bluetoothPhysicalFacelets = '';
 let bluetoothPhysicalFaces = null;
@@ -569,6 +575,9 @@ let cube3dLastFacesSignature = '';
 let cube3dMovePulseTimer = 0;
 let cube3dAnimationFrame = 0;
 let cube3dAnimationTimer = 0;
+let cube3dTelemetryFrame = 0;
+let cube3dTelemetryTimer = 0;
+let cube3dTelemetryLastRenderAt = 0;
 let timerDisplayFitKey = '';
 
 elements.inspectionToggle.checked = inspectionEnabled;
@@ -3288,6 +3297,7 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
   const trackingMoves = moveHandling.trackingMoves;
   const stoppedFromMoves = wasTimingBeforeMoves && appState !== 'timing' && bluetoothSolved;
   const solvedByStatePacket = stoppedFromStatePacket || markGanBluetoothStateSolved(decoded);
+  const gyroOnlyPacket = isGanGyroOnlyPacket(decoded, parsedMoves);
   const updatePacketUi = () => {
     if (decoded.batteryLevel != null) updateBluetoothBattery(decoded.batteryLevel, decoded.protocol || protocol.label);
     if (decoded.gyro) updateBluetoothGyro(decoded.gyro);
@@ -3307,13 +3317,15 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
     ? '重复转动包'
     : (moveHandling.ignoredReason || (parsedMoves.length > 0 && !trackingMoves ? '等待计时' : ''));
   elements.bluetoothStatus.title = `${deviceName} · ${statusDetail} · ${uuid} ${hex}`;
-  addBluetoothLog(
-    moveHandling.logKind || ganBluetoothLogKind(decoded, parsedMoves, trackingMoves, duplicateMovePacket),
-    label,
-    ganBluetoothPacketLog(hex, decoded, ignoredReason),
-  );
+  if (shouldLogGanBluetoothPacket(decoded, parsedMoves, duplicateMovePacket)) {
+    addBluetoothLog(
+      moveHandling.logKind || ganBluetoothLogKind(decoded, parsedMoves, trackingMoves, duplicateMovePacket),
+      label,
+      ganBluetoothPacketLog(hex, decoded, ignoredReason),
+    );
+  }
   if (!stoppedFromStatePacket && solvedByStatePacket) finishTimingFromBluetooth(packetReceivedAt);
-  console.info('GAN Bluetooth cube notification', {
+  if (!gyroOnlyPacket) console.info('GAN Bluetooth cube notification', {
     characteristic: uuid,
     value: hex,
     decoded,
@@ -3321,6 +3333,24 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
     duplicate: duplicateMovePacket,
     tracked: trackingMoves,
   });
+}
+
+function isGanGyroOnlyPacket(decoded, parsedMoves = []) {
+  return Boolean(
+    decoded?.gyro
+    && parsedMoves.length === 0
+    && decoded.batteryLevel == null
+    && !decoded.facelets
+    && decoded.mode === 'gyro'
+  );
+}
+
+function shouldLogGanBluetoothPacket(decoded, parsedMoves, duplicateMovePacket) {
+  if (!isGanGyroOnlyPacket(decoded, parsedMoves) || duplicateMovePacket) return true;
+  const now = performance.now();
+  if (now - bluetoothGyroLastLogAt < bluetoothGyroLogIntervalMs) return false;
+  bluetoothGyroLastLogAt = now;
+  return true;
 }
 
 function ganBluetoothStatusDetail(decoded, label, hex, duplicateMovePacket) {
@@ -3421,6 +3451,7 @@ function renderBluetoothBattery() {
 
 function updateBluetoothGyro(gyro) {
   if (!gyro?.quaternion) return;
+  bluetoothGyroLastUpdateAt = performance.now();
   const basisQuaternion = bluetoothGyroQuaternionFromPacket(gyro.quaternion);
   if (!basisQuaternion) return;
   if (bluetoothGyroLastBasisQuaternion && bluetoothGyroLastBasisQuaternion.dot(basisQuaternion) < 0) {
@@ -3459,13 +3490,22 @@ function updateBluetoothGyro(gyro) {
     cube3d.targetQuaternion.copy(displayQuaternion);
     markBluetoothCube3dDirty();
   }
-  renderBluetoothCube3dTelemetry();
+  scheduleBluetoothCube3dTelemetryRender();
 }
 
 function resetBluetoothGyro() {
   bluetoothGyro = null;
+  bluetoothGyroLastUpdateAt = 0;
   bluetoothGyroReferenceInverse = null;
   bluetoothGyroLastBasisQuaternion = null;
+  if (cube3dTelemetryTimer) {
+    window.clearTimeout(cube3dTelemetryTimer);
+    cube3dTelemetryTimer = 0;
+  }
+  if (cube3dTelemetryFrame) {
+    cancelAnimationFrame(cube3dTelemetryFrame);
+    cube3dTelemetryFrame = 0;
+  }
   if (cube3d?.targetQuaternion) cube3d.targetQuaternion.copy(cube3d.baseQuaternion);
   markBluetoothCube3dDirty();
   renderBluetoothCube3dTelemetry();
@@ -3482,13 +3522,16 @@ function bluetoothGyroQuaternionFromPacket(quaternion = {}) {
 function updateBluetoothPhysicalState(decoded, options = {}) {
   const faces = options.faces || facesFromFacelets(decoded.facelets);
   if (!faces) return;
+  const facelets = String(decoded.facelets || '');
+  const changed = facelets !== bluetoothPhysicalFacelets;
   bluetoothPhysicalFacelets = decoded.facelets;
   bluetoothPhysicalFaces = faces;
   bluetoothPhysicalStateTime = new Date().toISOString();
   if (options.render === false) {
-    renderBluetoothCube3dLiveFaces(faces);
+    if (changed) renderBluetoothCube3dLiveFaces(faces);
     return faces;
   }
+  if (!changed) return faces;
   renderBluetoothMoves();
   renderPreviewMode();
   return faces;
@@ -4025,10 +4068,11 @@ function animateBluetoothCube3d(time = performance.now()) {
   const activeMove = Boolean(cube3d.turnAnimation);
   if (!visible) return;
 
-  const interval = bluetoothGyro || activeMove ? cube3dActiveFrameMs : cube3dIdleFrameMs;
+  const activeGyro = hasRecentBluetoothGyro(time);
+  const interval = activeGyro || activeMove ? cube3dActiveFrameMs : cube3dIdleFrameMs;
   const waitMs = interval - (time - cube3d.lastRenderAt);
   if (waitMs > 0) {
-    if (shouldContinueBluetoothCube3dAnimation(false)) scheduleBluetoothCube3dAnimation(waitMs);
+    if (shouldContinueBluetoothCube3dAnimation(false, time)) scheduleBluetoothCube3dAnimation(waitMs);
     return;
   }
 
@@ -4038,15 +4082,16 @@ function animateBluetoothCube3d(time = performance.now()) {
     cube3d.needsRender = false;
     cube3d.lastRenderAt = time;
   }
-  if (shouldContinueBluetoothCube3dAnimation(changed)) scheduleBluetoothCube3dAnimation();
+  if (shouldContinueBluetoothCube3dAnimation(changed, time)) scheduleBluetoothCube3dAnimation();
 }
 
-function shouldContinueBluetoothCube3dAnimation(changed) {
+function shouldContinueBluetoothCube3dAnimation(changed, time = performance.now()) {
   if (!cube3d || !isBluetoothCube3dVisible()) return false;
   return Boolean(
     changed
     || cube3d.needsRender
     || cube3d.turnAnimation
+    || hasRecentBluetoothGyro(time)
     || (!bluetoothGyro && bluetoothLivePreviewMode())
   );
 }
@@ -4054,7 +4099,9 @@ function shouldContinueBluetoothCube3dAnimation(changed) {
 function updateBluetoothCube3dPose(time) {
   const nextQuaternion = cube3d.group.quaternion.clone();
   if (bluetoothGyro) {
-    nextQuaternion.slerp(cube3d.targetQuaternion, 0.96);
+    const deltaMs = Math.max(0, time - cube3d.lastRenderAt);
+    const slerpFactor = Math.min(0.92, 1 - Math.exp(-deltaMs / cube3dGyroSmoothingMs));
+    nextQuaternion.slerp(cube3d.targetQuaternion, slerpFactor);
   } else {
     const seconds = time / 1000;
     nextQuaternion.copy(cube3d.baseQuaternion);
@@ -4072,6 +4119,10 @@ function updateBluetoothCube3dPose(time) {
   if (changed) cube3d.group.quaternion.copy(nextQuaternion);
   const turnChanged = updateBluetoothCube3dTurnAnimation(time);
   return changed || turnChanged || Boolean(cube3d.turnAnimation) || (!bluetoothGyro && bluetoothLivePreviewMode());
+}
+
+function hasRecentBluetoothGyro(time = performance.now()) {
+  return Boolean(bluetoothGyro && time - bluetoothGyroLastUpdateAt <= cube3dGyroActiveWindowMs);
 }
 
 function isBluetoothCube3dVisible() {
@@ -4228,8 +4279,38 @@ function completeBluetoothCube3dTurnAnimation(runCallback = true) {
   if (runCallback && typeof turn.onComplete === 'function') turn.onComplete();
 }
 
+function scheduleBluetoothCube3dTelemetryRender() {
+  if (!bluetoothGyro) {
+    renderBluetoothCube3dTelemetry();
+    return;
+  }
+  const now = performance.now();
+  const waitMs = cube3dTelemetryFrameMs - (now - cube3dTelemetryLastRenderAt);
+  if (waitMs <= 0) {
+    if (cube3dTelemetryTimer) {
+      window.clearTimeout(cube3dTelemetryTimer);
+      cube3dTelemetryTimer = 0;
+    }
+    if (cube3dTelemetryFrame) {
+      cancelAnimationFrame(cube3dTelemetryFrame);
+      cube3dTelemetryFrame = 0;
+    }
+    renderBluetoothCube3dTelemetry();
+    return;
+  }
+  if (cube3dTelemetryFrame || cube3dTelemetryTimer) return;
+  cube3dTelemetryTimer = window.setTimeout(() => {
+    cube3dTelemetryTimer = 0;
+    cube3dTelemetryFrame = requestAnimationFrame(() => {
+      cube3dTelemetryFrame = 0;
+      renderBluetoothCube3dTelemetry();
+    });
+  }, waitMs);
+}
+
 function renderBluetoothCube3dTelemetry() {
   if (!elements.bluetooth3dGyro || !elements.bluetooth3dVelocity) return;
+  cube3dTelemetryLastRenderAt = performance.now();
   if (!bluetoothGyro) {
     elements.bluetooth3dGyro.textContent = 'Gyro -';
     elements.bluetooth3dVelocity.textContent = `Turn ${bluetoothLastMoveText}`;

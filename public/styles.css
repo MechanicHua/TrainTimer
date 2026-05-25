@@ -1874,6 +1874,37 @@ dialog[open] {
   gap: 4px;
 }
 
+.algorithm-trainer-head-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.algorithm-trainer-star-button {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 20px;
+  line-height: 1;
+  transition: background-color 160ms var(--ease), color 160ms var(--ease), transform 160ms var(--ease);
+}
+
+.algorithm-trainer-star-button:hover:not(:disabled),
+.algorithm-trainer-star-button.active {
+  background: rgba(255, 214, 102, 0.13);
+  color: #ffd666;
+  transform: translateY(-1px);
+}
+
+.algorithm-trainer-star-button:disabled {
+  opacity: 0.32;
+}
+
 .algorithm-trainer-head strong {
   color: var(--ink-strong);
   font-size: 20px;
@@ -1968,6 +1999,12 @@ dialog[open] {
 .algorithm-trainer-item.active {
   background: rgba(0, 173, 181, 0.14);
   color: var(--ink-strong);
+}
+
+.algorithm-trainer-item.starred strong::before {
+  content: "★";
+  margin-right: 5px;
+  color: #ffd666;
 }
 
 .algorithm-trainer-item strong,

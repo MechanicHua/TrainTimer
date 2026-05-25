@@ -50,6 +50,7 @@ const algorithmTrainerFocusLabels = {
   review: '复习',
   new: '未练',
   weak: '薄弱',
+  starred: '收藏',
 };
 const bluetoothUuidSuffix = '-0000-1000-8000-00805f9b34fb';
 const bluetoothBatteryLevelUuid = `00002a19${bluetoothUuidSuffix}`;
@@ -347,6 +348,7 @@ const elements = {
   algorithmTrainerResetButton: document.querySelector('#algorithmTrainerResetButton'),
   algorithmTrainerName: document.querySelector('#algorithmTrainerName'),
   algorithmTrainerGroup: document.querySelector('#algorithmTrainerGroup'),
+  algorithmTrainerStarButton: document.querySelector('#algorithmTrainerStarButton'),
   algorithmTrainerScore: document.querySelector('#algorithmTrainerScore'),
   algorithmTrainerAlg: document.querySelector('#algorithmTrainerAlg'),
   algorithmTrainerHint: document.querySelector('#algorithmTrainerHint'),
@@ -565,6 +567,7 @@ let algorithmTrainerGroup = localStorage.getItem('trainTimer.algorithmTrainerGro
 let algorithmTrainerSearch = localStorage.getItem('trainTimer.algorithmTrainerSearch') || '';
 let algorithmTrainerCurrentId = localStorage.getItem('trainTimer.algorithmTrainerCurrentId') || '';
 let algorithmTrainerStats = loadAlgorithmTrainerStats();
+let algorithmTrainerStarredIds = loadAlgorithmTrainerStarredIds();
 let algorithmTrainerTimerStartedAt = 0;
 let algorithmTrainerTimerFrame = 0;
 let startedAt = 0;
@@ -700,6 +703,7 @@ elements.algorithmTrainerNextButton.addEventListener('click', chooseNextAlgorith
 elements.algorithmTrainerPassButton.addEventListener('click', () => recordAlgorithmTrainerResult(true));
 elements.algorithmTrainerFailButton.addEventListener('click', () => recordAlgorithmTrainerResult(false));
 elements.algorithmTrainerTimerButton.addEventListener('click', toggleAlgorithmTrainerTimer);
+elements.algorithmTrainerStarButton.addEventListener('click', toggleAlgorithmTrainerStarred);
 elements.algorithmTrainerAddButton.addEventListener('click', addAlgorithmTrainerCustomCase);
 elements.algorithmTrainerDeleteButton.addEventListener('click', deleteAlgorithmTrainerCustomCase);
 elements.algorithmTrainerExportButton.addEventListener('click', exportAlgorithmTrainerCustomCases);
@@ -5735,9 +5739,10 @@ function renderAlgorithmTrainerDialog() {
   const allCases = algorithmTrainerCasesForGroup(allSetCases);
   const scopedCases = algorithmTrainerCasesForFocus(allCases);
   const searchActive = algorithmTrainerSearchQuery() !== '';
-  const focusBaseCases = scopedCases.length > 0 || algorithmTrainerFocus === 'all' ? scopedCases : allCases;
+  const focusCanFallback = algorithmTrainerFocusCanFallback();
+  const focusBaseCases = scopedCases.length > 0 || algorithmTrainerFocus === 'all' || !focusCanFallback ? scopedCases : allCases;
   const visibleCases = algorithmTrainerCasesForSearch(focusBaseCases);
-  const effectiveCases = searchActive ? visibleCases : (scopedCases.length > 0 ? scopedCases : allCases);
+  const effectiveCases = searchActive ? visibleCases : (scopedCases.length > 0 || !focusCanFallback ? scopedCases : allCases);
   const current = algorithmTrainerCurrentCase(effectiveCases) || effectiveCases[0];
   if (current && current.id !== algorithmTrainerCurrentId) {
     algorithmTrainerCurrentId = current.id;
@@ -5757,12 +5762,13 @@ function renderAlgorithmTrainerDialog() {
   elements.algorithmTrainerHint.textContent = searchActive && visibleCases.length === 0
     ? `没有匹配“${algorithmTrainerSearchQuery()}”的公式`
     : (scopedCases.length === 0 && algorithmTrainerFocus !== 'all'
-    ? `${focusLabel}范围暂无案例，随机会从全部中选择`
+    ? (focusCanFallback ? `${focusLabel}范围暂无案例，随机会从全部中选择` : `${focusLabel}范围暂无案例`)
     : (current?.hint || '选择随机下一条开始练习'));
   const currentStats = algorithmTrainerStats[current?.id] || { success: 0, total: 0, streak: 0 };
   elements.algorithmTrainerScore.textContent = algorithmTrainerProgressText(currentStats);
   elements.algorithmTrainerDeleteButton.disabled = current?.set !== 'custom';
   elements.algorithmTrainerExportButton.disabled = algorithmTrainerCustomCases.length === 0;
+  renderAlgorithmTrainerStarButton(current);
   renderAlgorithmTrainerTimer(currentStats);
   const listRows = searchActive
     ? visibleCases
@@ -5778,7 +5784,11 @@ function renderAlgorithmTrainerListItem(item) {
   const stats = algorithmTrainerStats[item.id] || { success: 0, total: 0, streak: 0 };
   const row = document.createElement('button');
   row.type = 'button';
-  row.className = item.id === algorithmTrainerCurrentId ? 'algorithm-trainer-item active' : 'algorithm-trainer-item';
+  row.className = [
+    'algorithm-trainer-item',
+    item.id === algorithmTrainerCurrentId ? 'active' : '',
+    algorithmTrainerCaseStarred(item.id) ? 'starred' : '',
+  ].filter(Boolean).join(' ');
   const reviewReason = algorithmTrainerFocus === 'review' ? algorithmTrainerReviewReason(item) : '';
   row.title = [item.algorithm, reviewReason].filter(Boolean).join(' · ');
   row.innerHTML = `
@@ -5808,7 +5818,8 @@ function chooseNextAlgorithmTrainerCase(options = {}) {
   cancelAlgorithmTrainerTimer();
   const allCases = algorithmTrainerCasesForGroup(algorithmTrainerCasesForSet());
   const focusedCases = algorithmTrainerCasesForFocus(allCases);
-  const baseCases = focusedCases.length > 0 || algorithmTrainerFocus === 'all' ? focusedCases : allCases;
+  const focusCanFallback = algorithmTrainerFocusCanFallback();
+  const baseCases = focusedCases.length > 0 || algorithmTrainerFocus === 'all' || !focusCanFallback ? focusedCases : allCases;
   const searchActive = algorithmTrainerSearchQuery() !== '';
   const cases = searchActive ? algorithmTrainerCasesForSearch(baseCases) : baseCases;
   if (cases.length === 0) {
@@ -5848,6 +5859,30 @@ function recordAlgorithmTrainerResult(success) {
   algorithmTrainerStats[current.id] = stats;
   saveAlgorithmTrainerStats();
   chooseNextAlgorithmTrainerCase();
+}
+
+function renderAlgorithmTrainerStarButton(current) {
+  const starred = Boolean(current && algorithmTrainerCaseStarred(current.id));
+  elements.algorithmTrainerStarButton.disabled = !current;
+  elements.algorithmTrainerStarButton.textContent = starred ? '★' : '☆';
+  elements.algorithmTrainerStarButton.classList.toggle('active', starred);
+  elements.algorithmTrainerStarButton.setAttribute('aria-pressed', starred ? 'true' : 'false');
+  elements.algorithmTrainerStarButton.setAttribute('aria-label', starred ? '取消收藏当前公式' : '收藏当前公式');
+  elements.algorithmTrainerStarButton.title = current
+    ? (starred ? '已加入收藏专项' : '加入收藏专项')
+    : '没有可收藏的公式';
+}
+
+function toggleAlgorithmTrainerStarred() {
+  const current = algorithmTrainerCurrentCase();
+  if (!current) return;
+  if (algorithmTrainerStarredIds.has(current.id)) {
+    algorithmTrainerStarredIds.delete(current.id);
+  } else {
+    algorithmTrainerStarredIds.add(current.id);
+  }
+  saveAlgorithmTrainerStarredIds();
+  renderAlgorithmTrainerDialog();
 }
 
 function toggleAlgorithmTrainerTimer() {
@@ -6045,8 +6080,10 @@ function deleteAlgorithmTrainerCustomCase() {
   cancelAlgorithmTrainerTimer();
   algorithmTrainerCustomCases = algorithmTrainerCustomCases.filter((item) => item.id !== current.id);
   delete algorithmTrainerStats[current.id];
+  algorithmTrainerStarredIds.delete(current.id);
   saveAlgorithmTrainerCustomCases();
   saveAlgorithmTrainerStats();
+  saveAlgorithmTrainerStarredIds();
   algorithmTrainerCurrentId = algorithmTrainerCustomCases[0]?.id || '';
   localStorage.setItem('trainTimer.algorithmTrainerCurrentId', algorithmTrainerCurrentId);
   renderAlgorithmTrainerDialog();
@@ -6122,7 +6159,14 @@ function algorithmTrainerCasesForFocus(cases) {
   if (algorithmTrainerFocus === 'weak') {
     return cases.filter((item) => algorithmTrainerCaseNeedsReview(item));
   }
+  if (algorithmTrainerFocus === 'starred') {
+    return cases.filter((item) => algorithmTrainerCaseStarred(item.id));
+  }
   return cases;
+}
+
+function algorithmTrainerFocusCanFallback() {
+  return algorithmTrainerFocus !== 'starred';
 }
 
 function algorithmTrainerCasesForSearch(cases) {
@@ -6142,6 +6186,10 @@ function algorithmTrainerSearchText(item) {
     item.algorithm,
     item.hint,
   ].filter(Boolean).join(' ').toLowerCase();
+}
+
+function algorithmTrainerCaseStarred(caseId) {
+  return algorithmTrainerStarredIds.has(String(caseId || ''));
 }
 
 function algorithmTrainerCaseNeedsReview(item) {
@@ -6262,6 +6310,19 @@ function loadAlgorithmTrainerStats() {
 
 function saveAlgorithmTrainerStats() {
   localStorage.setItem('trainTimer.algorithmTrainerStats', JSON.stringify(algorithmTrainerStats));
+}
+
+function loadAlgorithmTrainerStarredIds() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem('trainTimer.algorithmTrainerStarredIds') || '[]');
+    return new Set(Array.isArray(parsed) ? parsed.map((id) => String(id || '')).filter(Boolean) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveAlgorithmTrainerStarredIds() {
+  localStorage.setItem('trainTimer.algorithmTrainerStarredIds', JSON.stringify([...algorithmTrainerStarredIds]));
 }
 
 function renderStatsDialog() {

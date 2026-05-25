@@ -748,6 +748,7 @@
                 <option value="review">复习</option>
                 <option value="new">未练</option>
                 <option value="weak">薄弱</option>
+                <option value="starred">收藏</option>
               </select>
             </label>
             <label>
@@ -774,7 +775,10 @@
                 <strong id="algorithmTrainerName">-</strong>
                 <span id="algorithmTrainerGroup">-</span>
               </div>
-              <em id="algorithmTrainerScore">0/0</em>
+              <div class="algorithm-trainer-head-actions">
+                <button id="algorithmTrainerStarButton" class="algorithm-trainer-star-button" type="button" aria-label="收藏当前公式" aria-pressed="false">☆</button>
+                <em id="algorithmTrainerScore">0/0</em>
+              </div>
             </div>
             <p id="algorithmTrainerAlg" class="algorithm-trainer-alg">-</p>
             <p id="algorithmTrainerHint" class="algorithm-trainer-hint">选择随机下一条开始练习</p>

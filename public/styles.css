@@ -583,7 +583,7 @@ body[data-state="timing"] .timer-display {
   margin-right: 0.34em;
   border-radius: 6px;
   padding: 0 0.09em;
-  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+  transition: background-color 160ms ease, box-shadow 160ms ease, color 160ms ease, transform 160ms ease;
 }
 
 .scramble-move.correct {
@@ -592,8 +592,9 @@ body[data-state="timing"] .timer-display {
 }
 
 .scramble-move.current {
-  background: rgba(0, 173, 181, 0.08);
-  color: #b7fbff;
+  background: rgba(0, 173, 181, 0.035);
+  color: #f5feff;
+  box-shadow: inset 0 -2px 0 rgba(0, 173, 181, 0.62);
 }
 
 .scramble-move.partial {
@@ -1131,6 +1132,37 @@ body[data-state="timing"] .timer-display {
   color: rgba(199, 199, 204, 0.62);
   font-size: 12px;
   font-weight: 720;
+}
+
+.history-sort-button {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: color 140ms var(--ease), transform 140ms var(--ease);
+}
+
+.history-sort-button:hover {
+  color: rgba(245, 245, 247, 0.94);
+  transform: translateY(-1px);
+}
+
+.history-sort-button.active {
+  color: var(--accent-strong);
+}
+
+.history-sort-button .sort-arrow {
+  width: 0.72em;
+  color: var(--accent);
+  font-size: 11px;
+  line-height: 1;
+  text-align: center;
 }
 
 .history-row {

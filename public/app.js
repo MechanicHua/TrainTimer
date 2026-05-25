@@ -260,6 +260,7 @@ const elements = {
   cubeNet: document.querySelector('#cubeNet'),
   historyPath: document.querySelector('#historyPath'),
   historyRows: document.querySelector('#historyRows'),
+  historySortButtons: [...document.querySelectorAll('[data-history-sort]')],
   historyActionsMenu: document.querySelector('#historyActionsMenu'),
   selectAllSolves: document.querySelector('#selectAllSolves'),
   manualEntryButton: document.querySelector('#manualEntryButton'),
@@ -428,6 +429,12 @@ let currentSessionId = localStorage.getItem('trainTimer.session') || 'default';
 let scramblePuzzle = localStorage.getItem('trainTimer.scramblePuzzle') || 'three';
 let allSessionsEnabled = localStorage.getItem('trainTimer.allSessions') === '1';
 let allSolvesDatePreset = 'all';
+let historySortKey = localStorage.getItem('trainTimer.historySortKey') || '';
+let historySortDirection = localStorage.getItem('trainTimer.historySortDirection') || '';
+if (!['single', 'ao5', 'ao12'].includes(historySortKey) || !['asc', 'desc'].includes(historySortDirection)) {
+  historySortKey = '';
+  historySortDirection = '';
+}
 let startedAt = 0;
 let inspectionStartedAt = 0;
 let activeInspectionUsed = false;
@@ -623,6 +630,9 @@ elements.allCopyListButton.addEventListener('click', copyListedSolves);
 elements.allListedStatsButton.addEventListener('click', openListedStatsDialog);
 elements.historyRows.addEventListener('change', handleHistoryChange);
 elements.historyRows.addEventListener('click', handleHistoryClick);
+elements.historySortButtons.forEach((button) => {
+  button.addEventListener('click', () => cycleHistorySort(button.dataset.historySort || ''));
+});
 elements.allSolvesRows.addEventListener('change', handleHistoryChange);
 elements.allSolvesRows.addEventListener('click', handleHistoryClick);
 elements.statsRecordList.addEventListener('click', handleStatsRecordClick);
@@ -897,11 +907,16 @@ function tickTimer() {
   timerFrame = requestAnimationFrame(tickTimer);
 }
 
-async function finishTiming() {
+async function finishTiming(options = {}) {
   if (appState !== 'timing') return;
   cancelAnimationFrame(timerFrame);
-  const durationMs = performance.now() - startedAt;
+  const finishedAt = Number.isFinite(options.finishedAt) ? options.finishedAt : performance.now();
+  const durationMs = Math.max(0, finishedAt - startedAt);
   appState = 'saving';
+  setTimerDisplayText(formatTime(durationMs));
+  elements.statusText.textContent = finishSource === 'bluetooth' ? '蓝牙复原' : '保存中';
+  elements.timerHint.textContent = finishSource === 'bluetooth' ? '检测到已复原，正在写入成绩' : '正在写入成绩';
+  await nextPaintOrTimeout();
   render();
   const bluetoothMetadata = bluetoothSolveMetadata();
   const bluetoothMovesForSave = bluetoothMoveSequence();
@@ -935,6 +950,16 @@ async function finishTiming() {
   finishSource = 'manual';
   appState = 'done';
   render();
+}
+
+function nextPaintOrTimeout() {
+  return new Promise((resolve) => {
+    const timeoutId = window.setTimeout(resolve, 35);
+    requestAnimationFrame(() => {
+      window.clearTimeout(timeoutId);
+      resolve();
+    });
+  });
 }
 
 async function nextSolve() {
@@ -3041,6 +3066,7 @@ async function processBluetoothPacket(uuid, value, deviceName) {
 }
 
 async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
+  const packetReceivedAt = performance.now();
   const protocol = bluetoothGanSession || bluetoothGanProtocolForCharacteristic(uuid) || bluetoothGanProtocolForDevice(deviceName);
   if (!protocol) {
     elements.bluetoothStatus.title = `${deviceName} · GAN 协议未知`;
@@ -3075,11 +3101,14 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
 
   if (decoded.batteryLevel != null) updateBluetoothBattery(decoded.batteryLevel, decoded.protocol || protocol.label);
   if (decoded.gyro) updateBluetoothGyro(decoded.gyro);
-  const canStopFromStatePacket = decoded.stateSolved === true && appState === 'timing';
-  if (decoded.facelets) updateBluetoothPhysicalState(decoded, { render: !canStopFromStatePacket });
+  const physicalFaces = decoded.facelets ? updateBluetoothPhysicalState(decoded, { render: false }) : null;
+  const statePacketSolved = decoded.stateSolved === true || Boolean(physicalFaces && isSolvedFaces(physicalFaces));
+  if (statePacketSolved && decoded.stateSolved !== true) decoded = { ...decoded, stateSolved: true };
+  const canStopFromStatePacket = statePacketSolved && appState === 'timing';
+  if (decoded.facelets && !canStopFromStatePacket) updateBluetoothPhysicalState(decoded, { faces: physicalFaces });
   if (canStopFromStatePacket) {
-    markGanBluetoothStateSolved(decoded, { render: false });
-    finishTimingFromBluetooth();
+    markGanBluetoothStateSolved(decoded, { force: true, render: false });
+    finishTimingFromBluetooth(packetReceivedAt);
   }
   const hasMoveCounter = Number.isInteger(decoded.moveCounter);
   const duplicateMovePacket = hasMoveCounter
@@ -3092,7 +3121,7 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
 
   const moveHandling = handleBluetoothMovesForCurrentState(parsedMoves, label, decoded.protocol || protocol.label, deviceName);
   const trackingMoves = moveHandling.trackingMoves;
-  const statePacketSolved = canStopFromStatePacket || markGanBluetoothStateSolved(decoded);
+  const solvedByStatePacket = canStopFromStatePacket || markGanBluetoothStateSolved(decoded);
 
   const statusDetail = parsedMoves.length > 0
     ? `${parsedMoves.join(' ')} · ${moveHandling.statusLabel || (trackingMoves ? (bluetoothSolved ? '已复原' : '未复原') : '等待计时')}`
@@ -3106,7 +3135,7 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
     label,
     ganBluetoothPacketLog(hex, decoded, ignoredReason),
   );
-  if (!canStopFromStatePacket && statePacketSolved) finishTimingFromBluetooth();
+  if (!canStopFromStatePacket && solvedByStatePacket) finishTimingFromBluetooth(packetReceivedAt);
   console.info('GAN Bluetooth cube notification', {
     characteristic: uuid,
     value: hex,
@@ -3165,17 +3194,17 @@ function ganBluetoothPacketLog(hex, decoded, ignoredReason = '') {
 }
 
 function markGanBluetoothStateSolved(decoded, options = {}) {
-  if (decoded.stateSolved !== true || appState !== 'timing') return false;
+  if ((decoded.stateSolved !== true && options.force !== true) || appState !== 'timing') return false;
   bluetoothSolved = true;
   bluetoothSolvedByStatePacket = true;
   if (options.render !== false) renderBluetoothMoves();
   return true;
 }
 
-function finishTimingFromBluetooth() {
+function finishTimingFromBluetooth(finishedAt = performance.now()) {
   if (appState !== 'timing' || !bluetoothSolved) return;
   finishSource = 'bluetooth';
-  finishTiming();
+  finishTiming({ finishedAt });
 }
 
 function cleanupBluetoothSubscriptions() {
@@ -3267,14 +3296,15 @@ function bluetoothGyroQuaternionFromPacket(quaternion = {}) {
 }
 
 function updateBluetoothPhysicalState(decoded, options = {}) {
-  const faces = facesFromFacelets(decoded.facelets);
+  const faces = options.faces || facesFromFacelets(decoded.facelets);
   if (!faces) return;
   bluetoothPhysicalFacelets = decoded.facelets;
   bluetoothPhysicalFaces = faces;
   bluetoothPhysicalStateTime = new Date().toISOString();
-  if (options.render === false) return;
+  if (options.render === false) return faces;
   renderBluetoothMoves();
   renderPreviewMode();
+  return faces;
 }
 
 function resetBluetoothPhysicalState() {
@@ -3481,6 +3511,7 @@ function armBluetoothSolveTracking() {
 }
 
 function addBluetoothMoves(moves, source, protocol = '', deviceName = '') {
+  const moveReceivedAt = performance.now();
   const now = new Date();
   const elapsedMs = appState === 'timing' && startedAt > 0 ? Math.max(0, Math.round(performance.now() - startedAt)) : null;
   const latestMove = moves.at(-1) || '-';
@@ -3497,7 +3528,7 @@ function addBluetoothMoves(moves, source, protocol = '', deviceName = '') {
   bluetoothSolved = updateBluetoothSolvedFromMoves(moves);
   bluetoothSolvedByStatePacket = false;
   if (appState === 'timing' && bluetoothSolved) {
-    finishTimingFromBluetooth();
+    finishTimingFromBluetooth(moveReceivedAt);
     requestAnimationFrame(() => {
       updateBluetooth3dMove(latestMove);
       renderBluetoothMoves();
@@ -3679,7 +3710,7 @@ function initBluetoothCube3d() {
   scene.add(group);
 
   const shell = new THREE.Mesh(
-    new THREE.BoxGeometry(2.04, 2.04, 2.04),
+    new THREE.BoxGeometry(2.12, 2.12, 2.12),
     new THREE.MeshBasicMaterial({
       color: 0x1d1d1f,
     }),
@@ -3687,13 +3718,13 @@ function initBluetoothCube3d() {
   group.add(shell);
 
   const edges = new THREE.LineSegments(
-    new THREE.EdgesGeometry(new THREE.BoxGeometry(2.025, 2.025, 2.025)),
-    new THREE.LineBasicMaterial({ color: 0x25262b, transparent: true, opacity: 0.2 }),
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(2.11, 2.11, 2.11)),
+    new THREE.LineBasicMaterial({ color: 0x25262b, transparent: true, opacity: 0.24 }),
   );
   group.add(edges);
 
   const stickers = new Map();
-  const stickerGeometry = new THREE.PlaneGeometry(0.655, 0.655);
+  const stickerGeometry = new THREE.PlaneGeometry(0.67, 0.67);
   for (const face of cube3dFaces) {
     for (let row = 0; row < 3; row += 1) {
       for (let col = 0; col < 3; col += 1) {
@@ -3738,8 +3769,8 @@ function initBluetoothCube3d() {
 }
 
 function applyCube3dStickerTransform(sticker, face, row, col) {
-  const spacing = 0.666;
-  const surface = 1.102;
+  const spacing = 0.672;
+  const surface = 1.075;
   const a = (col - 1) * spacing;
   const b = (1 - row) * spacing;
 
@@ -5433,11 +5464,51 @@ async function saveManualEntry() {
 
 function renderHistory() {
   const sessionSolves = filteredSolves();
-  const latest = sessionSolves.slice(-compactHistoryLimit).reverse();
+  const listed = listedHistoryEntries(sessionSolves).slice(0, compactHistoryLimit);
   renderHistoryControls();
   elements.historyRows.replaceChildren(
-    ...latest.map((solve, index) => renderSolveRow(solve, sessionSolves.length - index, sessionSolves, { compact: true })),
+    ...listed.map((entry) => renderSolveRow(entry.solve, entry.index + 1, sessionSolves, { compact: true })),
   );
+}
+
+function listedHistoryEntries(sessionSolves) {
+  const entries = sessionSolves.map((solve, index) => ({
+    solve,
+    index,
+    single: effectiveDurationMs(solve),
+    ao5: rollingAverageAt(sessionSolves, index, 5),
+    ao12: rollingAverageAt(sessionSolves, index, 12),
+  }));
+  if (!historySortKey || !historySortDirection) return entries.slice(-compactHistoryLimit).reverse();
+  const direction = historySortDirection === 'desc' ? -1 : 1;
+  return entries.sort((left, right) => {
+    const leftValue = left[historySortKey];
+    const rightValue = right[historySortKey];
+    const leftMissing = leftValue == null;
+    const rightMissing = rightValue == null;
+    if (leftMissing && !rightMissing) return 1;
+    if (!leftMissing && rightMissing) return -1;
+    if (!leftMissing && !rightMissing && leftValue !== rightValue) {
+      return (leftValue - rightValue) * direction;
+    }
+    return right.index - left.index;
+  });
+}
+
+function cycleHistorySort(key) {
+  if (!['single', 'ao5', 'ao12'].includes(key)) return;
+  if (historySortKey !== key) {
+    historySortKey = key;
+    historySortDirection = 'asc';
+  } else if (historySortDirection === 'asc') {
+    historySortDirection = 'desc';
+  } else {
+    historySortKey = '';
+    historySortDirection = '';
+  }
+  localStorage.setItem('trainTimer.historySortKey', historySortKey);
+  localStorage.setItem('trainTimer.historySortDirection', historySortDirection);
+  renderHistory();
 }
 
 function renderAllSolvesDialog() {
@@ -5603,6 +5674,7 @@ function formatRecordTitle(marks) {
 }
 
 function renderHistoryControls() {
+  renderHistorySortControls();
   const canMoveSelected = selectedSolveIds.size > 0 && sessions.some((session) => session.id !== currentSessionId);
   elements.markSelectedButton.disabled = selectedSolveIds.size === 0;
   elements.selectedStatsButton.disabled = selectedSolveIds.size === 0;
@@ -5655,6 +5727,23 @@ function renderHistoryControls() {
     elements.selectAllSolves.checked = visibleIds.length > 0 && visibleIds.every((id) => selectedSolveIds.has(id));
     elements.selectAllSolves.indeterminate = visibleIds.some((id) => selectedSolveIds.has(id)) && !elements.selectAllSolves.checked;
   }
+}
+
+function renderHistorySortControls() {
+  const labels = { single: '单次', ao5: 'ao5', ao12: 'ao12' };
+  elements.historySortButtons.forEach((button) => {
+    const key = button.dataset.historySort || '';
+    const active = key === historySortKey && Boolean(historySortDirection);
+    button.dataset.direction = active ? historySortDirection : '';
+    button.classList.toggle('active', active);
+    const arrow = button.querySelector('.sort-arrow');
+    if (arrow) arrow.textContent = active ? (historySortDirection === 'asc' ? '↑' : '↓') : '';
+    const label = labels[key] || key;
+    button.title = active
+      ? `${label}排序：${historySortDirection === 'asc' ? '从快到慢' : '从慢到快'}，点击切换`
+      : `${label}排序：默认时间顺序，点击按从快到慢排序`;
+    button.setAttribute('aria-label', button.title);
+  });
 }
 
 function renderAllSolvesControls() {

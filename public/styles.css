@@ -1932,6 +1932,47 @@ dialog[open] {
   margin: 9px 0 0;
 }
 
+.algorithm-trainer-setup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.algorithm-trainer-setup span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.algorithm-trainer-setup button {
+  border: 0;
+  border-radius: 7px;
+  padding: 7px 9px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--ink);
+  transition: background-color 160ms var(--ease), color 160ms var(--ease), transform 160ms var(--ease);
+}
+
+.algorithm-trainer-setup button:hover:not(:disabled) {
+  background: rgba(0, 173, 181, 0.18);
+  color: var(--ink-strong);
+  transform: translateY(-1px);
+}
+
+.algorithm-trainer-setup button:disabled {
+  opacity: 0.38;
+}
+
 .algorithm-trainer-timer {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -3373,6 +3414,10 @@ dialog[open] {
   }
 
   .algorithm-trainer-timer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .algorithm-trainer-setup {
     grid-template-columns: minmax(0, 1fr);
   }
 

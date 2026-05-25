@@ -352,6 +352,9 @@ const elements = {
   algorithmTrainerScore: document.querySelector('#algorithmTrainerScore'),
   algorithmTrainerAlg: document.querySelector('#algorithmTrainerAlg'),
   algorithmTrainerHint: document.querySelector('#algorithmTrainerHint'),
+  algorithmTrainerSetup: document.querySelector('#algorithmTrainerSetup'),
+  algorithmTrainerCopySetupButton: document.querySelector('#algorithmTrainerCopySetupButton'),
+  algorithmTrainerApplySetupButton: document.querySelector('#algorithmTrainerApplySetupButton'),
   algorithmTrainerTimerDisplay: document.querySelector('#algorithmTrainerTimerDisplay'),
   algorithmTrainerTimerStats: document.querySelector('#algorithmTrainerTimerStats'),
   algorithmTrainerTimerButton: document.querySelector('#algorithmTrainerTimerButton'),
@@ -704,6 +707,8 @@ elements.algorithmTrainerPassButton.addEventListener('click', () => recordAlgori
 elements.algorithmTrainerFailButton.addEventListener('click', () => recordAlgorithmTrainerResult(false));
 elements.algorithmTrainerTimerButton.addEventListener('click', toggleAlgorithmTrainerTimer);
 elements.algorithmTrainerStarButton.addEventListener('click', toggleAlgorithmTrainerStarred);
+elements.algorithmTrainerCopySetupButton.addEventListener('click', copyAlgorithmTrainerSetup);
+elements.algorithmTrainerApplySetupButton.addEventListener('click', applyAlgorithmTrainerSetupToTimer);
 elements.algorithmTrainerAddButton.addEventListener('click', addAlgorithmTrainerCustomCase);
 elements.algorithmTrainerDeleteButton.addEventListener('click', deleteAlgorithmTrainerCustomCase);
 elements.algorithmTrainerExportButton.addEventListener('click', exportAlgorithmTrainerCustomCases);
@@ -5769,6 +5774,7 @@ function renderAlgorithmTrainerDialog() {
   elements.algorithmTrainerDeleteButton.disabled = current?.set !== 'custom';
   elements.algorithmTrainerExportButton.disabled = algorithmTrainerCustomCases.length === 0;
   renderAlgorithmTrainerStarButton(current);
+  renderAlgorithmTrainerSetup(current);
   renderAlgorithmTrainerTimer(currentStats);
   const listRows = searchActive
     ? visibleCases
@@ -5883,6 +5889,84 @@ function toggleAlgorithmTrainerStarred() {
   }
   saveAlgorithmTrainerStarredIds();
   renderAlgorithmTrainerDialog();
+}
+
+function renderAlgorithmTrainerSetup(current) {
+  const setup = current ? algorithmTrainerSetupText(current.algorithm) : '';
+  const supported = Boolean(setup && algorithmTrainerSetupCanApply(setup));
+  elements.algorithmTrainerSetup.textContent = setup ? `训练打乱 ${setup}` : '训练打乱 -';
+  elements.algorithmTrainerSetup.title = setup
+    ? (supported ? '可一键套用到当前计时器' : '含 M、r、x、y 等公式记号，建议复制后手动执行')
+    : '当前公式无法生成训练打乱';
+  elements.algorithmTrainerCopySetupButton.disabled = !setup;
+  elements.algorithmTrainerCopySetupButton.textContent = '复制打乱';
+  elements.algorithmTrainerApplySetupButton.disabled = !supported || !canApplyAlgorithmTrainerSetup();
+  elements.algorithmTrainerApplySetupButton.title = supported
+    ? (canApplyAlgorithmTrainerSetup() ? '把训练打乱套用到主计时器并锁定当前打乱' : '计时、观察或保存中不能套用')
+    : '只有基础面转 UDRLFB 才能直接套用到计时器';
+}
+
+function algorithmTrainerSetupText(algorithm = '') {
+  const tokens = String(algorithm || '').trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return '';
+  return tokens.slice().reverse().map(invertAlgorithmTrainerToken).join(' ');
+}
+
+function invertAlgorithmTrainerToken(token) {
+  if (token.endsWith('2')) return token;
+  if (token.endsWith("'")) return token.slice(0, -1);
+  return `${token}'`;
+}
+
+function algorithmTrainerSetupCanApply(setupText) {
+  try {
+    parseScramble(setupText);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function canApplyAlgorithmTrainerSetup() {
+  return !['timing', 'inspection', 'hold', 'saving'].includes(appState);
+}
+
+async function copyAlgorithmTrainerSetup() {
+  const current = algorithmTrainerCurrentCase();
+  const setup = current ? algorithmTrainerSetupText(current.algorithm) : '';
+  if (!setup) return;
+  try {
+    await navigator.clipboard.writeText(setup);
+    elements.algorithmTrainerCopySetupButton.textContent = '已复制';
+    setTimeout(() => {
+      elements.algorithmTrainerCopySetupButton.textContent = '复制打乱';
+    }, 900);
+  } catch (error) {
+    alert(`复制训练打乱失败：${error.message || String(error)}`);
+  }
+}
+
+function applyAlgorithmTrainerSetupToTimer() {
+  const current = algorithmTrainerCurrentCase();
+  const setup = current ? algorithmTrainerSetupText(current.algorithm) : '';
+  if (!setup || !algorithmTrainerSetupCanApply(setup) || !canApplyAlgorithmTrainerSetup()) return;
+  scramble = {
+    scramble: setup,
+    source: `算法训练 · ${current.name}`,
+    puzzle: 'three',
+  };
+  scramblePuzzle = 'three';
+  localStorage.setItem('trainTimer.scramblePuzzle', scramblePuzzle);
+  updateLocalSession(currentSessionId, { scramblePuzzle });
+  scrambleLocked = true;
+  localStorage.setItem('trainTimer.scrambleLocked', '1');
+  activePenalty = 'ok';
+  activeInspectionUsed = false;
+  inspectionStartedAt = 0;
+  inspectionBluetoothStartBlockedUntil = 0;
+  resetBluetoothSolveTracking();
+  resetScrambleGuide();
+  render();
 }
 
 function toggleAlgorithmTrainerTimer() {

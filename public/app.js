@@ -558,6 +558,8 @@ const previewCache = new Map();
 let cube3d = null;
 let cube3dLastFacesSignature = '';
 let cube3dMovePulseTimer = 0;
+let cube3dAnimationFrame = 0;
+let cube3dAnimationTimer = 0;
 let timerDisplayFitKey = '';
 
 elements.inspectionToggle.checked = inspectionEnabled;
@@ -3866,7 +3868,7 @@ function initBluetoothCube3d() {
   resize();
   renderBluetoothCube3dCurrent();
   renderBluetoothCube3dTelemetry();
-  requestAnimationFrame(animateBluetoothCube3d);
+  scheduleBluetoothCube3dAnimation();
 }
 
 function applyCube3dStickerTransform(sticker, face, row, col) {
@@ -3910,13 +3912,34 @@ function resizeBluetoothCube3d() {
   }
 }
 
+function scheduleBluetoothCube3dAnimation(delayMs = 0) {
+  if (!cube3d || cube3dAnimationFrame) return;
+  if (delayMs <= 0) {
+    if (cube3dAnimationTimer) {
+      window.clearTimeout(cube3dAnimationTimer);
+      cube3dAnimationTimer = 0;
+    }
+    cube3dAnimationFrame = requestAnimationFrame(animateBluetoothCube3d);
+    return;
+  }
+  if (cube3dAnimationTimer) return;
+  cube3dAnimationTimer = window.setTimeout(() => {
+    cube3dAnimationTimer = 0;
+    scheduleBluetoothCube3dAnimation();
+  }, delayMs);
+}
+
 function animateBluetoothCube3d(time = performance.now()) {
+  cube3dAnimationFrame = 0;
   if (!cube3d) return;
   const visible = isBluetoothCube3dVisible();
   const activeMove = Boolean(cube3d.turnAnimation);
-  const interval = bluetoothGyro || activeMove ? 1000 / 90 : 1000 / 30;
-  if (!visible || time - cube3d.lastRenderAt < interval) {
-    requestAnimationFrame(animateBluetoothCube3d);
+  if (!visible) return;
+
+  const interval = bluetoothGyro || activeMove ? 1000 / 90 : 1000 / 18;
+  const waitMs = interval - (time - cube3d.lastRenderAt);
+  if (waitMs > 0) {
+    if (shouldContinueBluetoothCube3dAnimation(false)) scheduleBluetoothCube3dAnimation(waitMs);
     return;
   }
 
@@ -3926,7 +3949,17 @@ function animateBluetoothCube3d(time = performance.now()) {
     cube3d.needsRender = false;
     cube3d.lastRenderAt = time;
   }
-  requestAnimationFrame(animateBluetoothCube3d);
+  if (shouldContinueBluetoothCube3dAnimation(changed)) scheduleBluetoothCube3dAnimation();
+}
+
+function shouldContinueBluetoothCube3dAnimation(changed) {
+  if (!cube3d || !isBluetoothCube3dVisible()) return false;
+  return Boolean(
+    changed
+    || cube3d.needsRender
+    || cube3d.turnAnimation
+    || (!bluetoothGyro && bluetoothLivePreviewMode())
+  );
 }
 
 function updateBluetoothCube3dPose(time) {
@@ -3962,6 +3995,7 @@ function markBluetoothCube3dDirty() {
   if (cube3d) {
     cube3d.needsRender = true;
     cube3d.lastRenderAt = Math.min(cube3d.lastRenderAt, performance.now() - 1000 / 90);
+    scheduleBluetoothCube3dAnimation();
   }
 }
 

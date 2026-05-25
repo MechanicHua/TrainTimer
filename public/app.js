@@ -4082,6 +4082,7 @@ function renderSessions() {
 
 function renderTimer() {
   document.body.dataset.state = appState;
+  document.body.dataset.holdReady = appState === 'hold' && holdConfirmed ? 'true' : 'false';
   elements.inspectionToggle.disabled = appState === 'timing' || appState === 'inspection' || appState === 'hold';
 
   if (appState === 'ready') {

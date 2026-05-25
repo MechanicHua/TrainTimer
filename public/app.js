@@ -22,8 +22,8 @@ const historyBottomFadeRangePx = 180;
 const cube3dActiveFrameMs = 0;
 const cube3dIdleFrameMs = 1000 / 30;
 const cube3dGyroActiveWindowMs = 900;
-const cube3dGyroSmoothingMs = 6;
-const cube3dGyroFastSmoothingMs = 3.5;
+const cube3dGyroSmoothingMs = 14;
+const cube3dGyroFastSmoothingMs = 7;
 const cube3dPoseEpsilon = 0.000015;
 const cube3dTelemetryFrameMs = 1000 / 15;
 const cube3dTurnDurationMs = 96;
@@ -4544,7 +4544,7 @@ function animateBluetoothCube3d(time = performance.now()) {
   }
 
   const changed = updateBluetoothCube3dPose(time);
-  if (changed || cube3d.needsRender) {
+  if (changed || cube3d.needsRender || activeGyro || activeMove) {
     cube3d.renderer.render(cube3d.scene, cube3d.camera);
     cube3d.needsRender = false;
     cube3d.lastRenderAt = time;

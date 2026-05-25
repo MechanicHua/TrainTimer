@@ -1367,7 +1367,8 @@ body[data-state="timing"] .timer-display {
   padding: 0 7px;
 }
 
-.icon-delete-button {
+.icon-delete-button,
+.icon-lock-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1375,7 +1376,8 @@ body[data-state="timing"] .timer-display {
   padding: 0;
 }
 
-.icon-delete-button svg {
+.icon-delete-button svg,
+.icon-lock-button svg {
   width: 14px;
   height: 14px;
   fill: none;
@@ -1388,6 +1390,20 @@ body[data-state="timing"] .timer-display {
 .action-row .icon-delete-button {
   width: 34px;
   color: #ffb4ad;
+}
+
+.action-row .icon-lock-button {
+  width: 34px;
+  color: rgba(245, 245, 247, 0.68);
+}
+
+.action-row .icon-lock-button.active {
+  background: rgba(0, 173, 181, 0.18);
+  color: var(--accent-strong);
+}
+
+.action-row .icon-lock-button:hover:not(:disabled) {
+  color: var(--accent-strong);
 }
 
 .history-row .icon-delete-button {

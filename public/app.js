@@ -252,6 +252,7 @@ const elements = {
   timerHint: document.querySelector('#timerHint'),
   nextButton: document.querySelector('#nextButton'),
   scrambleButton: document.querySelector('#scrambleButton'),
+  scrambleLockButton: document.querySelector('#scrambleLockButton'),
   lastOkButton: document.querySelector('#lastOkButton'),
   lastPlusTwoButton: document.querySelector('#lastPlusTwoButton'),
   lastDnfButton: document.querySelector('#lastDnfButton'),
@@ -473,6 +474,7 @@ let sessions = [];
 let inspectionEnabled = localStorage.getItem('trainTimer.inspection') === '1';
 let currentSessionId = localStorage.getItem('trainTimer.session') || 'default';
 let scramblePuzzle = localStorage.getItem('trainTimer.scramblePuzzle') || 'three';
+let scrambleLocked = localStorage.getItem('trainTimer.scrambleLocked') === '1';
 let allSessionsEnabled = localStorage.getItem('trainTimer.allSessions') === '1';
 let allSolvesDatePreset = 'all';
 let statsChartMode = localStorage.getItem('trainTimer.statsChartMode') || 'single';
@@ -570,6 +572,7 @@ elements.lastOkButton.addEventListener('click', () => updateLatestSolvePenalty('
 elements.lastPlusTwoButton.addEventListener('click', () => updateLatestSolvePenalty('+2'));
 elements.lastDnfButton.addEventListener('click', () => updateLatestSolvePenalty('dnf'));
 elements.lastDeleteButton.addEventListener('click', deleteLatestSolve);
+elements.scrambleLockButton.addEventListener('click', toggleScrambleLock);
 elements.algorithmTrainerButton.addEventListener('click', openAlgorithmTrainerDialog);
 elements.algorithmTrainerSet.addEventListener('change', () => {
   algorithmTrainerSet = elements.algorithmTrainerSet.value || 'pll';
@@ -785,6 +788,7 @@ window.__trainTimerDebug = {
       bluetoothAvailability: bluetoothAvailability(),
       bluetoothRequest: bluetoothRequestSummary(bluetoothRequestOptions(false)),
       bluetoothOptionalServices,
+      scrambleLocked,
     };
   },
 };
@@ -839,13 +843,19 @@ function updateLocalSession(sessionId, updates) {
 }
 
 function scrambleChangeLocked() {
-  return appState === 'timing' || appState === 'inspection' || appState === 'hold' || appState === 'saving';
+  return scrambleLocked || appState === 'timing' || appState === 'inspection' || appState === 'hold' || appState === 'saving';
 }
 
 function handleKeyDown(event) {
   if (shouldIgnoreTimerKey(event)) return;
 
   if (appState === 'done' && handleDoneQuickAction(event)) return;
+
+  if (event.code === 'KeyL' && canToggleScrambleLock()) {
+    event.preventDefault();
+    toggleScrambleLock();
+    return;
+  }
 
   if (event.code !== 'Space' && appState === 'timing') {
     event.preventDefault();
@@ -1034,7 +1044,12 @@ function nextPaintOrTimeout() {
 
 async function nextSolve() {
   clearBluetoothNextSolveGestureCandidate();
-  await loadScramble();
+  if (scrambleLocked && scramble?.scramble) {
+    resetBluetoothSolveTracking();
+    resetScrambleGuide();
+  } else {
+    await loadScramble();
+  }
   activePenalty = 'ok';
   inspectionStartedAt = 0;
   activeInspectionUsed = false;
@@ -1073,7 +1088,25 @@ async function changeScramblePuzzle() {
   await loadScramble();
 }
 
-async function loadScramble() {
+function canToggleScrambleLock() {
+  return Boolean(scramble?.scramble) && !['timing', 'inspection', 'hold', 'saving'].includes(appState);
+}
+
+async function toggleScrambleLock() {
+  if (!canToggleScrambleLock()) return;
+  scrambleLocked = !scrambleLocked;
+  localStorage.setItem('trainTimer.scrambleLocked', scrambleLocked ? '1' : '0');
+  render();
+  if (!scrambleLocked && scramble && (scramble.puzzle || 'three') !== scramblePuzzle) {
+    await loadScramble();
+  }
+}
+
+async function loadScramble(options = {}) {
+  if (scrambleLocked && !options.force) {
+    render();
+    return;
+  }
   applyCurrentSessionPuzzle();
   clearBluetoothNextSolveGestureCandidate();
   elements.scrambleButton.disabled = true;
@@ -1089,7 +1122,7 @@ async function loadScramble() {
     resetScrambleGuide();
     render();
   } finally {
-    elements.scrambleButton.disabled = false;
+    elements.scrambleButton.disabled = scrambleLocked || ['timing', 'inspection', 'hold', 'saving'].includes(appState);
   }
 }
 
@@ -4330,6 +4363,16 @@ function timerFocusActive() {
 function renderQuickActions() {
   const solve = latestSessionSolve();
   const disabled = !solve || appState === 'timing' || appState === 'inspection' || appState === 'hold' || appState === 'saving';
+  const actionLocked = appState === 'timing' || appState === 'inspection' || appState === 'hold' || appState === 'saving';
+  elements.nextButton.disabled = actionLocked;
+  elements.scrambleButton.disabled = actionLocked || scrambleLocked;
+  elements.scrambleLockButton.disabled = !canToggleScrambleLock();
+  elements.scrambleLockButton.classList.toggle('active', scrambleLocked);
+  elements.scrambleLockButton.setAttribute('aria-pressed', scrambleLocked ? 'true' : 'false');
+  elements.scrambleLockButton.title = scrambleLocked
+    ? '已锁定当前打乱，下一把继续使用'
+    : '锁定当前打乱（L）';
+  elements.scrambleLockButton.setAttribute('aria-label', scrambleLocked ? '解锁当前打乱' : '锁定当前打乱');
   elements.lastOkButton.disabled = disabled || solve?.penalty === 'ok';
   elements.lastPlusTwoButton.disabled = disabled || solve?.penalty === '+2';
   elements.lastDnfButton.disabled = disabled || solve?.penalty === 'dnf';
@@ -4345,10 +4388,10 @@ function renderScramble() {
   if (!scramble) return;
   const currentPuzzle = scramble.puzzle || scramblePuzzle;
   elements.scramblePuzzleSelect.value = currentPuzzle;
-  elements.scramblePuzzleSelect.disabled = appState === 'timing' || appState === 'inspection' || appState === 'hold' || appState === 'saving';
+  elements.scramblePuzzleSelect.disabled = scrambleChangeLocked();
   renderScrambleText();
   renderScrambleGuideMeta();
-  elements.scrambleSource.textContent = `${puzzleLabel(currentPuzzle)} · ${scramble.source}`;
+  elements.scrambleSource.textContent = `${puzzleLabel(currentPuzzle)} · ${scramble.source}${scrambleLocked ? ' · 已锁定' : ''}`;
   if (bluetoothLivePreviewMode()) {
     renderBluetoothCube3dCurrent();
   } else {

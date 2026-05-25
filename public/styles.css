@@ -540,6 +540,10 @@ body[data-state="timing"] .timer-display {
   font-weight: 650;
 }
 
+.topbar .scramble-puzzle-field {
+  min-width: 0;
+}
+
 .scramble-puzzle-field select {
   min-height: 30px;
   min-width: 96px;
@@ -548,6 +552,10 @@ body[data-state="timing"] .timer-display {
   background: rgba(255, 255, 255, 0.055);
   color: var(--ink);
   padding: 0 28px 0 10px;
+}
+
+.topbar .scramble-puzzle-field select {
+  width: 104px;
 }
 
 .scramble-text {

@@ -22,6 +22,20 @@
           <button id="renameSessionButton" type="button">重命名</button>
           <button id="deleteSessionButton" type="button">删会话</button>
         </div>
+        <label class="scramble-puzzle-field">
+          <span>类型</span>
+          <select id="scramblePuzzleSelect" aria-label="打乱类型">
+            <option value="two">2x2</option>
+            <option value="three">3x3</option>
+            <option value="four">4x4</option>
+            <option value="five">5x5</option>
+            <option value="six">6x6</option>
+            <option value="seven">7x7</option>
+            <option value="clock">Clock</option>
+            <option value="skewb">Skewb</option>
+            <option value="sq1">Square-1</option>
+          </select>
+        </label>
         <label class="toggle">
           <input id="inspectionToggle" type="checkbox" />
           <span>15s 观察</span>
@@ -103,20 +117,6 @@
             <h2>打乱</h2>
             <p id="scrambleSource">-</p>
           </div>
-          <label class="scramble-puzzle-field">
-            <span>类型</span>
-            <select id="scramblePuzzleSelect" aria-label="打乱类型">
-              <option value="two">2x2</option>
-              <option value="three">3x3</option>
-              <option value="four">4x4</option>
-              <option value="five">5x5</option>
-              <option value="six">6x6</option>
-              <option value="seven">7x7</option>
-              <option value="clock">Clock</option>
-              <option value="skewb">Skewb</option>
-              <option value="sq1">Square-1</option>
-            </select>
-          </label>
         </div>
         <p id="scrambleText" class="scramble-text">加载中...</p>
         <p id="scrambleGuideMeta" class="scramble-guide-meta"></p>

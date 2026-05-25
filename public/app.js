@@ -43,6 +43,7 @@ const statsChartLabels = {
 const algorithmTrainerSetLabels = {
   pll: 'PLL',
   oll2: '2-Look OLL',
+  f2l: 'F2L 入门',
   custom: 'Custom',
 };
 const algorithmTrainerFocusLabels = {
@@ -283,6 +284,18 @@ const algorithmTrainerCases = [
   { id: 'oll2-corner-l', set: 'oll2', name: 'L', group: 'Corners', algorithm: "F R' F' r U R U' r'", hint: '两个相邻角块形成 L 形' },
   { id: 'oll2-corner-t', set: 'oll2', name: 'T', group: 'Corners', algorithm: "r U R' U' r' F R F'", hint: '两个角块朝上，形状像 T' },
   { id: 'oll2-corner-u', set: 'oll2', name: 'U', group: 'Corners', algorithm: "R2 D R' U2 R D' R' U2 R'", hint: '两个角块朝上，形状像 U' },
+  { id: 'f2l-fr-basic-insert', set: 'f2l', name: 'FR Insert', group: 'Basic Inserts', algorithm: "U R U' R'", hint: '配对块在 U 层，插入右前槽' },
+  { id: 'f2l-fl-basic-insert', set: 'f2l', name: 'FL Insert', group: 'Basic Inserts', algorithm: "U' L' U L", hint: '配对块在 U 层，插入左前槽' },
+  { id: 'f2l-fr-three-move', set: 'f2l', name: 'Right 3-Move', group: 'Corner Edge Split', algorithm: "R U R'", hint: '右手三步把角棱合入右前槽' },
+  { id: 'f2l-fl-three-move', set: 'f2l', name: 'Left 3-Move', group: 'Corner Edge Split', algorithm: "L' U' L", hint: '左手三步把角棱合入左前槽' },
+  { id: 'f2l-fr-split-u2', set: 'f2l', name: 'Right Split U2', group: 'Corner Edge Split', algorithm: "R U2 R' U' R U R'", hint: '角棱分离时用 U2 调整后右手插入' },
+  { id: 'f2l-fl-split-u2', set: 'f2l', name: 'Left Split U2', group: 'Corner Edge Split', algorithm: "L' U2 L U L' U' L", hint: '镜像 U2 调整后左手插入' },
+  { id: 'f2l-fr-edge-flip', set: 'f2l', name: 'Right Edge Flip', group: 'Edge Flip', algorithm: "R U' R' U R U R'", hint: '处理右前槽常见棱块翻向问题' },
+  { id: 'f2l-fl-edge-flip', set: 'f2l', name: 'Left Edge Flip', group: 'Edge Flip', algorithm: "L' U L U' L' U' L", hint: '处理左前槽常见棱块翻向问题' },
+  { id: 'f2l-fr-slot-reset', set: 'f2l', name: 'Right Slot Reset', group: 'Slot Control', algorithm: "U' R U R' U R U' R'", hint: '先把块带出再重新插入右前槽' },
+  { id: 'f2l-fl-slot-reset', set: 'f2l', name: 'Left Slot Reset', group: 'Slot Control', algorithm: "U L' U' L U' L' U L", hint: '先把块带出再重新插入左前槽' },
+  { id: 'f2l-fr-rotate-insert', set: 'f2l', name: 'Rotated Right Insert', group: 'Back Slots', algorithm: "y R U' R' U R U R'", hint: '转体后用右手处理后侧槽位' },
+  { id: 'f2l-fl-rotate-insert', set: 'f2l', name: 'Rotated Left Insert', group: 'Back Slots', algorithm: "y' L' U L U' L' U' L", hint: '转体后用左手处理后侧槽位' },
 ];
 const untaggedFilterValue = '__untagged';
 
@@ -690,7 +703,10 @@ elements.algorithmTrainerButton.addEventListener('click', openAlgorithmTrainerDi
 elements.algorithmTrainerSet.addEventListener('change', () => {
   algorithmTrainerSet = elements.algorithmTrainerSet.value || 'pll';
   if (!Object.hasOwn(algorithmTrainerSetLabels, algorithmTrainerSet)) algorithmTrainerSet = 'pll';
+  algorithmTrainerSearch = '';
+  elements.algorithmTrainerSearch.value = '';
   localStorage.setItem('trainTimer.algorithmTrainerSet', algorithmTrainerSet);
+  localStorage.setItem('trainTimer.algorithmTrainerSearch', algorithmTrainerSearch);
   chooseNextAlgorithmTrainerCase();
 });
 elements.algorithmTrainerFocus.addEventListener('change', () => {

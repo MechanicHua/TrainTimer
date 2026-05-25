@@ -338,6 +338,9 @@ const elements = {
   algorithmTrainerSearch: document.querySelector('#algorithmTrainerSearch'),
   algorithmTrainerAddButton: document.querySelector('#algorithmTrainerAddButton'),
   algorithmTrainerDeleteButton: document.querySelector('#algorithmTrainerDeleteButton'),
+  algorithmTrainerExportButton: document.querySelector('#algorithmTrainerExportButton'),
+  algorithmTrainerImportButton: document.querySelector('#algorithmTrainerImportButton'),
+  algorithmTrainerImportFile: document.querySelector('#algorithmTrainerImportFile'),
   algorithmTrainerNextButton: document.querySelector('#algorithmTrainerNextButton'),
   algorithmTrainerResetButton: document.querySelector('#algorithmTrainerResetButton'),
   algorithmTrainerName: document.querySelector('#algorithmTrainerName'),
@@ -691,6 +694,9 @@ elements.algorithmTrainerFailButton.addEventListener('click', () => recordAlgori
 elements.algorithmTrainerTimerButton.addEventListener('click', toggleAlgorithmTrainerTimer);
 elements.algorithmTrainerAddButton.addEventListener('click', addAlgorithmTrainerCustomCase);
 elements.algorithmTrainerDeleteButton.addEventListener('click', deleteAlgorithmTrainerCustomCase);
+elements.algorithmTrainerExportButton.addEventListener('click', exportAlgorithmTrainerCustomCases);
+elements.algorithmTrainerImportButton.addEventListener('click', () => elements.algorithmTrainerImportFile.click());
+elements.algorithmTrainerImportFile.addEventListener('change', importAlgorithmTrainerCustomCases);
 elements.algorithmTrainerResetButton.addEventListener('click', resetAlgorithmTrainerStats);
 elements.bluetoothButton.addEventListener('click', () => connectBluetoothCube());
 elements.bluetoothAnyButton.addEventListener('click', () => connectBluetoothCube({ compatibilityMode: true }));
@@ -5734,6 +5740,7 @@ function renderAlgorithmTrainerDialog() {
   const currentStats = algorithmTrainerStats[current?.id] || { success: 0, total: 0, streak: 0 };
   elements.algorithmTrainerScore.textContent = algorithmTrainerProgressText(currentStats);
   elements.algorithmTrainerDeleteButton.disabled = current?.set !== 'custom';
+  elements.algorithmTrainerExportButton.disabled = algorithmTrainerCustomCases.length === 0;
   renderAlgorithmTrainerTimer(currentStats);
   const listRows = searchActive
     ? visibleCases
@@ -5927,7 +5934,7 @@ function addAlgorithmTrainerCustomCase() {
   if (hint === null) return;
 
   const item = {
-    id: `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    id: createAlgorithmTrainerCustomCaseId(),
     set: 'custom',
     name: cleanName.slice(0, 80),
     group: (group.trim() || 'Custom').slice(0, 80),
@@ -5946,6 +5953,69 @@ function addAlgorithmTrainerCustomCase() {
   renderAlgorithmTrainerDialog();
 }
 
+function exportAlgorithmTrainerCustomCases() {
+  if (algorithmTrainerCustomCases.length === 0) return;
+  const payload = {
+    source: 'train-timer-algorithm-trainer',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    cases: algorithmTrainerCustomCases.map((item) => ({
+      name: item.name,
+      group: item.group,
+      algorithm: item.algorithm,
+      hint: item.hint || '',
+    })),
+  };
+  downloadTextFile(
+    `traintimer-algorithms-${algorithmTrainerCustomCases.length}.json`,
+    `${JSON.stringify(payload, null, 2)}\n`,
+    'application/json;charset=utf-8',
+  );
+}
+
+async function importAlgorithmTrainerCustomCases() {
+  const [file] = elements.algorithmTrainerImportFile.files;
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const imported = parseAlgorithmTrainerCustomCaseImport(text);
+    if (imported.length === 0) {
+      alert('没有可导入的自定义公式。JSON 可以是公式数组，或包含 cases 数组的对象。');
+      return;
+    }
+
+    const existingKeys = new Set(algorithmTrainerCustomCases.map(algorithmTrainerCustomCaseKey));
+    const nextItems = [];
+    for (const item of imported) {
+      const key = algorithmTrainerCustomCaseKey(item);
+      if (existingKeys.has(key)) continue;
+      existingKeys.add(key);
+      nextItems.push({ ...item, id: createAlgorithmTrainerCustomCaseId() });
+    }
+
+    if (nextItems.length === 0) {
+      alert(`“${file.name}”里的公式都已存在。`);
+      return;
+    }
+
+    cancelAlgorithmTrainerTimer();
+    algorithmTrainerCustomCases = [...algorithmTrainerCustomCases, ...nextItems];
+    saveAlgorithmTrainerCustomCases();
+    algorithmTrainerSet = 'custom';
+    algorithmTrainerFocus = 'all';
+    algorithmTrainerCurrentId = nextItems[0].id;
+    localStorage.setItem('trainTimer.algorithmTrainerSet', algorithmTrainerSet);
+    localStorage.setItem('trainTimer.algorithmTrainerFocus', algorithmTrainerFocus);
+    localStorage.setItem('trainTimer.algorithmTrainerCurrentId', algorithmTrainerCurrentId);
+    renderAlgorithmTrainerDialog();
+    alert(`已导入 ${nextItems.length} 条自定义公式。`);
+  } catch (error) {
+    alert(`导入自定义公式失败：${error.message || String(error)}`);
+  } finally {
+    elements.algorithmTrainerImportFile.value = '';
+  }
+}
+
 function deleteAlgorithmTrainerCustomCase() {
   const current = algorithmTrainerCurrentCase();
   if (!current || current.set !== 'custom') return;
@@ -5958,6 +6028,28 @@ function deleteAlgorithmTrainerCustomCase() {
   algorithmTrainerCurrentId = algorithmTrainerCustomCases[0]?.id || '';
   localStorage.setItem('trainTimer.algorithmTrainerCurrentId', algorithmTrainerCurrentId);
   renderAlgorithmTrainerDialog();
+}
+
+function parseAlgorithmTrainerCustomCaseImport(text) {
+  const parsed = JSON.parse(text);
+  const rawCases = Array.isArray(parsed) ? parsed : parsed?.cases;
+  if (!Array.isArray(rawCases)) return [];
+  return rawCases
+    .map(normalizeAlgorithmTrainerCustomCase)
+    .filter(Boolean)
+    .map((item) => ({ ...item, id: createAlgorithmTrainerCustomCaseId() }));
+}
+
+function createAlgorithmTrainerCustomCaseId() {
+  return `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function algorithmTrainerCustomCaseKey(item) {
+  return [
+    item.group,
+    item.name,
+    item.algorithm,
+  ].map((value) => String(value || '').trim().toLowerCase()).join('|');
 }
 
 function algorithmTrainerAllCases() {
@@ -6089,15 +6181,15 @@ function loadAlgorithmTrainerCustomCases() {
 
 function normalizeAlgorithmTrainerCustomCase(item, index) {
   if (!item || typeof item !== 'object') return null;
-  const name = String(item.name || '').trim().slice(0, 80);
-  const algorithm = String(item.algorithm || '').trim().replace(/\s+/g, ' ').slice(0, 220);
+  const name = String(item.name || item.case || item.label || '').trim().slice(0, 80);
+  const algorithm = String(item.algorithm || item.alg || item.moves || '').trim().replace(/\s+/g, ' ').slice(0, 220);
   if (!name || !algorithm) return null;
   const rawId = String(item.id || '').trim();
   return {
     id: rawId.startsWith('custom-') ? rawId : `custom-import-${index}`,
     set: 'custom',
     name,
-    group: String(item.group || 'Custom').trim().slice(0, 80) || 'Custom',
+    group: String(item.group || item.category || item.set || 'Custom').trim().slice(0, 80) || 'Custom',
     algorithm,
     hint: String(item.hint || '').trim().slice(0, 160),
   };

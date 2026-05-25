@@ -130,15 +130,16 @@ h2 {
   display: grid;
   grid-template-areas:
     "top top top"
-    "scramble timer history"
+    "preview scramble history"
+    "preview timer history"
     "preview timer history";
-  grid-template-columns: minmax(340px, 1fr) minmax(430px, 1.32fr) minmax(380px, 0.98fr);
-  grid-template-rows: 58px minmax(182px, 0.42fr) minmax(0, 1fr);
-  gap: 10px;
-  width: min(1600px, calc(100vw - 28px));
+  grid-template-columns: minmax(300px, 0.82fr) minmax(480px, 1.34fr) minmax(320px, 0.86fr);
+  grid-template-rows: 52px minmax(116px, auto) minmax(0, 1fr) 128px;
+  gap: 0 20px;
+  width: min(1640px, calc(100vw - 28px));
   height: 100dvh;
   margin: 0 auto;
-  padding: 14px 0;
+  padding: 14px 0 16px;
   overflow: hidden;
 }
 
@@ -146,9 +147,9 @@ h2 {
 .scramble-band,
 .preview-panel,
 .history-panel {
-  background: var(--surface);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: var(--radius);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(22px) saturate(1.12);
   transition:
@@ -181,8 +182,9 @@ h2 {
   justify-content: space-between;
   gap: 10px;
   overflow: hidden;
-  padding: 8px 10px;
-  background: rgba(24, 24, 28, 0.52);
+  padding: 0 10px;
+  background: transparent;
+  backdrop-filter: none;
 }
 
 .brand-box {
@@ -310,8 +312,8 @@ h2 {
   flex-direction: column;
   overflow: hidden;
   border-radius: var(--radius);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(8, 8, 10, 0.92);
+  border: 0;
+  background: transparent;
   color: white;
   box-shadow: var(--shadow-lg);
 }
@@ -321,8 +323,8 @@ h2 {
   grid-template-rows: minmax(0, 1fr) auto;
   flex: 1;
   min-height: 0;
-  gap: 12px;
-  padding: 20px;
+  gap: 18px;
+  padding: 0 10px 18px;
 }
 
 .timer-surface {
@@ -337,7 +339,7 @@ h2 {
   overflow: hidden;
   color: #f5f5f7;
   font-variant-numeric: tabular-nums;
-  font-size: clamp(82px, 10.4vw, 154px);
+  font-size: clamp(96px, 13.4vw, 190px);
   font-weight: 300;
   line-height: 0.92;
   letter-spacing: 0;
@@ -366,7 +368,7 @@ body[data-state="timing"] .timer-display {
 
 .timer-hint {
   min-height: 24px;
-  margin-top: 14px;
+  margin-top: 18px;
   color: rgba(245, 245, 247, 0.58);
   font-size: 15px;
   font-weight: 520;
@@ -409,13 +411,14 @@ body[data-state="timing"] .timer-display {
 .stats-panel {
   display: grid;
   width: 100%;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  opacity: 0.82;
 }
 
 .stats-panel div {
   display: flex;
-  min-height: 55px;
+  min-height: 48px;
   min-width: 0;
   flex-direction: column;
   align-items: center;
@@ -423,9 +426,10 @@ body[data-state="timing"] .timer-display {
   gap: 6px;
   overflow: hidden;
   padding: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.045);
+  border: 0;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.055);
+  backdrop-filter: blur(16px) saturate(1.1);
 }
 
 .stats-panel span {
@@ -450,19 +454,30 @@ body[data-state="timing"] .timer-display {
 .history-panel {
   min-height: 0;
   overflow: hidden;
-  padding: 14px;
+  padding: 0;
 }
 
 .scramble-band {
   grid-area: scramble;
+  align-self: end;
+  padding: 8px 10px 10px;
+  text-align: center;
+  backdrop-filter: none;
 }
 
 .preview-panel {
   grid-area: preview;
   display: grid;
-  grid-template-rows: auto minmax(132px, 1fr) minmax(108px, 0.42fr);
-  gap: 10px;
+  grid-template-rows: auto minmax(0, 1fr) minmax(138px, 0.34fr);
+  gap: 12px;
   min-width: 0;
+  align-self: stretch;
+  padding: 78px 0 0;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.018);
+  opacity: 0.82;
+  mask-image: linear-gradient(to bottom, transparent 0, black 34px, black 86%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 34px, black 86%, transparent 100%);
 }
 
 .history-panel {
@@ -470,7 +485,12 @@ body[data-state="timing"] .timer-display {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  background: rgba(31, 31, 36, 0.38);
+  align-self: stretch;
+  padding: 78px 0 0;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.026);
+  opacity: 0.86;
+  backdrop-filter: none;
 }
 
 .scramble-header,
@@ -478,6 +498,20 @@ body[data-state="timing"] .timer-display {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.scramble-header {
+  justify-content: center;
+}
+
+.scramble-header > div {
+  display: none;
+}
+
+.preview-panel > .section-heading,
+.history-panel > .section-heading {
+  min-height: 28px;
+  padding: 0 8px;
 }
 
 .scramble-header p,
@@ -496,7 +530,7 @@ body[data-state="timing"] .timer-display {
   flex: 0 0 auto;
   align-items: center;
   gap: 7px;
-  color: rgba(199, 199, 204, 0.72);
+  color: rgba(199, 199, 204, 0.6);
   font-size: 12px;
   font-weight: 650;
 }
@@ -506,21 +540,20 @@ body[data-state="timing"] .timer-display {
   min-width: 96px;
   border: 1px solid var(--line-soft);
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.055);
   color: var(--ink);
   padding: 0 28px 0 10px;
 }
 
 .scramble-text {
-  display: -webkit-box;
-  margin-top: 11px;
+  display: block;
+  width: min(860px, 100%);
+  margin: 16px auto 0;
   overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 5;
   color: var(--ink-strong);
-  font-size: clamp(17px, 1.38vw, 22px);
-  font-weight: 620;
-  line-height: 1.34;
+  font-size: clamp(19px, 1.62vw, 26px);
+  font-weight: 560;
+  line-height: 1.46;
   letter-spacing: 0;
   word-spacing: 0.18em;
 }
@@ -568,7 +601,7 @@ body[data-state="timing"] .timer-display {
 .cube-net {
   display: grid;
   align-self: center;
-  width: 100%;
+  width: min(100%, 380px);
   min-height: 0;
   max-height: 100%;
   grid-template-columns: repeat(12, minmax(17px, 1fr));
@@ -576,6 +609,7 @@ body[data-state="timing"] .timer-display {
   gap: 3px;
   aspect-ratio: 4 / 3;
   margin: 0 auto;
+  opacity: 0.82;
 }
 
 .cube-net[hidden] {
@@ -587,11 +621,12 @@ body[data-state="timing"] .timer-display {
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
-  padding: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px 12px;
+  border: 0;
   border-radius: var(--radius);
-  background: #0b0f14;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: rgba(3, 8, 14, 0.54);
+  box-shadow: none;
+  backdrop-filter: blur(16px) saturate(1.06);
 }
 
 .bluetooth-feed-head {
@@ -629,6 +664,8 @@ body[data-state="timing"] .timer-display {
   overflow-y: auto;
   padding-right: 2px;
   scrollbar-width: thin;
+  mask-image: linear-gradient(to bottom, black 0, black 70%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0, black 70%, transparent 100%);
 }
 
 .bluetooth-feed-row {
@@ -639,7 +676,7 @@ body[data-state="timing"] .timer-display {
   align-items: start;
   min-height: 0;
   padding: 6px 0;
-  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  border-top: 1px solid rgba(148, 163, 184, 0.11);
   border-radius: 0;
   background: transparent;
   color: #dbeafe;
@@ -751,10 +788,10 @@ body[data-state="timing"] .timer-display {
   gap: 8px;
   overflow: hidden;
   padding: 11px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 0;
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.045);
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: none;
   backdrop-filter: blur(20px) saturate(1.28);
   pointer-events: none;
 }
@@ -871,7 +908,7 @@ body[data-state="timing"] .timer-display {
 .manager-toolbar {
   align-items: center;
   gap: 6px;
-  margin-top: 10px;
+  margin-top: 8px;
   overflow-x: auto;
   padding-bottom: 2px;
   scrollbar-width: thin;
@@ -905,11 +942,11 @@ body[data-state="timing"] .timer-display {
   flex: 1 1 auto;
   min-height: 0;
   flex-direction: column;
-  margin-top: 10px;
+  margin-top: 8px;
   overflow: hidden;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius);
-  background: rgba(8, 8, 10, 0.28);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .history-rows {
@@ -917,6 +954,8 @@ body[data-state="timing"] .timer-display {
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
+  mask-image: linear-gradient(to bottom, black 0, black 58%, rgba(0, 0, 0, 0.34) 78%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0, black 58%, rgba(0, 0, 0, 0.34) 78%, transparent 100%);
 }
 
 .history-head,
@@ -930,14 +969,14 @@ body[data-state="timing"] .timer-display {
 }
 
 .history-head {
-  background: rgba(255, 255, 255, 0.045);
+  background: rgba(255, 255, 255, 0.025);
   color: rgba(199, 199, 204, 0.62);
   font-size: 12px;
   font-weight: 720;
 }
 
 .history-row {
-  border-top: 1px solid var(--line-soft);
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
   color: rgba(245, 245, 247, 0.72);
   font-size: 12px;
   transition:
@@ -1121,7 +1160,6 @@ body[data-state="timing"] .timer-display {
 }
 
 body[data-state="timing"] .topbar,
-body[data-state="timing"] .scramble-band,
 body[data-state="timing"] .preview-panel,
 body[data-state="timing"] .history-panel,
 body[data-state="timing"] .stats-panel,
@@ -1132,8 +1170,13 @@ body[data-state="timing"] .action-row {
 }
 
 body[data-state="timing"] .timer-band {
-  border-color: rgba(0, 173, 181, 0.18);
-  background: rgba(3, 3, 4, 0.98);
+  background: transparent;
+}
+
+body[data-state="timing"] .scramble-band {
+  opacity: 0.18;
+  filter: blur(1.2px);
+  pointer-events: none;
 }
 
 .solve-dialog,
@@ -2109,11 +2152,11 @@ dialog[open] {
 
 @media (max-width: 1120px) {
   .app-shell {
-    grid-template-columns: minmax(292px, 0.92fr) minmax(340px, 1.12fr) minmax(310px, 0.95fr);
-    grid-template-rows: 58px minmax(170px, 0.42fr) minmax(0, 1fr);
+    grid-template-columns: minmax(260px, 0.78fr) minmax(360px, 1.18fr) minmax(280px, 0.82fr);
+    grid-template-rows: 52px minmax(110px, auto) minmax(0, 1fr) 118px;
     width: min(100vw - 20px, 1120px);
     padding: 10px 0;
-    gap: 10px;
+    gap: 0 14px;
   }
 
   .topbar {
@@ -2135,12 +2178,12 @@ dialog[open] {
   .app-shell {
     grid-template-areas:
       "top"
-      "timer"
       "scramble"
+      "timer"
       "preview"
       "history";
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(330px, auto) auto minmax(220px, auto) minmax(320px, auto);
+    grid-template-rows: auto auto minmax(340px, auto) minmax(260px, auto) minmax(320px, auto);
     width: min(100vw - 20px, 720px);
     height: auto;
     min-height: 100dvh;
@@ -2162,6 +2205,24 @@ dialog[open] {
 
   .stats-panel {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .scramble-band,
+  .preview-panel,
+  .history-panel {
+    padding: 8px 0 0;
+    mask-image: none;
+    -webkit-mask-image: none;
+  }
+
+  .preview-panel {
+    grid-template-rows: auto minmax(210px, auto) minmax(140px, auto);
+  }
+
+  .history-rows,
+  .bluetooth-feed-rows {
+    mask-image: linear-gradient(to bottom, black 0, black calc(100% - 34px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 0, black calc(100% - 34px), transparent 100%);
   }
 
   .manager-toolbar {

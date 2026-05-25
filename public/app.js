@@ -602,6 +602,7 @@ let solveReplayCube = null;
 let solveReplayPreviewLabel = '';
 let statsScope = 'session';
 let pbToastTimer = 0;
+let scrambleCopyHintTimer = 0;
 let bluetoothDevice = null;
 let bluetoothDeviceDisconnectHandler = null;
 let bluetoothReconnectDevices = [];
@@ -1052,6 +1053,18 @@ function handleGlobalShortcut(event) {
     return true;
   }
 
+  if (event.code === 'KeyC' && scramble?.scramble) {
+    event.preventDefault();
+    void copyCurrentScramble();
+    return true;
+  }
+
+  if (event.code === 'KeyT') {
+    event.preventDefault();
+    openAlgorithmTrainerDialog();
+    return true;
+  }
+
   if (event.code === 'KeyI' && !elements.inspectionToggle.disabled) {
     event.preventDefault();
     setInspectionEnabled(!inspectionEnabled);
@@ -1418,6 +1431,27 @@ async function loadScramble(options = {}) {
   } finally {
     elements.scrambleButton.disabled = scrambleLocked || ['timing', 'inspection', 'hold', 'saving'].includes(appState);
   }
+}
+
+async function copyCurrentScramble() {
+  const scrambleText = String(scramble?.scramble || '').trim();
+  if (!scrambleText) return;
+  try {
+    await navigator.clipboard.writeText(scrambleText);
+    showTimerHintTemporarily('已复制当前打乱');
+  } catch {
+    showTimerHintTemporarily('复制打乱失败');
+  }
+}
+
+function showTimerHintTemporarily(text, durationMs = 900) {
+  const stateAtStart = appState;
+  elements.timerHint.textContent = text;
+  window.clearTimeout(scrambleCopyHintTimer);
+  scrambleCopyHintTimer = window.setTimeout(() => {
+    scrambleCopyHintTimer = 0;
+    if (appState === stateAtStart) renderTimer();
+  }, durationMs);
 }
 
 async function updateSolvePenalty(id, penalty) {

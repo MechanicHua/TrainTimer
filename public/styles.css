@@ -87,13 +87,13 @@ button {
 }
 
 button:hover:not(:disabled) {
-  transform: translateY(-1px);
+  transform: translateY(-1px) scale(1.015);
   background: rgba(255, 255, 255, 0.12);
   box-shadow: none;
 }
 
 button:active:not(:disabled) {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.985);
   box-shadow: none;
 }
 
@@ -275,17 +275,14 @@ h2 {
 
 #bluetoothButton {
   background: var(--accent);
-  border-color: var(--accent);
   color: #001315;
 }
 
 #bluetoothButton:hover:not(:disabled) {
   background: var(--accent-strong);
-  border-color: var(--accent-strong);
 }
 
 #bluetoothAnyButton {
-  border-color: rgba(0, 173, 181, 0.25);
   color: var(--accent);
 }
 
@@ -1065,10 +1062,32 @@ body[data-state="timing"] .timer-display {
 .history-rows {
   flex: 1;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  scroll-behavior: smooth;
+  scrollbar-color: rgba(0, 173, 181, 0.34) transparent;
   scrollbar-width: thin;
   mask-image: linear-gradient(to bottom, black 0, black 58%, rgba(0, 0, 0, 0.34) 78%, transparent 100%);
   -webkit-mask-image: linear-gradient(to bottom, black 0, black 58%, rgba(0, 0, 0, 0.34) 78%, transparent 100%);
+}
+
+.history-rows::-webkit-scrollbar {
+  width: 6px;
+}
+
+.history-rows::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.history-rows::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(0, 173, 181, 0.24);
+}
+
+.history-rows:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 173, 181, 0.42);
 }
 
 .history-head,
@@ -1097,13 +1116,17 @@ body[data-state="timing"] .timer-display {
   border-top: 1px solid rgba(255, 255, 255, 0.055);
   color: rgba(245, 245, 247, 0.72);
   font-size: 12px;
+  animation: history-row-in 180ms var(--ease) both;
   transition:
     background 140ms var(--ease),
+    color 140ms var(--ease),
+    opacity 140ms var(--ease),
     transform 140ms var(--ease);
 }
 
 .history-row:hover {
   background: rgba(255, 255, 255, 0.05);
+  transform: translateX(-2px);
 }
 
 .history-row.has-record {
@@ -1260,7 +1283,7 @@ body[data-state="timing"] .timer-display {
 .history-row button:hover:not(:disabled) {
   background: rgba(0, 173, 181, 0.13);
   color: var(--accent-strong);
-  transform: none;
+  transform: scale(1.06);
 }
 
 .history-row .average-detail-button {
@@ -1291,24 +1314,31 @@ body[data-state="timing"] .timer-display {
 }
 
 body[data-state="timing"] .topbar,
+body[data-state="inspection"] .topbar,
 body[data-state="timing"] .preview-panel,
+body[data-state="inspection"] .preview-panel,
 body[data-state="timing"] .history-panel,
+body[data-state="inspection"] .history-panel,
 body[data-state="timing"] .stats-panel,
-body[data-state="timing"] .action-row {
-  opacity: 0.12;
+body[data-state="inspection"] .stats-panel,
+body[data-state="timing"] .action-row,
+body[data-state="inspection"] .action-row {
+  opacity: 0.08;
   pointer-events: none;
 }
 
-body[data-state="timing"] .timer-hint {
-  opacity: 0.12;
+body[data-state="timing"] .timer-hint,
+body[data-state="inspection"] .timer-hint {
+  opacity: 0.08;
 }
 
 body[data-state="timing"] .timer-band {
   background: transparent;
 }
 
-body[data-state="timing"] .scramble-band {
-  opacity: 0.12;
+body[data-state="timing"] .scramble-band,
+body[data-state="inspection"] .scramble-band {
+  opacity: 0.08;
   pointer-events: none;
 }
 
@@ -1547,14 +1577,12 @@ dialog[open] {
 .all-solves-date-shortcuts button {
   min-height: 26px;
   padding: 0 9px;
-  border-color: transparent;
   background: transparent;
   color: var(--muted-strong);
   box-shadow: none;
 }
 
 .all-solves-date-shortcuts button.active {
-  border-color: var(--line-soft);
   background: rgba(255, 255, 255, 0.12);
   color: var(--ink);
   box-shadow: none;
@@ -2212,18 +2240,15 @@ dialog[open] {
 .dialog-actions button:last-child,
 #saveManualEntryButton {
   background: var(--accent);
-  border-color: var(--accent);
   color: #001315;
 }
 
 .dialog-actions .danger-action {
-  border-color: rgba(255, 69, 58, 0.22);
   background: var(--danger-soft);
   color: var(--danger);
 }
 
 .dialog-actions .danger-action:hover:not(:disabled) {
-  border-color: rgba(255, 69, 58, 0.42);
   background: rgba(255, 69, 58, 0.2);
 }
 
@@ -2249,6 +2274,17 @@ dialog[open] {
 
 .app-shell > *:nth-child(5) {
   animation-delay: 140ms;
+}
+
+@keyframes history-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes panel-in {

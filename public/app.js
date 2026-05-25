@@ -12,7 +12,7 @@ const inspectionSeconds = 15;
 const inspectionDnfSeconds = 17;
 const holdToStartMs = 500;
 const reminderSeconds = new Set([8, 12]);
-const compactHistoryLimit = 16;
+const compactHistoryLimit = 48;
 const bluetoothNextSolveGestureWindowMs = 700;
 const bluetoothUuidSuffix = '-0000-1000-8000-00805f9b34fb';
 const bluetoothBatteryLevelUuid = `00002a19${bluetoothUuidSuffix}`;
@@ -3623,33 +3623,29 @@ function initBluetoothCube3d() {
 
   const shell = new THREE.Mesh(
     new THREE.BoxGeometry(2.16, 2.16, 2.16),
-    new THREE.MeshPhysicalMaterial({
+    new THREE.MeshStandardMaterial({
       color: 0x1d1d1f,
-      roughness: 0.58,
-      metalness: 0.08,
-      clearcoat: 0.26,
-      clearcoatRoughness: 0.4,
+      roughness: 0.92,
+      metalness: 0,
     }),
   );
   group.add(shell);
 
   const edges = new THREE.LineSegments(
-    new THREE.EdgesGeometry(new THREE.BoxGeometry(2.18, 2.18, 2.18)),
-    new THREE.LineBasicMaterial({ color: 0x3f3f46, transparent: true, opacity: 0.74 }),
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(2.12, 2.12, 2.12)),
+    new THREE.LineBasicMaterial({ color: 0x2f3036, transparent: true, opacity: 0.38 }),
   );
   group.add(edges);
 
   const stickers = new Map();
-  const stickerGeometry = new THREE.PlaneGeometry(0.58, 0.58);
+  const stickerGeometry = new THREE.PlaneGeometry(0.63, 0.63);
   for (const face of cube3dFaces) {
     for (let row = 0; row < 3; row += 1) {
       for (let col = 0; col < 3; col += 1) {
-        const material = new THREE.MeshPhysicalMaterial({
+        const material = new THREE.MeshStandardMaterial({
           color: cube3dFallbackColors[face],
-          roughness: 0.42,
+          roughness: 0.82,
           metalness: 0,
-          clearcoat: 0.36,
-          clearcoatRoughness: 0.28,
           side: THREE.DoubleSide,
         });
         const sticker = new THREE.Mesh(stickerGeometry, material);
@@ -3662,11 +3658,11 @@ function initBluetoothCube3d() {
     }
   }
 
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x94a3b8, 2.2));
-  const keyLight = new THREE.DirectionalLight(0xffffff, 2.9);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x94a3b8, 1.8));
+  const keyLight = new THREE.DirectionalLight(0xffffff, 1.8);
   keyLight.position.set(3.6, 5.2, 4.4);
   scene.add(keyLight);
-  const fillLight = new THREE.DirectionalLight(0x9dccff, 1.2);
+  const fillLight = new THREE.DirectionalLight(0x9dccff, 0.55);
   fillLight.position.set(-3.4, 1.8, -2.5);
   scene.add(fillLight);
 
@@ -3697,8 +3693,8 @@ function initBluetoothCube3d() {
 }
 
 function applyCube3dStickerTransform(sticker, face, row, col) {
-  const spacing = 0.68;
-  const surface = 1.105;
+  const spacing = 0.665;
+  const surface = 1.102;
   const a = (col - 1) * spacing;
   const b = (1 - row) * spacing;
 

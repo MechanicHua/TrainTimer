@@ -16,6 +16,7 @@ const inspectionDnfSeconds = 17;
 const holdToStartMs = 500;
 const reminderSeconds = new Set([8, 12]);
 const compactHistoryLimit = 48;
+const allSolvesRenderBatchSize = 180;
 const bluetoothNextSolveGestureWindowMs = 700;
 const historyBottomFadeRangePx = 180;
 const cube3dActiveFrameMs = 1000 / 120;
@@ -335,6 +336,7 @@ const elements = {
   clearAllButton: document.querySelector('#clearAllButton'),
   allSolvesDialog: document.querySelector('#allSolvesDialog'),
   allSolvesMeta: document.querySelector('#allSolvesMeta'),
+  allSolvesTable: document.querySelector('.all-solves-table'),
   allSolvesRows: document.querySelector('#allSolvesRows'),
   allSolvesSearch: document.querySelector('#allSolvesSearch'),
   allSolvesFromDate: document.querySelector('#allSolvesFromDate'),
@@ -475,6 +477,9 @@ const elements = {
   clearBluetoothLogButton: document.querySelector('#clearBluetoothLogButton'),
   copyBluetoothLogButton: document.querySelector('#copyBluetoothLogButton'),
   exportBluetoothLogButton: document.querySelector('#exportBluetoothLogButton'),
+  pbToast: document.querySelector('#pbToast'),
+  pbToastTitle: document.querySelector('#pbToastTitle'),
+  pbToastMeta: document.querySelector('#pbToastMeta'),
 };
 
 let appState = 'loading';
@@ -487,6 +492,7 @@ let scramblePuzzle = localStorage.getItem('trainTimer.scramblePuzzle') || 'three
 let scrambleLocked = localStorage.getItem('trainTimer.scrambleLocked') === '1';
 let allSessionsEnabled = localStorage.getItem('trainTimer.allSessions') === '1';
 let allSolvesDatePreset = 'all';
+let allSolvesVisibleLimit = allSolvesRenderBatchSize;
 let statsChartMode = localStorage.getItem('trainTimer.statsChartMode') || 'single';
 if (!statsChartModes.has(statsChartMode)) statsChartMode = 'single';
 let historySortKey = localStorage.getItem('trainTimer.historySortKey') || '';
@@ -525,6 +531,7 @@ let solveReplayPreviewActive = false;
 let solveReplayCube = null;
 let solveReplayPreviewLabel = '';
 let statsScope = 'session';
+let pbToastTimer = 0;
 let bluetoothDevice = null;
 let bluetoothDeviceDisconnectHandler = null;
 let bluetoothReconnectDevices = [];
@@ -716,8 +723,14 @@ elements.allSolvesPenaltyFilter.addEventListener('change', handleAllSolvesFilter
 elements.allSolvesSourceFilter.addEventListener('change', handleAllSolvesFilterChange);
 elements.allSolvesTagFilter.addEventListener('change', handleAllSolvesFilterChange);
 elements.allSessionsToggle.addEventListener('change', toggleAllSessions);
-elements.allSolvesSortBy.addEventListener('change', renderAllSolvesDialog);
-elements.allSolvesSortDirection.addEventListener('change', renderAllSolvesDialog);
+elements.allSolvesSortBy.addEventListener('change', () => {
+  resetAllSolvesRenderWindow();
+  renderAllSolvesDialog();
+});
+elements.allSolvesSortDirection.addEventListener('change', () => {
+  resetAllSolvesRenderWindow();
+  renderAllSolvesDialog();
+});
 elements.clearAllSolvesFiltersButton.addEventListener('click', clearAllSolvesFilters);
 elements.allCopyListButton.addEventListener('click', copyListedSolves);
 elements.allListedStatsButton.addEventListener('click', openListedStatsDialog);
@@ -728,7 +741,8 @@ elements.historySortButtons.forEach((button) => {
   button.addEventListener('click', () => cycleHistorySort(button.dataset.historySort || ''));
 });
 elements.allSolvesRows.addEventListener('change', handleHistoryChange);
-elements.allSolvesRows.addEventListener('click', handleHistoryClick);
+elements.allSolvesRows.addEventListener('click', handleAllSolvesRowsClick);
+elements.allSolvesTable.addEventListener('scroll', handleAllSolvesTableScroll, { passive: true });
 elements.statsRecordList.addEventListener('click', handleStatsRecordClick);
 elements.sessionOverviewList.addEventListener('click', handleSessionOverviewClick);
 window.addEventListener('resize', updateHistoryRowsMask);
@@ -1065,6 +1079,7 @@ async function finishTiming(options = {}) {
   finishSource = 'manual';
   appState = 'done';
   render();
+  showPbToastForSolve(data.solve);
 }
 
 function nextPaintOrTimeout() {
@@ -1075,6 +1090,35 @@ function nextPaintOrTimeout() {
       resolve();
     });
   });
+}
+
+function showPbToastForSolve(savedSolve) {
+  if (!savedSolve?.id || !elements.pbToast) return;
+  const sessionSolves = solvesForSession(savedSolve.sessionId);
+  const solveIndex = sessionSolves.findIndex((solve) => solve.id === savedSolve.id);
+  if (solveIndex < 0) return;
+  const marks = recordMarksAt(sessionSolves, solveIndex)
+    .filter((mark) => ['single', 'mo3', 'ao5', 'ao12', 'ao50', 'ao100'].includes(mark.type));
+  if (marks.length === 0) return;
+  const title = marks.length === 1 ? marks[0].label : `${marks[0].label} +${marks.length - 1}`;
+  const meta = marks.map((mark) => `${mark.label} ${timeOrDash(mark.value)}`).join(' · ');
+  showPbToast(title, meta);
+}
+
+function showPbToast(title, meta) {
+  if (!elements.pbToast) return;
+  window.clearTimeout(pbToastTimer);
+  elements.pbToastTitle.textContent = title;
+  elements.pbToastMeta.textContent = meta;
+  elements.pbToast.hidden = false;
+  elements.pbToast.classList.remove('visible');
+  requestAnimationFrame(() => elements.pbToast.classList.add('visible'));
+  pbToastTimer = window.setTimeout(() => {
+    elements.pbToast.classList.remove('visible');
+    pbToastTimer = window.setTimeout(() => {
+      elements.pbToast.hidden = true;
+    }, 260);
+  }, 3600);
 }
 
 async function nextSolve() {
@@ -1611,6 +1655,7 @@ function openAllSolvesDialog() {
     allSessionsEnabled = true;
     localStorage.setItem('trainTimer.allSessions', '1');
   }
+  resetAllSolvesRenderWindow();
   if (!elements.allSolvesDialog.open) elements.allSolvesDialog.showModal();
   renderAllSolvesDialog();
   elements.allSolvesSearch.focus();
@@ -1621,6 +1666,7 @@ function handleAllSolvesFilterChange(event) {
     allSolvesDatePreset = inferredQuickDatePreset();
   }
   selectedSolveIds.clear();
+  resetAllSolvesRenderWindow();
   render();
 }
 
@@ -1630,6 +1676,7 @@ function setAllSolvesDatePreset(preset) {
   elements.allSolvesToDate.value = range.to;
   allSolvesDatePreset = preset;
   selectedSolveIds.clear();
+  resetAllSolvesRenderWindow();
   render();
 }
 
@@ -1645,6 +1692,7 @@ function clearAllSolvesFilters() {
   elements.allSolvesSourceFilter.value = 'all';
   elements.allSolvesTagFilter.value = 'all';
   selectedSolveIds.clear();
+  resetAllSolvesRenderWindow();
   render();
 }
 
@@ -1652,6 +1700,7 @@ function toggleAllSessions() {
   allSessionsEnabled = elements.allSessionsToggle.checked;
   localStorage.setItem('trainTimer.allSessions', allSessionsEnabled ? '1' : '0');
   selectedSolveIds.clear();
+  resetAllSolvesRenderWindow();
   render();
 }
 
@@ -1859,6 +1908,36 @@ function handleHistoryClick(event) {
   const deleteButton = target?.closest('[data-delete-id]');
   const id = deleteButton?.dataset.deleteId;
   if (id) deleteSolve(id);
+}
+
+function handleAllSolvesRowsClick(event) {
+  const target = event.target instanceof HTMLElement ? event.target : null;
+  if (target?.closest('[data-load-more-solves]')) {
+    loadMoreAllSolvesRows();
+    return;
+  }
+  handleHistoryClick(event);
+}
+
+function handleAllSolvesTableScroll() {
+  if (!elements.allSolvesDialog.open || !elements.allSolvesTable) return;
+  const remaining = elements.allSolvesTable.scrollHeight
+    - elements.allSolvesTable.scrollTop
+    - elements.allSolvesTable.clientHeight;
+  if (remaining < 180) loadMoreAllSolvesRows();
+}
+
+function resetAllSolvesRenderWindow() {
+  allSolvesVisibleLimit = allSolvesRenderBatchSize;
+  if (elements.allSolvesTable) elements.allSolvesTable.scrollTop = 0;
+}
+
+function loadMoreAllSolvesRows() {
+  if (!elements.allSolvesDialog.open) return;
+  const total = filteredAllSolves().length;
+  if (allSolvesVisibleLimit >= total) return;
+  allSolvesVisibleLimit = Math.min(total, allSolvesVisibleLimit + allSolvesRenderBatchSize);
+  renderAllSolvesDialog();
 }
 
 function openSolveDialog(id) {
@@ -5941,6 +6020,7 @@ async function saveManualEntry() {
     selectedSolveIds.clear();
     elements.manualEntryDialog.close();
     render();
+    showPbToastForSolve(data.solve);
   } catch (error) {
     elements.manualEntryError.textContent = `保存失败：${error.message}`;
   } finally {
@@ -6022,14 +6102,20 @@ function renderAllSolvesDialog() {
   const baseSolves = allSolvesBaseSolves();
   renderAllSolvesTagFilter(baseSolves);
   const listedSolves = filteredAllSolves();
+  const visibleLimit = Math.min(allSolvesVisibleLimit, listedSolves.length);
+  const visibleSolves = listedSolves.slice(0, visibleLimit);
+  const rowContext = solveRowRenderContext(visibleSolves);
   const scopeLabel = allSessionsEnabled ? `全部会话 · ${sessions.length} 个会话` : (currentSession?.name || currentSessionId);
+  const renderProgress = listedSolves.length > visibleLimit ? ` · 已显示 ${visibleLimit}` : '';
   elements.allSolvesMeta.textContent = allSolvesFilterActive()
-    ? `${scopeLabel} · 筛选 ${listedSolves.length} / ${baseSolves.length} 条`
-    : `${scopeLabel} · ${baseSolves.length} 条`;
+    ? `${scopeLabel} · 筛选 ${listedSolves.length} / ${baseSolves.length} 条${renderProgress}`
+    : `${scopeLabel} · ${baseSolves.length} 条${renderProgress}`;
   elements.allSolvesRows.replaceChildren(
-    ...listedSolves.map((solve) => {
-      const solveSessionSolves = solvesForSession(solve.sessionId);
-      return renderSolveRow(solve, solveSessionSolves.indexOf(solve) + 1, solveSessionSolves, { showSession: allSessionsEnabled });
+    ...visibleSolves.map((solve) => {
+      const rowData = rowContext.get(solve.id);
+      const solveSessionSolves = rowData?.sessionSolves || solvesForSession(solve.sessionId);
+      const solveNumber = rowData ? rowData.index + 1 : solveSessionSolves.indexOf(solve) + 1;
+      return renderSolveRow(solve, solveNumber, solveSessionSolves, { showSession: allSessionsEnabled });
     }),
   );
   if (listedSolves.length === 0) {
@@ -6037,8 +6123,34 @@ function renderAllSolvesDialog() {
     empty.className = 'history-empty';
     empty.textContent = allSolvesFilterActive() ? '没有匹配的成绩' : (allSessionsEnabled ? '暂无成绩' : '当前会话暂无成绩');
     elements.allSolvesRows.append(empty);
+  } else if (visibleLimit < listedSolves.length) {
+    elements.allSolvesRows.append(renderAllSolvesLoadMore(visibleLimit, listedSolves.length));
   }
   renderAllSolvesControls();
+}
+
+function solveRowRenderContext(rows) {
+  const sessionIds = [...new Set(rows.map((solve) => solve.sessionId || 'default'))];
+  const context = new Map();
+  for (const sessionId of sessionIds) {
+    const sessionSolves = solvesForSession(sessionId);
+    sessionSolves.forEach((solve, index) => {
+      context.set(solve.id, { sessionSolves, index });
+    });
+  }
+  return context;
+}
+
+function renderAllSolvesLoadMore(visibleCount, totalCount) {
+  const row = document.createElement('div');
+  row.className = 'history-load-more';
+  row.innerHTML = `
+    <button type="button" data-load-more-solves="1">
+      显示更多
+      <span>${visibleCount} / ${totalCount}</span>
+    </button>
+  `;
+  return row;
 }
 
 function renderAllSolvesTagFilter(baseSolves) {

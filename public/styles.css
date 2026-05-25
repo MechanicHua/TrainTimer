@@ -102,6 +102,70 @@ button:disabled {
   opacity: 0.45;
 }
 
+.pb-toast {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: min(360px, calc(100vw - 32px));
+  max-width: min(520px, calc(100vw - 32px));
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 2px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(24, 24, 28, 0.78);
+  color: rgba(245, 245, 247, 0.9);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -18px) scale(0.98);
+  transition:
+    opacity 220ms var(--ease),
+    transform 220ms var(--ease);
+  backdrop-filter: blur(18px);
+}
+
+.pb-toast.visible {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+
+.pb-toast span {
+  grid-row: 1 / span 2;
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 230, 118, 0.14);
+  color: #8dffbe;
+  font-size: 12px;
+  font-weight: 860;
+}
+
+.pb-toast strong,
+.pb-toast em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pb-toast strong {
+  color: var(--ink-strong);
+  font-size: 14px;
+  font-weight: 780;
+}
+
+.pb-toast em {
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-style: normal;
+}
+
 h1,
 h2,
 p {
@@ -1950,6 +2014,33 @@ dialog[open] {
   color: var(--muted);
   font-size: 13px;
   text-align: center;
+}
+
+.history-load-more {
+  padding: 14px 16px 18px;
+  text-align: center;
+}
+
+.history-load-more button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+  color: rgba(245, 245, 247, 0.78);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.history-load-more button:hover {
+  background: rgba(0, 173, 181, 0.16);
+  color: var(--ink-strong);
+}
+
+.history-load-more span {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
 }
 
 .stats-detail-grid {

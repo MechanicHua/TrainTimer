@@ -1470,8 +1470,8 @@ async function deleteSelectedSolves() {
 
 function openMarkPenaltyDialog() {
   if (selectedSolveIds.size === 0) return;
-  renderMarkPenaltyDialog();
   if (!elements.markPenaltyDialog.open) elements.markPenaltyDialog.showModal();
+  renderMarkPenaltyDialog();
 }
 
 async function markSelectedPenalty() {
@@ -1501,8 +1501,8 @@ async function markSelectedPenalty() {
 
 function openPuzzleSolvesDialog() {
   if (selectedSolveIds.size === 0) return;
-  renderPuzzleSolvesDialog();
   if (!elements.puzzleSolvesDialog.open) elements.puzzleSolvesDialog.showModal();
+  renderPuzzleSolvesDialog();
 }
 
 async function saveSelectedPuzzle() {
@@ -1532,8 +1532,8 @@ async function saveSelectedPuzzle() {
 
 function openTagSolvesDialog() {
   if (selectedSolveIds.size === 0) return;
-  renderTagSolvesDialog();
   if (!elements.tagSolvesDialog.open) elements.tagSolvesDialog.showModal();
+  renderTagSolvesDialog();
   elements.tagSolvesInput.focus();
 }
 
@@ -1566,8 +1566,8 @@ async function saveSelectedTags() {
 
 function openCommentSolvesDialog() {
   if (selectedSolveIds.size === 0) return;
-  renderCommentSolvesDialog();
   if (!elements.commentSolvesDialog.open) elements.commentSolvesDialog.showModal();
+  renderCommentSolvesDialog();
   elements.commentSolvesInput.focus();
 }
 
@@ -1598,8 +1598,8 @@ async function saveSelectedComment() {
 
 function openMoveSolvesDialog() {
   if (selectedSolveIds.size === 0) return;
-  renderMoveSolvesDialog();
   if (!elements.moveSolvesDialog.open) elements.moveSolvesDialog.showModal();
+  renderMoveSolvesDialog();
 }
 
 async function moveSelectedSolves() {
@@ -1989,8 +1989,8 @@ async function duplicateCurrentSession() {
 
 function openMergeSessionDialog() {
   if (currentSessionId === 'default' || sessions.length < 2) return;
-  renderMergeSessionDialog();
   if (!elements.mergeSessionDialog.open) elements.mergeSessionDialog.showModal();
+  renderMergeSessionDialog();
 }
 
 async function mergeCurrentSession() {
@@ -2592,10 +2592,10 @@ function openAverageDialog(solveId, size, kind = 'average') {
 }
 
 function renderAverageDialog() {
-  if (!elements.averageDialog.open && !currentAverageDetail) return;
+  if (!elements.averageDialog.open) return;
   const detail = currentAverageDetailData();
   if (!detail) {
-    if (elements.averageDialog.open) elements.averageDialog.close();
+    elements.averageDialog.close();
     return;
   }
 
@@ -4814,13 +4814,21 @@ function render() {
   renderStats();
   renderHistory();
   renderQuickActions();
+  renderOpenDialogs();
+}
+
+function renderOpenDialogs() {
   renderAllSolvesDialog();
   renderStatsDialog();
   renderAverageDialog();
   renderAlgorithmTrainerDialog();
   renderExportDialog();
   renderImportDialog();
+  renderMarkPenaltyDialog();
+  renderPuzzleSolvesDialog();
   renderTagSolvesDialog();
+  renderCommentSolvesDialog();
+  renderMoveSolvesDialog();
   renderMergeSessionDialog();
 }
 
@@ -5686,11 +5694,12 @@ function renderSessionGoalProgress(successCount, totalCount) {
 
 function openAlgorithmTrainerDialog() {
   if (!algorithmTrainerCurrentCase()) chooseNextAlgorithmTrainerCase({ renderOnly: true });
-  renderAlgorithmTrainerDialog();
   if (!elements.algorithmTrainerDialog.open) elements.algorithmTrainerDialog.showModal();
+  renderAlgorithmTrainerDialog();
 }
 
 function renderAlgorithmTrainerDialog() {
+  if (!elements.algorithmTrainerDialog.open) return;
   elements.algorithmTrainerSet.value = algorithmTrainerSet;
   elements.algorithmTrainerFocus.value = algorithmTrainerFocus;
   if (elements.algorithmTrainerSearch.value !== algorithmTrainerSearch) {
@@ -6808,7 +6817,7 @@ function importSourceLabel(source) {
 }
 
 function renderMarkPenaltyDialog() {
-  if (!elements.markPenaltyDialog.open && selectedSolveIds.size === 0) return;
+  if (!elements.markPenaltyDialog.open) return;
   const selectedSolves = solves.filter((solve) => selectedSolveIds.has(solve.id));
   elements.markPenaltyMeta.textContent = `选中 ${selectedSolveIds.size} 条`;
   const penalties = new Set(selectedSolves.map((solve) => solve.penalty));
@@ -6817,7 +6826,7 @@ function renderMarkPenaltyDialog() {
 }
 
 function renderPuzzleSolvesDialog() {
-  if (!elements.puzzleSolvesDialog.open && selectedSolveIds.size === 0) return;
+  if (!elements.puzzleSolvesDialog.open) return;
   const selectedSolves = solves.filter((solve) => selectedSolveIds.has(solve.id));
   const puzzles = new Set(selectedSolves.map((solve) => solve.scramblePuzzle || 'three'));
   if (puzzles.size === 1) elements.puzzleSolvesSelect.value = selectedSolves[0]?.scramblePuzzle || 'three';
@@ -6829,7 +6838,7 @@ function renderPuzzleSolvesDialog() {
 }
 
 function renderTagSolvesDialog() {
-  if (!elements.tagSolvesDialog.open && selectedSolveIds.size === 0) return;
+  if (!elements.tagSolvesDialog.open) return;
   const selectedSolves = solves.filter((solve) => selectedSolveIds.has(solve.id));
   const tagSets = selectedSolves.map((solve) => formatTags(solve.tags));
   const sharedTags = tagSets.length > 0 && tagSets.every((value) => value === tagSets[0]) ? tagSets[0] : '';
@@ -6841,7 +6850,7 @@ function renderTagSolvesDialog() {
 }
 
 function renderCommentSolvesDialog() {
-  if (!elements.commentSolvesDialog.open && selectedSolveIds.size === 0) return;
+  if (!elements.commentSolvesDialog.open) return;
   const selectedSolves = solves.filter((solve) => selectedSolveIds.has(solve.id));
   const comments = selectedSolves.map((solve) => solve.comment || '');
   const sharedComment = comments.length > 0 && comments.every((value) => value === comments[0]) ? comments[0] : '';
@@ -6853,7 +6862,7 @@ function renderCommentSolvesDialog() {
 }
 
 function renderMoveSolvesDialog() {
-  if (!elements.moveSolvesDialog.open && selectedSolveIds.size === 0) return;
+  if (!elements.moveSolvesDialog.open) return;
   const selectedSolves = solves.filter((solve) => selectedSolveIds.has(solve.id));
   const selectedSessionIds = new Set(selectedSolves.map((solve) => solve.sessionId || 'default'));
   const sourceLabel = selectedSessionIds.size === 1
@@ -6876,7 +6885,7 @@ function renderMoveSolvesDialog() {
 }
 
 function renderMergeSessionDialog() {
-  if (!elements.mergeSessionDialog.open && currentSessionId === 'default') return;
+  if (!elements.mergeSessionDialog.open) return;
   const current = sessions.find((session) => session.id === currentSessionId);
   const targetSessions = sessions.filter((session) => session.id !== currentSessionId);
   const sourceCount = current ? solvesForSession(current.id).length : 0;

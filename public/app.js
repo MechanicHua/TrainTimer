@@ -400,6 +400,7 @@ const elements = {
   statsChartModeButtons: [...document.querySelectorAll('[data-stats-chart-mode]')],
   statsTrendChart: document.querySelector('#statsTrendChart'),
   statsChartMeta: document.querySelector('#statsChartMeta'),
+  statsInsights: document.querySelector('#statsInsights'),
   statsRecordList: document.querySelector('#statsRecordList'),
   statsDetailGrid: document.querySelector('#statsDetailGrid'),
   statsSessionOverviewPanel: document.querySelector('#statsSessionOverviewPanel'),
@@ -5623,6 +5624,7 @@ function renderStatsDialog() {
   elements.statsDialogMeta.textContent = `${statsData.label} · ${summary.count} 条成绩`;
   elements.copyStatsSummaryButton.disabled = summary.count === 0;
   renderStatsTrendChart(statsData.solves, statsData.scope === 'session' ? '最近' : statsData.shortLabel);
+  renderStatsInsights(statsData.solves, summary);
   renderStatsRecords(statsData.solves, { selected: statsData.scope !== 'session' });
   elements.statsSessionOverviewPanel.hidden = statsData.scope !== 'session';
   if (statsData.scope !== 'session') elements.sessionOverviewList.replaceChildren();
@@ -5661,6 +5663,112 @@ function renderStatsDialog() {
       return item;
     }),
   );
+}
+
+function renderStatsInsights(sessionSolves, summary) {
+  const insights = buildStatsInsights(sessionSolves, summary);
+  elements.statsInsights.replaceChildren(
+    ...insights.map((insight) => {
+      const item = document.createElement('div');
+      item.className = `stats-insight ${insight.tone || 'neutral'}`;
+      item.innerHTML = `
+        <span>${escapeHtml(insight.label)}</span>
+        <strong>${escapeHtml(insight.value)}</strong>
+        <em>${escapeHtml(insight.detail)}</em>
+      `;
+      return item;
+    }),
+  );
+}
+
+function buildStatsInsights(sessionSolves, summary) {
+  return [
+    buildRecentTrendInsight(sessionSolves),
+    buildConsistencyInsight(summary),
+    buildPenaltyInsight(summary),
+    buildBluetoothInsight(summary),
+  ];
+}
+
+function buildRecentTrendInsight(sessionSolves) {
+  const validTimes = sessionSolves
+    .map((solve) => effectiveDurationMs(solve))
+    .filter((value) => Number.isFinite(value));
+  if (validTimes.length < 10) {
+    return {
+      label: '近期趋势',
+      value: `${validTimes.length}/10`,
+      detail: '至少 10 个有效成绩后对比最近 5 把',
+      tone: 'neutral',
+    };
+  }
+
+  const recent = averageNumber(validTimes.slice(-5));
+  const previous = averageNumber(validTimes.slice(-10, -5));
+  const diff = recent - previous;
+  const faster = diff < -1;
+  const slower = diff > 1;
+  return {
+    label: '近期趋势',
+    value: faster ? `快 ${formatTime(Math.abs(diff))}` : (slower ? `慢 ${formatTime(diff)}` : '持平'),
+    detail: `最近 5 把 ${formatTime(recent)} · 前 5 把 ${formatTime(previous)}`,
+    tone: faster ? 'good' : (slower ? 'warning' : 'neutral'),
+  };
+}
+
+function buildConsistencyInsight(summary) {
+  if (!Number.isFinite(summary.standardDeviation) || !Number.isFinite(summary.average)) {
+    return {
+      label: '稳定性',
+      value: '-',
+      detail: '还没有足够的有效成绩',
+      tone: 'neutral',
+    };
+  }
+  const ratio = summary.average > 0 ? summary.standardDeviation / summary.average : 0;
+  return {
+    label: '稳定性',
+    value: formatTime(summary.standardDeviation),
+    detail: ratio < 0.08 ? '波动很低' : (ratio < 0.16 ? '波动正常' : '建议优先稳定节奏'),
+    tone: ratio < 0.08 ? 'good' : (ratio < 0.16 ? 'neutral' : 'warning'),
+  };
+}
+
+function buildPenaltyInsight(summary) {
+  if (!summary.count) {
+    return {
+      label: '清洁度',
+      value: '-',
+      detail: '暂无成绩',
+      tone: 'neutral',
+    };
+  }
+  const penaltyCount = (summary.dnfCount || 0) + (summary.plus2Count || 0);
+  const rate = penaltyCount / summary.count;
+  return {
+    label: '清洁度',
+    value: `${Math.round(rate * 100)}%`,
+    detail: `DNF ${summary.dnfCount || 0} · +2 ${summary.plus2Count || 0}`,
+    tone: rate === 0 ? 'good' : (rate <= 0.08 ? 'neutral' : 'warning'),
+  };
+}
+
+function buildBluetoothInsight(summary) {
+  if (!summary.bluetoothSolveCount) {
+    return {
+      label: '蓝牙效率',
+      value: '-',
+      detail: '连接蓝牙魔方后显示 TPS',
+      tone: 'neutral',
+    };
+  }
+  const averageTps = numberOrDash(summary.averageBluetoothTps, 2);
+  return {
+    label: '蓝牙效率',
+    value: `${averageTps} TPS`,
+    detail: `最佳 ${numberOrDash(summary.bestBluetoothTps, 2)} · ${summary.bluetoothSolveCount} 把`,
+    tone: Number.isFinite(summary.averageBluetoothTps) && summary.averageBluetoothTps >= 4 ? 'good' : 'neutral',
+  };
 }
 
 function currentStatsData() {

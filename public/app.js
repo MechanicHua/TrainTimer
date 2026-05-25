@@ -353,6 +353,7 @@ const elements = {
   algorithmTrainerStarButton: document.querySelector('#algorithmTrainerStarButton'),
   algorithmTrainerScore: document.querySelector('#algorithmTrainerScore'),
   algorithmTrainerAlg: document.querySelector('#algorithmTrainerAlg'),
+  algorithmTrainerPreview: document.querySelector('#algorithmTrainerPreview'),
   algorithmTrainerHint: document.querySelector('#algorithmTrainerHint'),
   algorithmTrainerSetup: document.querySelector('#algorithmTrainerSetup'),
   algorithmTrainerCopySetupButton: document.querySelector('#algorithmTrainerCopySetupButton'),
@@ -5991,6 +5992,7 @@ function toggleAlgorithmTrainerStarred() {
 function renderAlgorithmTrainerSetup(current) {
   const setup = current ? algorithmTrainerSetupText(current.algorithm) : '';
   const supported = Boolean(setup && algorithmTrainerSetupCanApply(setup));
+  renderAlgorithmTrainerPreview(setup, supported);
   elements.algorithmTrainerSetup.textContent = setup ? `训练打乱 ${setup}` : '训练打乱 -';
   elements.algorithmTrainerSetup.title = setup
     ? (supported ? '可一键套用到当前计时器' : '含 M、r、x、y 等公式记号，建议复制后手动执行')
@@ -6001,6 +6003,34 @@ function renderAlgorithmTrainerSetup(current) {
   elements.algorithmTrainerApplySetupButton.title = supported
     ? (canApplyAlgorithmTrainerSetup() ? 'A 把训练打乱套用到主计时器并锁定当前打乱' : '计时、观察或保存中不能套用')
     : '只有基础面转 UDRLFB 才能直接套用到计时器';
+}
+
+function renderAlgorithmTrainerPreview(setup, supported) {
+  if (!elements.algorithmTrainerPreview) return;
+  elements.algorithmTrainerPreview.replaceChildren();
+  elements.algorithmTrainerPreview.className = 'algorithm-trainer-preview empty';
+
+  if (!setup) {
+    elements.algorithmTrainerPreview.textContent = '暂无状态预览';
+    elements.algorithmTrainerPreview.title = '当前公式无法生成训练打乱';
+    return;
+  }
+
+  if (!supported) {
+    elements.algorithmTrainerPreview.textContent = '需要手动执行训练打乱';
+    elements.algorithmTrainerPreview.title = '当前公式包含暂不支持直接预览的记号';
+    return;
+  }
+
+  try {
+    const faces = cubeStateFromScramble(setup);
+    renderCubeFacesNet(elements.algorithmTrainerPreview, faces, 'algorithm-trainer-preview');
+    elements.algorithmTrainerPreview.title = '当前公式的训练起手状态';
+  } catch {
+    elements.algorithmTrainerPreview.className = 'algorithm-trainer-preview empty';
+    elements.algorithmTrainerPreview.textContent = '无法生成状态预览';
+    elements.algorithmTrainerPreview.title = '训练打乱解析失败';
+  }
 }
 
 function algorithmTrainerSetupText(algorithm = '') {

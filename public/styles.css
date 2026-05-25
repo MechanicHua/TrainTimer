@@ -1928,6 +1928,36 @@ dialog[open] {
   letter-spacing: 0;
 }
 
+.algorithm-trainer-preview {
+  display: grid;
+  width: min(100%, 260px);
+  min-height: 118px;
+  grid-template-columns: repeat(12, minmax(8px, 1fr));
+  grid-template-rows: repeat(9, minmax(8px, 1fr));
+  gap: 2px;
+  aspect-ratio: 4 / 3;
+  margin: 14px auto 0;
+  opacity: 0.76;
+}
+
+.algorithm-trainer-preview.empty {
+  display: flex;
+  width: 100%;
+  aspect-ratio: auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 680;
+}
+
+.algorithm-trainer-preview .sticker {
+  border-radius: 3px;
+  opacity: 0.78;
+}
+
 .algorithm-trainer-hint {
   margin: 9px 0 0;
 }

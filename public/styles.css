@@ -577,13 +577,19 @@ body[data-state="timing"] .timer-display {
 }
 
 .scramble-move.correct {
-  background: rgba(0, 230, 118, 0.13);
+  background: rgba(0, 230, 118, 0.1);
   color: #8dffbe;
 }
 
 .scramble-move.current {
-  background: rgba(0, 173, 181, 0.15);
-  color: #7ff8ff;
+  background: rgba(0, 173, 181, 0.08);
+  color: #b7fbff;
+}
+
+.scramble-move.partial {
+  background: rgba(255, 159, 10, 0.18);
+  color: #ffd28a;
+  transform: translateY(-1px);
 }
 
 .scramble-move.wrong {
@@ -1313,33 +1319,25 @@ body[data-state="timing"] .timer-display {
   padding: 0 7px;
 }
 
-body[data-state="timing"] .topbar,
-body[data-state="inspection"] .topbar,
-body[data-state="timing"] .preview-panel,
-body[data-state="inspection"] .preview-panel,
-body[data-state="timing"] .history-panel,
-body[data-state="inspection"] .history-panel,
-body[data-state="timing"] .stats-panel,
-body[data-state="inspection"] .stats-panel,
-body[data-state="timing"] .action-row,
-body[data-state="inspection"] .action-row {
-  opacity: 0.08;
+body[data-state="timing"] .app-shell > :not(.timer-band),
+body[data-state="inspection"] .app-shell > :not(.timer-band),
+body[data-state="timing"] .timer-layout > :not(.timer-surface),
+body[data-state="inspection"] .timer-layout > :not(.timer-surface),
+body[data-state="timing"] .timer-surface > :not(.timer-display),
+body[data-state="inspection"] .timer-surface > :not(.timer-display) {
+  animation: none;
+  opacity: 0.06;
   pointer-events: none;
 }
 
-body[data-state="timing"] .timer-hint,
-body[data-state="inspection"] .timer-hint {
-  opacity: 0.08;
+body[data-state="timing"] .timer-display,
+body[data-state="inspection"] .timer-display {
+  opacity: 1;
+  filter: none;
 }
 
 body[data-state="timing"] .timer-band {
   background: transparent;
-}
-
-body[data-state="timing"] .scramble-band,
-body[data-state="inspection"] .scramble-band {
-  opacity: 0.08;
-  pointer-events: none;
 }
 
 .solve-dialog,

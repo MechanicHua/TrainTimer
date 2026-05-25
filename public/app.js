@@ -480,8 +480,10 @@ let scrambleGuideMoves = [];
 let scrambleGuideInputMoves = [];
 let scrambleGuideRoute = [];
 let scrambleGuideCorrectPrefix = 0;
+let scrambleGuidePartialIndex = null;
 let scrambleGuideErrorIndex = null;
 let scrambleGuideErrorMove = '';
+let scrambleGuideLastMatchedInputLength = 0;
 let scrambleGuideCompleted = false;
 let scrambleGuideSupported = false;
 let bluetoothNextSolveGestureCandidate = null;
@@ -684,8 +686,10 @@ window.__trainTimerDebug = {
         moves: scrambleGuideMoves,
         inputMoves: scrambleGuideInputMoves,
         correctPrefix: scrambleGuideCorrectPrefix,
+        partialIndex: scrambleGuidePartialIndex,
         errorIndex: scrambleGuideErrorIndex,
         errorMove: scrambleGuideErrorMove,
+        correction: scrambleGuideCorrectionText(),
       },
       bluetoothGan: {
         mac: bluetoothGanMac,
@@ -4198,8 +4202,10 @@ function renderScrambleText() {
 }
 
 function scrambleMoveClass(index) {
+  if (!bluetoothScrambleGuideActive()) return '';
   if (scrambleGuideCompleted) return 'correct';
   if (index === scrambleGuideErrorIndex) return 'wrong';
+  if (index === scrambleGuidePartialIndex) return 'partial';
   if (index < scrambleGuideCorrectPrefix) return 'correct';
   if (index === scrambleGuideCorrectPrefix && appState === 'ready') return 'current';
   return '';
@@ -4207,7 +4213,11 @@ function scrambleMoveClass(index) {
 
 function scrambleMoveTitle(index, move) {
   if (scrambleGuideCompleted) return '打乱状态已匹配';
-  if (index === scrambleGuideErrorIndex) return `这里应为 ${move}，实际转动 ${scrambleGuideErrorMove}`;
+  if (index === scrambleGuideErrorIndex) {
+    const correction = scrambleGuideCorrectionText();
+    return `这里应为 ${move}，实际转动 ${scrambleGuideErrorMove}${correction ? `；反向修正 ${correction}` : ''}`;
+  }
+  if (index === scrambleGuidePartialIndex) return `${move} 已完成半步，继续同方向完成双拨`;
   if (index < scrambleGuideCorrectPrefix) return '已完成';
   if (index === scrambleGuideCorrectPrefix) return '下一步';
   return '';
@@ -4230,8 +4240,16 @@ function renderScrambleGuideMeta() {
   }
   if (scrambleGuideErrorIndex != null) {
     const expected = scrambleGuideMoves[scrambleGuideErrorIndex] || '-';
-    elements.scrambleGuideMeta.textContent = `打乱错误：第 ${scrambleGuideErrorIndex + 1} 步应为 ${expected}，实际 ${scrambleGuideErrorMove}`;
+    const correction = scrambleGuideCorrectionText();
+    elements.scrambleGuideMeta.textContent = [
+      `打乱错误：第 ${scrambleGuideErrorIndex + 1} 步应为 ${expected}，实际 ${scrambleGuideErrorMove}`,
+      correction ? `反向修正：${correction}` : '',
+    ].filter(Boolean).join(' · ');
     elements.scrambleGuideMeta.classList.add('error');
+    return;
+  }
+  if (scrambleGuidePartialIndex != null) {
+    elements.scrambleGuideMeta.textContent = `双拨未完成：继续 ${scrambleGuideMoves[scrambleGuidePartialIndex] || ''}`;
     return;
   }
   elements.scrambleGuideMeta.textContent = `蓝牙打乱校验 ${scrambleGuideCorrectPrefix}/${scrambleGuideMoves.length}`;
@@ -4242,8 +4260,10 @@ function resetScrambleGuide() {
   scrambleGuideInputMoves = [];
   scrambleGuideRoute = [];
   scrambleGuideCorrectPrefix = 0;
+  scrambleGuidePartialIndex = null;
   scrambleGuideErrorIndex = null;
   scrambleGuideErrorMove = '';
+  scrambleGuideLastMatchedInputLength = 0;
   scrambleGuideCompleted = false;
   scrambleGuideSupported = false;
 
@@ -4296,10 +4316,35 @@ function scrambleMoveAtomicTokens(move) {
   return [scrambleMoveNotation(move)];
 }
 
+function inverseScrambleMoveNotation(move) {
+  if (!move) return '';
+  if (move.suffix === '2') return `${move.face}2`;
+  if (move.suffix === "'") return move.face;
+  return `${move.face}'`;
+}
+
+function inverseScrambleMoveTokens(moves) {
+  const parsedMoves = [];
+  for (const move of moves) {
+    try {
+      parsedMoves.push(parseScramble(move)[0]);
+    } catch {
+      return [];
+    }
+  }
+  return parsedMoves.reverse().map(inverseScrambleMoveNotation).filter(Boolean);
+}
+
+function scrambleGuideCorrectionText() {
+  if (!scrambleGuideSupported || scrambleGuideInputMoves.length <= scrambleGuideLastMatchedInputLength) return '';
+  return inverseScrambleMoveTokens(scrambleGuideInputMoves.slice(scrambleGuideLastMatchedInputLength)).join(' ');
+}
+
 function scrambleGuideReadyHint() {
   if (!bluetoothScrambleGuideActive() || appState !== 'ready') return '';
   if (scrambleGuideCompleted) return '打乱完成，观察中转动魔方即可开始计时';
   if (scrambleGuideErrorIndex != null) return '打乱公式不匹配，请检查红色步骤';
+  if (scrambleGuidePartialIndex != null) return `双拨未完成：继续 ${scrambleGuideMoves[scrambleGuidePartialIndex] || ''}`;
   if (scrambleGuideCorrectPrefix > 0) return `继续打乱：${scrambleGuideCorrectPrefix}/${scrambleGuideMoves.length}`;
   return '转动蓝牙魔方开始打乱校验';
 }
@@ -4540,11 +4585,16 @@ function applyScrambleGuideMoves(moves, source, protocol = '', deviceName = '') 
   }
 
   if (firstError && scrambleGuideErrorIndex != null) {
+    const correction = scrambleGuideCorrectionText();
     beep();
     addBluetoothLog(
       '打乱/错误',
       `第 ${scrambleGuideErrorIndex + 1} 步不匹配`,
-      `应为 ${scrambleGuideMoves[scrambleGuideErrorIndex] || '-'} · 实际 ${scrambleGuideErrorMove}`,
+      [
+        `应为 ${scrambleGuideMoves[scrambleGuideErrorIndex] || '-'}`,
+        `实际 ${scrambleGuideErrorMove}`,
+        correction ? `反向修正 ${correction}` : '',
+      ].filter(Boolean).join(' · '),
     );
   }
   if (recovered && !scrambleGuideCompleted) {
@@ -4572,8 +4622,10 @@ function updateScrambleGuideProgress(latestMove = '') {
   const match = scrambleGuideRouteMatch();
   if (match) {
     scrambleGuideCorrectPrefix = match.correctPrefix;
+    scrambleGuidePartialIndex = match.partial ? match.displayIndex : null;
     scrambleGuideErrorIndex = null;
     scrambleGuideErrorMove = '';
+    scrambleGuideLastMatchedInputLength = scrambleGuideInputMoves.length;
     return;
   }
 
@@ -4581,6 +4633,7 @@ function updateScrambleGuideProgress(latestMove = '') {
     scrambleGuideErrorIndex = Math.min(scrambleGuideCorrectPrefix, scrambleGuideMoves.length - 1);
     scrambleGuideErrorMove = latestMove;
   }
+  scrambleGuidePartialIndex = null;
 }
 
 function scrambleGuideRouteMatch() {
@@ -4611,8 +4664,10 @@ function completeScrambleGuide(source, protocol = '', deviceName = '') {
   if (scrambleGuideCompleted) return;
   scrambleGuideCompleted = true;
   scrambleGuideCorrectPrefix = scrambleGuideMoves.length;
+  scrambleGuidePartialIndex = null;
   scrambleGuideErrorIndex = null;
   scrambleGuideErrorMove = '';
+  scrambleGuideLastMatchedInputLength = scrambleGuideInputMoves.length;
   inspectionStartedAt = 0;
   activePenalty = 'ok';
   addBluetoothLog(

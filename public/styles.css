@@ -330,10 +330,12 @@ h2 {
 }
 
 .timer-display {
+  --timer-font-size: clamp(96px, 13.4vw, 190px);
+  --timer-scale: 1;
   overflow: hidden;
   color: #f5f5f7;
   font-variant-numeric: tabular-nums;
-  font-size: clamp(96px, 13.4vw, 190px);
+  font-size: calc(var(--timer-font-size) * var(--timer-scale));
   font-weight: 300;
   line-height: 0.92;
   letter-spacing: 0;
@@ -344,6 +346,14 @@ h2 {
     color 180ms var(--ease),
     transform 180ms var(--ease),
     text-shadow 180ms var(--ease);
+}
+
+.timer-display[data-size="long"] {
+  --timer-font-size: clamp(78px, 11.5vw, 154px);
+}
+
+.timer-display[data-size="compact"] {
+  --timer-font-size: clamp(64px, 9.6vw, 130px);
 }
 
 body[data-state="hold"] .timer-display {
@@ -590,6 +600,11 @@ body[data-state="timing"] .timer-display {
   background: rgba(255, 159, 10, 0.18);
   color: #ffd28a;
   transform: translateY(-1px);
+}
+
+.scramble-move.correction {
+  background: rgba(255, 159, 10, 0.14);
+  color: #ffe0a8;
 }
 
 .scramble-move.wrong {
@@ -2485,7 +2500,15 @@ dialog[open] {
   }
 
   .timer-display {
-    font-size: clamp(58px, 18vw, 94px);
+    --timer-font-size: clamp(58px, 18vw, 94px);
+  }
+
+  .timer-display[data-size="long"] {
+    --timer-font-size: clamp(50px, 15vw, 78px);
+  }
+
+  .timer-display[data-size="compact"] {
+    --timer-font-size: clamp(42px, 12vw, 66px);
   }
 
   .stats-panel {

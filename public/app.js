@@ -462,6 +462,8 @@ let bluetoothLog = [];
 let bluetoothMoves = [];
 let bluetoothSolved = false;
 let bluetoothSolvedByStatePacket = false;
+let bluetoothSolveCube = null;
+let bluetoothSolveCubeValid = false;
 let bluetoothGyro = null;
 let bluetoothGyroReferenceInverse = null;
 let bluetoothGyroLastBasisQuaternion = null;
@@ -484,6 +486,7 @@ let scrambleGuidePartialIndex = null;
 let scrambleGuideErrorIndex = null;
 let scrambleGuideErrorMove = '';
 let scrambleGuideLastMatchedInputLength = 0;
+let scrambleGuideLastMatchedRemainingMoves = [];
 let scrambleGuideCompleted = false;
 let scrambleGuideSupported = false;
 let bluetoothNextSolveGestureCandidate = null;
@@ -495,6 +498,7 @@ const previewCache = new Map();
 let cube3d = null;
 let cube3dLastFacesSignature = '';
 let cube3dMovePulseTimer = 0;
+let timerDisplayFitKey = '';
 
 elements.inspectionToggle.checked = inspectionEnabled;
 elements.inspectionToggle.addEventListener('change', () => {
@@ -689,6 +693,7 @@ window.__trainTimerDebug = {
         partialIndex: scrambleGuidePartialIndex,
         errorIndex: scrambleGuideErrorIndex,
         errorMove: scrambleGuideErrorMove,
+        correctionMoves: scrambleGuideCorrectionMoves(),
         correction: scrambleGuideCorrectionText(),
       },
       bluetoothGan: {
@@ -3070,7 +3075,12 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
 
   if (decoded.batteryLevel != null) updateBluetoothBattery(decoded.batteryLevel, decoded.protocol || protocol.label);
   if (decoded.gyro) updateBluetoothGyro(decoded.gyro);
-  if (decoded.facelets) updateBluetoothPhysicalState(decoded);
+  const canStopFromStatePacket = decoded.stateSolved === true && appState === 'timing';
+  if (decoded.facelets) updateBluetoothPhysicalState(decoded, { render: !canStopFromStatePacket });
+  if (canStopFromStatePacket) {
+    markGanBluetoothStateSolved(decoded, { render: false });
+    finishTimingFromBluetooth();
+  }
   const hasMoveCounter = Number.isInteger(decoded.moveCounter);
   const duplicateMovePacket = hasMoveCounter
     && decoded.moves?.length > 0
@@ -3082,7 +3092,7 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
 
   const moveHandling = handleBluetoothMovesForCurrentState(parsedMoves, label, decoded.protocol || protocol.label, deviceName);
   const trackingMoves = moveHandling.trackingMoves;
-  const statePacketSolved = markGanBluetoothStateSolved(decoded);
+  const statePacketSolved = canStopFromStatePacket || markGanBluetoothStateSolved(decoded);
 
   const statusDetail = parsedMoves.length > 0
     ? `${parsedMoves.join(' ')} · ${moveHandling.statusLabel || (trackingMoves ? (bluetoothSolved ? '已复原' : '未复原') : '等待计时')}`
@@ -3096,7 +3106,7 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
     label,
     ganBluetoothPacketLog(hex, decoded, ignoredReason),
   );
-  if (statePacketSolved) finishTimingFromBluetooth();
+  if (!canStopFromStatePacket && statePacketSolved) finishTimingFromBluetooth();
   console.info('GAN Bluetooth cube notification', {
     characteristic: uuid,
     value: hex,
@@ -3154,11 +3164,11 @@ function ganBluetoothPacketLog(hex, decoded, ignoredReason = '') {
   return detail.join(' · ');
 }
 
-function markGanBluetoothStateSolved(decoded) {
+function markGanBluetoothStateSolved(decoded, options = {}) {
   if (decoded.stateSolved !== true || appState !== 'timing') return false;
   bluetoothSolved = true;
   bluetoothSolvedByStatePacket = true;
-  renderBluetoothMoves();
+  if (options.render !== false) renderBluetoothMoves();
   return true;
 }
 
@@ -3256,12 +3266,13 @@ function bluetoothGyroQuaternionFromPacket(quaternion = {}) {
   return output;
 }
 
-function updateBluetoothPhysicalState(decoded) {
+function updateBluetoothPhysicalState(decoded, options = {}) {
   const faces = facesFromFacelets(decoded.facelets);
   if (!faces) return;
   bluetoothPhysicalFacelets = decoded.facelets;
   bluetoothPhysicalFaces = faces;
   bluetoothPhysicalStateTime = new Date().toISOString();
+  if (options.render === false) return;
   renderBluetoothMoves();
   renderPreviewMode();
 }
@@ -3463,6 +3474,7 @@ function bluetoothLogPayload() {
 
 function armBluetoothSolveTracking() {
   resetBluetoothSolveTracking();
+  initializeBluetoothSolveCube();
   if (bluetoothDevice?.gatt?.connected) {
     addBluetoothLog('状态', '计时开始', '蓝牙转动从此刻计入本把成绩');
   }
@@ -3471,6 +3483,7 @@ function armBluetoothSolveTracking() {
 function addBluetoothMoves(moves, source, protocol = '', deviceName = '') {
   const now = new Date();
   const elapsedMs = appState === 'timing' && startedAt > 0 ? Math.max(0, Math.round(performance.now() - startedAt)) : null;
+  const latestMove = moves.at(-1) || '-';
   bluetoothMoves.unshift(...moves.map((move) => ({
     move,
     source,
@@ -3481,10 +3494,48 @@ function addBluetoothMoves(moves, source, protocol = '', deviceName = '') {
     elapsedMs,
   })).reverse());
   bluetoothMoves = bluetoothMoves.slice(0, 160);
-  bluetoothSolved = isBluetoothSolved();
+  bluetoothSolved = updateBluetoothSolvedFromMoves(moves);
   bluetoothSolvedByStatePacket = false;
-  updateBluetooth3dMove(moves.at(-1) || '-');
+  if (appState === 'timing' && bluetoothSolved) {
+    finishTimingFromBluetooth();
+    requestAnimationFrame(() => {
+      updateBluetooth3dMove(latestMove);
+      renderBluetoothMoves();
+    });
+    return;
+  }
+  updateBluetooth3dMove(latestMove);
   renderBluetoothMoves();
+}
+
+function initializeBluetoothSolveCube() {
+  bluetoothSolveCube = null;
+  bluetoothSolveCubeValid = false;
+  if (!scramble?.scramble || (scramble.puzzle || scramblePuzzle) !== 'three') return;
+  try {
+    const cube = createSolvedCube();
+    for (const move of parseScramble(scramble.scramble)) applyMove(cube, move);
+    bluetoothSolveCube = cube;
+    bluetoothSolveCubeValid = true;
+  } catch (error) {
+    addBluetoothLog('警告', '蓝牙复原状态初始化失败', error.message || String(error));
+  }
+}
+
+function updateBluetoothSolvedFromMoves(moves) {
+  if (bluetoothSolveCubeValid && bluetoothSolveCube) {
+    try {
+      for (const moveText of moves) {
+        const move = parseScramble(moveText)[0];
+        applyMove(bluetoothSolveCube, move);
+      }
+      return isSolvedFaces(facesFromCube(bluetoothSolveCube));
+    } catch (error) {
+      bluetoothSolveCubeValid = false;
+      addBluetoothLog('警告', '蓝牙增量复原判定失败，已回退完整判定', error.message || String(error));
+    }
+  }
+  return isBluetoothSolved();
 }
 
 function renderBluetoothMoves() {
@@ -3551,6 +3602,8 @@ function resetBluetoothSolveTracking() {
   bluetoothMoves = [];
   bluetoothSolved = false;
   bluetoothSolvedByStatePacket = false;
+  bluetoothSolveCube = null;
+  bluetoothSolveCubeValid = false;
   updateBluetooth3dMove('-');
   renderBluetoothMoves();
 }
@@ -3626,30 +3679,26 @@ function initBluetoothCube3d() {
   scene.add(group);
 
   const shell = new THREE.Mesh(
-    new THREE.BoxGeometry(2.16, 2.16, 2.16),
-    new THREE.MeshStandardMaterial({
+    new THREE.BoxGeometry(2.04, 2.04, 2.04),
+    new THREE.MeshBasicMaterial({
       color: 0x1d1d1f,
-      roughness: 0.92,
-      metalness: 0,
     }),
   );
   group.add(shell);
 
   const edges = new THREE.LineSegments(
-    new THREE.EdgesGeometry(new THREE.BoxGeometry(2.12, 2.12, 2.12)),
-    new THREE.LineBasicMaterial({ color: 0x2f3036, transparent: true, opacity: 0.38 }),
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(2.025, 2.025, 2.025)),
+    new THREE.LineBasicMaterial({ color: 0x25262b, transparent: true, opacity: 0.2 }),
   );
   group.add(edges);
 
   const stickers = new Map();
-  const stickerGeometry = new THREE.PlaneGeometry(0.63, 0.63);
+  const stickerGeometry = new THREE.PlaneGeometry(0.655, 0.655);
   for (const face of cube3dFaces) {
     for (let row = 0; row < 3; row += 1) {
       for (let col = 0; col < 3; col += 1) {
-        const material = new THREE.MeshStandardMaterial({
+        const material = new THREE.MeshBasicMaterial({
           color: cube3dFallbackColors[face],
-          roughness: 0.82,
-          metalness: 0,
           side: THREE.DoubleSide,
         });
         const sticker = new THREE.Mesh(stickerGeometry, material);
@@ -3661,14 +3710,6 @@ function initBluetoothCube3d() {
       }
     }
   }
-
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x94a3b8, 1.8));
-  const keyLight = new THREE.DirectionalLight(0xffffff, 1.8);
-  keyLight.position.set(3.6, 5.2, 4.4);
-  scene.add(keyLight);
-  const fillLight = new THREE.DirectionalLight(0x9dccff, 0.55);
-  fillLight.position.set(-3.4, 1.8, -2.5);
-  scene.add(fillLight);
 
   const baseQuaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.56, 0.72, 0.04));
   cube3d = {
@@ -3697,7 +3738,7 @@ function initBluetoothCube3d() {
 }
 
 function applyCube3dStickerTransform(sticker, face, row, col) {
-  const spacing = 0.665;
+  const spacing = 0.666;
   const surface = 1.102;
   const a = (col - 1) * spacing;
   const b = (1 - row) * spacing;
@@ -3741,7 +3782,7 @@ function animateBluetoothCube3d(time = performance.now()) {
   if (!cube3d) return;
   const visible = isBluetoothCube3dVisible();
   const activeMove = Boolean(cube3d.turnAnimation);
-  const interval = bluetoothGyro || activeMove ? 1000 / 40 : 1000 / 20;
+  const interval = bluetoothGyro || activeMove ? 1000 / 60 : 1000 / 24;
   if (!visible || time - cube3d.lastRenderAt < interval) {
     requestAnimationFrame(animateBluetoothCube3d);
     return;
@@ -3759,7 +3800,7 @@ function animateBluetoothCube3d(time = performance.now()) {
 function updateBluetoothCube3dPose(time) {
   const nextQuaternion = cube3d.group.quaternion.clone();
   if (bluetoothGyro) {
-    nextQuaternion.slerp(cube3d.targetQuaternion, 0.26);
+    nextQuaternion.slerp(cube3d.targetQuaternion, 0.42);
   } else {
     const seconds = time / 1000;
     nextQuaternion.copy(cube3d.baseQuaternion);
@@ -3786,7 +3827,10 @@ function isBluetoothCube3dVisible() {
 }
 
 function markBluetoothCube3dDirty() {
-  if (cube3d) cube3d.needsRender = true;
+  if (cube3d) {
+    cube3d.needsRender = true;
+    cube3d.lastRenderAt = Math.min(cube3d.lastRenderAt, performance.now() - 1000 / 60);
+  }
 }
 
 function renderBluetoothCube3dCurrent() {
@@ -3896,7 +3940,7 @@ function triggerBluetoothCube3dTurnAnimation(move, options = {}) {
     axis: definition.axis,
     angle: direction * amount * Math.PI / 2,
     startedAt: performance.now(),
-    duration: suffix === '2' ? 420 : 280,
+    duration: suffix === '2' ? 260 : 170,
     stickers,
     onComplete: options.onComplete || null,
   };
@@ -4099,6 +4143,33 @@ function bluetoothLivePreviewMode() {
   return Boolean(bluetoothDevice?.gatt?.connected);
 }
 
+function setTimerDisplayText(text) {
+  const display = elements.timerDisplay;
+  const nextText = String(text ?? '');
+  if (display.textContent !== nextText) display.textContent = nextText;
+  const size = nextText.length >= 9 ? 'compact' : (nextText.length >= 8 ? 'long' : 'normal');
+  display.dataset.size = size;
+  const width = Math.round(display.getBoundingClientRect().width);
+  const key = `${size}:${nextText.length}:${width}`;
+  if (key === timerDisplayFitKey) return;
+  timerDisplayFitKey = key;
+  display.style.setProperty('--timer-scale', '1');
+  requestAnimationFrame(() => fitTimerDisplayToWidth(key));
+}
+
+function fitTimerDisplayToWidth(key) {
+  if (key !== timerDisplayFitKey) return;
+  const display = elements.timerDisplay;
+  const available = display.clientWidth;
+  const needed = display.scrollWidth;
+  if (available <= 0 || needed <= available) {
+    display.style.setProperty('--timer-scale', '1');
+    return;
+  }
+  const scale = Math.max(0.48, Math.min(1, (available / needed) * 0.985));
+  display.style.setProperty('--timer-scale', scale.toFixed(3));
+}
+
 function renderSessions() {
   elements.sessionSelect.replaceChildren(
     ...sessions.map((session) => {
@@ -4121,7 +4192,7 @@ function renderTimer() {
 
   if (appState === 'ready') {
     elements.statusText.textContent = '准备';
-    elements.timerDisplay.textContent = '0.000';
+    setTimerDisplayText('0.000');
     elements.timerHint.textContent = scrambleGuideReadyHint()
       || (inspectionEnabled ? '按 Space 开始观察' : '长按 Space 超过 0.5s，松开开始计时');
   } else if (appState === 'inspection') {
@@ -4129,7 +4200,7 @@ function renderTimer() {
     const remaining = Math.max(0, inspectionSeconds - elapsed);
     const penalty = inspectionPenaltyForElapsed(elapsed);
     elements.statusText.textContent = penalty === 'ok' ? '观察中' : '观察超时';
-    elements.timerDisplay.textContent = inspectionDisplayForElapsed(elapsed);
+    setTimerDisplayText(inspectionDisplayForElapsed(elapsed));
     elements.timerHint.textContent = penalty === 'ok'
       ? '长按 Space 超过 0.5s，松开开始计时'
       : `长按 Space 后松开开始计时，本次 ${penalty.toUpperCase()}`;
@@ -4138,7 +4209,7 @@ function renderTimer() {
     elements.timerHint.textContent = '短按不会启动';
   } else if (appState === 'timing') {
     elements.statusText.textContent = '计时中';
-    elements.timerDisplay.textContent = formatTime(performance.now() - startedAt);
+    setTimerDisplayText(formatTime(performance.now() - startedAt));
     elements.timerHint.textContent = '按任意键结束本次计时';
   } else if (appState === 'saving') {
     elements.statusText.textContent = finishSource === 'bluetooth' ? '蓝牙复原' : '保存中';
@@ -4190,6 +4261,24 @@ function renderScrambleText() {
     return;
   }
 
+  if (scrambleGuideErrorIndex != null) {
+    const correctionMoves = scrambleGuideCorrectionMoves();
+    if (correctionMoves.length === 0) {
+      elements.scrambleText.textContent = '当前状态已到达目标打乱';
+      return;
+    }
+    elements.scrambleText.replaceChildren(
+      ...correctionMoves.flatMap((move, index) => {
+        const span = document.createElement('span');
+        span.className = 'scramble-move correction';
+        span.textContent = move;
+        span.title = '修正到目标打乱状态';
+        return [span, document.createTextNode(index === correctionMoves.length - 1 ? '' : ' ')];
+      }),
+    );
+    return;
+  }
+
   elements.scrambleText.replaceChildren(
     ...scrambleGuideMoves.flatMap((move, index) => {
       const span = document.createElement('span');
@@ -4214,8 +4303,7 @@ function scrambleMoveClass(index) {
 function scrambleMoveTitle(index, move) {
   if (scrambleGuideCompleted) return '打乱状态已匹配';
   if (index === scrambleGuideErrorIndex) {
-    const correction = scrambleGuideCorrectionText();
-    return `这里应为 ${move}，实际转动 ${scrambleGuideErrorMove}${correction ? `；反向修正 ${correction}` : ''}`;
+    return `这里应为 ${move}，实际转动 ${scrambleGuideErrorMove}`;
   }
   if (index === scrambleGuidePartialIndex) return `${move} 已完成半步，继续同方向完成双拨`;
   if (index < scrambleGuideCorrectPrefix) return '已完成';
@@ -4240,11 +4328,7 @@ function renderScrambleGuideMeta() {
   }
   if (scrambleGuideErrorIndex != null) {
     const expected = scrambleGuideMoves[scrambleGuideErrorIndex] || '-';
-    const correction = scrambleGuideCorrectionText();
-    elements.scrambleGuideMeta.textContent = [
-      `打乱错误：第 ${scrambleGuideErrorIndex + 1} 步应为 ${expected}，实际 ${scrambleGuideErrorMove}`,
-      correction ? `反向修正：${correction}` : '',
-    ].filter(Boolean).join(' · ');
+    elements.scrambleGuideMeta.textContent = `打乱错误：第 ${scrambleGuideErrorIndex + 1} 步应为 ${expected}，实际 ${scrambleGuideErrorMove} · 按上方公式修正到目标打乱状态`;
     elements.scrambleGuideMeta.classList.add('error');
     return;
   }
@@ -4264,6 +4348,7 @@ function resetScrambleGuide() {
   scrambleGuideErrorIndex = null;
   scrambleGuideErrorMove = '';
   scrambleGuideLastMatchedInputLength = 0;
+  scrambleGuideLastMatchedRemainingMoves = [];
   scrambleGuideCompleted = false;
   scrambleGuideSupported = false;
 
@@ -4275,10 +4360,12 @@ function resetScrambleGuide() {
     scrambleGuideMoves = parsedMoves.map(scrambleMoveNotation);
     scrambleGuideRoute = buildScrambleGuideRoute(parsedMoves);
     scrambleGuideSupported = scrambleGuideMoves.length > 0;
+    scrambleGuideLastMatchedRemainingMoves = scrambleGuideRoute[0]?.remainingMoves || [];
   } catch {
     scrambleGuideMoves = [];
     scrambleGuideRoute = [];
     scrambleGuideSupported = false;
+    scrambleGuideLastMatchedRemainingMoves = [];
   }
 }
 
@@ -4287,24 +4374,36 @@ function scrambleMoveNotation(move) {
 }
 
 function buildScrambleGuideRoute(moves) {
+  const atomicEntries = [];
+  moves.forEach((move, index) => {
+    const atomicMoves = scrambleMoveAtomicTokens(move);
+    atomicMoves.forEach((token, atomicIndex) => {
+      atomicEntries.push({
+        token,
+        correctPrefix: atomicIndex === atomicMoves.length - 1 ? index + 1 : index,
+        displayIndex: index,
+        partial: atomicIndex < atomicMoves.length - 1,
+      });
+    });
+  });
+
   const route = [{
     signature: cubeFacesSignature(cubeStateFromScramble('')),
     correctPrefix: 0,
     displayIndex: 0,
     partial: false,
+    remainingMoves: atomicEntries.map((entry) => entry.token),
   }];
   const tokens = [];
 
-  moves.forEach((move, index) => {
-    const atomicMoves = scrambleMoveAtomicTokens(move);
-    atomicMoves.forEach((token, atomicIndex) => {
-      tokens.push(token);
-      route.push({
-        signature: cubeFacesSignature(cubeStateFromScramble(tokens.join(' '))),
-        correctPrefix: atomicIndex === atomicMoves.length - 1 ? index + 1 : index,
-        displayIndex: index,
-        partial: atomicIndex < atomicMoves.length - 1,
-      });
+  atomicEntries.forEach((entry, atomicIndex) => {
+    tokens.push(entry.token);
+    route.push({
+      signature: cubeFacesSignature(cubeStateFromScramble(tokens.join(' '))),
+      correctPrefix: entry.correctPrefix,
+      displayIndex: entry.displayIndex,
+      partial: entry.partial,
+      remainingMoves: atomicEntries.slice(atomicIndex + 1).map((tailEntry) => tailEntry.token),
     });
   });
 
@@ -4335,15 +4434,59 @@ function inverseScrambleMoveTokens(moves) {
   return parsedMoves.reverse().map(inverseScrambleMoveNotation).filter(Boolean);
 }
 
+function simplifyScrambleMoveTokens(tokens) {
+  const simplified = [];
+  for (const token of tokens.filter(Boolean)) {
+    let move;
+    try {
+      move = parseScramble(token)[0];
+    } catch {
+      simplified.push(token);
+      continue;
+    }
+    const previousToken = simplified.at(-1);
+    let previousMove = null;
+    try {
+      previousMove = previousToken ? parseScramble(previousToken)[0] : null;
+    } catch {
+      previousMove = null;
+    }
+    if (!previousMove || previousMove.face !== move.face) {
+      simplified.push(scrambleMoveNotation(move));
+      continue;
+    }
+    simplified.pop();
+    const turns = (scrambleMoveQuarterTurns(previousMove) + scrambleMoveQuarterTurns(move)) % 4;
+    if (turns === 1) simplified.push(move.face);
+    else if (turns === 2) simplified.push(`${move.face}2`);
+    else if (turns === 3) simplified.push(`${move.face}'`);
+  }
+  return simplified;
+}
+
+function scrambleMoveQuarterTurns(move) {
+  if (move.suffix === '2') return 2;
+  if (move.suffix === "'") return 3;
+  return 1;
+}
+
+function scrambleGuideCorrectionMoves() {
+  if (!scrambleGuideSupported || scrambleGuideInputMoves.length <= scrambleGuideLastMatchedInputLength) return [];
+  const undoWrongMoves = inverseScrambleMoveTokens(scrambleGuideInputMoves.slice(scrambleGuideLastMatchedInputLength));
+  const remainingMoves = scrambleGuideLastMatchedRemainingMoves.length > 0
+    ? scrambleGuideLastMatchedRemainingMoves
+    : scrambleGuideMoves.slice(scrambleGuideCorrectPrefix);
+  return simplifyScrambleMoveTokens([...undoWrongMoves, ...remainingMoves]);
+}
+
 function scrambleGuideCorrectionText() {
-  if (!scrambleGuideSupported || scrambleGuideInputMoves.length <= scrambleGuideLastMatchedInputLength) return '';
-  return inverseScrambleMoveTokens(scrambleGuideInputMoves.slice(scrambleGuideLastMatchedInputLength)).join(' ');
+  return scrambleGuideCorrectionMoves().join(' ');
 }
 
 function scrambleGuideReadyHint() {
   if (!bluetoothScrambleGuideActive() || appState !== 'ready') return '';
   if (scrambleGuideCompleted) return '打乱完成，观察中转动魔方即可开始计时';
-  if (scrambleGuideErrorIndex != null) return '打乱公式不匹配，请检查红色步骤';
+  if (scrambleGuideErrorIndex != null) return '打乱公式不匹配，请按上方公式修正';
   if (scrambleGuidePartialIndex != null) return `双拨未完成：继续 ${scrambleGuideMoves[scrambleGuidePartialIndex] || ''}`;
   if (scrambleGuideCorrectPrefix > 0) return `继续打乱：${scrambleGuideCorrectPrefix}/${scrambleGuideMoves.length}`;
   return '转动蓝牙魔方开始打乱校验';
@@ -4593,7 +4736,7 @@ function applyScrambleGuideMoves(moves, source, protocol = '', deviceName = '') 
       [
         `应为 ${scrambleGuideMoves[scrambleGuideErrorIndex] || '-'}`,
         `实际 ${scrambleGuideErrorMove}`,
-        correction ? `反向修正 ${correction}` : '',
+        correction ? `修正公式 ${correction}` : '',
       ].filter(Boolean).join(' · '),
     );
   }
@@ -4626,6 +4769,7 @@ function updateScrambleGuideProgress(latestMove = '') {
     scrambleGuideErrorIndex = null;
     scrambleGuideErrorMove = '';
     scrambleGuideLastMatchedInputLength = scrambleGuideInputMoves.length;
+    scrambleGuideLastMatchedRemainingMoves = match.remainingMoves || [];
     return;
   }
 
@@ -4668,6 +4812,7 @@ function completeScrambleGuide(source, protocol = '', deviceName = '') {
   scrambleGuideErrorIndex = null;
   scrambleGuideErrorMove = '';
   scrambleGuideLastMatchedInputLength = scrambleGuideInputMoves.length;
+  scrambleGuideLastMatchedRemainingMoves = [];
   inspectionStartedAt = 0;
   activePenalty = 'ok';
   addBluetoothLog(

@@ -580,6 +580,8 @@ let bluetoothLastMoveText = '-';
 let bluetoothPhysicalFacelets = '';
 let bluetoothPhysicalFaces = null;
 let bluetoothPhysicalStateTime = '';
+let bluetoothMovesRenderKey = '';
+let bluetoothStatePreviewRenderKey = '';
 let bluetoothBatteryLevel = null;
 let bluetoothGanMac = '';
 let bluetoothGanSession = null;
@@ -3973,21 +3975,29 @@ function updateBluetoothSolvedFromMoves(moves) {
 }
 
 function renderBluetoothMoves() {
-  elements.bluetoothMoveCount.textContent = String(bluetoothMoves.length);
-  elements.bluetoothSolveStatus.parentElement.classList.toggle('solved', bluetoothSolved);
-  elements.bluetoothSolveStatus.textContent = bluetoothMoves.length === 0
+  const moveText = bluetoothMoveSequence().slice(-40).join(' ');
+  const rowText = bluetoothMoves.length === 0
+    ? (appState === 'timing' ? '暂无解析出的转动' : '计时开始后记录转动')
+    : moveText;
+  const statusText = bluetoothMoves.length === 0
     ? (bluetoothSolved ? '已复原' : (appState === 'timing' ? '未同步' : '等待计时'))
     : (bluetoothSolved ? '已复原' : '未复原');
-  if (bluetoothMoves.length === 0) {
-    elements.bluetoothMoveRows.textContent = appState === 'timing' ? '暂无解析出的转动' : '计时开始后记录转动';
-    elements.bluetoothMoveRows.title = '';
-    renderBluetoothStatePreview();
-    return;
-  }
+  const renderKey = [
+    bluetoothMoves.length,
+    bluetoothSolved ? 1 : 0,
+    appState,
+    rowText,
+    statusText,
+    bluetoothStatePreviewKey(),
+  ].join('|');
+  if (renderKey === bluetoothMovesRenderKey) return;
+  bluetoothMovesRenderKey = renderKey;
 
-  const moveText = bluetoothMoves.slice(0, 40).map((entry) => entry.move).reverse().join(' ');
-  elements.bluetoothMoveRows.textContent = moveText;
-  elements.bluetoothMoveRows.title = moveText;
+  elements.bluetoothMoveCount.textContent = String(bluetoothMoves.length);
+  elements.bluetoothSolveStatus.parentElement.classList.toggle('solved', bluetoothSolved);
+  elements.bluetoothSolveStatus.textContent = statusText;
+  elements.bluetoothMoveRows.textContent = rowText;
+  elements.bluetoothMoveRows.title = bluetoothMoves.length === 0 ? '' : moveText;
   renderBluetoothStatePreview();
 }
 
@@ -4054,6 +4064,10 @@ function isBluetoothSolved() {
 }
 
 function renderBluetoothStatePreview() {
+  const renderKey = bluetoothStatePreviewKey();
+  if (renderKey === bluetoothStatePreviewRenderKey) return;
+  bluetoothStatePreviewRenderKey = renderKey;
+
   elements.bluetoothStateNet.replaceChildren();
   if (bluetoothPhysicalFaces && bluetoothLivePreviewMode()) {
     const solved = isSolvedFaces(bluetoothPhysicalFaces);
@@ -4089,6 +4103,19 @@ function renderBluetoothStatePreview() {
     elements.bluetoothStateNet.textContent = '无法渲染';
     renderBluetoothCube3d(null, '状态无效');
   }
+}
+
+function bluetoothStatePreviewKey() {
+  return [
+    bluetoothLivePreviewMode() ? 1 : 0,
+    bluetoothPhysicalFacelets || '-',
+    bluetoothSolved ? 1 : 0,
+    bluetoothSolvedByStatePacket ? 1 : 0,
+    appState,
+    scramble?.scramble || '-',
+    scramble?.puzzle || scramblePuzzle || 'three',
+    bluetoothMoveSequence().join(' '),
+  ].join('|');
 }
 
 function initBluetoothCube3d() {

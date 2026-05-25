@@ -6,7 +6,6 @@ import { parseSolveImport } from './solves-import.js';
 import { buildStatsSummary } from './stats-summary.js';
 import { buildSolveSummary } from './solve-summary.js';
 import { bestAverageRecord, bestMeanRecord, bestSingleRecord, recordMarksAt, rollingAverageAt, rollingAverageDetailAt, rollingMeanAt, rollingMeanDetailAt } from './rolling-averages.js';
-import * as THREE from './vendor/three.module.js';
 
 const localApiOrigin = 'http://127.0.0.1:3211';
 const localHttpHost = /^(127\.0\.0\.1|localhost|\[::1\])$/.test(location.hostname);
@@ -658,7 +657,10 @@ let bluetoothNextSolveGestureLoading = false;
 let previewScrambleText = '';
 let previewRequestId = 0;
 const previewCache = new Map();
+let THREE = null;
+let threeModulePromise = null;
 let cube3d = null;
+let cube3dInitPromise = null;
 let cube3dLastFacesSignature = '';
 let cube3dMovePulseTimer = 0;
 let cube3dAnimationFrame = 0;
@@ -881,8 +883,8 @@ window.__trainTimerDebug = {
     const packet = Uint8Array.from(bytes);
     processBluetoothPacket(uuid, new DataView(packet.buffer), '模拟蓝牙魔方');
   },
-  setBluetoothGyroForTest(quaternion = { x: 0.2, y: -0.35, z: 0.1, w: 0.91 }, velocity = { x: 1, y: -2, z: 0 }) {
-    updateBluetoothGyro({ quaternion, velocity });
+  async setBluetoothGyroForTest(quaternion = { x: 0.2, y: -0.35, z: 0.1, w: 0.91 }, velocity = { x: 1, y: -2, z: 0 }) {
+    await updateBluetoothGyro({ quaternion, velocity });
     return this.state();
   },
   setBluetoothFaceletsForTest(facelets = 'UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB') {
@@ -954,7 +956,6 @@ document.addEventListener('keydown', handleKeyDown);
 document.addEventListener('keyup', handleKeyUp);
 document.addEventListener('click', closeHistoryMenuOnOutsideClick);
 
-initBluetoothCube3d();
 await bootstrap();
 
 async function bootstrap() {
@@ -3645,7 +3646,7 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
   }
   const updatePacketUi = () => {
     if (decoded.batteryLevel != null) updateBluetoothBattery(decoded.batteryLevel, decoded.protocol || protocol.label);
-    if (decoded.gyro) updateBluetoothGyro(decoded.gyro);
+    if (decoded.gyro) void updateBluetoothGyro(decoded.gyro);
     if (decoded.facelets) updateBluetoothPhysicalState(decoded, { faces: physicalFaces });
     if (stoppedFromStatePacket) renderBluetoothMoves();
   };
@@ -3818,9 +3819,15 @@ function renderBluetoothBattery() {
   renderBluetoothFeed();
 }
 
-function updateBluetoothGyro(gyro) {
+async function updateBluetoothGyro(gyro) {
   if (!gyro?.quaternion) return;
   bluetoothGyroLastUpdateAt = performance.now();
+  try {
+    await loadThreeModule();
+  } catch (error) {
+    addBluetoothLog('错误', '陀螺仪 3D 依赖加载失败', error.message || String(error));
+    return;
+  }
   const basisQuaternion = bluetoothGyroQuaternionFromPacket(gyro.quaternion);
   if (!basisQuaternion) return;
   if (bluetoothGyroLastBasisQuaternion && bluetoothGyroLastBasisQuaternion.dot(basisQuaternion) < 0) {
@@ -3908,7 +3915,13 @@ function updateBluetoothPhysicalState(decoded, options = {}) {
 }
 
 function renderBluetoothCube3dLiveFaces(faces = bluetoothPhysicalFaces) {
-  if (!faces || !cube3d || !bluetoothLivePreviewMode()) return;
+  if (!faces || !bluetoothLivePreviewMode()) return;
+  if (!cube3d) {
+    void ensureBluetoothCube3dReady().then((ready) => {
+      if (ready) renderBluetoothCube3dLiveFaces(faces);
+    });
+    return;
+  }
   renderBluetoothCube3d(faces, `GAN 实时状态 · ${isSolvedFaces(faces) ? '已复原' : '未复原'}`);
 }
 
@@ -4367,90 +4380,127 @@ function bluetooth3dPreferredLiveFaces() {
     : bluetoothPhysicalFaces;
 }
 
-function initBluetoothCube3d() {
-  if (!elements.bluetooth3dCanvas) return;
+async function loadThreeModule() {
+  if (THREE) return THREE;
+  if (!threeModulePromise) {
+    threeModulePromise = import('./vendor/three.module.js')
+      .then((module) => {
+        THREE = module;
+        return module;
+      })
+      .catch((error) => {
+        threeModulePromise = null;
+        throw error;
+      });
+  }
+  return threeModulePromise;
+}
 
-  const renderer = new THREE.WebGLRenderer({
-    canvas: elements.bluetooth3dCanvas,
-    alpha: true,
-    antialias: true,
-    powerPreference: 'high-performance',
-  });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cube3dMaxPixelRatio));
-  renderer.setClearColor(0x000000, 0);
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
+function ensureBluetoothCube3dReady() {
+  if (cube3d) return Promise.resolve(cube3d);
+  if (!elements.bluetooth3dCanvas) return Promise.resolve(null);
+  if (!cube3dInitPromise) {
+    cube3dInitPromise = initBluetoothCube3d().then((result) => {
+      if (!result) cube3dInitPromise = null;
+      return result;
+    });
+  }
+  return cube3dInitPromise;
+}
 
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 30);
-  camera.position.set(4.2, 3.2, 5.4);
-  camera.lookAt(0, 0, 0);
+async function initBluetoothCube3d() {
+  if (!elements.bluetooth3dCanvas) return null;
+  try {
+    await loadThreeModule();
 
-  const group = new THREE.Group();
-  scene.add(group);
+    const renderer = new THREE.WebGLRenderer({
+      canvas: elements.bluetooth3dCanvas,
+      alpha: true,
+      antialias: true,
+      powerPreference: 'high-performance',
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cube3dMaxPixelRatio));
+    renderer.setClearColor(0x000000, 0);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-  const shell = new THREE.Mesh(
-    new THREE.BoxGeometry(2.0, 2.0, 2.0),
-    new THREE.MeshBasicMaterial({
-      color: 0x1d1d1f,
-    }),
-  );
-  group.add(shell);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 30);
+    camera.position.set(4.2, 3.2, 5.4);
+    camera.lookAt(0, 0, 0);
 
-  const edges = new THREE.LineSegments(
-    new THREE.EdgesGeometry(new THREE.BoxGeometry(1.998, 1.998, 1.998)),
-    new THREE.LineBasicMaterial({ color: 0x25262b, transparent: true, opacity: 0.08 }),
-  );
-  group.add(edges);
+    const group = new THREE.Group();
+    scene.add(group);
 
-  const stickers = new Map();
-  const stickerGeometry = new THREE.PlaneGeometry(0.642, 0.642);
-  for (const face of cube3dFaces) {
-    for (let row = 0; row < 3; row += 1) {
-      for (let col = 0; col < 3; col += 1) {
-        const material = new THREE.MeshBasicMaterial({
-          color: cube3dFallbackColors[face],
-          side: THREE.DoubleSide,
-        });
-        const sticker = new THREE.Mesh(stickerGeometry, material);
-        applyCube3dStickerTransform(sticker, face, row, col);
-        sticker.userData.basePosition = sticker.position.clone();
-        sticker.userData.baseQuaternion = sticker.quaternion.clone();
-        group.add(sticker);
-        stickers.set(`${face}${row}${col}`, sticker);
+    const shell = new THREE.Mesh(
+      new THREE.BoxGeometry(2.0, 2.0, 2.0),
+      new THREE.MeshBasicMaterial({
+        color: 0x1d1d1f,
+      }),
+    );
+    group.add(shell);
+
+    const edges = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(1.998, 1.998, 1.998)),
+      new THREE.LineBasicMaterial({ color: 0x25262b, transparent: true, opacity: 0.08 }),
+    );
+    group.add(edges);
+
+    const stickers = new Map();
+    const stickerGeometry = new THREE.PlaneGeometry(0.642, 0.642);
+    for (const face of cube3dFaces) {
+      for (let row = 0; row < 3; row += 1) {
+        for (let col = 0; col < 3; col += 1) {
+          const material = new THREE.MeshBasicMaterial({
+            color: cube3dFallbackColors[face],
+            side: THREE.DoubleSide,
+          });
+          const sticker = new THREE.Mesh(stickerGeometry, material);
+          applyCube3dStickerTransform(sticker, face, row, col);
+          sticker.userData.basePosition = sticker.position.clone();
+          sticker.userData.baseQuaternion = sticker.quaternion.clone();
+          group.add(sticker);
+          stickers.set(`${face}${row}${col}`, sticker);
+        }
       }
     }
+
+    const baseQuaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.56, 0.72, 0.04));
+    cube3d = {
+      renderer,
+      scene,
+      camera,
+      group,
+      stickers,
+      baseQuaternion,
+      targetQuaternion: baseQuaternion.clone(),
+      resizeObserver: null,
+      needsRender: true,
+      lastRenderAt: 0,
+      turnAnimation: null,
+      nextQuaternion: new THREE.Quaternion(),
+      idleQuaternion: new THREE.Quaternion(),
+      idleEuler: new THREE.Euler(),
+      turnQuaternion: new THREE.Quaternion(),
+      cssWidth: 0,
+      cssHeight: 0,
+    };
+    group.quaternion.copy(baseQuaternion);
+
+    const resize = () => resizeBluetoothCube3d();
+    cube3d.resizeObserver = new ResizeObserver(resize);
+    cube3d.resizeObserver.observe(elements.bluetooth3dCanvas);
+    window.addEventListener('resize', resize);
+    resize();
+    renderBluetoothCube3dCurrent();
+    renderBluetoothCube3dTelemetry();
+    scheduleBluetoothCube3dAnimation();
+    return cube3d;
+  } catch (error) {
+    addBluetoothLog('错误', '3D 模型加载失败', error.message || String(error));
+    if (elements.bluetooth3dMeta) elements.bluetooth3dMeta.textContent = '3D 加载失败';
+    cube3d = null;
+    return null;
   }
-
-  const baseQuaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.56, 0.72, 0.04));
-  cube3d = {
-    renderer,
-    scene,
-    camera,
-    group,
-    stickers,
-    baseQuaternion,
-    targetQuaternion: baseQuaternion.clone(),
-    resizeObserver: null,
-    needsRender: true,
-    lastRenderAt: 0,
-    turnAnimation: null,
-    nextQuaternion: new THREE.Quaternion(),
-    idleQuaternion: new THREE.Quaternion(),
-    idleEuler: new THREE.Euler(),
-    turnQuaternion: new THREE.Quaternion(),
-    cssWidth: 0,
-    cssHeight: 0,
-  };
-  group.quaternion.copy(baseQuaternion);
-
-  const resize = () => resizeBluetoothCube3d();
-  cube3d.resizeObserver = new ResizeObserver(resize);
-  cube3d.resizeObserver.observe(elements.bluetooth3dCanvas);
-  window.addEventListener('resize', resize);
-  resize();
-  renderBluetoothCube3dCurrent();
-  renderBluetoothCube3dTelemetry();
-  scheduleBluetoothCube3dAnimation();
 }
 
 function applyCube3dStickerTransform(sticker, face, row, col) {
@@ -4609,7 +4659,15 @@ function markBluetoothCube3dDirty() {
 }
 
 function renderBluetoothCube3dCurrent() {
-  if (!cube3d) return;
+  if (!cube3d) {
+    if (elements.bluetooth3dMeta) elements.bluetooth3dMeta.textContent = '3D 加载中';
+    if (solveReplayPreviewActive || bluetoothLivePreviewMode()) {
+      void ensureBluetoothCube3dReady().then((ready) => {
+        if (ready) renderBluetoothCube3dCurrent();
+      });
+    }
+    return;
+  }
   if (solveReplayPreviewActive && solveReplayCube) {
     renderBluetoothCube3d(facesFromCube(solveReplayCube), solveReplayPreviewLabel || '完整解法回放');
     return;
@@ -4672,7 +4730,16 @@ function cube3dFacesSignature(faces) {
 
 function updateBluetooth3dMove(move) {
   bluetoothLastMoveText = String(move || '-');
-  if (bluetoothLastMoveText !== '-') triggerBluetoothCube3dTurnAnimation(bluetoothLastMoveText);
+  if (bluetoothLastMoveText !== '-') {
+    if (cube3d) {
+      triggerBluetoothCube3dTurnAnimation(bluetoothLastMoveText);
+    } else if (bluetoothLivePreviewMode()) {
+      const moveText = bluetoothLastMoveText;
+      void ensureBluetoothCube3dReady().then((ready) => {
+        if (ready && bluetoothLastMoveText === moveText) triggerBluetoothCube3dTurnAnimation(moveText);
+      });
+    }
+  }
   if (!elements.bluetooth3dMove) return;
   elements.bluetooth3dMove.textContent = bluetoothLastMoveText;
   elements.bluetooth3dMove.classList.remove('pulse');
@@ -4949,6 +5016,15 @@ function renderPreviewMode() {
     : 'TNoodle');
 
   if (liveMode) {
+    if (!cube3d) {
+      if (elements.bluetooth3dMeta) elements.bluetooth3dMeta.textContent = '3D 加载中';
+      void ensureBluetoothCube3dReady().then((ready) => {
+        if (!ready) return;
+        resizeBluetoothCube3d();
+        renderBluetoothCube3dCurrent();
+      });
+      return;
+    }
     markBluetoothCube3dDirty();
     resizeBluetoothCube3d();
     renderBluetoothCube3dCurrent();

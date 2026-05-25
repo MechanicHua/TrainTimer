@@ -301,6 +301,7 @@ const elements = {
   timerSettingsMeta: document.querySelector('#timerSettingsMeta'),
   hideTimerToggle: document.querySelector('#hideTimerToggle'),
   timerFreezeSelect: document.querySelector('#timerFreezeSelect'),
+  confirmDeleteToggle: document.querySelector('#confirmDeleteToggle'),
   sessionGoalButton: document.querySelector('#sessionGoalButton'),
   countStat: document.querySelector('#countStat'),
   sessionGoalStat: document.querySelector('#sessionGoalStat'),
@@ -534,6 +535,7 @@ let sessions = [];
 let inspectionEnabled = localStorage.getItem('trainTimer.inspection') === '1';
 let hideTimerWhileSolving = localStorage.getItem('trainTimer.hideTimerWhileSolving') === '1';
 let timerFreezeMs = normalizeTimerFreezeMs(localStorage.getItem('trainTimer.timerFreezeMs'));
+let confirmDeleteSolves = localStorage.getItem('trainTimer.confirmDeleteSolves') !== '0';
 let currentSessionId = localStorage.getItem('trainTimer.session') || 'default';
 let scramblePuzzle = localStorage.getItem('trainTimer.scramblePuzzle') || 'three';
 let scrambleLocked = localStorage.getItem('trainTimer.scrambleLocked') === '1';
@@ -664,6 +666,7 @@ elements.scrambleLockButton.addEventListener('click', toggleScrambleLock);
 elements.timerSettingsButton.addEventListener('click', openTimerSettingsDialog);
 elements.hideTimerToggle.addEventListener('change', updateTimerSettingsFromControls);
 elements.timerFreezeSelect.addEventListener('change', updateTimerSettingsFromControls);
+elements.confirmDeleteToggle.addEventListener('change', updateTimerSettingsFromControls);
 elements.algorithmTrainerButton.addEventListener('click', openAlgorithmTrainerDialog);
 elements.algorithmTrainerSet.addEventListener('change', () => {
   algorithmTrainerSet = elements.algorithmTrainerSet.value || 'pll';
@@ -1369,7 +1372,7 @@ async function updateLatestSolvePenalty(penalty) {
 
 async function deleteSolve(id) {
   const solve = solves.find((item) => item.id === id);
-  if (!solve || !confirm(`删除成绩 ${displaySolveTime(solve)}？`)) return;
+  if (!solve || !confirmSolveDeletion(`删除成绩 ${displaySolveTime(solve)}？`)) return;
   const data = await requestJson(`/api/solves/${encodeURIComponent(id)}`, { method: 'DELETE' });
   stageDeletedSolves([solve]);
   solves = data.solves;
@@ -1385,7 +1388,7 @@ async function deleteCurrentDetailSolve() {
 
 async function deleteLatestSolve() {
   const solve = latestSessionSolve();
-  if (!solve || !confirm(`删除上一把 ${displaySolveTime(solve)}？`)) return;
+  if (!solve || !confirmSolveDeletion(`删除上一把 ${displaySolveTime(solve)}？`)) return;
   const data = await requestJson(`/api/solves/${encodeURIComponent(solve.id)}`, { method: 'DELETE' });
   stageDeletedSolves([solve]);
   solves = data.solves;
@@ -1398,7 +1401,7 @@ async function deleteLatestSolve() {
 async function deleteSelectedSolves() {
   const ids = [...selectedSolveIds];
   if (ids.length === 0) return;
-  if (!confirm(`删除选中的 ${ids.length} 条成绩？`)) return;
+  if (!confirmSolveDeletion(`删除选中的 ${ids.length} 条成绩？`)) return;
   const deleted = solves.filter((solve) => selectedSolveIds.has(solve.id));
   const data = await postJson('/api/solves/delete', { ids });
   stageDeletedSolves(deleted);
@@ -1570,7 +1573,7 @@ async function moveSelectedSolves() {
 
 async function clearAllSolves() {
   const ids = filteredSolves().map((solve) => solve.id);
-  if (ids.length === 0 || !confirm('清空当前会话的所有成绩？清空后可用撤销删除恢复本次操作。')) return;
+  if (ids.length === 0 || !confirmSolveDeletion('清空当前会话的所有成绩？清空后可用撤销删除恢复本次操作。')) return;
   const deleted = solves.filter((solve) => ids.includes(solve.id));
   const data = await postJson('/api/solves/delete', { ids });
   stageDeletedSolves(deleted);
@@ -1578,6 +1581,10 @@ async function clearAllSolves() {
   selectedSolveIds.clear();
   if (ids.includes(currentDetailSolveId)) elements.solveDialog.close();
   render();
+}
+
+function confirmSolveDeletion(message) {
+  return !confirmDeleteSolves || confirm(message);
 }
 
 async function undoLastDelete() {
@@ -4839,16 +4846,20 @@ function openTimerSettingsDialog() {
 function renderTimerSettingsDialog() {
   elements.hideTimerToggle.checked = hideTimerWhileSolving;
   elements.timerFreezeSelect.value = String(timerFreezeMs);
+  elements.confirmDeleteToggle.checked = confirmDeleteSolves;
   const displayMode = hideTimerWhileSolving ? '隐藏计时中数字' : '显示计时中数字';
   const freezeMode = timerFreezeMs > 0 ? `起步冻结 ${(timerFreezeMs / 1000).toFixed(1)}s` : '无起步冻结';
-  elements.timerSettingsMeta.textContent = `${displayMode} · ${freezeMode}`;
+  const deleteMode = confirmDeleteSolves ? '删除前确认' : '删除直接撤销';
+  elements.timerSettingsMeta.textContent = `${displayMode} · ${freezeMode} · ${deleteMode}`;
 }
 
 function updateTimerSettingsFromControls() {
   hideTimerWhileSolving = elements.hideTimerToggle.checked;
   timerFreezeMs = normalizeTimerFreezeMs(elements.timerFreezeSelect.value);
+  confirmDeleteSolves = elements.confirmDeleteToggle.checked;
   localStorage.setItem('trainTimer.hideTimerWhileSolving', hideTimerWhileSolving ? '1' : '0');
   localStorage.setItem('trainTimer.timerFreezeMs', String(timerFreezeMs));
+  localStorage.setItem('trainTimer.confirmDeleteSolves', confirmDeleteSolves ? '1' : '0');
   renderTimerSettingsDialog();
   renderTimer();
 }

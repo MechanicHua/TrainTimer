@@ -351,6 +351,18 @@
             </div>
           </div>
           <div class="stats-chart-panel">
+            <div class="stats-chart-head">
+              <div>
+                <strong>趋势分析</strong>
+                <span id="statsChartTitle">单次趋势</span>
+              </div>
+              <div class="stats-chart-modes" aria-label="统计图表类型">
+                <button data-stats-chart-mode="single" type="button">单次</button>
+                <button data-stats-chart-mode="ao5" type="button">ao5</button>
+                <button data-stats-chart-mode="ao12" type="button">ao12</button>
+                <button data-stats-chart-mode="tps" type="button">TPS</button>
+              </div>
+            </div>
             <canvas id="statsTrendChart" aria-label="当前会话成绩趋势"></canvas>
             <p id="statsChartMeta">-</p>
           </div>

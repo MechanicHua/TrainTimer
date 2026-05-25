@@ -14,6 +14,13 @@ const holdToStartMs = 500;
 const reminderSeconds = new Set([8, 12]);
 const compactHistoryLimit = 48;
 const bluetoothNextSolveGestureWindowMs = 700;
+const statsChartModes = new Set(['single', 'ao5', 'ao12', 'tps']);
+const statsChartLabels = {
+  single: '单次',
+  ao5: 'ao5',
+  ao12: 'ao12',
+  tps: 'TPS',
+};
 const bluetoothUuidSuffix = '-0000-1000-8000-00805f9b34fb';
 const bluetoothBatteryLevelUuid = `00002a19${bluetoothUuidSuffix}`;
 const bluetoothGanV1MetaServiceUuid = `0000180a${bluetoothUuidSuffix}`;
@@ -351,6 +358,8 @@ const elements = {
   statsDialog: document.querySelector('#statsDialog'),
   statsDialogMeta: document.querySelector('#statsDialogMeta'),
   statsRecordHint: document.querySelector('#statsRecordHint'),
+  statsChartTitle: document.querySelector('#statsChartTitle'),
+  statsChartModeButtons: [...document.querySelectorAll('[data-stats-chart-mode]')],
   statsTrendChart: document.querySelector('#statsTrendChart'),
   statsChartMeta: document.querySelector('#statsChartMeta'),
   statsRecordList: document.querySelector('#statsRecordList'),
@@ -466,6 +475,8 @@ let currentSessionId = localStorage.getItem('trainTimer.session') || 'default';
 let scramblePuzzle = localStorage.getItem('trainTimer.scramblePuzzle') || 'three';
 let allSessionsEnabled = localStorage.getItem('trainTimer.allSessions') === '1';
 let allSolvesDatePreset = 'all';
+let statsChartMode = localStorage.getItem('trainTimer.statsChartMode') || 'single';
+if (!statsChartModes.has(statsChartMode)) statsChartMode = 'single';
 let historySortKey = localStorage.getItem('trainTimer.historySortKey') || '';
 let historySortDirection = localStorage.getItem('trainTimer.historySortDirection') || '';
 if (!['single', 'tps', 'ao5', 'ao12'].includes(historySortKey) || !['asc', 'desc'].includes(historySortDirection)) {
@@ -600,6 +611,15 @@ elements.importFile.addEventListener('change', importSolves);
 elements.appendImportButton.addEventListener('click', () => confirmImport('append'));
 elements.replaceImportButton.addEventListener('click', () => confirmImport('replace'));
 elements.statsDetailButton.addEventListener('click', openStatsDialog);
+elements.statsChartModeButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    const mode = button.dataset.statsChartMode || 'single';
+    if (!statsChartModes.has(mode) || mode === statsChartMode) return;
+    statsChartMode = mode;
+    localStorage.setItem('trainTimer.statsChartMode', statsChartMode);
+    renderStatsDialog();
+  });
+});
 elements.manageSolvesButton.addEventListener('click', openAllSolvesDialog);
 elements.selectedStatsButton.addEventListener('click', openSelectedStatsDialog);
 elements.markSelectedButton.addEventListener('click', openMarkPenaltyDialog);
@@ -5311,13 +5331,21 @@ function renderStatsTrendChart(sessionSolves, chartLabel = '最近') {
   context.clearRect(0, 0, width, height);
 
   const chartSolves = sessionSolves.slice(-50);
+  const startIndex = Math.max(0, sessionSolves.length - chartSolves.length);
   const points = chartSolves
-    .map((solve, index) => ({ index, solve, value: effectiveDurationMs(solve) }))
+    .map((solve, index) => ({
+      index,
+      solve,
+      value: statsChartValueAt(sessionSolves, startIndex + index, statsChartMode),
+    }))
     .filter((point) => Number.isFinite(point.value));
+  renderStatsChartModeControls();
+  const modeLabel = statsChartLabels[statsChartMode] || '单次';
+  elements.statsChartTitle.textContent = `${modeLabel} 趋势`;
 
   if (points.length === 0) {
-    drawEmptyTrendChart(context, width, height);
-    elements.statsChartMeta.textContent = '暂无有效成绩';
+    drawEmptyTrendChart(context, width, height, modeLabel);
+    elements.statsChartMeta.textContent = `${chartLabel} ${chartSolves.length} 把 · ${modeLabel} 暂无有效数据`;
     return;
   }
 
@@ -5339,8 +5367,28 @@ function renderStatsTrendChart(sessionSolves, chartLabel = '最近') {
 
   drawChartGrid(context, width, height, padding, yMin, yMax);
 
-  context.lineWidth = 2.5;
-  context.strokeStyle = '#0071e3';
+  const lineGradient = context.createLinearGradient(padding.left, 0, width - padding.right, 0);
+  lineGradient.addColorStop(0, '#00adb5');
+  lineGradient.addColorStop(1, '#8dffbe');
+  const fillGradient = context.createLinearGradient(0, padding.top, 0, height - padding.bottom);
+  fillGradient.addColorStop(0, 'rgba(0, 173, 181, 0.18)');
+  fillGradient.addColorStop(1, 'rgba(0, 173, 181, 0)');
+
+  context.beginPath();
+  points.forEach((point, index) => {
+    const x = xFor(point.index);
+    const y = yFor(point.value);
+    if (index === 0) context.moveTo(x, y);
+    else context.lineTo(x, y);
+  });
+  context.lineTo(xFor(points.at(-1).index), height - padding.bottom);
+  context.lineTo(xFor(points[0].index), height - padding.bottom);
+  context.closePath();
+  context.fillStyle = fillGradient;
+  context.fill();
+
+  context.lineWidth = 2.4;
+  context.strokeStyle = lineGradient;
   context.beginPath();
   points.forEach((point, index) => {
     const x = xFor(point.index);
@@ -5354,23 +5402,45 @@ function renderStatsTrendChart(sessionSolves, chartLabel = '最近') {
     const x = xFor(point.index);
     const y = yFor(point.value);
     context.beginPath();
-    context.fillStyle = point.solve.penalty === '+2' ? '#bf7a00' : '#0071e3';
-    context.arc(x, y, 3.8, 0, Math.PI * 2);
+    context.fillStyle = point.solve.penalty === '+2' ? '#ffcc66' : '#00d6de';
+    context.arc(x, y, 3.4, 0, Math.PI * 2);
     context.fill();
   }
 
   const dnfCount = chartSolves.filter((solve) => solve.penalty === 'dnf').length;
-  elements.statsChartMeta.textContent = `${chartLabel} ${chartSolves.length} 把 · 有效 ${points.length} · DNF ${dnfCount}`;
+  const latestPoint = points.at(-1);
+  const bestValue = statsChartMode === 'tps' ? Math.max(...values) : Math.min(...values);
+  elements.statsChartMeta.textContent = `${chartLabel} ${chartSolves.length} 把 · ${modeLabel} 有效 ${points.length} · 最佳 ${statsChartValueText(bestValue)} · 当前 ${statsChartValueText(latestPoint.value)} · DNF ${dnfCount}`;
+}
+
+function renderStatsChartModeControls() {
+  elements.statsChartModeButtons.forEach((button) => {
+    const active = button.dataset.statsChartMode === statsChartMode;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+}
+
+function statsChartValueAt(sessionSolves, index, mode) {
+  const solve = sessionSolves[index];
+  if (!solve) return null;
+  if (mode === 'ao5') return rollingAverageAt(sessionSolves, index, 5);
+  if (mode === 'ao12') return rollingAverageAt(sessionSolves, index, 12);
+  if (mode === 'tps') return Number.isFinite(solve.bluetoothTps) ? solve.bluetoothTps : null;
+  return effectiveDurationMs(solve);
+}
+
+function statsChartValueText(value) {
+  if (!Number.isFinite(value)) return '-';
+  return statsChartMode === 'tps' ? value.toFixed(2) : formatTime(value);
 }
 
 function drawChartGrid(context, width, height, padding, yMin, yMax) {
-  context.fillStyle = '#fbfbfd';
-  context.fillRect(0, 0, width, height);
-  context.strokeStyle = '#d2d2d7';
   context.lineWidth = 1;
+  context.strokeStyle = 'rgba(255, 255, 255, 0.11)';
   context.strokeRect(padding.left, padding.top, width - padding.left - padding.right, height - padding.top - padding.bottom);
 
-  context.fillStyle = '#6e6e73';
+  context.fillStyle = 'rgba(245, 245, 247, 0.55)';
   context.font = '12px Inter, system-ui, sans-serif';
   context.textAlign = 'right';
   context.textBaseline = 'middle';
@@ -5379,26 +5449,24 @@ function drawChartGrid(context, width, height, padding, yMin, yMax) {
     const ratio = line / 3;
     const y = padding.top + ratio * (height - padding.top - padding.bottom);
     const value = yMax - ratio * (yMax - yMin);
-    context.strokeStyle = line === 3 ? '#d2d2d7' : '#ededf0';
+    context.strokeStyle = line === 3 ? 'rgba(255, 255, 255, 0.11)' : 'rgba(255, 255, 255, 0.06)';
     context.beginPath();
     context.moveTo(padding.left, y);
     context.lineTo(width - padding.right, y);
     context.stroke();
-    context.fillText(formatTime(value), padding.left - 8, y);
+    context.fillText(statsChartValueText(value), padding.left - 8, y);
   }
 }
 
-function drawEmptyTrendChart(context, width, height) {
-  context.fillStyle = '#fbfbfd';
-  context.fillRect(0, 0, width, height);
-  context.strokeStyle = '#d2d2d7';
+function drawEmptyTrendChart(context, width, height, modeLabel = '') {
+  context.strokeStyle = 'rgba(255, 255, 255, 0.11)';
   context.lineWidth = 1;
   context.strokeRect(0.5, 0.5, width - 1, height - 1);
-  context.fillStyle = '#6e6e73';
+  context.fillStyle = 'rgba(245, 245, 247, 0.55)';
   context.font = '14px Inter, system-ui, sans-serif';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
-  context.fillText('暂无有效成绩', width / 2, height / 2);
+  context.fillText(`${modeLabel || '趋势'}暂无有效数据`, width / 2, height / 2);
 }
 
 function renderExportDialog() {

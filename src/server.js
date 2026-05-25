@@ -34,7 +34,7 @@ const publicSrcModules = new Set(['bluetooth-moves.js', 'cube-state.js', 'rollin
 const vendorModules = new Map([
   ['three.module.js', join(nodeModulesRoot, 'three', 'build', 'three.module.js')],
 ]);
-const requestedPort = Number(process.env.PORT || 3000);
+const requestedPort = Number(process.env.PORT || 3211);
 const host = process.env.HOST || '127.0.0.1';
 
 const contentTypes = {

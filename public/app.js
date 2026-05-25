@@ -213,6 +213,29 @@ const puzzleLabels = new Map([
   ['skewb', 'Skewb'],
   ['sq1', 'Square-1'],
 ]);
+const algorithmTrainerCases = [
+  { id: 'pll-aa', set: 'pll', name: 'Aa Perm', group: 'Corners', algorithm: "x R' U R' D2 R U' R' D2 R2 x'", hint: '相邻角块顺时针换位' },
+  { id: 'pll-ab', set: 'pll', name: 'Ab Perm', group: 'Corners', algorithm: "x R2 D2 R U R' D2 R U' R x'", hint: '相邻角块逆时针换位' },
+  { id: 'pll-e', set: 'pll', name: 'E Perm', group: 'Corners', algorithm: "x' R U' R' D R U R' D' R U R' D R U' R' D' x", hint: '对角角块互换' },
+  { id: 'pll-h', set: 'pll', name: 'H Perm', group: 'Edges', algorithm: 'M2 U M2 U2 M2 U M2', hint: '四棱对换' },
+  { id: 'pll-ua', set: 'pll', name: 'Ua Perm', group: 'Edges', algorithm: "M2 U M U2 M' U M2", hint: '三棱顺时针轮换' },
+  { id: 'pll-ub', set: 'pll', name: 'Ub Perm', group: 'Edges', algorithm: "M2 U' M U2 M' U' M2", hint: '三棱逆时针轮换' },
+  { id: 'pll-z', set: 'pll', name: 'Z Perm', group: 'Edges', algorithm: "M' U M2 U M2 U M' U2 M2", hint: '相邻两组棱块互换' },
+  { id: 'pll-ja', set: 'pll', name: 'Ja Perm', group: 'Adjacent', algorithm: "x R2 F R F' R U2 r' U r U2 x'", hint: '一组角棱块相邻换位' },
+  { id: 'pll-jb', set: 'pll', name: 'Jb Perm', group: 'Adjacent', algorithm: "R U R' F' R U R' U' R' F R2 U' R'", hint: '最常用 J 形换位' },
+  { id: 'pll-t', set: 'pll', name: 'T Perm', group: 'Adjacent', algorithm: "R U R' U' R' F R2 U' R' U' R U R' F'", hint: '一组角块和一组棱块互换' },
+  { id: 'pll-f', set: 'pll', name: 'F Perm', group: 'Adjacent', algorithm: "R' U' F' R U R' U' R' F R2 U' R' U' R U R' U R", hint: 'F 形相邻换位' },
+  { id: 'pll-ra', set: 'pll', name: 'Ra Perm', group: 'Adjacent', algorithm: "R U' R' U' R U R D R' U' R D' R' U2 R'", hint: 'R 形换位之一' },
+  { id: 'pll-rb', set: 'pll', name: 'Rb Perm', group: 'Adjacent', algorithm: "R2 F R U R U' R' F' R U2 R' U2 R", hint: 'R 形换位之二' },
+  { id: 'pll-v', set: 'pll', name: 'V Perm', group: 'Diagonal', algorithm: "R' U R' U' y R' F' R2 U' R' U R' F R F", hint: '对角角棱换位' },
+  { id: 'pll-y', set: 'pll', name: 'Y Perm', group: 'Diagonal', algorithm: "F R U' R' U' R U R' F' R U R' U' R' F R F'", hint: 'Y 形对角换位' },
+  { id: 'pll-na', set: 'pll', name: 'Na Perm', group: 'Diagonal', algorithm: "R U R' U R U R' F' R U R' U' R' F R2 U' R' U2 R U' R'", hint: 'N 形对角换位之一' },
+  { id: 'pll-nb', set: 'pll', name: 'Nb Perm', group: 'Diagonal', algorithm: "R' U R U' R' F' U' F R U R' F R' F' R U' R", hint: 'N 形对角换位之二' },
+  { id: 'pll-ga', set: 'pll', name: 'Ga Perm', group: 'G Perms', algorithm: "R2 U R' U R' U' R U' R2 D U' R' U R D'", hint: 'G 形换位之一' },
+  { id: 'pll-gb', set: 'pll', name: 'Gb Perm', group: 'G Perms', algorithm: "R' U' R U D' R2 U R' U R U' R U' R2 D", hint: 'G 形换位之二' },
+  { id: 'pll-gc', set: 'pll', name: 'Gc Perm', group: 'G Perms', algorithm: "R2 U' R U' R U R' U R2 D' U R U' R' D", hint: 'G 形换位之三' },
+  { id: 'pll-gd', set: 'pll', name: 'Gd Perm', group: 'G Perms', algorithm: "R U R' U' D R2 U' R U' R' U R' U R2 D'", hint: 'G 形换位之四' },
+];
 const untaggedFilterValue = '__untagged';
 
 const elements = {
@@ -251,6 +274,20 @@ const elements = {
   mergeSessionButton: document.querySelector('#mergeSessionButton'),
   renameSessionButton: document.querySelector('#renameSessionButton'),
   deleteSessionButton: document.querySelector('#deleteSessionButton'),
+  algorithmTrainerButton: document.querySelector('#algorithmTrainerButton'),
+  algorithmTrainerDialog: document.querySelector('#algorithmTrainerDialog'),
+  algorithmTrainerMeta: document.querySelector('#algorithmTrainerMeta'),
+  algorithmTrainerSet: document.querySelector('#algorithmTrainerSet'),
+  algorithmTrainerNextButton: document.querySelector('#algorithmTrainerNextButton'),
+  algorithmTrainerResetButton: document.querySelector('#algorithmTrainerResetButton'),
+  algorithmTrainerName: document.querySelector('#algorithmTrainerName'),
+  algorithmTrainerGroup: document.querySelector('#algorithmTrainerGroup'),
+  algorithmTrainerScore: document.querySelector('#algorithmTrainerScore'),
+  algorithmTrainerAlg: document.querySelector('#algorithmTrainerAlg'),
+  algorithmTrainerHint: document.querySelector('#algorithmTrainerHint'),
+  algorithmTrainerPassButton: document.querySelector('#algorithmTrainerPassButton'),
+  algorithmTrainerFailButton: document.querySelector('#algorithmTrainerFailButton'),
+  algorithmTrainerList: document.querySelector('#algorithmTrainerList'),
   scramblePuzzleSelect: document.querySelector('#scramblePuzzleSelect'),
   scrambleSource: document.querySelector('#scrambleSource'),
   scrambleText: document.querySelector('#scrambleText'),
@@ -435,6 +472,9 @@ if (!['single', 'tps', 'ao5', 'ao12'].includes(historySortKey) || !['asc', 'desc
   historySortKey = '';
   historySortDirection = '';
 }
+let algorithmTrainerSet = localStorage.getItem('trainTimer.algorithmTrainerSet') || 'pll';
+let algorithmTrainerCurrentId = localStorage.getItem('trainTimer.algorithmTrainerCurrentId') || '';
+let algorithmTrainerStats = loadAlgorithmTrainerStats();
 let startedAt = 0;
 let inspectionStartedAt = 0;
 let activeInspectionUsed = false;
@@ -519,6 +559,16 @@ elements.lastOkButton.addEventListener('click', () => updateLatestSolvePenalty('
 elements.lastPlusTwoButton.addEventListener('click', () => updateLatestSolvePenalty('+2'));
 elements.lastDnfButton.addEventListener('click', () => updateLatestSolvePenalty('dnf'));
 elements.lastDeleteButton.addEventListener('click', deleteLatestSolve);
+elements.algorithmTrainerButton.addEventListener('click', openAlgorithmTrainerDialog);
+elements.algorithmTrainerSet.addEventListener('change', () => {
+  algorithmTrainerSet = elements.algorithmTrainerSet.value || 'pll';
+  localStorage.setItem('trainTimer.algorithmTrainerSet', algorithmTrainerSet);
+  chooseNextAlgorithmTrainerCase();
+});
+elements.algorithmTrainerNextButton.addEventListener('click', chooseNextAlgorithmTrainerCase);
+elements.algorithmTrainerPassButton.addEventListener('click', () => recordAlgorithmTrainerResult(true));
+elements.algorithmTrainerFailButton.addEventListener('click', () => recordAlgorithmTrainerResult(false));
+elements.algorithmTrainerResetButton.addEventListener('click', resetAlgorithmTrainerStats);
 elements.bluetoothButton.addEventListener('click', () => connectBluetoothCube());
 elements.bluetoothAnyButton.addEventListener('click', () => connectBluetoothCube({ compatibilityMode: true }));
 elements.bluetoothReconnectButton.addEventListener('click', reconnectBluetoothCube);
@@ -3708,7 +3758,7 @@ function initBluetoothCube3d() {
   scene.add(group);
 
   const shell = new THREE.Mesh(
-    new THREE.BoxGeometry(2.075, 2.075, 2.075),
+    new THREE.BoxGeometry(2.048, 2.048, 2.048),
     new THREE.MeshBasicMaterial({
       color: 0x1d1d1f,
     }),
@@ -3716,13 +3766,13 @@ function initBluetoothCube3d() {
   group.add(shell);
 
   const edges = new THREE.LineSegments(
-    new THREE.EdgesGeometry(new THREE.BoxGeometry(2.065, 2.065, 2.065)),
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(2.04, 2.04, 2.04)),
     new THREE.LineBasicMaterial({ color: 0x25262b, transparent: true, opacity: 0.2 }),
   );
   group.add(edges);
 
   const stickers = new Map();
-  const stickerGeometry = new THREE.PlaneGeometry(0.668, 0.668);
+  const stickerGeometry = new THREE.PlaneGeometry(0.672, 0.672);
   for (const face of cube3dFaces) {
     for (let row = 0; row < 3; row += 1) {
       for (let col = 0; col < 3; col += 1) {
@@ -3767,8 +3817,8 @@ function initBluetoothCube3d() {
 }
 
 function applyCube3dStickerTransform(sticker, face, row, col) {
-  const spacing = 0.676;
-  const surface = 1.046;
+  const spacing = 0.675;
+  const surface = 1.031;
   const a = (col - 1) * spacing;
   const b = (1 - row) * spacing;
 
@@ -3811,7 +3861,7 @@ function animateBluetoothCube3d(time = performance.now()) {
   if (!cube3d) return;
   const visible = isBluetoothCube3dVisible();
   const activeMove = Boolean(cube3d.turnAnimation);
-  const interval = bluetoothGyro || activeMove ? 1000 / 75 : 1000 / 30;
+  const interval = bluetoothGyro || activeMove ? 1000 / 90 : 1000 / 30;
   if (!visible || time - cube3d.lastRenderAt < interval) {
     requestAnimationFrame(animateBluetoothCube3d);
     return;
@@ -3829,7 +3879,7 @@ function animateBluetoothCube3d(time = performance.now()) {
 function updateBluetoothCube3dPose(time) {
   const nextQuaternion = cube3d.group.quaternion.clone();
   if (bluetoothGyro) {
-    nextQuaternion.slerp(cube3d.targetQuaternion, 0.62);
+    nextQuaternion.slerp(cube3d.targetQuaternion, 0.78);
   } else {
     const seconds = time / 1000;
     nextQuaternion.copy(cube3d.baseQuaternion);
@@ -3858,7 +3908,7 @@ function isBluetoothCube3dVisible() {
 function markBluetoothCube3dDirty() {
   if (cube3d) {
     cube3d.needsRender = true;
-    cube3d.lastRenderAt = Math.min(cube3d.lastRenderAt, performance.now() - 1000 / 60);
+    cube3d.lastRenderAt = Math.min(cube3d.lastRenderAt, performance.now() - 1000 / 90);
   }
 }
 
@@ -3969,7 +4019,7 @@ function triggerBluetoothCube3dTurnAnimation(move, options = {}) {
     axis: definition.axis,
     angle: direction * amount * Math.PI / 2,
     startedAt: performance.now(),
-    duration: suffix === '2' ? 190 : 125,
+    duration: suffix === '2' ? 140 : 90,
     stickers,
     onComplete: options.onComplete || null,
   };
@@ -4143,6 +4193,7 @@ function render() {
   renderAllSolvesDialog();
   renderStatsDialog();
   renderAverageDialog();
+  renderAlgorithmTrainerDialog();
   renderExportDialog();
   renderImportDialog();
   renderTagSolvesDialog();
@@ -4926,6 +4977,119 @@ function renderStats() {
   elements.bestAo12Stat.textContent = sessionSummary.bestAo12 == null ? '-' : formatTime(sessionSummary.bestAo12);
   elements.latestStat.textContent = sessionSummary.latest == null ? '-' : formatTime(sessionSummary.latest);
   elements.statsDetailButton.disabled = sessionSummary.count === 0;
+}
+
+function openAlgorithmTrainerDialog() {
+  if (!algorithmTrainerCurrentCase()) chooseNextAlgorithmTrainerCase({ renderOnly: true });
+  renderAlgorithmTrainerDialog();
+  if (!elements.algorithmTrainerDialog.open) elements.algorithmTrainerDialog.showModal();
+}
+
+function renderAlgorithmTrainerDialog() {
+  elements.algorithmTrainerSet.value = algorithmTrainerSet;
+  const cases = algorithmTrainerCasesForSet();
+  const current = algorithmTrainerCurrentCase() || cases[0];
+  if (current && !algorithmTrainerCurrentId) algorithmTrainerCurrentId = current.id;
+  const totals = algorithmTrainerTotals(cases);
+  elements.algorithmTrainerMeta.textContent = `${algorithmTrainerSet.toUpperCase()} · ${cases.length} 条 · ${totals.success}/${totals.total} 掌握`;
+  elements.algorithmTrainerName.textContent = current?.name || '-';
+  elements.algorithmTrainerGroup.textContent = current?.group || '-';
+  elements.algorithmTrainerAlg.textContent = current?.algorithm || '-';
+  elements.algorithmTrainerHint.textContent = current?.hint || '选择随机下一条开始练习';
+  const currentStats = algorithmTrainerStats[current?.id] || { success: 0, total: 0, streak: 0 };
+  elements.algorithmTrainerScore.textContent = `${currentStats.success}/${currentStats.total}`;
+  elements.algorithmTrainerList.replaceChildren(...cases.map(renderAlgorithmTrainerListItem));
+}
+
+function renderAlgorithmTrainerListItem(item) {
+  const stats = algorithmTrainerStats[item.id] || { success: 0, total: 0, streak: 0 };
+  const row = document.createElement('button');
+  row.type = 'button';
+  row.className = item.id === algorithmTrainerCurrentId ? 'algorithm-trainer-item active' : 'algorithm-trainer-item';
+  row.title = item.algorithm;
+  row.innerHTML = `
+    <strong>${escapeHtml(item.name)}</strong>
+    <span>${escapeHtml(item.group)}</span>
+    <em>${stats.success}/${stats.total}</em>
+  `;
+  row.addEventListener('click', () => {
+    algorithmTrainerCurrentId = item.id;
+    localStorage.setItem('trainTimer.algorithmTrainerCurrentId', algorithmTrainerCurrentId);
+    renderAlgorithmTrainerDialog();
+  });
+  return row;
+}
+
+function chooseNextAlgorithmTrainerCase(options = {}) {
+  const cases = algorithmTrainerCasesForSet();
+  if (cases.length === 0) return;
+  const weighted = cases.flatMap((item) => {
+    const stats = algorithmTrainerStats[item.id] || { success: 0, total: 0, streak: 0 };
+    const misses = Math.max(0, stats.total - stats.success);
+    const weight = 1 + misses + (stats.total === 0 ? 2 : 0);
+    return Array.from({ length: weight }, () => item);
+  });
+  let next = weighted[Math.floor(Math.random() * weighted.length)] || cases[0];
+  if (cases.length > 1 && next.id === algorithmTrainerCurrentId) {
+    next = cases[(cases.findIndex((item) => item.id === next.id) + 1) % cases.length];
+  }
+  algorithmTrainerCurrentId = next.id;
+  localStorage.setItem('trainTimer.algorithmTrainerCurrentId', algorithmTrainerCurrentId);
+  if (!options.renderOnly) renderAlgorithmTrainerDialog();
+}
+
+function recordAlgorithmTrainerResult(success) {
+  const current = algorithmTrainerCurrentCase();
+  if (!current) return;
+  const stats = algorithmTrainerStats[current.id] || { success: 0, total: 0, streak: 0 };
+  stats.total += 1;
+  if (success) {
+    stats.success += 1;
+    stats.streak = Math.max(0, stats.streak) + 1;
+  } else {
+    stats.streak = 0;
+  }
+  stats.updatedAt = new Date().toISOString();
+  algorithmTrainerStats[current.id] = stats;
+  saveAlgorithmTrainerStats();
+  chooseNextAlgorithmTrainerCase();
+}
+
+function resetAlgorithmTrainerStats() {
+  if (!confirm('清空算法训练记录？')) return;
+  algorithmTrainerStats = {};
+  saveAlgorithmTrainerStats();
+  renderAlgorithmTrainerDialog();
+}
+
+function algorithmTrainerCasesForSet() {
+  return algorithmTrainerCases.filter((item) => item.set === algorithmTrainerSet);
+}
+
+function algorithmTrainerCurrentCase() {
+  return algorithmTrainerCases.find((item) => item.id === algorithmTrainerCurrentId && item.set === algorithmTrainerSet) || null;
+}
+
+function algorithmTrainerTotals(cases) {
+  return cases.reduce((total, item) => {
+    const stats = algorithmTrainerStats[item.id] || {};
+    total.success += stats.success || 0;
+    total.total += stats.total || 0;
+    return total;
+  }, { success: 0, total: 0 });
+}
+
+function loadAlgorithmTrainerStats() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem('trainTimer.algorithmTrainerStats') || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveAlgorithmTrainerStats() {
+  localStorage.setItem('trainTimer.algorithmTrainerStats', JSON.stringify(algorithmTrainerStats));
 }
 
 function renderStatsDialog() {

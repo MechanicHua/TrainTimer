@@ -13,6 +13,7 @@ const cube3dToGanBasis = invertUnitQuaternion(ganToCube3dBasis);
 export function ganGyroQuaternionToCube3dBasis(quaternion = {}) {
   const normalized = normalizeQuaternion(quaternion);
   if (!normalized) return null;
+  // Keep observed GAN landmarks stable: q.w ~= 0 flips yellow up, q.x ~= 0 is the white-up baseline.
   return normalizeQuaternion(multiplyQuaternions(
     multiplyQuaternions(ganToCube3dBasis, normalized),
     cube3dToGanBasis,

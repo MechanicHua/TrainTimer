@@ -25,6 +25,11 @@ test('maps GAN gyro axes into the 3D cube coordinate basis', () => {
   );
 });
 
+test('keeps observed GAN q landmarks aligned with white and yellow face-up states', () => {
+  assert.equal(topFaceAfterQuaternion(ganGyroQuaternionToCube3dBasis({ w: 1, x: 0, y: 0, z: 0 })), 'U');
+  assert.equal(topFaceAfterQuaternion(ganGyroQuaternionToCube3dBasis({ w: 0, x: 1, y: 0, z: 0 })), 'D');
+});
+
 test('maps GAN gyro velocity into the 3D cube coordinate basis', () => {
   assert.deepEqual(ganGyroVelocityToCube3dBasis({ x: 2, y: -3, z: 4 }), { x: 2, y: 4, z: 3 });
   assert.equal(ganGyroVelocityToCube3dBasis({ x: 1, y: Number.NaN, z: 0 }), null);
@@ -50,4 +55,34 @@ function assertQuaternionClose(actual, expected, epsilon = 1e-12) {
   assert.ok(Math.abs(aligned.y - expected.y) < epsilon, `y: ${aligned.y} !== ${expected.y}`);
   assert.ok(Math.abs(aligned.z - expected.z) < epsilon, `z: ${aligned.z} !== ${expected.z}`);
   assert.ok(Math.abs(aligned.w - expected.w) < epsilon, `w: ${aligned.w} !== ${expected.w}`);
+}
+
+function topFaceAfterQuaternion(quaternion) {
+  assert.ok(quaternion);
+  const normals = {
+    U: [0, 1, 0],
+    D: [0, -1, 0],
+    F: [0, 0, 1],
+    B: [0, 0, -1],
+    R: [1, 0, 0],
+    L: [-1, 0, 0],
+  };
+  return Object.entries(normals)
+    .map(([face, normal]) => [face, rotateVectorByQuaternion(normal, quaternion)[1]])
+    .sort((left, right) => right[1] - left[1])[0][0];
+}
+
+function rotateVectorByQuaternion(vector, quaternion) {
+  const q = [quaternion.x, quaternion.y, quaternion.z];
+  const uv = cross(q, vector);
+  const uuv = cross(q, uv);
+  return vector.map((value, index) => value + 2 * (quaternion.w * uv[index] + uuv[index]));
+}
+
+function cross(a, b) {
+  return [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
 }

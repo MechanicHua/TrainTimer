@@ -1124,8 +1124,8 @@ body[data-state="timing"] .timer-display {
 
 .history-panel .history-head,
 .history-panel .history-row {
-  grid-template-columns: 24px minmax(66px, 1fr) minmax(42px, 0.72fr) minmax(58px, 0.88fr) minmax(60px, 0.9fr) 34px;
-  gap: 5px;
+  grid-template-columns: 24px minmax(64px, 1.04fr) minmax(42px, 0.7fr) minmax(54px, 0.82fr) minmax(56px, 0.86fr) 54px;
+  gap: 4px;
 }
 
 .history-head {
@@ -1417,6 +1417,7 @@ body[data-state="timing"] .timer-band {
 .all-solves-dialog,
 .stats-dialog,
 .average-dialog,
+.algorithm-dialog,
 .export-dialog,
 .import-dialog,
 .move-dialog,
@@ -1444,6 +1445,10 @@ body[data-state="timing"] .timer-band {
   width: min(680px, calc(100vw - 32px));
 }
 
+.algorithm-dialog {
+  width: min(760px, calc(100vw - 32px));
+}
+
 .bluetooth-log-dialog {
   width: min(820px, calc(100vw - 32px));
 }
@@ -1456,6 +1461,7 @@ body[data-state="timing"] .timer-band {
 .all-solves-dialog::backdrop,
 .stats-dialog::backdrop,
 .average-dialog::backdrop,
+.algorithm-dialog::backdrop,
 .export-dialog::backdrop,
 .import-dialog::backdrop,
 .move-dialog::backdrop,
@@ -1473,6 +1479,7 @@ dialog[open] {
 .all-solves-inner,
 .stats-dialog-inner,
 .average-dialog-inner,
+.algorithm-dialog-inner,
 .export-dialog-inner,
 .import-dialog-inner,
 .move-dialog-inner,
@@ -1489,6 +1496,7 @@ dialog[open] {
 .all-solves-inner,
 .stats-dialog-inner,
 .average-dialog-inner,
+.algorithm-dialog-inner,
 .export-dialog-inner,
 .import-dialog-inner,
 .move-dialog-inner,
@@ -1497,6 +1505,137 @@ dialog[open] {
   display: flex;
   max-height: calc(100vh - 48px);
   flex-direction: column;
+}
+
+.algorithm-trainer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.algorithm-trainer-toolbar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.algorithm-trainer-toolbar select {
+  min-height: 32px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  padding: 0 28px 0 10px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--ink);
+}
+
+.algorithm-trainer-card {
+  margin-top: 14px;
+  border-radius: 8px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.algorithm-trainer-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.algorithm-trainer-head div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.algorithm-trainer-head strong {
+  color: var(--ink-strong);
+  font-size: 20px;
+}
+
+.algorithm-trainer-head span,
+.algorithm-trainer-head em,
+.algorithm-trainer-hint {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 680;
+}
+
+.algorithm-trainer-alg {
+  margin: 16px 0 0;
+  color: var(--ink-strong);
+  font-size: clamp(18px, 2.3vw, 28px);
+  font-weight: 650;
+  line-height: 1.42;
+  letter-spacing: 0;
+}
+
+.algorithm-trainer-hint {
+  margin: 9px 0 0;
+}
+
+.algorithm-trainer-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 15px;
+  justify-content: flex-end;
+}
+
+.algorithm-trainer-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.algorithm-trainer-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  align-items: center;
+  min-height: 48px;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 9px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--ink);
+  text-align: left;
+}
+
+.algorithm-trainer-item:hover,
+.algorithm-trainer-item.active {
+  background: rgba(0, 173, 181, 0.14);
+  color: var(--ink-strong);
+}
+
+.algorithm-trainer-item strong,
+.algorithm-trainer-item span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.algorithm-trainer-item span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.algorithm-trainer-item em {
+  grid-row: span 2;
+  color: var(--accent);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 760;
 }
 
 .solve-dialog-header {
@@ -2493,7 +2632,7 @@ dialog[open] {
 
   .history-panel .history-head,
   .history-panel .history-row {
-    grid-template-columns: 24px minmax(64px, 1fr) 42px 58px 60px 34px;
+    grid-template-columns: 24px minmax(62px, 1fr) 40px 52px 54px 50px;
     gap: 4px;
   }
 
@@ -2506,6 +2645,10 @@ dialog[open] {
   }
 
   .stats-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .algorithm-trainer-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -2617,6 +2760,10 @@ dialog[open] {
 
   .manager-toolbar button {
     max-width: none;
+  }
+
+  .algorithm-trainer-list {
+    grid-template-columns: 1fr;
   }
 }
 

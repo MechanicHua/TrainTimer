@@ -25,6 +25,7 @@
           <button id="duplicateSessionButton" type="button">复制</button>
           <button id="mergeSessionButton" type="button">合并</button>
           <button id="renameSessionButton" type="button">重命名</button>
+          <button id="algorithmTrainerButton" type="button">算法训练</button>
           <button id="deleteSessionButton" type="button">删会话</button>
         </div>
         <label class="scramble-puzzle-field">
@@ -682,6 +683,44 @@
           <div class="dialog-actions">
             <button id="copyAverageSummaryButton" type="button">复制平均</button>
           </div>
+        </form>
+      </dialog>
+
+      <dialog id="algorithmTrainerDialog" class="algorithm-dialog">
+        <form method="dialog" class="algorithm-dialog-inner">
+          <div class="solve-dialog-header">
+            <div>
+              <h2>算法训练</h2>
+              <p id="algorithmTrainerMeta">PLL · 本地练习记录</p>
+            </div>
+            <button type="submit" aria-label="关闭">关闭</button>
+          </div>
+          <div class="algorithm-trainer-toolbar">
+            <label>
+              <span>类型</span>
+              <select id="algorithmTrainerSet">
+                <option value="pll">PLL</option>
+              </select>
+            </label>
+            <button id="algorithmTrainerNextButton" type="button">随机下一条</button>
+            <button id="algorithmTrainerResetButton" type="button">重置记录</button>
+          </div>
+          <section class="algorithm-trainer-card" aria-live="polite">
+            <div class="algorithm-trainer-head">
+              <div>
+                <strong id="algorithmTrainerName">-</strong>
+                <span id="algorithmTrainerGroup">-</span>
+              </div>
+              <em id="algorithmTrainerScore">0/0</em>
+            </div>
+            <p id="algorithmTrainerAlg" class="algorithm-trainer-alg">-</p>
+            <p id="algorithmTrainerHint" class="algorithm-trainer-hint">选择随机下一条开始练习</p>
+            <div class="algorithm-trainer-actions">
+              <button id="algorithmTrainerFailButton" type="button">未掌握</button>
+              <button id="algorithmTrainerPassButton" type="button">已掌握</button>
+            </div>
+          </section>
+          <div id="algorithmTrainerList" class="algorithm-trainer-list" aria-label="算法练习列表"></div>
         </form>
       </dialog>
 

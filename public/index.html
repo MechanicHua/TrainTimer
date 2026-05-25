@@ -358,21 +358,33 @@
               <button type="submit" aria-label="关闭">关闭</button>
             </div>
           </div>
-          <div class="stats-chart-panel">
-            <div class="stats-chart-head">
-              <div>
-                <strong>趋势分析</strong>
-                <span id="statsChartTitle">单次趋势</span>
+          <div class="stats-chart-grid">
+            <div class="stats-chart-panel">
+              <div class="stats-chart-head">
+                <div>
+                  <strong>趋势分析</strong>
+                  <span id="statsChartTitle">单次趋势</span>
+                </div>
+                <div class="stats-chart-modes" aria-label="统计图表类型">
+                  <button data-stats-chart-mode="single" type="button">单次</button>
+                  <button data-stats-chart-mode="ao5" type="button">ao5</button>
+                  <button data-stats-chart-mode="ao12" type="button">ao12</button>
+                  <button data-stats-chart-mode="tps" type="button">TPS</button>
+                </div>
               </div>
-              <div class="stats-chart-modes" aria-label="统计图表类型">
-                <button data-stats-chart-mode="single" type="button">单次</button>
-                <button data-stats-chart-mode="ao5" type="button">ao5</button>
-                <button data-stats-chart-mode="ao12" type="button">ao12</button>
-                <button data-stats-chart-mode="tps" type="button">TPS</button>
-              </div>
+              <canvas id="statsTrendChart" aria-label="当前会话成绩趋势"></canvas>
+              <p id="statsChartMeta">-</p>
             </div>
-            <canvas id="statsTrendChart" aria-label="当前会话成绩趋势"></canvas>
-            <p id="statsChartMeta">-</p>
+            <div class="stats-chart-panel stats-distribution-panel">
+              <div class="stats-chart-head">
+                <div>
+                  <strong>成绩分布</strong>
+                  <span>有效成绩时间区间</span>
+                </div>
+              </div>
+              <canvas id="statsDistributionChart" aria-label="当前会话成绩分布"></canvas>
+              <p id="statsDistributionMeta">-</p>
+            </div>
           </div>
           <div id="statsInsights" class="stats-insights" aria-label="训练洞察"></div>
           <div class="stats-record-panel">

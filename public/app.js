@@ -401,6 +401,8 @@ const elements = {
   statsChartModeButtons: [...document.querySelectorAll('[data-stats-chart-mode]')],
   statsTrendChart: document.querySelector('#statsTrendChart'),
   statsChartMeta: document.querySelector('#statsChartMeta'),
+  statsDistributionChart: document.querySelector('#statsDistributionChart'),
+  statsDistributionMeta: document.querySelector('#statsDistributionMeta'),
   statsInsights: document.querySelector('#statsInsights'),
   statsRecordList: document.querySelector('#statsRecordList'),
   statsDetailGrid: document.querySelector('#statsDetailGrid'),
@@ -5653,6 +5655,7 @@ function renderStatsDialog() {
   elements.statsDialogMeta.textContent = `${statsData.label} · ${summary.count} 条成绩`;
   elements.copyStatsSummaryButton.disabled = summary.count === 0;
   renderStatsTrendChart(statsData.solves, statsData.scope === 'session' ? '最近' : statsData.shortLabel);
+  renderStatsDistributionChart(statsData.solves, statsData.scope === 'session' ? '当前会话' : statsData.shortLabel);
   renderStatsInsights(statsData.solves, summary);
   renderStatsRecords(statsData.solves, { selected: statsData.scope !== 'session' });
   elements.statsSessionOverviewPanel.hidden = statsData.scope !== 'session';
@@ -6054,6 +6057,106 @@ function renderStatsTrendChart(sessionSolves, chartLabel = '最近') {
   elements.statsChartMeta.textContent = `${chartLabel} ${chartSolves.length} 把 · ${modeLabel} 有效 ${points.length} · 最佳 ${statsChartValueText(bestValue)} · 当前 ${statsChartValueText(latestPoint.value)} · DNF ${dnfCount}`;
 }
 
+function renderStatsDistributionChart(sessionSolves, chartLabel = '当前会话') {
+  const canvas = elements.statsDistributionChart;
+  if (!canvas) return;
+  const context = canvas.getContext('2d');
+  const rect = canvas.getBoundingClientRect();
+  const width = Math.max(1, Math.round(rect.width));
+  const height = Math.max(1, Math.round(rect.height));
+  const ratio = window.devicePixelRatio || 1;
+  canvas.width = Math.round(width * ratio);
+  canvas.height = Math.round(height * ratio);
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  context.clearRect(0, 0, width, height);
+
+  const values = sessionSolves
+    .map((solve) => effectiveDurationMs(solve))
+    .filter((value) => Number.isFinite(value))
+    .sort((left, right) => left - right);
+  const dnfCount = sessionSolves.filter((solve) => solve.penalty === 'dnf').length;
+  if (values.length < 2) {
+    drawEmptyTrendChart(context, width, height, '分布');
+    if (elements.statsDistributionMeta) {
+      elements.statsDistributionMeta.textContent = `${chartLabel} · 有效 ${values.length} · 至少 2 个有效成绩后显示分布`;
+    }
+    return;
+  }
+
+  const minValue = values[0];
+  const maxValue = values.at(-1);
+  const median = percentileValue(values, 0.5);
+  const bucketCount = Math.min(10, Math.max(4, Math.round(Math.sqrt(values.length))));
+  const range = Math.max(1, maxValue - minValue);
+  const step = Math.max(1, Math.ceil(range / bucketCount));
+  const buckets = Array.from({ length: bucketCount }, (_, index) => ({
+    start: minValue + index * step,
+    end: index === bucketCount - 1 ? maxValue + 1 : minValue + (index + 1) * step,
+    count: 0,
+  }));
+  for (const value of values) {
+    const index = Math.min(bucketCount - 1, Math.floor((value - minValue) / step));
+    buckets[index].count += 1;
+  }
+
+  const padding = { top: 18, right: 16, bottom: 32, left: 42 };
+  const plotWidth = Math.max(1, width - padding.left - padding.right);
+  const plotHeight = Math.max(1, height - padding.top - padding.bottom);
+  const maxCount = Math.max(1, ...buckets.map((bucket) => bucket.count));
+  const gap = Math.min(8, Math.max(3, plotWidth / bucketCount * 0.12));
+  const barWidth = Math.max(4, plotWidth / bucketCount - gap);
+
+  drawDistributionGrid(context, width, height, padding, maxCount);
+  const gradient = context.createLinearGradient(0, padding.top, 0, height - padding.bottom);
+  gradient.addColorStop(0, 'rgba(0, 214, 222, 0.9)');
+  gradient.addColorStop(1, 'rgba(0, 173, 181, 0.22)');
+
+  buckets.forEach((bucket, index) => {
+    const barHeight = (bucket.count / maxCount) * plotHeight;
+    const x = padding.left + index * (plotWidth / bucketCount) + gap / 2;
+    const y = height - padding.bottom - barHeight;
+    context.fillStyle = gradient;
+    roundedCanvasRect(context, x, y, barWidth, barHeight, 5);
+    context.fill();
+
+    if (bucket.count > 0) {
+      context.fillStyle = 'rgba(245, 245, 247, 0.78)';
+      context.font = '11px Inter, system-ui, sans-serif';
+      context.textAlign = 'center';
+      context.textBaseline = 'bottom';
+      context.fillText(String(bucket.count), x + barWidth / 2, Math.max(padding.top + 10, y - 4));
+    }
+  });
+
+  const markerX = padding.left + Math.min(1, Math.max(0, (median - minValue) / range)) * plotWidth;
+  context.strokeStyle = 'rgba(141, 255, 190, 0.85)';
+  context.lineWidth = 1.4;
+  context.setLineDash([4, 4]);
+  context.beginPath();
+  context.moveTo(markerX, padding.top);
+  context.lineTo(markerX, height - padding.bottom + 4);
+  context.stroke();
+  context.setLineDash([]);
+  context.fillStyle = 'rgba(141, 255, 190, 0.9)';
+  context.font = '11px Inter, system-ui, sans-serif';
+  context.textAlign = markerX > width - 70 ? 'right' : 'left';
+  context.textBaseline = 'top';
+  context.fillText(`中位 ${formatTime(median)}`, markerX + (markerX > width - 70 ? -6 : 6), padding.top + 3);
+
+  context.fillStyle = 'rgba(245, 245, 247, 0.55)';
+  context.font = '11px Inter, system-ui, sans-serif';
+  context.textAlign = 'left';
+  context.textBaseline = 'top';
+  context.fillText(formatTime(minValue), padding.left, height - padding.bottom + 10);
+  context.textAlign = 'right';
+  context.fillText(formatTime(maxValue), width - padding.right, height - padding.bottom + 10);
+
+  const denseBucket = buckets.reduce((best, bucket) => (bucket.count > best.count ? bucket : best), buckets[0]);
+  if (elements.statsDistributionMeta) {
+    elements.statsDistributionMeta.textContent = `${chartLabel} · 有效 ${values.length} · DNF ${dnfCount} · 集中 ${formatTime(denseBucket.start)}-${formatTime(Math.max(denseBucket.start, denseBucket.end - 1))}`;
+  }
+}
+
 function renderStatsChartModeControls() {
   elements.statsChartModeButtons.forEach((button) => {
     const active = button.dataset.statsChartMode === statsChartMode;
@@ -6108,6 +6211,52 @@ function drawEmptyTrendChart(context, width, height, modeLabel = '') {
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   context.fillText(`${modeLabel || '趋势'}暂无有效数据`, width / 2, height / 2);
+}
+
+function drawDistributionGrid(context, width, height, padding, maxCount) {
+  context.lineWidth = 1;
+  context.strokeStyle = 'rgba(255, 255, 255, 0.11)';
+  context.strokeRect(padding.left, padding.top, width - padding.left - padding.right, height - padding.top - padding.bottom);
+  context.fillStyle = 'rgba(245, 245, 247, 0.55)';
+  context.font = '11px Inter, system-ui, sans-serif';
+  context.textAlign = 'right';
+  context.textBaseline = 'middle';
+
+  for (let line = 0; line <= 2; line += 1) {
+    const ratio = line / 2;
+    const y = padding.top + ratio * (height - padding.top - padding.bottom);
+    const value = Math.round(maxCount * (1 - ratio));
+    context.strokeStyle = line === 2 ? 'rgba(255, 255, 255, 0.11)' : 'rgba(255, 255, 255, 0.06)';
+    context.beginPath();
+    context.moveTo(padding.left, y);
+    context.lineTo(width - padding.right, y);
+    context.stroke();
+    context.fillText(String(value), padding.left - 8, y);
+  }
+}
+
+function roundedCanvasRect(context, x, y, width, height, radius) {
+  const safeRadius = Math.min(radius, width / 2, height / 2);
+  context.beginPath();
+  context.moveTo(x + safeRadius, y);
+  context.lineTo(x + width - safeRadius, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+  context.lineTo(x + width, y + height - safeRadius);
+  context.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
+  context.lineTo(x + safeRadius, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
+  context.lineTo(x, y + safeRadius);
+  context.quadraticCurveTo(x, y, x + safeRadius, y);
+  context.closePath();
+}
+
+function percentileValue(values, percentile) {
+  if (values.length === 0) return null;
+  const index = (values.length - 1) * percentile;
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+  if (lower === upper) return values[lower];
+  return values[lower] + (values[upper] - values[lower]) * (index - lower);
 }
 
 function renderExportDialog() {

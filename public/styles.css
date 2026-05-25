@@ -1705,6 +1705,10 @@ dialog[open] {
   flex-direction: column;
 }
 
+.stats-dialog-inner {
+  overflow: auto;
+}
+
 .algorithm-trainer-toolbar {
   display: flex;
   align-items: center;
@@ -2144,8 +2148,14 @@ dialog[open] {
   white-space: nowrap;
 }
 
-.stats-chart-panel {
+.stats-chart-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 10px;
   margin-top: 12px;
+}
+
+.stats-chart-panel {
   padding: 10px 12px 8px;
   border: 0;
   border-radius: var(--radius);
@@ -2210,11 +2220,15 @@ dialog[open] {
 .stats-chart-panel canvas {
   display: block;
   width: 100%;
-  height: 138px;
+  height: 128px;
   border-radius: 6px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.018)),
     rgba(0, 0, 0, 0.1);
+}
+
+.stats-distribution-panel canvas {
+  height: 128px;
 }
 
 .stats-chart-panel p {
@@ -3030,6 +3044,10 @@ dialog[open] {
 
   .stats-detail-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stats-chart-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .stats-insights {

@@ -1,13 +1,16 @@
-import { applyMove, createSolvedCube, cubeStateFromScramble, facesFromCube, isSolvedFaces, parseScramble } from '/cube-state.js';
-import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from '/bluetooth-moves.js';
-import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv, solvesToCstimerJson, solvesToTextTable } from '/solves-export.js';
-import { ganGyroQuaternionToCube3dBasis, ganGyroVelocityToCube3dBasis } from '/gyro-orientation.js';
-import { parseSolveImport } from '/solves-import.js';
-import { buildStatsSummary } from '/stats-summary.js';
-import { buildSolveSummary } from '/solve-summary.js';
-import { bestAverageRecord, bestMeanRecord, bestSingleRecord, recordMarksAt, rollingAverageAt, rollingAverageDetailAt, rollingMeanDetailAt } from '/rolling-averages.js';
-import * as THREE from '/vendor/three.module.js';
+import { applyMove, createSolvedCube, cubeStateFromScramble, facesFromCube, isSolvedFaces, parseScramble } from './cube-state.js';
+import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from './bluetooth-moves.js';
+import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv, solvesToCstimerJson, solvesToTextTable } from './solves-export.js';
+import { ganGyroQuaternionToCube3dBasis, ganGyroVelocityToCube3dBasis } from './gyro-orientation.js';
+import { parseSolveImport } from './solves-import.js';
+import { buildStatsSummary } from './stats-summary.js';
+import { buildSolveSummary } from './solve-summary.js';
+import { bestAverageRecord, bestMeanRecord, bestSingleRecord, recordMarksAt, rollingAverageAt, rollingAverageDetailAt, rollingMeanDetailAt } from './rolling-averages.js';
+import * as THREE from './vendor/three.module.js';
 
+const localApiOrigin = 'http://127.0.0.1:3211';
+const localHttpHost = /^(127\.0\.0\.1|localhost|\[::1\])$/.test(location.hostname);
+const apiOrigin = localHttpHost ? '' : localApiOrigin;
 const inspectionSeconds = 15;
 const inspectionDnfSeconds = 17;
 const holdToStartMs = 500;
@@ -3405,10 +3408,18 @@ function updateBluetoothPhysicalState(decoded, options = {}) {
   bluetoothPhysicalFacelets = decoded.facelets;
   bluetoothPhysicalFaces = faces;
   bluetoothPhysicalStateTime = new Date().toISOString();
-  if (options.render === false) return faces;
+  if (options.render === false) {
+    renderBluetoothCube3dLiveFaces(faces);
+    return faces;
+  }
   renderBluetoothMoves();
   renderPreviewMode();
   return faces;
+}
+
+function renderBluetoothCube3dLiveFaces(faces = bluetoothPhysicalFaces) {
+  if (!faces || !cube3d || !bluetoothLivePreviewMode()) return;
+  renderBluetoothCube3d(faces, `GAN 实时状态 · ${isSolvedFaces(faces) ? '已复原' : '未复原'}`);
 }
 
 function resetBluetoothPhysicalState() {
@@ -3813,7 +3824,7 @@ function initBluetoothCube3d() {
   scene.add(group);
 
   const shell = new THREE.Mesh(
-    new THREE.BoxGeometry(2.048, 2.048, 2.048),
+    new THREE.BoxGeometry(2.0, 2.0, 2.0),
     new THREE.MeshBasicMaterial({
       color: 0x1d1d1f,
     }),
@@ -3821,13 +3832,13 @@ function initBluetoothCube3d() {
   group.add(shell);
 
   const edges = new THREE.LineSegments(
-    new THREE.EdgesGeometry(new THREE.BoxGeometry(2.04, 2.04, 2.04)),
-    new THREE.LineBasicMaterial({ color: 0x25262b, transparent: true, opacity: 0.2 }),
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(1.998, 1.998, 1.998)),
+    new THREE.LineBasicMaterial({ color: 0x25262b, transparent: true, opacity: 0.11 }),
   );
   group.add(edges);
 
   const stickers = new Map();
-  const stickerGeometry = new THREE.PlaneGeometry(0.672, 0.672);
+  const stickerGeometry = new THREE.PlaneGeometry(0.69, 0.69);
   for (const face of cube3dFaces) {
     for (let row = 0; row < 3; row += 1) {
       for (let col = 0; col < 3; col += 1) {
@@ -3872,8 +3883,8 @@ function initBluetoothCube3d() {
 }
 
 function applyCube3dStickerTransform(sticker, face, row, col) {
-  const spacing = 0.675;
-  const surface = 1.031;
+  const spacing = 0.655;
+  const surface = 1.008;
   const a = (col - 1) * spacing;
   const b = (1 - row) * spacing;
 
@@ -3936,7 +3947,7 @@ function animateBluetoothCube3d(time = performance.now()) {
   const activeMove = Boolean(cube3d.turnAnimation);
   if (!visible) return;
 
-  const interval = bluetoothGyro || activeMove ? 1000 / 90 : 1000 / 18;
+  const interval = bluetoothGyro || activeMove ? 1000 / 120 : 1000 / 24;
   const waitMs = interval - (time - cube3d.lastRenderAt);
   if (waitMs > 0) {
     if (shouldContinueBluetoothCube3dAnimation(false)) scheduleBluetoothCube3dAnimation(waitMs);
@@ -3965,7 +3976,7 @@ function shouldContinueBluetoothCube3dAnimation(changed) {
 function updateBluetoothCube3dPose(time) {
   const nextQuaternion = cube3d.group.quaternion.clone();
   if (bluetoothGyro) {
-    nextQuaternion.slerp(cube3d.targetQuaternion, 0.78);
+    nextQuaternion.slerp(cube3d.targetQuaternion, 0.9);
   } else {
     const seconds = time / 1000;
     nextQuaternion.copy(cube3d.baseQuaternion);
@@ -4106,7 +4117,7 @@ function triggerBluetoothCube3dTurnAnimation(move, options = {}) {
     axis: definition.axis,
     angle: direction * amount * Math.PI / 2,
     startedAt: performance.now(),
-    duration: suffix === '2' ? 140 : 90,
+    duration: suffix === '2' ? 88 : 58,
     stickers,
     onComplete: options.onComplete || null,
   };
@@ -5911,7 +5922,7 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
           ${renderAverageButton(solve.id, solveNumber, 12, ao12, ao12Marks)}
         </span>
         <span class="row-actions">
-          <button data-detail-id="${solve.id}" type="button">详情</button>
+          <button data-detail-id="${solve.id}" type="button" aria-label="查看第 ${solveNumber} 条详情" title="详情">详</button>
           ${renderDeleteSolveButton(solve.id, `删除第 ${solveNumber} 条成绩`)}
         </span>
       ` : `
@@ -5952,11 +5963,7 @@ function renderDeleteSolveButton(solveId, label = '删除成绩') {
 }
 
 function deleteIconSvg() {
-  return `
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M6 6l12 12M18 6L6 18"></path>
-    </svg>
-  `;
+  return '<span aria-hidden="true">×</span>';
 }
 
 function solveRowMetadataText(solve) {
@@ -6760,7 +6767,7 @@ function effectiveDurationMs(solve) {
 }
 
 async function getJson(url) {
-  const response = await fetch(url);
+  const response = await fetch(apiUrl(url));
   if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
   return response.json();
 }
@@ -6773,13 +6780,19 @@ async function postJson(url, body) {
 }
 
 async function requestJson(url, options = {}) {
-  const response = await fetch(url, {
+  const response = await fetch(apiUrl(url), {
     method: options.method || 'GET',
     headers: options.body ? { 'Content-Type': 'application/json' } : undefined,
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
   if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
   return response.json();
+}
+
+function apiUrl(url) {
+  const text = String(url || '');
+  if (!apiOrigin || /^[a-z][a-z\d+.-]*:/i.test(text)) return text;
+  return `${apiOrigin}${text.startsWith('/') ? text : `/${text}`}`;
 }
 
 function beep() {

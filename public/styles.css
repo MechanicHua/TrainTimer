@@ -1124,8 +1124,9 @@ body[data-state="timing"] .timer-display {
 
 .history-panel .history-head,
 .history-panel .history-row {
-  grid-template-columns: 24px minmax(64px, 1.04fr) minmax(42px, 0.7fr) minmax(54px, 0.82fr) minmax(56px, 0.86fr) 54px;
-  gap: 4px;
+  grid-template-columns: 22px minmax(58px, 0.9fr) minmax(38px, 0.58fr) minmax(48px, 0.72fr) minmax(50px, 0.74fr) minmax(50px, 0.58fr);
+  gap: 3px;
+  padding: 0 4px;
 }
 
 .history-head {
@@ -1359,12 +1360,12 @@ body[data-state="timing"] .timer-display {
 .row-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 2px;
+  gap: 1px;
 }
 
 .row-actions button {
   min-width: 0;
-  padding: 0 7px;
+  padding: 0 6px;
 }
 
 .icon-delete-button,
@@ -1376,7 +1377,6 @@ body[data-state="timing"] .timer-display {
   padding: 0;
 }
 
-.icon-delete-button svg,
 .icon-lock-button svg {
   width: 14px;
   height: 14px;
@@ -1385,6 +1385,15 @@ body[data-state="timing"] .timer-display {
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2.4;
+}
+
+.icon-delete-button span {
+  display: inline-block;
+  color: #ff5a52;
+  font-size: 19px;
+  font-weight: 780;
+  line-height: 1;
+  transform: translateY(-1px);
 }
 
 .action-row .icon-delete-button {
@@ -1416,8 +1425,9 @@ body[data-focus="true"] .app-shell > :not(.timer-band),
 body[data-focus="true"] .timer-layout > :not(.timer-surface),
 body[data-focus="true"] .timer-surface > :not(.timer-display) {
   animation: none;
-  opacity: 0.06;
+  opacity: 0.045;
   pointer-events: none;
+  transition: opacity 260ms var(--ease), transform 260ms var(--ease);
 }
 
 body[data-focus="true"] .timer-display {
@@ -2705,8 +2715,8 @@ dialog[open] {
 
   .history-panel .history-head,
   .history-panel .history-row {
-    grid-template-columns: 24px minmax(62px, 1fr) 40px 52px 54px 50px;
-    gap: 4px;
+    grid-template-columns: 22px minmax(58px, 0.9fr) minmax(38px, 0.58fr) minmax(48px, 0.72fr) minmax(50px, 0.74fr) minmax(50px, 0.58fr);
+    gap: 3px;
   }
 
   .solve-detail-grid {

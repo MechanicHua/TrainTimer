@@ -47,6 +47,12 @@ const contentTypes = {
 
 const server = createServer(async (request, response) => {
   try {
+    if (request.method === 'OPTIONS') {
+      response.writeHead(204, corsHeaders);
+      response.end();
+      return;
+    }
+
     if (request.url?.startsWith('/api/')) {
       await handleApi(request, response);
       return;
@@ -58,6 +64,12 @@ const server = createServer(async (request, response) => {
     sendJson(response, 500, { error: 'Internal server error' });
   }
 });
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
 
 listen(requestedPort);
 
@@ -439,11 +451,11 @@ async function serveStatic(request, response) {
 
   try {
     const content = await readFile(filePath);
-    response.writeHead(200, { 'Content-Type': contentTypes[extname(filePath)] || 'application/octet-stream' });
+    response.writeHead(200, { ...corsHeaders, 'Content-Type': contentTypes[extname(filePath)] || 'application/octet-stream' });
     response.end(content);
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;
-    response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+    response.writeHead(404, { ...corsHeaders, 'Content-Type': 'text/plain; charset=utf-8' });
     response.end('Not found');
   }
 }
@@ -456,11 +468,11 @@ async function readJsonBody(request) {
 }
 
 function sendJson(response, status, payload) {
-  response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
+  response.writeHead(status, { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' });
   response.end(JSON.stringify(payload));
 }
 
 function sendText(response, status, content, contentType, headers = {}) {
-  response.writeHead(status, { 'Content-Type': contentType, ...headers });
+  response.writeHead(status, { ...corsHeaders, 'Content-Type': contentType, ...headers });
   response.end(content);
 }

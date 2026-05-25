@@ -28,6 +28,8 @@ test('maps GAN gyro axes into the 3D cube coordinate basis', () => {
 test('keeps observed GAN q landmarks aligned with white and yellow face-up states', () => {
   assert.equal(topFaceAfterQuaternion(ganGyroQuaternionToCube3dBasis({ w: 1, x: 0, y: 0, z: 0 })), 'U');
   assert.equal(topFaceAfterQuaternion(ganGyroQuaternionToCube3dBasis({ w: 0, x: 1, y: 0, z: 0 })), 'D');
+  assert.equal(topFaceAfterQuaternion(ganGyroQuaternionToCube3dBasis({ w: 0.002, x: 0.999, y: 0, z: 0 })), 'D');
+  assert.equal(topFaceAfterQuaternion(ganGyroQuaternionToCube3dBasis({ w: 0.999, x: 0.002, y: 0, z: 0 })), 'U');
 });
 
 test('maps GAN gyro velocity into the 3D cube coordinate basis', () => {

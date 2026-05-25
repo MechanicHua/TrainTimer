@@ -1,7 +1,8 @@
 const SQRT_HALF = Math.SQRT1_2;
 
-// GAN reports a right-handed basis with +X red, +Y blue, +Z white.
-// The 3D model uses +X red, +Y white, +Z green, so vectors map to (x, z, -y).
+// GAN reports q as (w, x, y, z). Observed landmarks:
+// q.w ~= 0 means yellow-up, while q.x ~= 0 means white-up.
+// The basis below keeps those two states stable in the 3D model.
 const ganToCube3dBasis = normalizeQuaternion({
   x: -SQRT_HALF,
   y: 0,

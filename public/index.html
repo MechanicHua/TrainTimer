@@ -5,12 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>TrainTimer</title>
     <script>
-      if (location.protocol === 'file:') {
+      const openedAsLocalFile = location.protocol === 'file:' || /\/public\/index\.html$/i.test(location.pathname);
+      const onLocalServer = /^(127\.0\.0\.1|localhost|\[::1\])$/.test(location.hostname);
+      if (openedAsLocalFile && !onLocalServer) {
         location.replace(`http://127.0.0.1:3211/${location.search || ''}${location.hash || ''}`);
       }
     </script>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <main class="app-shell">
@@ -75,9 +77,7 @@
               <button id="lastPlusTwoButton" type="button">+2</button>
               <button id="lastDnfButton" type="button">DNF</button>
               <button id="lastDeleteButton" class="icon-delete-button" type="button" aria-label="删除上一把" title="删除上一把">
-                <svg aria-hidden="true" viewBox="0 0 24 24">
-                  <path d="M6 6l12 12M18 6L6 18"></path>
-                </svg>
+                <span aria-hidden="true">×</span>
               </button>
             </div>
           </div>
@@ -773,6 +773,6 @@
       </dialog>
     </main>
 
-    <script type="module" src="/app.js"></script>
+    <script type="module" src="./app.js"></script>
   </body>
 </html>

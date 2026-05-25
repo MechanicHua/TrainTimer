@@ -171,6 +171,20 @@ const cube3dFallbackColors = {
   L: '#f97316',
   B: '#2563eb',
 };
+const previewStickerColors = new Map([
+  ['#ffffff', '#d8dee7'],
+  ['#ffff00', '#bfc267'],
+  ['#ff0000', '#b45458'],
+  ['#00ff00', '#45b86d'],
+  ['#0000ff', '#3d56b6'],
+  ['#ff8000', '#b8794c'],
+  ['#f8fafc', '#d8dee7'],
+  ['#facc15', '#bfc267'],
+  ['#dc2626', '#b45458'],
+  ['#16a34a', '#45b86d'],
+  ['#2563eb', '#3d56b6'],
+  ['#f97316', '#b8794c'],
+]);
 const cubeFaceNormals = {
   U: [0, 1, 0],
   R: [1, 0, 0],
@@ -5795,8 +5809,23 @@ function renderTnoodleCubeSvg(svgText) {
   svg.setAttribute('role', 'img');
   svg.setAttribute('aria-label', 'TNoodle 打乱结果预览');
   svg.classList.add('cube-svg');
+  softenTnoodleCubeSvg(svg);
   elements.cubeNet.className = 'cube-net official-preview';
   elements.cubeNet.replaceChildren(document.importNode(svg, true));
+}
+
+function softenTnoodleCubeSvg(svg) {
+  svg.querySelectorAll('rect').forEach((rect) => {
+    rect.setAttribute('fill', previewStickerColor(rect.getAttribute('fill')));
+    rect.setAttribute('stroke', 'none');
+    rect.setAttribute('fill-opacity', '0.82');
+    rect.setAttribute('rx', '0.7');
+    rect.setAttribute('ry', '0.7');
+  });
+}
+
+function previewStickerColor(color) {
+  return previewStickerColors.get(String(color || '').toLowerCase()) || color || '#8e8e93';
 }
 
 function renderLocalScramblePreview(scrambleText, puzzle = 'three') {
@@ -5834,7 +5863,7 @@ function renderCubeFacesNet(container, faces, baseClass) {
         const sticker = document.createElement('div');
         sticker.className = 'sticker';
         sticker.title = `${face}${row + 1}${col + 1}`;
-        sticker.style.background = faces[face][row][col].color;
+        sticker.style.background = previewStickerColor(faces[face][row][col].color);
         sticker.style.gridColumn = `${xOffset + col + 1}`;
         sticker.style.gridRow = `${yOffset + row + 1}`;
         fragment.append(sticker);

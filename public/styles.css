@@ -573,7 +573,7 @@ body[data-state="timing"] .timer-display {
   color: var(--ink-strong);
   font-size: clamp(19px, 1.62vw, 26px);
   font-weight: 560;
-  line-height: 1.46;
+  line-height: 1.72;
   letter-spacing: 0;
   word-spacing: 0.18em;
 }
@@ -582,7 +582,7 @@ body[data-state="timing"] .timer-display {
   display: inline-block;
   margin-right: 0.34em;
   border-radius: 6px;
-  padding: 0 0.09em;
+  padding: 0.02em 0.09em;
   transition: background-color 160ms ease, box-shadow 160ms ease, color 160ms ease, transform 160ms ease;
 }
 

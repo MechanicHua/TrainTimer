@@ -5151,7 +5151,7 @@ function renderStats() {
   const sessionSummary = summarizeSolves(sessionSolves);
   const dnfCount = sessionSolves.filter((solve) => solve.penalty === 'dnf').length;
   const successCount = sessionSolves.length - dnfCount;
-  elements.countStat.textContent = `${successCount}/${dnfCount}`;
+  elements.countStat.textContent = `${successCount}/${sessionSolves.length}`;
   elements.bestStat.textContent = sessionSummary.best == null ? '-' : formatTime(sessionSummary.best);
   elements.averageStat.textContent = sessionSummary.average == null ? '-' : formatTime(sessionSummary.average);
   elements.mo3Stat.textContent = sessionSummary.mo3 == null ? '-' : formatTime(sessionSummary.mo3);

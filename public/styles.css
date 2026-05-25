@@ -944,7 +944,7 @@ body[data-state="timing"] .timer-display {
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  backdrop-filter: blur(20px) saturate(1.28);
+  contain: layout paint;
   pointer-events: none;
 }
 
@@ -1015,6 +1015,7 @@ body[data-state="timing"] .timer-display {
   min-height: 0;
   border-radius: calc(var(--radius) - 2px);
   background: rgba(255, 255, 255, 0.035);
+  contain: strict;
 }
 
 .bluetooth-3d-telemetry {

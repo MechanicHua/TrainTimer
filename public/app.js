@@ -19,13 +19,14 @@ const compactHistoryLimit = 48;
 const allSolvesRenderBatchSize = 180;
 const bluetoothNextSolveGestureWindowMs = 700;
 const historyBottomFadeRangePx = 180;
-const cube3dActiveFrameMs = 1000 / 240;
+const cube3dActiveFrameMs = 0;
 const cube3dIdleFrameMs = 1000 / 30;
 const cube3dGyroActiveWindowMs = 900;
-const cube3dGyroSmoothingMs = 12;
+const cube3dGyroSmoothingMs = 7;
 const cube3dTelemetryFrameMs = 1000 / 15;
-const cube3dTurnDurationMs = 132;
-const cube3dDoubleTurnDurationMs = 184;
+const cube3dTurnDurationMs = 96;
+const cube3dDoubleTurnDurationMs = 136;
+const cube3dMaxPixelRatio = 1;
 const bluetoothGyroLogIntervalMs = 500;
 const statsChartModes = new Set(['single', 'ao5', 'ao12', 'tps']);
 const statsChartLabels = {
@@ -3755,7 +3756,7 @@ function addBluetoothLog(kind, message, detail = '') {
   });
   bluetoothLog = bluetoothLog.slice(0, 120);
   renderBluetoothFeed();
-  renderBluetoothLog();
+  if (elements.bluetoothLogDialog?.open) renderBluetoothLog();
 }
 
 function renderBluetoothFeed() {
@@ -4127,7 +4128,7 @@ function initBluetoothCube3d() {
     antialias: true,
     powerPreference: 'high-performance',
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cube3dMaxPixelRatio));
   renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
@@ -4189,6 +4190,8 @@ function initBluetoothCube3d() {
     idleQuaternion: new THREE.Quaternion(),
     idleEuler: new THREE.Euler(),
     turnQuaternion: new THREE.Quaternion(),
+    cssWidth: 0,
+    cssHeight: 0,
   };
   group.quaternion.copy(baseQuaternion);
 
@@ -4234,8 +4237,9 @@ function resizeBluetoothCube3d() {
   const rect = elements.bluetooth3dCanvas.getBoundingClientRect();
   const width = Math.max(1, Math.floor(rect.width));
   const height = Math.max(1, Math.floor(rect.height));
-  const canvas = cube3d.renderer.domElement;
-  if (canvas.width !== width || canvas.height !== height) {
+  if (cube3d.cssWidth !== width || cube3d.cssHeight !== height) {
+    cube3d.cssWidth = width;
+    cube3d.cssHeight = height;
     cube3d.renderer.setSize(width, height, false);
     cube3d.camera.aspect = width / height;
     cube3d.camera.updateProjectionMatrix();
@@ -4343,9 +4347,7 @@ function hasRecentBluetoothGyro(time = performance.now()) {
 }
 
 function isBluetoothCube3dVisible() {
-  if (!elements.bluetooth3dCanvas || elements.bluetooth3dPanel?.hidden) return false;
-  const rect = elements.bluetooth3dCanvas.getBoundingClientRect();
-  return rect.width > 4 && rect.height > 4;
+  return Boolean(cube3d && elements.bluetooth3dCanvas && !elements.bluetooth3dPanel?.hidden && cube3d.cssWidth > 4 && cube3d.cssHeight > 4);
 }
 
 function markBluetoothCube3dDirty() {

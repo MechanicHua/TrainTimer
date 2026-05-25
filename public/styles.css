@@ -1835,6 +1835,17 @@ dialog[open] {
   font-weight: 760;
 }
 
+.algorithm-trainer-empty {
+  grid-column: 1 / -1;
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 680;
+  text-align: center;
+}
+
 .solve-dialog-header {
   align-items: flex-start;
   justify-content: space-between;

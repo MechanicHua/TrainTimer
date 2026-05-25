@@ -38,6 +38,11 @@ const algorithmTrainerSetLabels = {
   pll: 'PLL',
   oll2: '2-Look OLL',
 };
+const algorithmTrainerFocusLabels = {
+  all: '全部',
+  new: '未练',
+  weak: '薄弱',
+};
 const bluetoothUuidSuffix = '-0000-1000-8000-00805f9b34fb';
 const bluetoothBatteryLevelUuid = `00002a19${bluetoothUuidSuffix}`;
 const bluetoothGanV1MetaServiceUuid = `0000180a${bluetoothUuidSuffix}`;
@@ -316,6 +321,7 @@ const elements = {
   algorithmTrainerDialog: document.querySelector('#algorithmTrainerDialog'),
   algorithmTrainerMeta: document.querySelector('#algorithmTrainerMeta'),
   algorithmTrainerSet: document.querySelector('#algorithmTrainerSet'),
+  algorithmTrainerFocus: document.querySelector('#algorithmTrainerFocus'),
   algorithmTrainerNextButton: document.querySelector('#algorithmTrainerNextButton'),
   algorithmTrainerResetButton: document.querySelector('#algorithmTrainerResetButton'),
   algorithmTrainerName: document.querySelector('#algorithmTrainerName'),
@@ -522,6 +528,8 @@ if (!['single', 'tps', 'ao5', 'ao12'].includes(historySortKey) || !['asc', 'desc
 }
 let algorithmTrainerSet = localStorage.getItem('trainTimer.algorithmTrainerSet') || 'pll';
 if (!algorithmTrainerCases.some((item) => item.set === algorithmTrainerSet)) algorithmTrainerSet = 'pll';
+let algorithmTrainerFocus = localStorage.getItem('trainTimer.algorithmTrainerFocus') || 'all';
+if (!Object.hasOwn(algorithmTrainerFocusLabels, algorithmTrainerFocus)) algorithmTrainerFocus = 'all';
 let algorithmTrainerCurrentId = localStorage.getItem('trainTimer.algorithmTrainerCurrentId') || '';
 let algorithmTrainerStats = loadAlgorithmTrainerStats();
 let startedAt = 0;
@@ -624,6 +632,12 @@ elements.algorithmTrainerButton.addEventListener('click', openAlgorithmTrainerDi
 elements.algorithmTrainerSet.addEventListener('change', () => {
   algorithmTrainerSet = elements.algorithmTrainerSet.value || 'pll';
   localStorage.setItem('trainTimer.algorithmTrainerSet', algorithmTrainerSet);
+  chooseNextAlgorithmTrainerCase();
+});
+elements.algorithmTrainerFocus.addEventListener('change', () => {
+  algorithmTrainerFocus = elements.algorithmTrainerFocus.value || 'all';
+  if (!Object.hasOwn(algorithmTrainerFocusLabels, algorithmTrainerFocus)) algorithmTrainerFocus = 'all';
+  localStorage.setItem('trainTimer.algorithmTrainerFocus', algorithmTrainerFocus);
   chooseNextAlgorithmTrainerCase();
 });
 elements.algorithmTrainerNextButton.addEventListener('click', chooseNextAlgorithmTrainerCase);
@@ -5446,22 +5460,34 @@ function openAlgorithmTrainerDialog() {
 
 function renderAlgorithmTrainerDialog() {
   elements.algorithmTrainerSet.value = algorithmTrainerSet;
-  const cases = algorithmTrainerCasesForSet();
-  const current = algorithmTrainerCurrentCase() || cases[0];
+  elements.algorithmTrainerFocus.value = algorithmTrainerFocus;
+  const allCases = algorithmTrainerCasesForSet();
+  const scopedCases = algorithmTrainerCasesForFocus(allCases);
+  const effectiveCases = scopedCases.length > 0 ? scopedCases : allCases;
+  const current = algorithmTrainerCurrentCase(effectiveCases) || effectiveCases[0];
   if (current && current.id !== algorithmTrainerCurrentId) {
     algorithmTrainerCurrentId = current.id;
     localStorage.setItem('trainTimer.algorithmTrainerCurrentId', algorithmTrainerCurrentId);
   }
-  const totals = algorithmTrainerTotals(cases);
+  const totals = algorithmTrainerTotals(allCases);
   const setLabel = algorithmTrainerSetLabels[algorithmTrainerSet] || algorithmTrainerSet.toUpperCase();
-  elements.algorithmTrainerMeta.textContent = `${setLabel} · ${cases.length} 条 · ${totals.success}/${totals.total} 掌握`;
+  const focusLabel = algorithmTrainerFocusLabels[algorithmTrainerFocus] || '全部';
+  const focusText = algorithmTrainerFocus === 'all' ? '' : ` · ${focusLabel} ${scopedCases.length}/${allCases.length}`;
+  elements.algorithmTrainerMeta.textContent = `${setLabel} · ${allCases.length} 条${focusText} · ${totals.success}/${totals.total} 掌握`;
   elements.algorithmTrainerName.textContent = current?.name || '-';
   elements.algorithmTrainerGroup.textContent = current?.group || '-';
   elements.algorithmTrainerAlg.textContent = current?.algorithm || '-';
-  elements.algorithmTrainerHint.textContent = current?.hint || '选择随机下一条开始练习';
+  elements.algorithmTrainerHint.textContent = scopedCases.length === 0 && algorithmTrainerFocus !== 'all'
+    ? `${focusLabel}范围暂无案例，随机会从全部中选择`
+    : (current?.hint || '选择随机下一条开始练习');
   const currentStats = algorithmTrainerStats[current?.id] || { success: 0, total: 0, streak: 0 };
-  elements.algorithmTrainerScore.textContent = `${currentStats.success}/${currentStats.total}`;
-  elements.algorithmTrainerList.replaceChildren(...cases.map(renderAlgorithmTrainerListItem));
+  elements.algorithmTrainerScore.textContent = algorithmTrainerProgressText(currentStats);
+  const listRows = scopedCases.length > 0 || algorithmTrainerFocus === 'all'
+    ? scopedCases
+    : [];
+  elements.algorithmTrainerList.replaceChildren(
+    ...(listRows.length > 0 ? listRows.map(renderAlgorithmTrainerListItem) : [renderAlgorithmTrainerEmpty(focusLabel)]),
+  );
 }
 
 function renderAlgorithmTrainerListItem(item) {
@@ -5473,7 +5499,7 @@ function renderAlgorithmTrainerListItem(item) {
   row.innerHTML = `
     <strong>${escapeHtml(item.name)}</strong>
     <span>${escapeHtml(item.group)}</span>
-    <em>${stats.success}/${stats.total}</em>
+    <em>${escapeHtml(algorithmTrainerProgressText(stats))}</em>
   `;
   row.addEventListener('click', () => {
     algorithmTrainerCurrentId = item.id;
@@ -5483,8 +5509,17 @@ function renderAlgorithmTrainerListItem(item) {
   return row;
 }
 
+function renderAlgorithmTrainerEmpty(focusLabel) {
+  const row = document.createElement('div');
+  row.className = 'algorithm-trainer-empty';
+  row.textContent = `${focusLabel}范围暂无案例`;
+  return row;
+}
+
 function chooseNextAlgorithmTrainerCase(options = {}) {
-  const cases = algorithmTrainerCasesForSet();
+  const allCases = algorithmTrainerCasesForSet();
+  const focusedCases = algorithmTrainerCasesForFocus(allCases);
+  const cases = focusedCases.length > 0 ? focusedCases : allCases;
   if (cases.length === 0) return;
   const weighted = cases.flatMap((item) => {
     const stats = algorithmTrainerStats[item.id] || { success: 0, total: 0, streak: 0 };
@@ -5529,8 +5564,34 @@ function algorithmTrainerCasesForSet() {
   return algorithmTrainerCases.filter((item) => item.set === algorithmTrainerSet);
 }
 
-function algorithmTrainerCurrentCase() {
-  return algorithmTrainerCases.find((item) => item.id === algorithmTrainerCurrentId && item.set === algorithmTrainerSet) || null;
+function algorithmTrainerCasesForFocus(cases) {
+  if (algorithmTrainerFocus === 'new') {
+    return cases.filter((item) => (algorithmTrainerStats[item.id]?.total || 0) === 0);
+  }
+  if (algorithmTrainerFocus === 'weak') {
+    return cases.filter((item) => algorithmTrainerCaseNeedsReview(item));
+  }
+  return cases;
+}
+
+function algorithmTrainerCaseNeedsReview(item) {
+  const stats = algorithmTrainerStats[item.id] || { success: 0, total: 0, streak: 0 };
+  if ((stats.total || 0) === 0) return false;
+  const accuracy = (stats.success || 0) / stats.total;
+  return accuracy < 0.85 || (stats.streak || 0) === 0;
+}
+
+function algorithmTrainerCurrentCase(cases = algorithmTrainerCasesForSet()) {
+  return cases.find((item) => item.id === algorithmTrainerCurrentId && item.set === algorithmTrainerSet) || null;
+}
+
+function algorithmTrainerProgressText(stats = {}) {
+  const total = Math.max(0, Number(stats.total) || 0);
+  const success = Math.max(0, Number(stats.success) || 0);
+  if (total === 0) return '未练';
+  const accuracy = Math.round((success / total) * 100);
+  const streak = Math.max(0, Number(stats.streak) || 0);
+  return streak > 1 ? `${accuracy}% · 连${streak}` : `${accuracy}% · ${success}/${total}`;
 }
 
 function algorithmTrainerTotals(cases) {

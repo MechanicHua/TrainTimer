@@ -1783,6 +1783,39 @@ dialog[open] {
   margin: 9px 0 0;
 }
 
+.algorithm-trainer-timer {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.algorithm-trainer-timer strong {
+  color: var(--ink-strong);
+  font-variant-numeric: tabular-nums;
+  font-size: 24px;
+  font-weight: 760;
+}
+
+.algorithm-trainer-timer span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.algorithm-trainer-timer button.running {
+  background: rgba(141, 255, 190, 0.16);
+  color: var(--accent-strong);
+}
+
 .algorithm-trainer-actions {
   display: flex;
   gap: 8px;
@@ -3182,6 +3215,10 @@ dialog[open] {
 
   .stats-chart-modes button {
     flex: 1;
+  }
+
+  .algorithm-trainer-timer {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .manager-toolbar button {

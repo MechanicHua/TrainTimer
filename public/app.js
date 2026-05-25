@@ -333,6 +333,9 @@ const elements = {
   algorithmTrainerScore: document.querySelector('#algorithmTrainerScore'),
   algorithmTrainerAlg: document.querySelector('#algorithmTrainerAlg'),
   algorithmTrainerHint: document.querySelector('#algorithmTrainerHint'),
+  algorithmTrainerTimerDisplay: document.querySelector('#algorithmTrainerTimerDisplay'),
+  algorithmTrainerTimerStats: document.querySelector('#algorithmTrainerTimerStats'),
+  algorithmTrainerTimerButton: document.querySelector('#algorithmTrainerTimerButton'),
   algorithmTrainerPassButton: document.querySelector('#algorithmTrainerPassButton'),
   algorithmTrainerFailButton: document.querySelector('#algorithmTrainerFailButton'),
   algorithmTrainerList: document.querySelector('#algorithmTrainerList'),
@@ -539,6 +542,8 @@ let algorithmTrainerFocus = localStorage.getItem('trainTimer.algorithmTrainerFoc
 if (!Object.hasOwn(algorithmTrainerFocusLabels, algorithmTrainerFocus)) algorithmTrainerFocus = 'all';
 let algorithmTrainerCurrentId = localStorage.getItem('trainTimer.algorithmTrainerCurrentId') || '';
 let algorithmTrainerStats = loadAlgorithmTrainerStats();
+let algorithmTrainerTimerStartedAt = 0;
+let algorithmTrainerTimerFrame = 0;
 let startedAt = 0;
 let inspectionStartedAt = 0;
 let activeInspectionUsed = false;
@@ -652,6 +657,7 @@ elements.algorithmTrainerFocus.addEventListener('change', () => {
 elements.algorithmTrainerNextButton.addEventListener('click', chooseNextAlgorithmTrainerCase);
 elements.algorithmTrainerPassButton.addEventListener('click', () => recordAlgorithmTrainerResult(true));
 elements.algorithmTrainerFailButton.addEventListener('click', () => recordAlgorithmTrainerResult(false));
+elements.algorithmTrainerTimerButton.addEventListener('click', toggleAlgorithmTrainerTimer);
 elements.algorithmTrainerResetButton.addEventListener('click', resetAlgorithmTrainerStats);
 elements.bluetoothButton.addEventListener('click', () => connectBluetoothCube());
 elements.bluetoothAnyButton.addEventListener('click', () => connectBluetoothCube({ compatibilityMode: true }));
@@ -751,6 +757,7 @@ elements.averageDialog.addEventListener('close', () => {
 elements.statsDialog.addEventListener('close', () => {
   statsScope = 'session';
 });
+elements.algorithmTrainerDialog.addEventListener('close', cancelAlgorithmTrainerTimer);
 elements.allSolvesDialog.addEventListener('close', () => {
   selectedSolveIds.clear();
   render();
@@ -5504,6 +5511,7 @@ function renderAlgorithmTrainerDialog() {
     algorithmTrainerCurrentId = current.id;
     localStorage.setItem('trainTimer.algorithmTrainerCurrentId', algorithmTrainerCurrentId);
   }
+  if (!current) cancelAlgorithmTrainerTimer();
   const totals = algorithmTrainerTotals(allCases);
   const setLabel = algorithmTrainerSetLabels[algorithmTrainerSet] || algorithmTrainerSet.toUpperCase();
   const focusLabel = algorithmTrainerFocusLabels[algorithmTrainerFocus] || '全部';
@@ -5517,6 +5525,7 @@ function renderAlgorithmTrainerDialog() {
     : (current?.hint || '选择随机下一条开始练习');
   const currentStats = algorithmTrainerStats[current?.id] || { success: 0, total: 0, streak: 0 };
   elements.algorithmTrainerScore.textContent = algorithmTrainerProgressText(currentStats);
+  renderAlgorithmTrainerTimer(currentStats);
   const listRows = scopedCases.length > 0 || algorithmTrainerFocus === 'all'
     ? scopedCases
     : [];
@@ -5537,6 +5546,7 @@ function renderAlgorithmTrainerListItem(item) {
     <em>${escapeHtml(algorithmTrainerProgressText(stats))}</em>
   `;
   row.addEventListener('click', () => {
+    cancelAlgorithmTrainerTimer();
     algorithmTrainerCurrentId = item.id;
     localStorage.setItem('trainTimer.algorithmTrainerCurrentId', algorithmTrainerCurrentId);
     renderAlgorithmTrainerDialog();
@@ -5552,6 +5562,7 @@ function renderAlgorithmTrainerEmpty(focusLabel) {
 }
 
 function chooseNextAlgorithmTrainerCase(options = {}) {
+  cancelAlgorithmTrainerTimer();
   const allCases = algorithmTrainerCasesForSet();
   const focusedCases = algorithmTrainerCasesForFocus(allCases);
   const cases = focusedCases.length > 0 ? focusedCases : allCases;
@@ -5574,6 +5585,7 @@ function chooseNextAlgorithmTrainerCase(options = {}) {
 function recordAlgorithmTrainerResult(success) {
   const current = algorithmTrainerCurrentCase();
   if (!current) return;
+  cancelAlgorithmTrainerTimer();
   const stats = algorithmTrainerStats[current.id] || { success: 0, total: 0, streak: 0 };
   stats.total += 1;
   if (success) {
@@ -5588,8 +5600,90 @@ function recordAlgorithmTrainerResult(success) {
   chooseNextAlgorithmTrainerCase();
 }
 
+function toggleAlgorithmTrainerTimer() {
+  if (algorithmTrainerTimerStartedAt > 0) {
+    finishAlgorithmTrainerTimer();
+    return;
+  }
+  startAlgorithmTrainerTimer();
+}
+
+function startAlgorithmTrainerTimer() {
+  if (!algorithmTrainerCurrentCase()) return;
+  algorithmTrainerTimerStartedAt = performance.now();
+  tickAlgorithmTrainerTimer();
+}
+
+function finishAlgorithmTrainerTimer() {
+  const current = algorithmTrainerCurrentCase();
+  if (!current || algorithmTrainerTimerStartedAt <= 0) {
+    cancelAlgorithmTrainerTimer();
+    return;
+  }
+
+  const durationMs = Math.max(1, Math.round(performance.now() - algorithmTrainerTimerStartedAt));
+  cancelAlgorithmTrainerTimer({ keepDisplay: true });
+  recordAlgorithmTrainerTimedAttempt(current.id, durationMs);
+  renderAlgorithmTrainerDialog();
+}
+
+function tickAlgorithmTrainerTimer() {
+  if (algorithmTrainerTimerStartedAt <= 0) return;
+  const elapsedMs = Math.max(0, performance.now() - algorithmTrainerTimerStartedAt);
+  elements.algorithmTrainerTimerDisplay.textContent = formatTime(elapsedMs);
+  elements.algorithmTrainerTimerButton.textContent = '完成记录';
+  elements.algorithmTrainerTimerButton.classList.add('running');
+  if (algorithmTrainerTimerFrame) cancelAnimationFrame(algorithmTrainerTimerFrame);
+  algorithmTrainerTimerFrame = requestAnimationFrame(tickAlgorithmTrainerTimer);
+}
+
+function cancelAlgorithmTrainerTimer(options = {}) {
+  if (algorithmTrainerTimerFrame) {
+    cancelAnimationFrame(algorithmTrainerTimerFrame);
+    algorithmTrainerTimerFrame = 0;
+  }
+  algorithmTrainerTimerStartedAt = 0;
+  if (!options.keepDisplay && elements.algorithmTrainerTimerButton) {
+    elements.algorithmTrainerTimerButton.textContent = '开始计时';
+    elements.algorithmTrainerTimerButton.classList.remove('running');
+  }
+}
+
+function recordAlgorithmTrainerTimedAttempt(caseId, durationMs) {
+  const stats = algorithmTrainerStats[caseId] || { success: 0, total: 0, streak: 0 };
+  stats.total = Math.max(0, Number(stats.total) || 0) + 1;
+  stats.success = Math.max(0, Number(stats.success) || 0) + 1;
+  stats.streak = Math.max(0, Number(stats.streak) || 0) + 1;
+  stats.timedCount = Math.max(0, Number(stats.timedCount) || 0) + 1;
+  stats.timedTotalMs = Math.max(0, Number(stats.timedTotalMs) || 0) + durationMs;
+  const previousBestMs = Number(stats.timedBestMs);
+  stats.timedBestMs = Number.isFinite(previousBestMs) ? Math.min(previousBestMs, durationMs) : durationMs;
+  stats.lastTimedMs = durationMs;
+  stats.updatedAt = new Date().toISOString();
+  algorithmTrainerStats[caseId] = stats;
+  saveAlgorithmTrainerStats();
+}
+
+function renderAlgorithmTrainerTimer(stats = {}) {
+  const running = algorithmTrainerTimerStartedAt > 0;
+  const lastMs = Number.isFinite(Number(stats.lastTimedMs)) ? Number(stats.lastTimedMs) : null;
+  const bestMs = Number.isFinite(Number(stats.timedBestMs)) ? Number(stats.timedBestMs) : null;
+  const count = Math.max(0, Number(stats.timedCount) || 0);
+  const averageMs = count > 0 && Number.isFinite(Number(stats.timedTotalMs)) ? Number(stats.timedTotalMs) / count : null;
+  if (!running) {
+    elements.algorithmTrainerTimerDisplay.textContent = Number.isFinite(lastMs) ? formatTime(lastMs) : '0.000';
+    elements.algorithmTrainerTimerButton.textContent = '开始计时';
+    elements.algorithmTrainerTimerButton.classList.remove('running');
+  }
+  elements.algorithmTrainerTimerButton.disabled = !algorithmTrainerCurrentCase();
+  elements.algorithmTrainerTimerStats.textContent = count > 0 && Number.isFinite(lastMs) && Number.isFinite(bestMs) && Number.isFinite(averageMs)
+    ? `最近 ${formatTime(lastMs)} · 最佳 ${formatTime(bestMs)} · 平均 ${formatTime(averageMs)} · ${count} 次`
+    : '计时练习未开始';
+}
+
 function resetAlgorithmTrainerStats() {
   if (!confirm('清空算法训练记录？')) return;
+  cancelAlgorithmTrainerTimer();
   algorithmTrainerStats = {};
   saveAlgorithmTrainerStats();
   renderAlgorithmTrainerDialog();

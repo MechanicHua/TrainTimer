@@ -1,6 +1,7 @@
 import { applyMove, createSolvedCube, cubeStateFromScramble, facesFromCube, isSolvedFaces, parseScramble } from '/cube-state.js';
 import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from '/bluetooth-moves.js';
 import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv, solvesToCstimerJson, solvesToTextTable } from '/solves-export.js';
+import { ganGyroQuaternionToCube3dBasis, ganGyroVelocityToCube3dBasis } from '/gyro-orientation.js';
 import { parseSolveImport } from '/solves-import.js';
 import { buildStatsSummary } from '/stats-summary.js';
 import { buildSolveSummary } from '/solve-summary.js';
@@ -448,7 +449,7 @@ let bluetoothSolved = false;
 let bluetoothSolvedByStatePacket = false;
 let bluetoothGyro = null;
 let bluetoothGyroReferenceInverse = null;
-let bluetoothGyroLastRawQuaternion = null;
+let bluetoothGyroLastBasisQuaternion = null;
 let bluetoothLastMoveText = '-';
 let bluetoothPhysicalFacelets = '';
 let bluetoothPhysicalFaces = null;
@@ -3158,30 +3159,38 @@ function renderBluetoothBattery() {
 
 function updateBluetoothGyro(gyro) {
   if (!gyro?.quaternion) return;
-  const rawQuaternion = bluetoothGyroQuaternionFromPacket(gyro.quaternion);
-  if (!rawQuaternion) return;
-  if (bluetoothGyroLastRawQuaternion && bluetoothGyroLastRawQuaternion.dot(rawQuaternion) < 0) {
-    rawQuaternion.set(-rawQuaternion.x, -rawQuaternion.y, -rawQuaternion.z, -rawQuaternion.w);
+  const basisQuaternion = bluetoothGyroQuaternionFromPacket(gyro.quaternion);
+  if (!basisQuaternion) return;
+  if (bluetoothGyroLastBasisQuaternion && bluetoothGyroLastBasisQuaternion.dot(basisQuaternion) < 0) {
+    basisQuaternion.set(-basisQuaternion.x, -basisQuaternion.y, -basisQuaternion.z, -basisQuaternion.w);
   }
   if (!bluetoothGyroReferenceInverse) {
-    bluetoothGyroReferenceInverse = rawQuaternion.clone().invert();
+    bluetoothGyroReferenceInverse = basisQuaternion.clone().invert();
     if (cube3d?.targetQuaternion) cube3d.targetQuaternion.copy(cube3d.baseQuaternion);
     addBluetoothLog('陀螺仪', '姿态已校准', '以当前魔方朝向作为 3D 模型参考方向');
   }
-  bluetoothGyroLastRawQuaternion = rawQuaternion.clone();
-  const relativeQuaternion = rawQuaternion.clone().multiply(bluetoothGyroReferenceInverse);
+  bluetoothGyroLastBasisQuaternion = basisQuaternion.clone();
+  const relativeQuaternion = basisQuaternion.clone().multiply(bluetoothGyroReferenceInverse);
   const displayQuaternion = cube3d
     ? cube3d.baseQuaternion.clone().premultiply(relativeQuaternion)
     : relativeQuaternion;
+  const mappedVelocity = ganGyroVelocityToCube3dBasis(gyro.velocity || {});
   bluetoothGyro = {
-    quaternion: { ...gyro.quaternion },
+    quaternion: {
+      x: basisQuaternion.x,
+      y: basisQuaternion.y,
+      z: basisQuaternion.z,
+      w: basisQuaternion.w,
+    },
+    rawQuaternion: { ...gyro.quaternion },
     displayQuaternion: {
       x: displayQuaternion.x,
       y: displayQuaternion.y,
       z: displayQuaternion.z,
       w: displayQuaternion.w,
     },
-    velocity: { ...(gyro.velocity || {}) },
+    velocity: mappedVelocity || { ...(gyro.velocity || {}) },
+    rawVelocity: gyro.velocity ? { ...gyro.velocity } : null,
     raw: gyro.raw ? { ...gyro.raw } : null,
     isoTime: new Date().toISOString(),
   };
@@ -3195,17 +3204,16 @@ function updateBluetoothGyro(gyro) {
 function resetBluetoothGyro() {
   bluetoothGyro = null;
   bluetoothGyroReferenceInverse = null;
-  bluetoothGyroLastRawQuaternion = null;
+  bluetoothGyroLastBasisQuaternion = null;
   if (cube3d?.targetQuaternion) cube3d.targetQuaternion.copy(cube3d.baseQuaternion);
   markBluetoothCube3dDirty();
   renderBluetoothCube3dTelemetry();
 }
 
 function bluetoothGyroQuaternionFromPacket(quaternion = {}) {
-  const { x, y, z, w } = quaternion;
-  if (![x, y, z, w].every(Number.isFinite)) return null;
-  const output = new THREE.Quaternion(x, y, z, w);
-  if (output.lengthSq() <= 0.01) return null;
+  const mapped = ganGyroQuaternionToCube3dBasis(quaternion);
+  if (!mapped) return null;
+  const output = new THREE.Quaternion(mapped.x, mapped.y, mapped.z, mapped.w);
   output.normalize();
   return output;
 }

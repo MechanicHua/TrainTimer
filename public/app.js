@@ -296,6 +296,11 @@ const elements = {
   lastPlusTwoButton: document.querySelector('#lastPlusTwoButton'),
   lastDnfButton: document.querySelector('#lastDnfButton'),
   lastDeleteButton: document.querySelector('#lastDeleteButton'),
+  timerSettingsButton: document.querySelector('#timerSettingsButton'),
+  timerSettingsDialog: document.querySelector('#timerSettingsDialog'),
+  timerSettingsMeta: document.querySelector('#timerSettingsMeta'),
+  hideTimerToggle: document.querySelector('#hideTimerToggle'),
+  timerFreezeSelect: document.querySelector('#timerFreezeSelect'),
   sessionGoalButton: document.querySelector('#sessionGoalButton'),
   countStat: document.querySelector('#countStat'),
   sessionGoalStat: document.querySelector('#sessionGoalStat'),
@@ -527,6 +532,8 @@ let scramble = null;
 let solves = [];
 let sessions = [];
 let inspectionEnabled = localStorage.getItem('trainTimer.inspection') === '1';
+let hideTimerWhileSolving = localStorage.getItem('trainTimer.hideTimerWhileSolving') === '1';
+let timerFreezeMs = normalizeTimerFreezeMs(localStorage.getItem('trainTimer.timerFreezeMs'));
 let currentSessionId = localStorage.getItem('trainTimer.session') || 'default';
 let scramblePuzzle = localStorage.getItem('trainTimer.scramblePuzzle') || 'three';
 let scrambleLocked = localStorage.getItem('trainTimer.scrambleLocked') === '1';
@@ -639,6 +646,7 @@ let cube3dTelemetryFrame = 0;
 let cube3dTelemetryTimer = 0;
 let cube3dTelemetryLastRenderAt = 0;
 let timerDisplayFitKey = '';
+let timerDisplayTextKey = '';
 
 elements.inspectionToggle.checked = inspectionEnabled;
 elements.inspectionToggle.addEventListener('change', () => {
@@ -653,6 +661,9 @@ elements.lastPlusTwoButton.addEventListener('click', () => updateLatestSolvePena
 elements.lastDnfButton.addEventListener('click', () => updateLatestSolvePenalty('dnf'));
 elements.lastDeleteButton.addEventListener('click', deleteLatestSolve);
 elements.scrambleLockButton.addEventListener('click', toggleScrambleLock);
+elements.timerSettingsButton.addEventListener('click', openTimerSettingsDialog);
+elements.hideTimerToggle.addEventListener('change', updateTimerSettingsFromControls);
+elements.timerFreezeSelect.addEventListener('change', updateTimerSettingsFromControls);
 elements.algorithmTrainerButton.addEventListener('click', openAlgorithmTrainerDialog);
 elements.algorithmTrainerSet.addEventListener('change', () => {
   algorithmTrainerSet = elements.algorithmTrainerSet.value || 'pll';
@@ -817,6 +828,7 @@ elements.allSolvesTable.addEventListener('scroll', handleAllSolvesTableScroll, {
 elements.statsRecordList.addEventListener('click', handleStatsRecordClick);
 elements.sessionOverviewList.addEventListener('click', handleSessionOverviewClick);
 window.addEventListener('resize', updateHistoryRowsMask);
+window.addEventListener('resize', invalidateTimerDisplayFit);
 
 window.__trainTimerDebug = {
   emitBluetoothText(text, uuid = '0000fff1-0000-1000-8000-00805f9b34fb') {
@@ -4774,8 +4786,11 @@ function bluetoothLivePreviewMode() {
 function setTimerDisplayText(text) {
   const display = elements.timerDisplay;
   const nextText = String(text ?? '');
-  if (display.textContent !== nextText) display.textContent = nextText;
   const size = nextText.length >= 9 ? 'compact' : (nextText.length >= 8 ? 'long' : 'normal');
+  const textKey = `${size}:${nextText}`;
+  if (timerDisplayTextKey === textKey) return;
+  timerDisplayTextKey = textKey;
+  if (display.textContent !== nextText) display.textContent = nextText;
   display.dataset.size = size;
   const width = Math.round(display.getBoundingClientRect().width);
   const key = `${size}:${nextText.length}:${width}`;
@@ -4796,6 +4811,52 @@ function fitTimerDisplayToWidth(key) {
   }
   const scale = Math.max(0.48, Math.min(1, (available / needed) * 0.985));
   display.style.setProperty('--timer-scale', scale.toFixed(3));
+}
+
+function invalidateTimerDisplayFit() {
+  timerDisplayFitKey = '';
+  timerDisplayTextKey = '';
+  setTimerDisplayText(elements.timerDisplay.textContent);
+}
+
+function timingDisplayText(elapsedMs) {
+  if (hideTimerWhileSolving) return '···';
+  if (timerFreezeMs > 0 && elapsedMs < timerFreezeMs) return '0.000';
+  return formatTime(elapsedMs);
+}
+
+function timerDisplayModeHint(elapsedMs = 0) {
+  if (hideTimerWhileSolving) return '计时已隐藏 · 按任意键结束';
+  if (timerFreezeMs > 0 && elapsedMs < timerFreezeMs) return '起步冻结中 · 按任意键结束';
+  return '';
+}
+
+function openTimerSettingsDialog() {
+  renderTimerSettingsDialog();
+  if (!elements.timerSettingsDialog.open) elements.timerSettingsDialog.showModal();
+}
+
+function renderTimerSettingsDialog() {
+  elements.hideTimerToggle.checked = hideTimerWhileSolving;
+  elements.timerFreezeSelect.value = String(timerFreezeMs);
+  const displayMode = hideTimerWhileSolving ? '隐藏计时中数字' : '显示计时中数字';
+  const freezeMode = timerFreezeMs > 0 ? `起步冻结 ${(timerFreezeMs / 1000).toFixed(1)}s` : '无起步冻结';
+  elements.timerSettingsMeta.textContent = `${displayMode} · ${freezeMode}`;
+}
+
+function updateTimerSettingsFromControls() {
+  hideTimerWhileSolving = elements.hideTimerToggle.checked;
+  timerFreezeMs = normalizeTimerFreezeMs(elements.timerFreezeSelect.value);
+  localStorage.setItem('trainTimer.hideTimerWhileSolving', hideTimerWhileSolving ? '1' : '0');
+  localStorage.setItem('trainTimer.timerFreezeMs', String(timerFreezeMs));
+  renderTimerSettingsDialog();
+  renderTimer();
+}
+
+function normalizeTimerFreezeMs(value) {
+  const parsed = Number(value);
+  const allowed = [0, 200, 500, 1000, 2000];
+  return allowed.includes(parsed) ? parsed : 0;
 }
 
 function renderSessions() {
@@ -4838,8 +4899,9 @@ function renderTimer() {
     elements.timerHint.textContent = '短按不会启动';
   } else if (appState === 'timing') {
     elements.statusText.textContent = '计时中';
-    setTimerDisplayText(formatTime(performance.now() - startedAt));
-    elements.timerHint.textContent = '按任意键结束本次计时';
+    const elapsedMs = performance.now() - startedAt;
+    setTimerDisplayText(timingDisplayText(elapsedMs));
+    elements.timerHint.textContent = timerDisplayModeHint(elapsedMs) || '按任意键结束本次计时';
   } else if (appState === 'saving') {
     elements.statusText.textContent = finishSource === 'bluetooth' ? '蓝牙复原' : '保存中';
     elements.timerHint.textContent = finishSource === 'bluetooth' ? '检测到已复原，正在写入成绩' : '正在写入成绩';

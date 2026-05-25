@@ -1616,6 +1616,7 @@ body[data-state="timing"] .timer-band {
 .stats-dialog,
 .average-dialog,
 .algorithm-dialog,
+.timer-settings-dialog,
 .export-dialog,
 .import-dialog,
 .move-dialog,
@@ -1643,6 +1644,10 @@ body[data-state="timing"] .timer-band {
   width: min(680px, calc(100vw - 32px));
 }
 
+.timer-settings-dialog {
+  width: min(560px, calc(100vw - 32px));
+}
+
 .algorithm-dialog {
   width: min(760px, calc(100vw - 32px));
 }
@@ -1660,6 +1665,7 @@ body[data-state="timing"] .timer-band {
 .stats-dialog::backdrop,
 .average-dialog::backdrop,
 .algorithm-dialog::backdrop,
+.timer-settings-dialog::backdrop,
 .export-dialog::backdrop,
 .import-dialog::backdrop,
 .move-dialog::backdrop,
@@ -1678,6 +1684,7 @@ dialog[open] {
 .stats-dialog-inner,
 .average-dialog-inner,
 .algorithm-dialog-inner,
+.timer-settings-inner,
 .export-dialog-inner,
 .import-dialog-inner,
 .move-dialog-inner,
@@ -1695,6 +1702,7 @@ dialog[open] {
 .stats-dialog-inner,
 .average-dialog-inner,
 .algorithm-dialog-inner,
+.timer-settings-inner,
 .export-dialog-inner,
 .import-dialog-inner,
 .move-dialog-inner,
@@ -1707,6 +1715,59 @@ dialog[open] {
 
 .stats-dialog-inner {
   overflow: auto;
+}
+
+.timer-settings-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.timer-setting-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.timer-setting-row span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.timer-setting-row strong {
+  color: var(--ink-strong);
+  font-size: 14px;
+  font-weight: 720;
+}
+
+.timer-setting-row em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 620;
+  line-height: 1.35;
+}
+
+.timer-setting-row input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}
+
+.timer-setting-row select {
+  min-height: 32px;
+  min-width: 96px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 28px 0 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
 }
 
 .algorithm-trainer-toolbar {

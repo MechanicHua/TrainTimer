@@ -28,6 +28,7 @@
           <button id="mergeSessionButton" type="button">合并</button>
           <button id="renameSessionButton" type="button">重命名</button>
           <button id="algorithmTrainerButton" type="button">算法训练</button>
+          <button id="timerSettingsButton" type="button">偏好</button>
           <button id="deleteSessionButton" type="button">删会话</button>
         </div>
         <label class="scramble-puzzle-field">
@@ -775,6 +776,40 @@
             </div>
           </section>
           <div id="algorithmTrainerList" class="algorithm-trainer-list" aria-label="算法练习列表"></div>
+        </form>
+      </dialog>
+
+      <dialog id="timerSettingsDialog" class="timer-settings-dialog">
+        <form method="dialog" class="timer-settings-inner">
+          <div class="solve-dialog-header">
+            <div>
+              <h2>计时偏好</h2>
+              <p id="timerSettingsMeta">保持当前计时显示</p>
+            </div>
+            <button type="submit" aria-label="关闭">关闭</button>
+          </div>
+          <div class="timer-settings-list">
+            <label class="timer-setting-row">
+              <span>
+                <strong>隐藏计时中数字</strong>
+                <em>开始后只显示占位，停表后显示真实成绩。</em>
+              </span>
+              <input id="hideTimerToggle" type="checkbox" />
+            </label>
+            <label class="timer-setting-row">
+              <span>
+                <strong>起步冻结</strong>
+                <em>启动后的短时间内保持 0.000，减少开表瞬间干扰。</em>
+              </span>
+              <select id="timerFreezeSelect">
+                <option value="0">关闭</option>
+                <option value="200">0.2s</option>
+                <option value="500">0.5s</option>
+                <option value="1000">1.0s</option>
+                <option value="2000">2.0s</option>
+              </select>
+            </label>
+          </div>
         </form>
       </dialog>
 

@@ -152,36 +152,41 @@
       </section>
 
       <section class="history-panel" aria-label="成绩管理">
-        <div class="section-heading">
+        <div class="section-heading history-heading">
           <h2>成绩管理</h2>
-          <p id="historyPath">-</p>
-        </div>
-        <div class="manager-toolbar" aria-label="成绩管理工具">
-          <button id="manualEntryButton" type="button">录入成绩</button>
-          <button id="exportButton" type="button">导出</button>
-          <button id="importButton" type="button">导入</button>
-          <button id="statsDetailButton" type="button">统计详情</button>
-            <button id="manageSolvesButton" type="button">全部成绩</button>
-            <button id="selectedStatsButton" type="button">选中统计</button>
-            <button id="markSelectedButton" type="button">标记选中</button>
-            <button id="puzzleSelectedButton" type="button">类型选中</button>
-            <button id="tagSelectedButton" type="button">标签选中</button>
-            <button id="commentSelectedButton" type="button">备注选中</button>
-            <button id="moveSelectedButton" type="button">移动选中</button>
-            <button id="deleteSelectedButton" type="button">删除选中</button>
-            <button id="undoDeleteButton" type="button">撤销删除</button>
-          <button id="clearAllButton" type="button">清空会话</button>
-          <input id="importFile" type="file" accept="application/json,.json,text/csv,.csv" hidden />
+          <div class="history-heading-actions">
+            <p id="historyPath">-</p>
+            <details id="historyActionsMenu" class="history-actions-menu">
+              <summary aria-label="打开成绩操作菜单" title="成绩操作">
+                <span class="menu-glyph" aria-hidden="true"><span></span><span></span><span></span></span>
+              </summary>
+              <div class="manager-toolbar history-actions-popover" aria-label="成绩管理工具">
+                <button id="manualEntryButton" type="button">录入成绩</button>
+                <button id="manageSolvesButton" type="button">全部成绩</button>
+                <button id="statsDetailButton" type="button">统计详情</button>
+                <button id="exportButton" type="button">导出</button>
+                <button id="importButton" type="button">导入</button>
+                <button id="undoDeleteButton" type="button">撤销删除</button>
+                <button id="selectedStatsButton" type="button">选中统计</button>
+                <button id="markSelectedButton" type="button">标记选中</button>
+                <button id="puzzleSelectedButton" type="button">类型选中</button>
+                <button id="tagSelectedButton" type="button">标签选中</button>
+                <button id="commentSelectedButton" type="button">备注选中</button>
+                <button id="moveSelectedButton" type="button">移动选中</button>
+                <button id="deleteSelectedButton" type="button">删除选中</button>
+                <button id="clearAllButton" type="button">清空会话</button>
+                <input id="importFile" type="file" accept="application/json,.json,text/csv,.csv" hidden />
+              </div>
+            </details>
+          </div>
         </div>
         <div class="history-table">
           <div class="history-head">
-            <span><input id="selectAllSolves" type="checkbox" aria-label="选择可见成绩" /></span>
             <span>#</span>
             <span>成绩</span>
             <span>TPS</span>
             <span>ao5</span>
             <span>ao12</span>
-            <span>罚时</span>
             <span>操作</span>
           </div>
           <div id="historyRows" class="history-rows"></div>

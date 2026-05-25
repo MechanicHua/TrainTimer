@@ -260,6 +260,7 @@ const elements = {
   cubeNet: document.querySelector('#cubeNet'),
   historyPath: document.querySelector('#historyPath'),
   historyRows: document.querySelector('#historyRows'),
+  historyActionsMenu: document.querySelector('#historyActionsMenu'),
   selectAllSolves: document.querySelector('#selectAllSolves'),
   manualEntryButton: document.querySelector('#manualEntryButton'),
   exportButton: document.querySelector('#exportButton'),
@@ -546,6 +547,7 @@ elements.moveSelectedButton.addEventListener('click', openMoveSolvesDialog);
 elements.deleteSelectedButton.addEventListener('click', deleteSelectedSolves);
 elements.undoDeleteButton.addEventListener('click', undoLastDelete);
 elements.clearAllButton.addEventListener('click', clearAllSolves);
+elements.historyActionsMenu?.addEventListener('click', closeHistoryMenuAfterAction);
 elements.allSelectedStatsButton.addEventListener('click', openSelectedStatsDialog);
 elements.allMarkSelectedButton.addEventListener('click', openMarkPenaltyDialog);
 elements.allPuzzleSelectedButton.addEventListener('click', openPuzzleSolvesDialog);
@@ -593,7 +595,7 @@ elements.allSolvesDialog.addEventListener('close', () => {
 elements.importDialog.addEventListener('close', () => {
   pendingImportPreview = null;
 });
-elements.selectAllSolves.addEventListener('change', toggleSelectAllSolves);
+elements.selectAllSolves?.addEventListener('change', toggleSelectAllSolves);
 elements.selectAllSessionSolves.addEventListener('change', toggleSelectAllSessionSolves);
 elements.allSolvesSearch.addEventListener('input', handleAllSolvesFilterChange);
 elements.allSolvesFromDate.addEventListener('change', handleAllSolvesFilterChange);
@@ -700,6 +702,7 @@ window.__trainTimerDebug = {
 
 document.addEventListener('keydown', handleKeyDown);
 document.addEventListener('keyup', handleKeyUp);
+document.addEventListener('click', closeHistoryMenuOnOutsideClick);
 
 initBluetoothCube3d();
 await bootstrap();
@@ -1396,8 +1399,25 @@ async function confirmImport(mode) {
 }
 
 function toggleSelectAllSolves() {
+  if (!elements.selectAllSolves) return;
   selectedSolveIds = elements.selectAllSolves.checked ? new Set(visibleSolves().map((solve) => solve.id)) : new Set();
   render();
+}
+
+function closeHistoryMenuAfterAction(event) {
+  const target = event.target instanceof HTMLElement ? event.target : null;
+  const button = target?.closest('button');
+  if (!button || button.disabled) return;
+  window.setTimeout(() => {
+    elements.historyActionsMenu.open = false;
+  }, 0);
+}
+
+function closeHistoryMenuOnOutsideClick(event) {
+  if (!elements.historyActionsMenu?.open) return;
+  const target = event.target instanceof Node ? event.target : null;
+  if (target && elements.historyActionsMenu.contains(target)) return;
+  elements.historyActionsMenu.open = false;
 }
 
 function toggleSelectAllSessionSolves() {
@@ -5220,7 +5240,7 @@ function renderHistory() {
   const latest = sessionSolves.slice(-compactHistoryLimit).reverse();
   renderHistoryControls();
   elements.historyRows.replaceChildren(
-    ...latest.map((solve, index) => renderSolveRow(solve, sessionSolves.length - index, sessionSolves)),
+    ...latest.map((solve, index) => renderSolveRow(solve, sessionSolves.length - index, sessionSolves, { compact: true })),
   );
 }
 
@@ -5285,12 +5305,30 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
   const recordTitle = formatRecordTitle(recordMarks);
   const row = document.createElement('div');
   row.className = recordMarks.length > 0 ? 'history-row has-record' : 'history-row';
+  if (options.compact) row.classList.add('compact-history-row');
   const sessionLabel = options.showSession ? sessionNameForSolve(solve) : '';
   const createdAtText = new Date(solve.createdAt).toLocaleString();
   const metadataText = solveRowMetadataText(solve);
   const rowTitle = [recordTitle, sessionLabel, createdAtText, metadataText].filter(Boolean).join(' · ');
   if (rowTitle) row.title = rowTitle;
-  row.innerHTML = `
+  row.innerHTML = options.compact ? `
+        <span>${solveNumber}</span>
+        <span class="time" title="${escapeHtml([solve.duration, formatRecordTitle(singleMarks)].filter(Boolean).join(' · '))}">
+          <span>${displaySolveTime(solve)}</span>
+          ${renderRecordBadges(singleMarks)}
+        </span>
+        <span class="row-tps" title="${escapeHtml(solveTpsTitle(solve))}">${escapeHtml(solveTpsText(solve))}</span>
+        <span class="rolling-average" title="${escapeHtml(['第 ' + solveNumber + ' 条后的 ao5', formatRecordTitle(ao5Marks)].filter(Boolean).join(' · '))}">
+          ${renderAverageButton(solve.id, solveNumber, 5, ao5, ao5Marks)}
+        </span>
+        <span class="rolling-average" title="${escapeHtml(['第 ' + solveNumber + ' 条后的 ao12', formatRecordTitle(ao12Marks)].filter(Boolean).join(' · '))}">
+          ${renderAverageButton(solve.id, solveNumber, 12, ao12, ao12Marks)}
+        </span>
+        <span class="row-actions">
+          <button data-detail-id="${solve.id}" type="button">详情</button>
+          <button data-delete-id="${solve.id}" type="button">删</button>
+        </span>
+      ` : `
         <span><input class="solve-check" data-id="${solve.id}" type="checkbox" ${selectedSolveIds.has(solve.id) ? 'checked' : ''} aria-label="选择第 ${solveNumber} 条成绩" /></span>
         <span>${solveNumber}</span>
         <span class="time" title="${escapeHtml([solve.duration, formatRecordTitle(singleMarks)].filter(Boolean).join(' · '))}">
@@ -5416,9 +5454,11 @@ function renderHistoryControls() {
   }
   elements.clearAllButton.disabled = filteredSolves().length === 0;
   elements.manageSolvesButton.disabled = solves.length === 0;
-  const visibleIds = visibleSolves().map((solve) => solve.id);
-  elements.selectAllSolves.checked = visibleIds.length > 0 && visibleIds.every((id) => selectedSolveIds.has(id));
-  elements.selectAllSolves.indeterminate = visibleIds.some((id) => selectedSolveIds.has(id)) && !elements.selectAllSolves.checked;
+  if (elements.selectAllSolves) {
+    const visibleIds = visibleSolves().map((solve) => solve.id);
+    elements.selectAllSolves.checked = visibleIds.length > 0 && visibleIds.every((id) => selectedSolveIds.has(id));
+    elements.selectAllSolves.indeterminate = visibleIds.some((id) => selectedSolveIds.has(id)) && !elements.selectAllSolves.checked;
+  }
 }
 
 function renderAllSolvesControls() {

@@ -22,14 +22,15 @@ const historyBottomFadeRangePx = 180;
 const cube3dActiveFrameMs = 0;
 const cube3dIdleFrameMs = 1000 / 30;
 const cube3dGyroActiveWindowMs = 900;
-const cube3dGyroSmoothingMs = 14;
-const cube3dGyroFastSmoothingMs = 7;
-const cube3dPoseEpsilon = 0.00005;
+const cube3dGyroSmoothingMs = 6;
+const cube3dGyroFastSmoothingMs = 3.5;
+const cube3dPoseEpsilon = 0.000015;
 const cube3dTelemetryFrameMs = 1000 / 15;
 const cube3dTurnDurationMs = 96;
 const cube3dDoubleTurnDurationMs = 136;
 const cube3dMaxPixelRatio = 1;
 const bluetoothGyroLogIntervalMs = 500;
+const bluetoothGanStateLogIntervalMs = 500;
 const statsChartModes = new Set(['single', 'mo3', 'ao5', 'ao12', 'ao50', 'ao100', 'tps']);
 const statsChartLabels = {
   single: '单次',
@@ -617,7 +618,6 @@ let bluetoothGyro = null;
 let bluetoothGyroLastUpdateAt = 0;
 let bluetoothGyroReferenceInverse = null;
 let bluetoothGyroLastBasisQuaternion = null;
-let bluetoothGyroLastLogAt = 0;
 let bluetoothLastMoveText = '-';
 let bluetoothPhysicalFacelets = '';
 let bluetoothPhysicalFaces = null;
@@ -635,6 +635,8 @@ let bluetoothGanPacketSequence = 0;
 let bluetoothGanLatestAppliedGyroSequence = 0;
 let bluetoothGanDecodeWarning = '';
 let bluetoothGanMacPromptAllowed = true;
+let bluetoothGanLastStateLogAt = 0;
+let bluetoothGanLastStateLogSignature = '';
 let lastBluetoothMovePacketSignature = '';
 let scrambleGuideMoves = [];
 let scrambleGuideInputMoves = [];
@@ -2929,6 +2931,8 @@ function setActiveBluetoothDevice(device) {
   bluetoothGanPendingInit = null;
   bluetoothGanLastMoveCounter = null;
   bluetoothGanDecodeWarning = '';
+  bluetoothGanLastStateLogAt = 0;
+  bluetoothGanLastStateLogSignature = '';
   bluetoothDeviceDisconnectHandler = handleBluetoothDisconnected;
   bluetoothDevice.addEventListener('gattserverdisconnected', bluetoothDeviceDisconnectHandler);
   if (bluetoothGanMac) addBluetoothLog('GAN', '已载入已保存 MAC', bluetoothGanMac);
@@ -3384,6 +3388,8 @@ async function primeGanBluetoothService(service, characteristics) {
   };
   bluetoothGanLastMoveCounter = null;
   bluetoothGanDecodeWarning = '';
+  bluetoothGanLastStateLogAt = 0;
+  bluetoothGanLastStateLogSignature = '';
 
   if (!readCharacteristic) {
     addBluetoothLog('警告', `${protocol.label} 读特征未找到`, bluetoothUuidLabel(service.uuid));
@@ -3647,11 +3653,35 @@ function isGanGyroOnlyPacket(decoded, parsedMoves = []) {
 }
 
 function shouldLogGanBluetoothPacket(decoded, parsedMoves, duplicateMovePacket) {
-  if (!isGanGyroOnlyPacket(decoded, parsedMoves) || duplicateMovePacket) return true;
+  if (!decoded) return true;
+  if (duplicateMovePacket) return false;
+  if (parsedMoves.length > 0) return true;
+  if (decoded.batteryLevel != null || decoded.mode === 'hardware' || decoded.mode === 'invalid') return true;
+  if (decoded.stateSolved === true) return true;
+  if (!isHighFrequencyGanStatePacket(decoded)) return true;
+
   const now = performance.now();
-  if (now - bluetoothGyroLastLogAt < bluetoothGyroLogIntervalMs) return false;
-  bluetoothGyroLastLogAt = now;
+  const signature = highFrequencyGanStateSignature(decoded);
+  const interval = isGanGyroOnlyPacket(decoded, parsedMoves)
+    ? bluetoothGyroLogIntervalMs
+    : bluetoothGanStateLogIntervalMs;
+  if (signature === bluetoothGanLastStateLogSignature && now - bluetoothGanLastStateLogAt < interval) return false;
+  bluetoothGanLastStateLogSignature = signature;
+  bluetoothGanLastStateLogAt = now;
   return true;
+}
+
+function isHighFrequencyGanStatePacket(decoded) {
+  return Boolean(decoded.gyro || decoded.facelets || decoded.mode === 'state');
+}
+
+function highFrequencyGanStateSignature(decoded) {
+  return [
+    decoded.protocol || '',
+    decoded.mode || '',
+    decoded.stateSignature || decoded.facelets || '',
+    decoded.stateSolved === true ? 'solved' : 'active',
+  ].join('|');
 }
 
 function ganBluetoothStatusDetail(decoded, label, hex, duplicateMovePacket) {
@@ -3983,6 +4013,8 @@ function clearBluetoothLog() {
   lastBluetoothMovePacketSignature = '';
   bluetoothGanLastMoveCounter = null;
   bluetoothGanDecodeWarning = '';
+  bluetoothGanLastStateLogAt = 0;
+  bluetoothGanLastStateLogSignature = '';
   renderBluetoothMoves();
   renderBluetoothFeed();
   renderBluetoothLog();

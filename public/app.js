@@ -6989,7 +6989,12 @@ function renderStatsDialog() {
   const summary = summarizeSolves(statsData.solves);
   elements.statsDialogMeta.textContent = `${statsData.label} · ${summary.count} 条成绩`;
   elements.copyStatsSummaryButton.disabled = summary.count === 0;
-  renderStatsTrendChart(statsData.solves, statsData.scope === 'session' ? '最近' : statsData.shortLabel);
+  const statsMetrics = statsData.scope === 'session'
+    ? cachedSessionMetrics(currentSessionId, statsData.solves)
+    : null;
+  renderStatsTrendChart(statsData.solves, statsData.scope === 'session' ? '最近' : statsData.shortLabel, {
+    metricsById: statsMetrics?.byId,
+  });
   renderStatsDistributionChart(statsData.solves, statsData.scope === 'session' ? '当前会话' : statsData.shortLabel);
   renderStatsInsights(statsData.solves, summary);
   renderStatsRecords(statsData.solves, { selected: statsData.scope !== 'session' });
@@ -7297,7 +7302,7 @@ async function copyStatsSummary() {
   }
 }
 
-function renderStatsTrendChart(sessionSolves, chartLabel = '最近') {
+function renderStatsTrendChart(sessionSolves, chartLabel = '最近', options = {}) {
   const canvas = elements.statsTrendChart;
   const context = canvas.getContext('2d');
   const rect = canvas.getBoundingClientRect();
@@ -7315,7 +7320,7 @@ function renderStatsTrendChart(sessionSolves, chartLabel = '最近') {
     .map((solve, index) => ({
       index,
       solve,
-      value: statsChartValueAt(sessionSolves, startIndex + index, statsChartMode),
+      value: statsChartValueAt(sessionSolves, startIndex + index, statsChartMode, options.metricsById?.get(solve.id)),
     }))
     .filter((point) => Number.isFinite(point.value));
   renderStatsChartModeControls();
@@ -7500,9 +7505,14 @@ function renderStatsChartModeControls() {
   });
 }
 
-function statsChartValueAt(sessionSolves, index, mode) {
+function statsChartValueAt(sessionSolves, index, mode, metricEntry = null) {
   const solve = sessionSolves[index];
   if (!solve) return null;
+  if (metricEntry) {
+    if (mode === 'single') return metricEntry.single;
+    if (mode === 'tps') return metricEntry.tps;
+    if (Object.hasOwn(metricEntry.metrics || {}, mode)) return metricEntry.metrics[mode];
+  }
   if (mode === 'mo3') return rollingMeanAt(sessionSolves, index, 3);
   if (mode === 'ao5') return rollingAverageAt(sessionSolves, index, 5);
   if (mode === 'ao12') return rollingAverageAt(sessionSolves, index, 12);
@@ -7975,21 +7985,61 @@ function sessionMetricsSignature(sessionSolves) {
 
 function buildSessionMetrics(sessionSolves) {
   const byId = new Map();
+  const bestValues = {
+    single: null,
+    mo3: null,
+    ao5: null,
+    ao12: null,
+    ao50: null,
+    ao100: null,
+  };
   const entries = sessionSolves.map((solve, index) => {
-    const metrics = solveRowMetrics(sessionSolves, index);
+    const single = effectiveDurationMs(solve);
+    const metrics = {
+      mo3: rollingMeanAt(sessionSolves, index, 3),
+      ao5: rollingAverageAt(sessionSolves, index, 5),
+      ao12: rollingAverageAt(sessionSolves, index, 12),
+      ao50: rollingAverageAt(sessionSolves, index, 50),
+      ao100: rollingAverageAt(sessionSolves, index, 100),
+      recordMarks: [],
+    };
+    metrics.recordMarks = sessionRecordMarks(metrics, single, bestValues);
     const entry = {
       solve,
       index,
-      single: effectiveDurationMs(solve),
+      single,
       tps: Number.isFinite(solve.bluetoothTps) ? solve.bluetoothTps : null,
+      mo3: metrics.mo3,
       ao5: metrics.ao5,
       ao12: metrics.ao12,
+      ao50: metrics.ao50,
+      ao100: metrics.ao100,
       metrics,
     };
     byId.set(solve.id, entry);
     return entry;
   });
   return { entries, byId };
+}
+
+function sessionRecordMarks(metrics, single, bestValues) {
+  const marks = [];
+  updateBestRecordMark(marks, bestValues, 'single', 'single', 'PB', single);
+  updateBestRecordMark(marks, bestValues, 'mo3', 'mo3', 'PB mo3', metrics.mo3);
+  updateBestRecordMark(marks, bestValues, 'ao5', 'ao5', 'PB ao5', metrics.ao5);
+  updateBestRecordMark(marks, bestValues, 'ao12', 'ao12', 'PB ao12', metrics.ao12);
+  updateBestRecordMark(marks, bestValues, 'ao50', 'ao50', 'PB ao50', metrics.ao50);
+  updateBestRecordMark(marks, bestValues, 'ao100', 'ao100', 'PB ao100', metrics.ao100);
+  return marks;
+}
+
+function updateBestRecordMark(marks, bestValues, key, type, label, value) {
+  if (value == null) return;
+  const previousBest = bestValues[key];
+  if (previousBest == null || value < previousBest) {
+    marks.push({ type, label, value });
+    bestValues[key] = value;
+  }
 }
 
 function pruneSessionMetricsCache() {
@@ -8038,8 +8088,11 @@ function renderAllSolvesTagFilter(baseSolves) {
 
 function solveRowMetrics(sessionSolves, solveIndex, seed = {}) {
   return {
+    mo3: Object.hasOwn(seed, 'mo3') ? seed.mo3 : rollingMeanAt(sessionSolves, solveIndex, 3),
     ao5: Object.hasOwn(seed, 'ao5') ? seed.ao5 : rollingAverageAt(sessionSolves, solveIndex, 5),
     ao12: Object.hasOwn(seed, 'ao12') ? seed.ao12 : rollingAverageAt(sessionSolves, solveIndex, 12),
+    ao50: Object.hasOwn(seed, 'ao50') ? seed.ao50 : rollingAverageAt(sessionSolves, solveIndex, 50),
+    ao100: Object.hasOwn(seed, 'ao100') ? seed.ao100 : rollingAverageAt(sessionSolves, solveIndex, 100),
     recordMarks: Object.hasOwn(seed, 'recordMarks') ? seed.recordMarks : recordMarksAt(sessionSolves, solveIndex),
   };
 }

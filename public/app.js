@@ -361,6 +361,7 @@ const elements = {
   algorithmTrainerImportFile: document.querySelector('#algorithmTrainerImportFile'),
   algorithmTrainerNextButton: document.querySelector('#algorithmTrainerNextButton'),
   algorithmTrainerResetButton: document.querySelector('#algorithmTrainerResetButton'),
+  algorithmTrainerOverview: document.querySelector('#algorithmTrainerOverview'),
   algorithmTrainerName: document.querySelector('#algorithmTrainerName'),
   algorithmTrainerGroup: document.querySelector('#algorithmTrainerGroup'),
   algorithmTrainerStarButton: document.querySelector('#algorithmTrainerStarButton'),
@@ -743,6 +744,7 @@ elements.algorithmTrainerExportButton.addEventListener('click', exportAlgorithmT
 elements.algorithmTrainerImportButton.addEventListener('click', () => elements.algorithmTrainerImportFile.click());
 elements.algorithmTrainerImportFile.addEventListener('change', importAlgorithmTrainerCustomCases);
 elements.algorithmTrainerResetButton.addEventListener('click', resetAlgorithmTrainerStats);
+elements.algorithmTrainerOverview.addEventListener('click', handleAlgorithmTrainerOverviewClick);
 elements.bluetoothButton.addEventListener('click', () => connectBluetoothCube());
 elements.bluetoothAnyButton.addEventListener('click', () => connectBluetoothCube({ compatibilityMode: true }));
 elements.bluetoothReconnectButton.addEventListener('click', reconnectBluetoothCube);
@@ -5980,6 +5982,7 @@ function renderAlgorithmTrainerDialog() {
     elements.algorithmTrainerSearch.value = algorithmTrainerSearch;
   }
   const allCases = algorithmTrainerCasesForGroup(allSetCases);
+  renderAlgorithmTrainerOverview(allCases);
   const scopedCases = algorithmTrainerCasesForFocus(allCases);
   const searchActive = algorithmTrainerSearchQuery() !== '';
   const focusCanFallback = algorithmTrainerFocusCanFallback();
@@ -6024,6 +6027,95 @@ function renderAlgorithmTrainerDialog() {
   elements.algorithmTrainerList.replaceChildren(
     ...(listRows.length > 0 ? listRows.map(renderAlgorithmTrainerListItem) : [renderAlgorithmTrainerEmpty(searchActive ? '搜索' : focusLabel)]),
   );
+}
+
+function renderAlgorithmTrainerOverview(cases) {
+  if (!elements.algorithmTrainerOverview) return;
+  const overview = algorithmTrainerOverviewData(cases);
+  const focusItems = [
+    { focus: 'all', label: '全部', count: overview.total, title: '显示当前类型与分组的全部公式' },
+    { focus: 'review', label: '复习', count: overview.review, title: '未练、薄弱、久未练或计时偏慢的公式' },
+    { focus: 'new', label: '未练', count: overview.newCases, title: '还没有训练记录的公式' },
+    { focus: 'weak', label: '薄弱', count: overview.weak, title: '准确率低或最近未连续掌握的公式' },
+    { focus: 'starred', label: '收藏', count: overview.starred, title: '收藏专项池' },
+  ];
+  const timedText = Number.isFinite(overview.timedAverageMs)
+    ? `均时 ${formatTime(overview.timedAverageMs)}`
+    : '均时 -';
+  elements.algorithmTrainerOverview.replaceChildren(
+    ...focusItems.map((item) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.algorithmFocus = item.focus;
+      button.className = item.focus === algorithmTrainerFocus ? 'active' : '';
+      button.title = item.title;
+      button.innerHTML = `
+        <span>${escapeHtml(item.label)}</span>
+        <strong>${item.count}</strong>
+      `;
+      return button;
+    }),
+    algorithmTrainerOverviewMetric('掌握', `${overview.mastered}/${overview.total}`, '准确率不低于 85% 且最近有连续掌握记录的公式'),
+    algorithmTrainerOverviewMetric('计时', timedText, `当前范围 ${overview.timedCases} 条公式有计时记录`),
+  );
+}
+
+function algorithmTrainerOverviewMetric(label, value, title) {
+  const node = document.createElement('em');
+  node.title = title;
+  node.innerHTML = `
+    <span>${escapeHtml(label)}</span>
+    <strong>${escapeHtml(value)}</strong>
+  `;
+  return node;
+}
+
+function algorithmTrainerOverviewData(cases) {
+  const timedAverages = [];
+  let review = 0;
+  let newCases = 0;
+  let weak = 0;
+  let starred = 0;
+  let mastered = 0;
+  for (const item of cases) {
+    const stats = algorithmTrainerStats[item.id] || {};
+    const total = Math.max(0, Number(stats.total) || 0);
+    const success = Math.max(0, Number(stats.success) || 0);
+    const accuracy = total > 0 ? success / total : 0;
+    if (algorithmTrainerCaseNeedsReviewQueue(item, cases)) review += 1;
+    if (total === 0) newCases += 1;
+    if (algorithmTrainerCaseNeedsReview(item)) weak += 1;
+    if (algorithmTrainerCaseStarred(item.id)) starred += 1;
+    if (total > 0 && accuracy >= 0.85 && (stats.streak || 0) > 0) mastered += 1;
+    const timedCount = Math.max(0, Number(stats.timedCount) || 0);
+    const timedTotalMs = Number(stats.timedTotalMs);
+    if (timedCount > 0 && Number.isFinite(timedTotalMs)) timedAverages.push(timedTotalMs / timedCount);
+  }
+  const timedAverageMs = timedAverages.length > 0
+    ? timedAverages.reduce((sum, value) => sum + value, 0) / timedAverages.length
+    : null;
+  return {
+    total: cases.length,
+    review,
+    newCases,
+    weak,
+    starred,
+    mastered,
+    timedCases: timedAverages.length,
+    timedAverageMs,
+  };
+}
+
+function handleAlgorithmTrainerOverviewClick(event) {
+  const button = event.target instanceof HTMLElement ? event.target.closest('[data-algorithm-focus]') : null;
+  if (!(button instanceof HTMLElement)) return;
+  const focus = button.dataset.algorithmFocus || 'all';
+  if (!Object.hasOwn(algorithmTrainerFocusLabels, focus)) return;
+  cancelAlgorithmTrainerTimer();
+  algorithmTrainerFocus = focus;
+  elements.algorithmTrainerFocus.value = focus;
+  localStorage.setItem('trainTimer.algorithmTrainerFocus', algorithmTrainerFocus);
+  chooseNextAlgorithmTrainerCase();
 }
 
 function renderAlgorithmTrainerListItem(item) {

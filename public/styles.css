@@ -1853,6 +1853,57 @@ dialog[open] {
   padding-right: 10px;
 }
 
+.algorithm-trainer-overview {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.algorithm-trainer-overview button,
+.algorithm-trainer-overview em {
+  display: grid;
+  min-width: 0;
+  min-height: 46px;
+  align-content: center;
+  gap: 3px;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 9px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--ink);
+  font-style: normal;
+  text-align: left;
+  transition: background-color 160ms var(--ease), color 160ms var(--ease), transform 160ms var(--ease);
+}
+
+.algorithm-trainer-overview button:hover,
+.algorithm-trainer-overview button.active {
+  background: rgba(0, 173, 181, 0.15);
+  color: var(--ink-strong);
+  transform: translateY(-1px);
+}
+
+.algorithm-trainer-overview span,
+.algorithm-trainer-overview strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.algorithm-trainer-overview span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.algorithm-trainer-overview strong {
+  color: currentColor;
+  font-size: 15px;
+  font-weight: 780;
+}
+
 .algorithm-trainer-card {
   margin-top: 14px;
   border-radius: 8px;
@@ -3320,6 +3371,10 @@ dialog[open] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .algorithm-trainer-overview {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .session-overview-head,
   .session-overview-row {
     grid-template-columns: minmax(120px, 1.4fr) repeat(3, minmax(58px, 0.7fr));
@@ -3445,6 +3500,10 @@ dialog[open] {
 
   .algorithm-trainer-timer {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .algorithm-trainer-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .algorithm-trainer-setup {

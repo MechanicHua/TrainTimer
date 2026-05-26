@@ -21,8 +21,11 @@ const historyBottomFadeRangePx = 180;
 const cube3dActiveFrameMs = 0;
 const cube3dIdleFrameMs = 1000 / 30;
 const cube3dGyroActiveWindowMs = 900;
-const cube3dGyroSmoothingMs = 8;
-const cube3dGyroFastSmoothingMs = 4;
+const cube3dGyroSmoothingMs = 14;
+const cube3dGyroFastSmoothingMs = 7;
+const cube3dGyroPredictionMaxMs = 36;
+const cube3dGyroPredictionMaxRatio = 0.65;
+const cube3dGyroPredictionIntervalMaxMs = 180;
 const cube3dPoseEpsilon = 0.000015;
 const cube3dTelemetryFrameMs = 1000 / 15;
 const bluetoothGyroStatusFrameMs = 1000 / 12;
@@ -3897,11 +3900,11 @@ function applyBluetoothGyroUpdate(gyro) {
     bluetoothGyroReferenceInverse = new THREE.Quaternion();
     addBluetoothLog('陀螺仪', '绝对姿态已同步', '白面/黄面朝上由 GAN q 参数直接驱动');
   }
-  bluetoothGyroLastBasisQuaternion = basisQuaternion.clone();
-  const relativeQuaternion = basisQuaternion.clone();
+  if (!bluetoothGyroLastBasisQuaternion) bluetoothGyroLastBasisQuaternion = new THREE.Quaternion();
+  bluetoothGyroLastBasisQuaternion.copy(basisQuaternion);
   const displayQuaternion = cube3d
-    ? cube3d.baseQuaternion.clone().multiply(relativeQuaternion)
-    : relativeQuaternion;
+    ? cube3d.gyroDisplayQuaternion.copy(cube3d.baseQuaternion).multiply(basisQuaternion)
+    : basisQuaternion;
   const mappedVelocity = ganGyroVelocityToCube3dBasis(gyro.velocity || {});
   bluetoothGyro = {
     quaternion: {
@@ -3923,11 +3926,25 @@ function applyBluetoothGyroUpdate(gyro) {
     isoTime: new Date().toISOString(),
   };
   if (cube3d?.targetQuaternion) {
-    cube3d.targetQuaternion.copy(displayQuaternion);
+    updateBluetoothCube3dGyroTarget(displayQuaternion, bluetoothGyroLastUpdateAt);
     scheduleBluetoothCube3dAnimation();
   }
   scheduleBluetoothCube3dTelemetryRender();
   return bluetoothGyro;
+}
+
+function updateBluetoothCube3dGyroTarget(displayQuaternion, sampleAt = performance.now()) {
+  if (!cube3d) return;
+  if (cube3d.gyroHasSample) {
+    cube3d.gyroPreviousQuaternion.copy(cube3d.gyroLatestQuaternion);
+    cube3d.gyroPreviousSampleAt = cube3d.gyroSampleAt;
+    cube3d.gyroHasPreviousSample = true;
+  }
+  cube3d.gyroLatestQuaternion.copy(displayQuaternion);
+  cube3d.gyroSampleAt = sampleAt;
+  cube3d.gyroHasSample = true;
+  cube3d.targetQuaternion.copy(displayQuaternion);
+  cube3d.needsRender = true;
 }
 
 function resetBluetoothGyro() {
@@ -3945,8 +3962,17 @@ function resetBluetoothGyro() {
     cube3dTelemetryFrame = 0;
   }
   if (cube3d?.targetQuaternion) cube3d.targetQuaternion.copy(cube3d.baseQuaternion);
+  resetBluetoothCube3dGyroSamples();
   markBluetoothCube3dDirty();
   renderBluetoothCube3dTelemetry();
+}
+
+function resetBluetoothCube3dGyroSamples() {
+  if (!cube3d) return;
+  cube3d.gyroSampleAt = 0;
+  cube3d.gyroPreviousSampleAt = 0;
+  cube3d.gyroHasSample = false;
+  cube3d.gyroHasPreviousSample = false;
 }
 
 function bluetoothGyroQuaternionFromPacket(quaternion = {}) {
@@ -4544,6 +4570,14 @@ async function initBluetoothCube3d() {
       idleQuaternion: new THREE.Quaternion(),
       idleEuler: new THREE.Euler(),
       turnQuaternion: new THREE.Quaternion(),
+      gyroLatestQuaternion: new THREE.Quaternion(),
+      gyroPreviousQuaternion: new THREE.Quaternion(),
+      gyroPredictedQuaternion: new THREE.Quaternion(),
+      gyroDisplayQuaternion: new THREE.Quaternion(),
+      gyroSampleAt: 0,
+      gyroPreviousSampleAt: 0,
+      gyroHasSample: false,
+      gyroHasPreviousSample: false,
       cssWidth: 0,
       cssHeight: 0,
       renderCount: 0,
@@ -4686,10 +4720,11 @@ function updateBluetoothCube3dPose(time) {
   const nextQuaternion = cube3d.nextQuaternion.copy(cube3d.group.quaternion);
   if (bluetoothGyro) {
     const deltaMs = cube3d.lastRenderAt > 0 ? Math.max(0, time - cube3d.lastRenderAt) : 16;
-    const angle = nextQuaternion.angleTo(cube3d.targetQuaternion);
+    const targetQuaternion = bluetoothCube3dPoseTarget(time);
+    const angle = nextQuaternion.angleTo(targetQuaternion);
     const smoothingMs = angle > 0.22 ? cube3dGyroFastSmoothingMs : cube3dGyroSmoothingMs;
     const slerpFactor = Math.min(0.9, 1 - Math.exp(-deltaMs / smoothingMs));
-    nextQuaternion.slerp(cube3d.targetQuaternion, slerpFactor);
+    nextQuaternion.slerp(targetQuaternion, slerpFactor);
   } else {
     const seconds = time / 1000;
     nextQuaternion.copy(cube3d.baseQuaternion);
@@ -4708,6 +4743,31 @@ function updateBluetoothCube3dPose(time) {
   if (changed) cube3d.group.quaternion.copy(nextQuaternion);
   const turnChanged = updateBluetoothCube3dTurnAnimation(time);
   return changed || turnChanged || Boolean(cube3d.turnAnimation) || (!bluetoothGyro && bluetoothLivePreviewMode());
+}
+
+function bluetoothCube3dPoseTarget(time) {
+  if (!cube3d?.gyroHasPreviousSample || !cube3d.gyroHasSample) return cube3d.targetQuaternion;
+  const sampleInterval = cube3d.gyroSampleAt - cube3d.gyroPreviousSampleAt;
+  const elapsed = time - cube3d.gyroSampleAt;
+  if (
+    sampleInterval <= 4
+    || sampleInterval > cube3dGyroPredictionIntervalMaxMs
+    || elapsed <= 0
+    || elapsed > cube3dGyroActiveWindowMs
+  ) {
+    return cube3d.targetQuaternion;
+  }
+
+  const predictionMs = Math.min(
+    elapsed,
+    cube3dGyroPredictionMaxMs,
+    sampleInterval * cube3dGyroPredictionMaxRatio,
+  );
+  if (predictionMs <= 0) return cube3d.targetQuaternion;
+  const predictionT = 1 + predictionMs / sampleInterval;
+  return cube3d.gyroPredictedQuaternion
+    .copy(cube3d.gyroPreviousQuaternion)
+    .slerp(cube3d.gyroLatestQuaternion, predictionT);
 }
 
 function hasRecentBluetoothGyro(time = performance.now()) {

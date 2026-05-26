@@ -5,6 +5,7 @@ export function parseSolveImport(fileName, text, options = {}) {
   if (trimmed.startsWith('{') || trimmed.startsWith('[')) return parseJsonImport(trimmed, options);
 
   if (looksLikeCstimerCsv(trimmed)) return parseCstimerCsvImport(trimmed, options);
+  if (looksLikeCubedeskCsv(trimmed)) return parseCubedeskCsvImport(trimmed, options);
 
   const isCsv = /\.csv$/i.test(fileName || '') || looksLikeCsv(trimmed);
   return isCsv
@@ -20,10 +21,112 @@ function parseJsonImport(text, options = {}) {
 
   const solves = Array.isArray(parsed) ? parsed : parsed.solves;
   if (!Array.isArray(solves)) throw new Error('JSON 中没有 solves 数组');
+  if (looksLikeExternalTimerJsonSolves(solves)) {
+    return parseExternalTimerJsonImport(Array.isArray(parsed) ? {} : parsed, solves, options);
+  }
 
   return {
     source: 'json',
     sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
+    solves,
+  };
+}
+
+function parseExternalTimerJsonImport(data, records, options = {}) {
+  const source = looksLikeCubedeskJsonSolves(records) ? 'cubedesk-json' : 'timer-json';
+  const sessions = new Map();
+  const solves = records.map((record, index) => parseExternalTimerJsonSolve(record, index, data, sessions, source, options));
+
+  return {
+    source,
+    sessions: [...sessions.values()],
+    solves,
+  };
+}
+
+function parseExternalTimerJsonSolve(record, index, data, sessions, source, options) {
+  if (!record || typeof record !== 'object' || Array.isArray(record)) {
+    throw new Error(`JSON 第 ${index + 1} 条成绩格式无效`);
+  }
+  const duration = parseExternalTimerDuration(record);
+  if (!duration) throw new Error(`JSON 第 ${index + 1} 条缺少有效成绩`);
+
+  const puzzle = normalizePuzzle(firstDefined(
+    record.scramblePuzzle,
+    record.scramble_puzzle,
+    record.cube_type,
+    record.cubeType,
+    record.event,
+    record.puzzle,
+  ));
+  const rawSessionId = firstDefined(record.sessionId, record.session_id, record.session?.id, record.session);
+  const sessionId = externalTimerSessionId(rawSessionId, puzzle, source);
+  if (!sessions.has(sessionId)) {
+    sessions.set(sessionId, {
+      id: sessionId,
+      name: externalTimerSessionName(data, rawSessionId, puzzle, source),
+      scramblePuzzle: puzzle,
+    });
+  }
+
+  const bluetoothMoves = parseMoves(firstDefined(record.smart_turns, record.bluetoothMoves, record.moves));
+  const smartTurnCount = parseOptionalInteger(firstDefined(record.smart_turn_count, record.bluetoothMoveCount));
+  const deviceName = String(firstDefined(record.smart_device_id, record.bluetoothDeviceName, '') || '');
+  const smartCube = parseBoolean(firstDefined(record.is_smart_cube, record.isSmartCube, record.smartCube));
+
+  return {
+    id: String(firstDefined(record.id, record.solve_id, record.uuid, '') || '') || createImportId(options),
+    sessionId,
+    createdAt: parseDateValue(firstDefined(record.createdAt, record.created_at, record.ended_at, record.started_at, record.date)) || new Date().toISOString(),
+    durationMs: duration.durationMs,
+    penalty: externalTimerPenalty(record, duration.penalty),
+    scramble: String(firstDefined(record.scramble, record.scramble_text, '') || ''),
+    scrambleSource: source,
+    scramblePuzzle: puzzle,
+    inspectionEnabled: parseBoolean(firstDefined(record.inspectionEnabled, record.inspection_enabled, '')) || Number(record.inspection_time) > 0,
+    timerSource: smartCube || bluetoothMoves.length > 0 ? 'bluetooth' : 'manual',
+    bluetoothMoves,
+    bluetoothMoveCount: smartTurnCount,
+    bluetoothTps: parseOptionalNumber(firstDefined(record.bluetoothTps, record.smart_tps)),
+    bluetoothDeviceName: deviceName,
+    bluetoothProtocols: source === 'cubedesk-json' && (smartCube || bluetoothMoves.length > 0) ? ['cubedesk-smart-cube'] : [],
+    bluetoothSources: deviceName ? [deviceName] : [],
+    tags: parseExternalTags(record),
+    comment: String(firstDefined(record.notes, record.comment, record.description, '') || ''),
+  };
+}
+
+function parseCubedeskCsvImport(text, options = {}) {
+  const rows = parseCsvRows(text).filter((row) => row.some((cell) => cell.trim() !== ''));
+  if (rows.length < 2) throw new Error('CubeDesk CSV 中没有成绩记录');
+
+  const header = rows[0];
+  const sessionId = options.sessionId || 'cubedesk-import';
+  const sessionName = options.sessionName || 'CubeDesk Import';
+  const solves = rows.slice(1).map((row, index) => {
+    const value = (aliases) => csvValue(row, header, aliases);
+    const time = parseCstimerTime(value(['Time', '成绩']));
+    if (!time) throw new Error(`CubeDesk CSV 第 ${index + 2} 行缺少有效成绩`);
+    return {
+      id: createImportId(options),
+      sessionId,
+      createdAt: parseDateValue(value(['Date', 'Created At', 'Ended At', '日期'])) || new Date().toISOString(),
+      durationMs: time.durationMs,
+      penalty: time.penalty,
+      scramble: value(['Scramble', '打乱']),
+      scrambleSource: 'cubedesk-csv',
+      scramblePuzzle: normalizePuzzle(value(['Cube Type', 'cube_type', 'Puzzle', '类型'])),
+      inspectionEnabled: false,
+      timerSource: 'manual',
+      bluetoothMoves: [],
+      tags: [],
+      comment: value(['Notes', 'Comment', '备注']),
+    };
+  });
+
+  return {
+    source: 'cubedesk-csv',
+    sessions: [{ id: sessionId, name: sessionName, scramblePuzzle: options.scramblePuzzle || solves.find((solve) => solve.scramblePuzzle)?.scramblePuzzle || 'three' }],
     solves,
   };
 }
@@ -156,8 +259,47 @@ function looksLikeCstimerCsv(text) {
   return /^No\.;Time;Comment;Scramble;Date(?:;|$)/i.test(text.split(/\r?\n/, 1)[0]);
 }
 
+function looksLikeCubedeskCsv(text) {
+  const firstLine = text.split(/\r?\n/, 1)[0];
+  const header = parseCsvRows(firstLine)[0] || [];
+  const normalized = new Set(header.map(normalizeHeaderName));
+  return normalized.has('index') && normalized.has('time');
+}
+
 function looksLikeCstimerJson(data) {
   return Boolean(data && typeof data === 'object' && cstimerSessionKeys(data).length > 0);
+}
+
+function looksLikeExternalTimerJsonSolves(solves) {
+  const records = solves.filter((solve) => solve && typeof solve === 'object' && !Array.isArray(solve));
+  if (records.length === 0) return false;
+  if (records.some((solve) => Object.hasOwn(solve, 'durationMs'))) return false;
+  const externalFields = new Set([
+    'time',
+    'raw_time',
+    'duration',
+    'duration_ms',
+    'time_ms',
+    'cube_type',
+    'session_id',
+    'started_at',
+    'ended_at',
+    'dnf',
+    'plus_two',
+    'notes',
+    'created_at',
+    'smart_turns',
+  ]);
+  return records.some((record) => Object.keys(record).some((key) => externalFields.has(key)));
+}
+
+function looksLikeCubedeskJsonSolves(solves) {
+  return solves.some((solve) => (
+    solve
+    && typeof solve === 'object'
+    && !Array.isArray(solve)
+    && ['cube_type', 'session_id', 'raw_time', 'plus_two', 'created_at', 'smart_turns'].some((key) => Object.hasOwn(solve, key))
+  ));
 }
 
 function cstimerSessionKeys(data) {
@@ -328,7 +470,9 @@ function parseDurationMs(value) {
 }
 
 function parseMillisecondValue(value) {
-  const numeric = Number(String(value || '').trim());
+  const text = String(value ?? '').trim();
+  if (!text) return null;
+  const numeric = Number(text);
   return Number.isFinite(numeric) ? Math.max(0, Math.round(numeric)) : null;
 }
 
@@ -364,6 +508,81 @@ function parseMoves(value) {
     .split(/[,\s;，；]+/)
     .map((move) => move.trim())
     .filter(Boolean);
+}
+
+function parseExternalTimerDuration(record) {
+  const millisecondValue = firstDefined(
+    record.durationMs,
+    record.duration_ms,
+    record.time_ms,
+    record.timeMillis,
+    record.millis,
+    record.milliseconds,
+  );
+  const millisecondDuration = parseMillisecondValue(millisecondValue);
+  if (millisecondDuration != null) return { durationMs: millisecondDuration, penalty: 'ok' };
+
+  const rawValue = firstDefined(record.raw_time, record.rawTime, record.time, record.duration);
+  if (typeof rawValue === 'string') {
+    const parsed = parseCstimerTime(rawValue);
+    if (parsed) return parsed;
+  }
+
+  const numeric = Number(rawValue);
+  if (!Number.isFinite(numeric) || numeric < 0) return null;
+  const durationMs = Math.round(numeric > 6000 ? numeric : numeric * 1000);
+  return { durationMs, penalty: 'ok' };
+}
+
+function externalTimerPenalty(record, fallback = 'ok') {
+  if (parseBoolean(firstDefined(record.dnf, record.is_dnf, record.isDnf))) return 'dnf';
+  if (parseBoolean(firstDefined(record.plus_two, record.plusTwo, record.plus_2, record.plus2))) return '+2';
+  const status = String(firstDefined(record.penalty, record.status, '') || '').trim().toLowerCase();
+  if (status === 'dnf') return 'dnf';
+  if (status === '+2' || status === 'plus_two' || status === 'plus2') return '+2';
+  return fallback === 'dnf' || fallback === '+2' ? fallback : 'ok';
+}
+
+function parseExternalTags(record) {
+  const tags = parseTags(firstDefined(record.tags, record.tag_names, ''));
+  const trainerName = String(firstDefined(record.trainer_name, record.trainerName, '') || '').trim();
+  if (trainerName) tags.push(trainerName);
+  return [...new Set(tags)];
+}
+
+function externalTimerSessionId(rawSessionId, puzzle, source) {
+  const raw = String(rawSessionId || '').trim();
+  if (raw) return `${source.replace(/[^a-z0-9]+/gi, '-')}-${safeImportIdPart(raw)}`;
+  return `${source.replace(/[^a-z0-9]+/gi, '-')}-${puzzle || 'three'}`;
+}
+
+function externalTimerSessionName(data, rawSessionId, puzzle, source) {
+  const raw = String(rawSessionId || '').trim();
+  const knownSession = Array.isArray(data.sessions)
+    ? data.sessions.find((session) => String(session?.id || session?.session_id || '') === raw)
+    : null;
+  if (knownSession?.name) return String(knownSession.name);
+  if (raw) return `${source === 'cubedesk-json' ? 'CubeDesk' : 'Imported'} ${raw}`;
+  return `${source === 'cubedesk-json' ? 'CubeDesk' : 'Imported'} ${puzzle || 'three'}`;
+}
+
+function csvValue(row, header, aliases) {
+  const normalizedAliases = aliases.map(normalizeHeaderName);
+  const normalizedHeader = header.map(normalizeHeaderName);
+  const index = normalizedHeader.findIndex((cell) => normalizedAliases.includes(cell));
+  return index >= 0 ? row[index] ?? '' : '';
+}
+
+function normalizeHeaderName(value) {
+  return String(value || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+}
+
+function firstDefined(...values) {
+  return values.find((value) => value !== undefined && value !== null);
+}
+
+function safeImportIdPart(value) {
+  return String(value || '').trim().replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'session';
 }
 
 function createImportId(options) {

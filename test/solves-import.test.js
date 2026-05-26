@@ -154,3 +154,87 @@ test('parses csTimer JSON backups with session metadata', () => {
   assert.equal(parsed.solves[2].scramblePuzzle, 'four');
   assert.equal(parsed.solves[2].penalty, 'dnf');
 });
+
+test('parses CubeDesk JSON solves', () => {
+  let nextId = 0;
+  const parsed = parseSolveImport(
+    'cubedesk.json',
+    JSON.stringify({
+      solves: [
+        {
+          id: 'cube-1',
+          time: 12.345,
+          raw_time: 10.345,
+          cube_type: '333',
+          scramble: "R U R'",
+          session_id: 'speed',
+          ended_at: 1716458400123,
+          plus_two: true,
+          notes: 'lockup',
+          is_smart_cube: true,
+          smart_turns: "R U R'",
+          smart_turn_count: 3,
+          smart_device_id: 'GAN12',
+        },
+        {
+          id: 'cube-2',
+          time: -1,
+          raw_time: 62.5,
+          cube_type: '444',
+          scramble: 'F2',
+          session_id: 'big',
+          created_at: '2026-05-23T10:00:00.000Z',
+          dnf: true,
+          trainer_name: 'OLL',
+        },
+      ],
+    }),
+    { createId: () => `cube-${nextId += 1}` },
+  );
+
+  assert.equal(parsed.source, 'cubedesk-json');
+  assert.deepEqual(parsed.sessions, [
+    { id: 'cubedesk-json-speed', name: 'CubeDesk speed', scramblePuzzle: 'three' },
+    { id: 'cubedesk-json-big', name: 'CubeDesk big', scramblePuzzle: 'four' },
+  ]);
+  assert.equal(parsed.solves[0].id, 'cube-1');
+  assert.equal(parsed.solves[0].sessionId, 'cubedesk-json-speed');
+  assert.equal(parsed.solves[0].durationMs, 10345);
+  assert.equal(parsed.solves[0].penalty, '+2');
+  assert.equal(parsed.solves[0].scrambleSource, 'cubedesk-json');
+  assert.equal(parsed.solves[0].scramblePuzzle, 'three');
+  assert.equal(parsed.solves[0].createdAt, new Date(1716458400123).toISOString());
+  assert.deepEqual(parsed.solves[0].bluetoothMoves, ['R', 'U', "R'"]);
+  assert.equal(parsed.solves[0].bluetoothMoveCount, 3);
+  assert.equal(parsed.solves[0].timerSource, 'bluetooth');
+  assert.deepEqual(parsed.solves[0].bluetoothProtocols, ['cubedesk-smart-cube']);
+  assert.deepEqual(parsed.solves[0].bluetoothSources, ['GAN12']);
+  assert.equal(parsed.solves[1].durationMs, 62500);
+  assert.equal(parsed.solves[1].penalty, 'dnf');
+  assert.equal(parsed.solves[1].scramblePuzzle, 'four');
+  assert.deepEqual(parsed.solves[1].tags, ['OLL']);
+});
+
+test('parses CubeDesk CSV solve text exports', () => {
+  let nextId = 0;
+  const parsed = parseSolveImport(
+    'cubedesk_session.csv',
+    [
+      'Index,Time,Scramble,Date,Notes,Cube Type',
+      '1,12.34+,R U,2026-05-23 10:00:00,plus two,3x3',
+      '2,1:02.50,F2,1716458400,slow,4x4',
+    ].join('\n'),
+    { createId: () => `cdcsv-${nextId += 1}` },
+  );
+
+  assert.equal(parsed.source, 'cubedesk-csv');
+  assert.deepEqual(parsed.sessions, [{ id: 'cubedesk-import', name: 'CubeDesk Import', scramblePuzzle: 'three' }]);
+  assert.deepEqual(parsed.solves.map((solve) => solve.id), ['cdcsv-1', 'cdcsv-2']);
+  assert.equal(parsed.solves[0].durationMs, 12340);
+  assert.equal(parsed.solves[0].penalty, '+2');
+  assert.equal(parsed.solves[0].scramble, 'R U');
+  assert.equal(parsed.solves[0].scramblePuzzle, 'three');
+  assert.equal(parsed.solves[0].comment, 'plus two');
+  assert.equal(parsed.solves[1].durationMs, 62500);
+  assert.equal(parsed.solves[1].scramblePuzzle, 'four');
+});

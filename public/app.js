@@ -568,6 +568,7 @@ const elements = {
   pbToast: document.querySelector('#pbToast'),
   pbToastTitle: document.querySelector('#pbToastTitle'),
   pbToastMeta: document.querySelector('#pbToastMeta'),
+  pbToastQueue: document.querySelector('#pbToastQueue'),
 };
 
 let appState = 'loading';
@@ -1198,13 +1199,14 @@ function startInspection(options = {}) {
     : 0;
   reminded = new Set();
   activePenalty = 'ok';
-  renderTimer();
-  triggerInspectionEntryAnimation();
   cancelAnimationFrame(inspectionFrame);
-  inspectionTick();
+  triggerInspectionEntryAnimation();
+  renderTimer();
+  inspectionFrame = requestAnimationFrame(inspectionTick);
 }
 
 function triggerInspectionEntryAnimation() {
+  delete document.body.dataset.inspectionEnter;
   document.body.dataset.inspectionEnter = 'true';
   window.clearTimeout(inspectionEntryTimer);
   inspectionEntryTimer = window.setTimeout(() => {
@@ -1379,6 +1381,7 @@ function enqueuePbToasts(items) {
     }));
   if (nextItems.length === 0) return;
   pbToastQueue.push(...nextItems);
+  updatePbToastQueueIndicator();
   if (!pbToastActive) showNextPbToast();
 }
 
@@ -1387,14 +1390,17 @@ function showNextPbToast() {
   const item = pbToastQueue.shift();
   if (!item) {
     pbToastActive = false;
+    updatePbToastQueueIndicator();
     return;
   }
   pbToastActive = true;
   window.clearTimeout(pbToastTimer);
+  elements.pbToast.dataset.celebrate = item.celebrate ? 'true' : 'false';
   elements.pbToastTitle.textContent = item.title;
   elements.pbToastMeta.textContent = item.meta;
   elements.pbToast.hidden = false;
   elements.pbToast.classList.remove('visible');
+  updatePbToastQueueIndicator();
   if (item.celebrate) launchPbConfetti();
   requestAnimationFrame(() => elements.pbToast.classList.add('visible'));
   pbToastTimer = window.setTimeout(() => {
@@ -1403,7 +1409,14 @@ function showNextPbToast() {
       elements.pbToast.hidden = true;
       showNextPbToast();
     }, 260);
-  }, 5600);
+  }, 6400);
+}
+
+function updatePbToastQueueIndicator() {
+  if (!elements.pbToastQueue) return;
+  const queuedCount = pbToastQueue.length;
+  elements.pbToastQueue.hidden = queuedCount === 0;
+  elements.pbToastQueue.textContent = queuedCount > 0 ? `+${queuedCount}` : '';
 }
 
 function launchPbConfetti() {
@@ -7849,6 +7862,9 @@ function importDuplicateInfo(incomingSolves) {
 function importSourceLabel(source) {
   if (source === 'cstimer-csv') return 'csTimer CSV';
   if (source === 'cstimer-json') return 'csTimer JSON';
+  if (source === 'cubedesk-csv') return 'CubeDesk CSV';
+  if (source === 'cubedesk-json') return 'CubeDesk JSON';
+  if (source === 'timer-json') return '网页计时器 JSON';
   if (source === 'csv') return 'TrainTimer CSV';
   if (source === 'json') return 'TrainTimer JSON';
   return '未知格式';
@@ -8958,7 +8974,8 @@ function inspectionPenaltyForElapsed(elapsedSeconds) {
 function inspectionDisplayForElapsed(elapsedSeconds) {
   if (elapsedSeconds >= inspectionDnfSeconds) return 'DNF';
   if (elapsedSeconds >= inspectionSeconds) return '+2';
-  return Math.max(0, inspectionSeconds - elapsedSeconds).toFixed(1);
+  const remainingTenths = Math.ceil(Math.max(0, inspectionSeconds - elapsedSeconds - 0.0001) * 10);
+  return (remainingTenths / 10).toFixed(1);
 }
 
 function parseTimeInput(value) {

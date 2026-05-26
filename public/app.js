@@ -2,6 +2,7 @@ import { applyMove, createSolvedCube, cubeStateFromScramble, facesFromCube, isSo
 import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from './bluetooth-moves.js';
 import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv, solvesToCstimerJson, solvesToTextTable } from './solves-export.js';
 import { decodeGanBluetoothPacketFast } from './gan-bluetooth-fast.js';
+import { ganBluetoothMovesFromDecoded } from './gan-move-history.js';
 import { ganGyroQuaternionToCube3dBasis, ganGyroVelocityToCube3dBasis } from './gyro-orientation.js';
 import { parseSolveImport } from './solves-import.js';
 import { buildStatsSummary } from './stats-summary.js';
@@ -632,6 +633,7 @@ let solveReplayCube = null;
 let solveReplayPreviewLabel = '';
 let statsScope = 'session';
 let pbToastTimer = 0;
+let pbConfettiTimer = 0;
 let scrambleCopyHintTimer = 0;
 let bluetoothDevice = null;
 let bluetoothDeviceDisconnectHandler = null;
@@ -1340,6 +1342,9 @@ function showPbToastForSolve(savedSolve) {
   const title = marks.length === 1 ? marks[0].label : `${marks[0].label} +${marks.length - 1}`;
   const meta = marks.map((mark) => `${mark.label} ${timeOrDash(mark.value)}`).join(' · ');
   showPbToast(title, meta);
+  if (marks.some((mark) => mark.type === 'single' || mark.type === 'ao5')) {
+    launchPbConfetti();
+  }
 }
 
 function showPbToast(title, meta) {
@@ -1356,6 +1361,52 @@ function showPbToast(title, meta) {
       elements.pbToast.hidden = true;
     }, 260);
   }, 3600);
+}
+
+function launchPbConfetti() {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+  window.clearTimeout(pbConfettiTimer);
+  document.querySelector('.pb-confetti')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'pb-confetti';
+  overlay.setAttribute('aria-hidden', 'true');
+  const colors = ['#00c7d9', '#34c759', '#ffcc00', '#ff375f', '#64d2ff', '#bf5af2', '#ff9f0a'];
+  const pieceCount = Math.min(126, Math.max(72, Math.round(window.innerWidth / 12)));
+  const maxDistance = Math.max(240, Math.min(window.innerWidth, 1180) * 0.58);
+  const fallDistance = Math.max(380, window.innerHeight * 0.72);
+
+  for (let index = 0; index < pieceCount; index += 1) {
+    const piece = document.createElement('i');
+    piece.className = 'pb-confetti-piece';
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 120 + Math.random() * maxDistance;
+    const dx = Math.cos(angle) * distance;
+    const dy = Math.sin(angle) * distance * 0.58 - 90 - Math.random() * 120;
+    const wind = (Math.random() - 0.5) * 220;
+    const width = 7 + Math.random() * 9;
+    const height = 10 + Math.random() * 18;
+    const rotateStart = Math.round(Math.random() * 360);
+    const rotateEnd = Math.round((Math.random() > 0.5 ? 1 : -1) * (540 + Math.random() * 720));
+    piece.style.setProperty('--dx', `${dx.toFixed(1)}px`);
+    piece.style.setProperty('--dy', `${dy.toFixed(1)}px`);
+    piece.style.setProperty('--end-x', `${(dx + wind).toFixed(1)}px`);
+    piece.style.setProperty('--end-y', `${(dy + fallDistance + Math.random() * 180).toFixed(1)}px`);
+    piece.style.setProperty('--rotate-start', `${rotateStart}deg`);
+    piece.style.setProperty('--rotate-mid', `${rotateStart + rotateEnd}deg`);
+    piece.style.setProperty('--rotate-fall', `${Math.round(rotateStart + rotateEnd * 1.35)}deg`);
+    piece.style.setProperty('--delay', `${(Math.random() * 120).toFixed(0)}ms`);
+    piece.style.setProperty('--width', `${width.toFixed(1)}px`);
+    piece.style.setProperty('--height', `${height.toFixed(1)}px`);
+    piece.style.setProperty('--color', colors[index % colors.length]);
+    overlay.append(piece);
+  }
+
+  document.body.append(overlay);
+  pbConfettiTimer = window.setTimeout(() => {
+    overlay.remove();
+    pbConfettiTimer = 0;
+  }, 2100);
 }
 
 async function nextSolve() {
@@ -3676,10 +3727,11 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
   const stoppedFromStatePacket = statePacketSolved
     && stopTimingFromBluetoothSolved(packetReceivedAt, { byStatePacket: true });
   const hasMoveCounter = Number.isInteger(decoded.moveCounter);
+  const previousMoveCounter = bluetoothGanLastMoveCounter;
   const duplicateMovePacket = hasMoveCounter
-    && decoded.moves?.length > 0
-    && decoded.moveCounter === bluetoothGanLastMoveCounter;
-  const parsedMoves = duplicateMovePacket ? [] : (Array.isArray(decoded.moves) ? decoded.moves : []);
+    && ganBluetoothDecodedMoveCount(decoded) > 0
+    && decoded.moveCounter === previousMoveCounter;
+  const parsedMoves = duplicateMovePacket ? [] : ganBluetoothMovesFromDecoded(decoded, previousMoveCounter);
   if (hasMoveCounter && (decoded.mode === 'state' || decoded.mode === 'move' || parsedMoves.length > 0)) {
     bluetoothGanLastMoveCounter = decoded.moveCounter;
   }
@@ -3732,6 +3784,12 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
     duplicate: duplicateMovePacket,
     tracked: trackingMoves,
   });
+}
+
+function ganBluetoothDecodedMoveCount(decoded = {}) {
+  const moves = Array.isArray(decoded.moves) ? decoded.moves.length : 0;
+  const historyMoves = Array.isArray(decoded.historyMoves) ? decoded.historyMoves.length : 0;
+  return Math.max(moves, historyMoves);
 }
 
 async function decodeGanBluetoothPacket(protocol, mac, bytes) {

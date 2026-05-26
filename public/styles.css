@@ -228,6 +228,67 @@ button:disabled {
   font-style: normal;
 }
 
+.pb-confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+  overflow: hidden;
+  pointer-events: none;
+  contain: layout paint;
+}
+
+.pb-confetti-piece {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  width: var(--width);
+  height: var(--height);
+  border-radius: 2px;
+  background: var(--color);
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.14);
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(var(--rotate-start)) scale(0.35);
+  animation: pb-confetti-burst 1750ms cubic-bezier(0.13, 0.9, 0.18, 1) var(--delay) forwards;
+  will-change: transform, opacity;
+}
+
+.pb-confetti-piece:nth-child(3n) {
+  border-radius: 999px;
+}
+
+@keyframes pb-confetti-burst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(var(--rotate-start)) scale(0.35);
+  }
+
+  9% {
+    opacity: 1;
+  }
+
+  45% {
+    opacity: 1;
+    transform:
+      translate(calc(-50% + var(--dx)), calc(-50% + var(--dy)))
+      rotate(var(--rotate-mid))
+      scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      translate(calc(-50% + var(--end-x)), calc(-50% + var(--end-y)))
+      rotate(var(--rotate-fall))
+      scale(0.86);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pb-confetti {
+    display: none;
+  }
+}
+
 h1,
 h2,
 p {

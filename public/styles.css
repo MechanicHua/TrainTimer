@@ -166,27 +166,34 @@ button:disabled {
 
 .pb-toast {
   position: fixed;
-  top: 18px;
+  top: 22px;
   left: 50%;
-  z-index: 20;
+  z-index: 26;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  min-width: min(360px, calc(100vw - 32px));
-  max-width: min(520px, calc(100vw - 32px));
+  min-width: min(390px, calc(100vw - 32px));
+  max-width: min(560px, calc(100vw - 32px));
   align-items: center;
-  column-gap: 10px;
-  row-gap: 2px;
-  padding: 12px 16px;
-  border-radius: 16px;
-  background: rgba(24, 24, 28, 0.78);
-  color: rgba(245, 245, 247, 0.9);
+  column-gap: 14px;
+  row-gap: 3px;
+  padding: 15px 18px;
+  border: 1px solid rgba(var(--accent-rgb), 0.38);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(var(--accent-rgb), 0.28), transparent 38%),
+    linear-gradient(135deg, rgba(28, 28, 32, 0.92), rgba(12, 12, 16, 0.84));
+  color: rgba(245, 245, 247, 0.96);
   opacity: 0;
   pointer-events: none;
-  transform: translate(-50%, -18px) scale(0.98);
+  transform: translate(-50%, -20px) scale(0.96);
   transition:
-    opacity 220ms var(--ease),
-    transform 220ms var(--ease);
-  backdrop-filter: blur(18px);
+    opacity 260ms var(--ease),
+    transform 260ms var(--ease);
+  box-shadow:
+    0 22px 70px rgba(0, 0, 0, 0.42),
+    0 0 42px rgba(var(--accent-rgb), 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(22px) saturate(1.22);
 }
 
 .pb-toast.visible {
@@ -197,15 +204,20 @@ button:disabled {
 .pb-toast span {
   grid-row: 1 / span 2;
   display: inline-flex;
-  width: 42px;
-  height: 42px;
+  width: 54px;
+  height: 54px;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: rgba(0, 230, 118, 0.14);
-  color: var(--success-highlight);
+  background:
+    linear-gradient(135deg, rgba(var(--accent-rgb), 0.95), rgba(255, 255, 255, 0.78));
+  color: #050506;
   font-size: 12px;
-  font-weight: 860;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  box-shadow:
+    0 12px 30px rgba(var(--accent-rgb), 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 .pb-toast strong,
@@ -218,14 +230,16 @@ button:disabled {
 
 .pb-toast strong {
   color: var(--ink-strong);
-  font-size: 14px;
-  font-weight: 780;
+  font-size: 17px;
+  font-weight: 820;
 }
 
 .pb-toast em {
-  color: var(--muted-strong);
-  font-size: 12px;
+  color: rgba(245, 245, 247, 0.92);
+  font-size: 26px;
   font-style: normal;
+  font-weight: 760;
+  line-height: 1.05;
 }
 
 .pb-confetti {
@@ -1725,7 +1739,7 @@ body[data-inspection-enter="true"]:not([data-state="timing"]) .timer-band {
 }
 
 body[data-inspection-enter="true"]:not([data-state="timing"]) .timer-display {
-  animation: inspection-number-in 460ms var(--ease) both;
+  animation: inspection-number-in 260ms var(--ease) both;
 }
 
 body[data-inspection-enter="true"]:not([data-state="timing"]) .timer-hint {
@@ -3319,12 +3333,8 @@ dialog[open] {
 
 @keyframes inspection-number-in {
   from {
-    opacity: 0;
-    transform: translateY(16px) scale(0.94);
-  }
-  62% {
-    opacity: 1;
-    transform: translateY(-2px) scale(1.012);
+    opacity: 0.82;
+    transform: translateY(0) scale(1);
   }
   to {
     opacity: 1;

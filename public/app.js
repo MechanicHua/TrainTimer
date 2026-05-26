@@ -632,6 +632,8 @@ let solveReplayPreviewActive = false;
 let solveReplayCube = null;
 let solveReplayPreviewLabel = '';
 let statsScope = 'session';
+let pbToastQueue = [];
+let pbToastActive = false;
 let pbToastTimer = 0;
 let pbConfettiTimer = 0;
 let scrambleCopyHintTimer = 0;
@@ -1196,6 +1198,7 @@ function startInspection(options = {}) {
     : 0;
   reminded = new Set();
   activePenalty = 'ok';
+  renderTimer();
   triggerInspectionEntryAnimation();
   cancelAnimationFrame(inspectionFrame);
   inspectionTick();
@@ -1347,11 +1350,11 @@ function showPbToastForSolve(savedSolve) {
   const marks = recordMarksAt(sessionSolves, solveIndex)
     .filter((mark) => ['single', 'mo3', 'ao5', 'ao12', 'ao50', 'ao100'].includes(mark.type));
   if (marks.length === 0) return;
-  const primaryMark = marks[0];
-  showPbToast(pbToastRecordTitle(primaryMark), timeOrDash(primaryMark.value));
-  if (marks.some((mark) => mark.type === 'single' || mark.type === 'ao5')) {
-    launchPbConfetti();
-  }
+  enqueuePbToasts(marks.map((mark) => ({
+    title: pbToastRecordTitle(mark),
+    meta: timeOrDash(mark.value),
+    celebrate: mark.type === 'single' || mark.type === 'ao5',
+  })));
 }
 
 function pbToastRecordTitle(mark) {
@@ -1366,18 +1369,39 @@ function pbToastRecordTitle(mark) {
   return labels[mark?.type] || 'PB';
 }
 
-function showPbToast(title, meta) {
+function enqueuePbToasts(items) {
+  const nextItems = items
+    .filter((item) => item?.title && item?.meta)
+    .map((item) => ({
+      title: String(item.title),
+      meta: String(item.meta),
+      celebrate: item.celebrate === true,
+    }));
+  if (nextItems.length === 0) return;
+  pbToastQueue.push(...nextItems);
+  if (!pbToastActive) showNextPbToast();
+}
+
+function showNextPbToast() {
   if (!elements.pbToast) return;
+  const item = pbToastQueue.shift();
+  if (!item) {
+    pbToastActive = false;
+    return;
+  }
+  pbToastActive = true;
   window.clearTimeout(pbToastTimer);
-  elements.pbToastTitle.textContent = title;
-  elements.pbToastMeta.textContent = meta;
+  elements.pbToastTitle.textContent = item.title;
+  elements.pbToastMeta.textContent = item.meta;
   elements.pbToast.hidden = false;
   elements.pbToast.classList.remove('visible');
+  if (item.celebrate) launchPbConfetti();
   requestAnimationFrame(() => elements.pbToast.classList.add('visible'));
   pbToastTimer = window.setTimeout(() => {
     elements.pbToast.classList.remove('visible');
     pbToastTimer = window.setTimeout(() => {
       elements.pbToast.hidden = true;
+      showNextPbToast();
     }, 260);
   }, 5600);
 }

@@ -13,8 +13,15 @@
   --line-soft: rgba(255, 255, 255, 0.1);
   --accent: #00adb5;
   --accent-strong: #18d6df;
-  --accent-soft: rgba(0, 173, 181, 0.16);
+  --accent-rgb: 0, 173, 181;
+  --accent-strong-rgb: 24, 214, 223;
+  --accent-highlight: #8dffbe;
+  --accent-highlight-rgb: 141, 255, 190;
+  --accent-soft: rgba(var(--accent-rgb), 0.16);
+  --accent-focus: rgba(var(--accent-rgb), 0.24);
   --success: #00e676;
+  --success-highlight: #8dffbe;
+  --success-highlight-rgb: 141, 255, 190;
   --warning: #ff9f0a;
   --danger: #ff453a;
   --danger-soft: rgba(255, 69, 58, 0.14);
@@ -25,6 +32,61 @@
   --shadow-lg: none;
   --radius: 8px;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+body[data-accent="blue"] {
+  --accent: #0a84ff;
+  --accent-strong: #5eb4ff;
+  --accent-rgb: 10, 132, 255;
+  --accent-strong-rgb: 94, 180, 255;
+  --accent-highlight: #b6dcff;
+  --accent-highlight-rgb: 182, 220, 255;
+  --accent-soft: rgba(10, 132, 255, 0.16);
+  --accent-focus: rgba(10, 132, 255, 0.24);
+}
+
+body[data-accent="green"] {
+  --accent: #30d158;
+  --accent-strong: #63e6a1;
+  --accent-rgb: 48, 209, 88;
+  --accent-strong-rgb: 99, 230, 161;
+  --accent-highlight: #c8f7d7;
+  --accent-highlight-rgb: 200, 247, 215;
+  --accent-soft: rgba(48, 209, 88, 0.16);
+  --accent-focus: rgba(48, 209, 88, 0.24);
+}
+
+body[data-accent="orange"] {
+  --accent: #ff9f0a;
+  --accent-strong: #ffbd45;
+  --accent-rgb: 255, 159, 10;
+  --accent-strong-rgb: 255, 189, 69;
+  --accent-highlight: #ffe2ad;
+  --accent-highlight-rgb: 255, 226, 173;
+  --accent-soft: rgba(255, 159, 10, 0.16);
+  --accent-focus: rgba(255, 159, 10, 0.24);
+}
+
+body[data-accent="pink"] {
+  --accent: #ff375f;
+  --accent-strong: #ff7a98;
+  --accent-rgb: 255, 55, 95;
+  --accent-strong-rgb: 255, 122, 152;
+  --accent-highlight: #ffd0da;
+  --accent-highlight-rgb: 255, 208, 218;
+  --accent-soft: rgba(255, 55, 95, 0.16);
+  --accent-focus: rgba(255, 55, 95, 0.24);
+}
+
+body[data-accent="purple"] {
+  --accent: #bf5af2;
+  --accent-strong: #d694ff;
+  --accent-rgb: 191, 90, 242;
+  --accent-strong-rgb: 214, 148, 255;
+  --accent-highlight: #ead2ff;
+  --accent-highlight-rgb: 234, 210, 255;
+  --accent-soft: rgba(191, 90, 242, 0.16);
+  --accent-focus: rgba(191, 90, 242, 0.24);
 }
 
 * {
@@ -67,7 +129,7 @@ button:focus-visible,
 select:focus-visible,
 input:focus-visible,
 textarea:focus-visible {
-  box-shadow: 0 0 0 3px rgba(0, 173, 181, 0.24);
+  box-shadow: 0 0 0 3px var(--accent-focus);
 }
 
 button {
@@ -141,7 +203,7 @@ button:disabled {
   justify-content: center;
   border-radius: 50%;
   background: rgba(0, 230, 118, 0.14);
-  color: #8dffbe;
+  color: var(--success-highlight);
   font-size: 12px;
   font-weight: 860;
 }
@@ -507,7 +569,7 @@ body[data-state="timing"] .timer-display {
 
 .stats-panel .session-progress-stat:hover,
 .stats-panel .session-progress-stat:focus-visible {
-  background: rgba(0, 173, 181, 0.12);
+  background: rgba(var(--accent-rgb), 0.12);
   outline: 0;
   transform: translateY(-1px);
 }
@@ -525,7 +587,7 @@ body[data-state="timing"] .timer-display {
 }
 
 .stats-panel .session-progress-stat.done em {
-  color: #8dffbe;
+  color: var(--success-highlight);
 }
 
 .stats-panel .session-progress-stat i {
@@ -544,7 +606,7 @@ body[data-state="timing"] .timer-display {
   width: 100%;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--accent), #8dffbe);
+  background: linear-gradient(90deg, var(--accent), var(--accent-highlight));
   content: "";
   transform: scaleX(var(--session-goal-progress, 0));
   transform-origin: left center;
@@ -704,13 +766,13 @@ body[data-state="timing"] .timer-display {
 
 .scramble-move.correct {
   background: rgba(0, 230, 118, 0.1);
-  color: #8dffbe;
+  color: var(--success-highlight);
 }
 
 .scramble-move.current {
-  background: rgba(0, 173, 181, 0.035);
+  background: rgba(var(--accent-rgb), 0.035);
   color: #f5feff;
-  box-shadow: inset 0 -2px 0 rgba(0, 173, 181, 0.62);
+  box-shadow: inset 0 -2px 0 rgba(var(--accent-rgb), 0.62);
 }
 
 .scramble-move.partial {
@@ -747,7 +809,7 @@ body[data-state="timing"] .timer-display {
 }
 
 .scramble-guide-meta.complete {
-  color: #8dffbe;
+  color: var(--success-highlight);
 }
 
 .cube-net {
@@ -989,9 +1051,9 @@ body[data-state="timing"] .timer-display {
   min-width: 42px;
   max-width: 80px;
   overflow: hidden;
-  border: 1px solid rgba(0, 173, 181, 0.24);
+  border: 1px solid rgba(var(--accent-rgb), 0.24);
   border-radius: 7px;
-  background: rgba(0, 173, 181, 0.12);
+  background: rgba(var(--accent-rgb), 0.12);
   color: var(--accent);
   font-style: normal;
   font-size: 15px;
@@ -1004,7 +1066,7 @@ body[data-state="timing"] .timer-display {
 }
 
 .bluetooth-3d-head em.pulse {
-  background: rgba(0, 173, 181, 0.2);
+  background: rgba(var(--accent-rgb), 0.2);
   transform: translateY(-1px) scale(1.04);
 }
 
@@ -1097,7 +1159,7 @@ body[data-state="timing"] .timer-display {
 
 .history-actions-menu > summary:hover,
 .history-actions-menu[open] > summary {
-  background: rgba(0, 173, 181, 0.16);
+  background: rgba(var(--accent-rgb), 0.16);
   color: var(--accent-strong);
 }
 
@@ -1212,7 +1274,7 @@ body[data-state="timing"] .timer-display {
   overscroll-behavior: contain;
   padding-right: 4px;
   scroll-behavior: smooth;
-  scrollbar-color: rgba(0, 173, 181, 0.34) transparent;
+  scrollbar-color: rgba(var(--accent-rgb), 0.34) transparent;
   scrollbar-width: thin;
   mask-image: linear-gradient(
     to bottom,
@@ -1240,11 +1302,11 @@ body[data-state="timing"] .timer-display {
 
 .history-rows::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: rgba(0, 173, 181, 0.24);
+  background: rgba(var(--accent-rgb), 0.24);
 }
 
 .history-rows:hover::-webkit-scrollbar-thumb {
-  background: rgba(0, 173, 181, 0.42);
+  background: rgba(var(--accent-rgb), 0.42);
 }
 
 .history-head,
@@ -1320,11 +1382,11 @@ body[data-state="timing"] .timer-display {
 }
 
 .history-row.has-record {
-  background: rgba(0, 173, 181, 0.075);
+  background: rgba(var(--accent-rgb), 0.075);
 }
 
 .history-row.has-record:hover {
-  background: rgba(0, 173, 181, 0.115);
+  background: rgba(var(--accent-rgb), 0.115);
 }
 
 .history-row span {
@@ -1406,7 +1468,7 @@ body[data-state="timing"] .timer-display {
   max-width: 82px;
   padding: 1px 5px;
   border-radius: 999px;
-  background: rgba(0, 173, 181, 0.13);
+  background: rgba(var(--accent-rgb), 0.13);
   color: var(--accent);
   font-size: 10px;
   font-weight: 760;
@@ -1438,7 +1500,7 @@ body[data-state="timing"] .timer-display {
   height: 15px;
   padding: 0 4px;
   border-radius: 999px;
-  background: rgba(0, 173, 181, 0.14);
+  background: rgba(var(--accent-rgb), 0.14);
   color: var(--accent);
   font-size: 9px;
   font-weight: 820;
@@ -1447,7 +1509,7 @@ body[data-state="timing"] .timer-display {
 
 .history-row .record-badge.average {
   background: rgba(0, 230, 118, 0.14);
-  color: #8dffbe;
+  color: var(--success-highlight);
 }
 
 .history-row button,
@@ -1471,7 +1533,7 @@ body[data-state="timing"] .timer-display {
 }
 
 .history-row button:hover:not(:disabled) {
-  background: rgba(0, 173, 181, 0.13);
+  background: rgba(var(--accent-rgb), 0.13);
   color: var(--accent-strong);
   transform: scale(1.06);
 }
@@ -1557,7 +1619,7 @@ body[data-state="timing"] .timer-display {
 }
 
 .action-row .icon-lock-button.active {
-  background: rgba(0, 173, 181, 0.18);
+  background: rgba(var(--accent-rgb), 0.18);
   color: var(--accent-strong);
 }
 
@@ -1879,7 +1941,7 @@ dialog[open] {
 
 .algorithm-trainer-overview button:hover,
 .algorithm-trainer-overview button.active {
-  background: rgba(0, 173, 181, 0.15);
+  background: rgba(var(--accent-rgb), 0.15);
   color: var(--ink-strong);
   transform: translateY(-1px);
 }
@@ -2045,7 +2107,7 @@ dialog[open] {
 }
 
 .algorithm-trainer-setup button:hover:not(:disabled) {
-  background: rgba(0, 173, 181, 0.18);
+  background: rgba(var(--accent-rgb), 0.18);
   color: var(--ink-strong);
   transform: translateY(-1px);
 }
@@ -2083,7 +2145,7 @@ dialog[open] {
 }
 
 .algorithm-trainer-timer button.running {
-  background: rgba(141, 255, 190, 0.16);
+  background: rgba(var(--accent-highlight-rgb), 0.16);
   color: var(--accent-strong);
 }
 
@@ -2119,7 +2181,7 @@ dialog[open] {
 
 .algorithm-trainer-item:hover,
 .algorithm-trainer-item.active {
-  background: rgba(0, 173, 181, 0.14);
+  background: rgba(var(--accent-rgb), 0.14);
   color: var(--ink-strong);
 }
 
@@ -2412,7 +2474,7 @@ dialog[open] {
 }
 
 .history-load-more button:hover {
-  background: rgba(0, 173, 181, 0.16);
+  background: rgba(var(--accent-rgb), 0.16);
   color: var(--ink-strong);
 }
 
@@ -2525,7 +2587,7 @@ dialog[open] {
 
 .stats-chart-modes button:hover:not(:disabled),
 .stats-chart-modes button.active {
-  background: rgba(0, 173, 181, 0.16);
+  background: rgba(var(--accent-rgb), 0.16);
   color: var(--accent-strong);
   transform: none;
 }
@@ -2660,7 +2722,7 @@ dialog[open] {
 }
 
 .session-overview-row.active {
-  border-color: rgba(0, 173, 181, 0.24);
+  border-color: rgba(var(--accent-rgb), 0.24);
   background: var(--accent-soft);
 }
 
@@ -2783,7 +2845,7 @@ dialog[open] {
 }
 
 .average-detail-row.counted {
-  background: rgba(0, 173, 181, 0.09);
+  background: rgba(var(--accent-rgb), 0.09);
 }
 
 .average-detail-row.trimmed-best,
@@ -2819,7 +2881,7 @@ dialog[open] {
 }
 
 .average-detail-row.counted .trim-label {
-  background: rgba(0, 173, 181, 0.13);
+  background: rgba(var(--accent-rgb), 0.13);
   color: var(--accent);
 }
 
@@ -3010,9 +3072,9 @@ dialog[open] {
   min-width: 0;
   gap: 2px;
   padding: 7px;
-  border: 1px solid rgba(0, 173, 181, 0.16);
+  border: 1px solid rgba(var(--accent-rgb), 0.16);
   border-radius: 8px;
-  background: rgba(0, 173, 181, 0.08);
+  background: rgba(var(--accent-rgb), 0.08);
 }
 
 .solve-cfop-card.pending {
@@ -3063,7 +3125,7 @@ dialog[open] {
   min-width: 0;
   min-height: 28px;
   padding: 0 9px;
-  border: 1px solid rgba(0, 173, 181, 0.14);
+  border: 1px solid rgba(var(--accent-rgb), 0.14);
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.07);
   color: var(--ink);
@@ -3080,8 +3142,8 @@ dialog[open] {
 }
 
 .solve-move-chip.active {
-  border-color: rgba(0, 173, 181, 0.46);
-  background: rgba(0, 173, 181, 0.14);
+  border-color: rgba(var(--accent-rgb), 0.46);
+  background: rgba(var(--accent-rgb), 0.14);
   color: var(--accent);
   transform: translateY(-1px);
 }
@@ -3234,10 +3296,10 @@ dialog[open] {
 @keyframes timer-breathe {
   0%,
   100% {
-    text-shadow: 0 0 0 rgba(0, 173, 181, 0);
+    text-shadow: 0 0 0 rgba(var(--accent-rgb), 0);
   }
   50% {
-    text-shadow: 0 0 42px rgba(0, 173, 181, 0.2);
+    text-shadow: 0 0 42px rgba(var(--accent-rgb), 0.2);
   }
 }
 

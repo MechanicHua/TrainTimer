@@ -57,6 +57,14 @@ const algorithmTrainerFocusLabels = {
   weak: '薄弱',
   starred: '收藏',
 };
+const accentThemeLabels = {
+  cyan: '青色',
+  blue: '蓝色',
+  green: '绿色',
+  orange: '橙色',
+  pink: '粉色',
+  purple: '紫色',
+};
 const bluetoothUuidSuffix = '-0000-1000-8000-00805f9b34fb';
 const bluetoothBatteryLevelUuid = `00002a19${bluetoothUuidSuffix}`;
 const bluetoothGanV1MetaServiceUuid = `0000180a${bluetoothUuidSuffix}`;
@@ -320,6 +328,7 @@ const elements = {
   timerSettingsMeta: document.querySelector('#timerSettingsMeta'),
   hideTimerToggle: document.querySelector('#hideTimerToggle'),
   timerFreezeSelect: document.querySelector('#timerFreezeSelect'),
+  accentThemeSelect: document.querySelector('#accentThemeSelect'),
   confirmDeleteToggle: document.querySelector('#confirmDeleteToggle'),
   sessionGoalButton: document.querySelector('#sessionGoalButton'),
   countStat: document.querySelector('#countStat'),
@@ -566,6 +575,7 @@ let sessions = [];
 let inspectionEnabled = localStorage.getItem('trainTimer.inspection') === '1';
 let hideTimerWhileSolving = localStorage.getItem('trainTimer.hideTimerWhileSolving') === '1';
 let timerFreezeMs = normalizeTimerFreezeMs(localStorage.getItem('trainTimer.timerFreezeMs'));
+let accentTheme = normalizeAccentTheme(localStorage.getItem('trainTimer.accentTheme'));
 let confirmDeleteSolves = localStorage.getItem('trainTimer.confirmDeleteSolves') !== '0';
 let currentSessionId = localStorage.getItem('trainTimer.session') || 'default';
 let scramblePuzzle = localStorage.getItem('trainTimer.scramblePuzzle') || 'three';
@@ -693,6 +703,7 @@ let cube3dTelemetryLastRenderAt = 0;
 let timerDisplayFitKey = '';
 let timerDisplayTextKey = '';
 
+applyAccentTheme();
 elements.inspectionToggle.checked = inspectionEnabled;
 elements.inspectionToggle.addEventListener('change', () => {
   setInspectionEnabled(elements.inspectionToggle.checked);
@@ -707,6 +718,7 @@ elements.scrambleLockButton.addEventListener('click', toggleScrambleLock);
 elements.timerSettingsButton.addEventListener('click', openTimerSettingsDialog);
 elements.hideTimerToggle.addEventListener('change', updateTimerSettingsFromControls);
 elements.timerFreezeSelect.addEventListener('change', updateTimerSettingsFromControls);
+elements.accentThemeSelect.addEventListener('change', updateTimerSettingsFromControls);
 elements.confirmDeleteToggle.addEventListener('change', updateTimerSettingsFromControls);
 elements.algorithmTrainerButton.addEventListener('click', openAlgorithmTrainerDialog);
 elements.algorithmTrainerSet.addEventListener('change', () => {
@@ -5220,28 +5232,44 @@ function openTimerSettingsDialog() {
 function renderTimerSettingsDialog() {
   elements.hideTimerToggle.checked = hideTimerWhileSolving;
   elements.timerFreezeSelect.value = String(timerFreezeMs);
+  elements.accentThemeSelect.value = accentTheme;
   elements.confirmDeleteToggle.checked = confirmDeleteSolves;
   const displayMode = hideTimerWhileSolving ? '隐藏计时中数字' : '显示计时中数字';
   const freezeMode = timerFreezeMs > 0 ? `起步冻结 ${(timerFreezeMs / 1000).toFixed(1)}s` : '无起步冻结';
+  const accentMode = `强调色 ${accentThemeLabels[accentTheme] || accentThemeLabels.cyan}`;
   const deleteMode = confirmDeleteSolves ? '删除前确认' : '删除直接撤销';
-  elements.timerSettingsMeta.textContent = `${displayMode} · ${freezeMode} · ${deleteMode}`;
+  elements.timerSettingsMeta.textContent = `${displayMode} · ${freezeMode} · ${accentMode} · ${deleteMode}`;
 }
 
 function updateTimerSettingsFromControls() {
+  const previousAccentTheme = accentTheme;
   hideTimerWhileSolving = elements.hideTimerToggle.checked;
   timerFreezeMs = normalizeTimerFreezeMs(elements.timerFreezeSelect.value);
+  accentTheme = normalizeAccentTheme(elements.accentThemeSelect.value);
   confirmDeleteSolves = elements.confirmDeleteToggle.checked;
   localStorage.setItem('trainTimer.hideTimerWhileSolving', hideTimerWhileSolving ? '1' : '0');
   localStorage.setItem('trainTimer.timerFreezeMs', String(timerFreezeMs));
+  localStorage.setItem('trainTimer.accentTheme', accentTheme);
   localStorage.setItem('trainTimer.confirmDeleteSolves', confirmDeleteSolves ? '1' : '0');
+  applyAccentTheme();
   renderTimerSettingsDialog();
   renderTimer();
+  if (previousAccentTheme !== accentTheme) renderStatsDialog();
 }
 
 function normalizeTimerFreezeMs(value) {
   const parsed = Number(value);
   const allowed = [0, 200, 500, 1000, 2000];
   return allowed.includes(parsed) ? parsed : 0;
+}
+
+function normalizeAccentTheme(value) {
+  const text = String(value || '').trim();
+  return Object.hasOwn(accentThemeLabels, text) ? text : 'cyan';
+}
+
+function applyAccentTheme() {
+  document.body.dataset.accent = accentTheme;
 }
 
 function renderSessions() {
@@ -7352,11 +7380,11 @@ function renderStatsTrendChart(sessionSolves, chartLabel = '最近', options = {
   drawChartGrid(context, width, height, padding, yMin, yMax);
 
   const lineGradient = context.createLinearGradient(padding.left, 0, width - padding.right, 0);
-  lineGradient.addColorStop(0, '#00adb5');
-  lineGradient.addColorStop(1, '#8dffbe');
+  lineGradient.addColorStop(0, cssCustomProperty('--accent', '#00adb5'));
+  lineGradient.addColorStop(1, cssCustomProperty('--accent-highlight', '#8dffbe'));
   const fillGradient = context.createLinearGradient(0, padding.top, 0, height - padding.bottom);
-  fillGradient.addColorStop(0, 'rgba(0, 173, 181, 0.18)');
-  fillGradient.addColorStop(1, 'rgba(0, 173, 181, 0)');
+  fillGradient.addColorStop(0, cssRgbaCustomProperty('--accent-rgb', 0.18, '0, 173, 181'));
+  fillGradient.addColorStop(1, cssRgbaCustomProperty('--accent-rgb', 0, '0, 173, 181'));
 
   context.beginPath();
   points.forEach((point, index) => {
@@ -7386,7 +7414,7 @@ function renderStatsTrendChart(sessionSolves, chartLabel = '最近', options = {
     const x = xFor(point.index);
     const y = yFor(point.value);
     context.beginPath();
-    context.fillStyle = point.solve.penalty === '+2' ? '#ffcc66' : '#00d6de';
+    context.fillStyle = point.solve.penalty === '+2' ? '#ffcc66' : cssCustomProperty('--accent-strong', '#00d6de');
     context.arc(x, y, 3.4, 0, Math.PI * 2);
     context.fill();
   }
@@ -7448,8 +7476,8 @@ function renderStatsDistributionChart(sessionSolves, chartLabel = '当前会话'
 
   drawDistributionGrid(context, width, height, padding, maxCount);
   const gradient = context.createLinearGradient(0, padding.top, 0, height - padding.bottom);
-  gradient.addColorStop(0, 'rgba(0, 214, 222, 0.9)');
-  gradient.addColorStop(1, 'rgba(0, 173, 181, 0.22)');
+  gradient.addColorStop(0, cssRgbaCustomProperty('--accent-strong-rgb', 0.9, '0, 214, 222'));
+  gradient.addColorStop(1, cssRgbaCustomProperty('--accent-rgb', 0.22, '0, 173, 181'));
 
   buckets.forEach((bucket, index) => {
     const barHeight = (bucket.count / maxCount) * plotHeight;
@@ -7469,7 +7497,7 @@ function renderStatsDistributionChart(sessionSolves, chartLabel = '当前会话'
   });
 
   const markerX = padding.left + Math.min(1, Math.max(0, (median - minValue) / range)) * plotWidth;
-  context.strokeStyle = 'rgba(141, 255, 190, 0.85)';
+  context.strokeStyle = cssRgbaCustomProperty('--accent-highlight-rgb', 0.85, '141, 255, 190');
   context.lineWidth = 1.4;
   context.setLineDash([4, 4]);
   context.beginPath();
@@ -7477,7 +7505,7 @@ function renderStatsDistributionChart(sessionSolves, chartLabel = '当前会话'
   context.lineTo(markerX, height - padding.bottom + 4);
   context.stroke();
   context.setLineDash([]);
-  context.fillStyle = 'rgba(141, 255, 190, 0.9)';
+  context.fillStyle = cssRgbaCustomProperty('--accent-highlight-rgb', 0.9, '141, 255, 190');
   context.font = '11px Inter, system-ui, sans-serif';
   context.textAlign = markerX > width - 70 ? 'right' : 'left';
   context.textBaseline = 'top';
@@ -7525,6 +7553,14 @@ function statsChartValueAt(sessionSolves, index, mode, metricEntry = null) {
 function statsChartValueText(value) {
   if (!Number.isFinite(value)) return '-';
   return statsChartMode === 'tps' ? value.toFixed(2) : formatTime(value);
+}
+
+function cssCustomProperty(name, fallback) {
+  return getComputedStyle(document.body).getPropertyValue(name).trim() || fallback;
+}
+
+function cssRgbaCustomProperty(name, alpha, fallbackRgb) {
+  return `rgba(${cssCustomProperty(name, fallbackRgb)}, ${alpha})`;
 }
 
 function drawChartGrid(context, width, height, padding, yMin, yMax) {

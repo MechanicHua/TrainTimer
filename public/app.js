@@ -678,6 +678,7 @@ let bluetoothNextSolveGestureLoading = false;
 let previewScrambleText = '';
 let previewRequestId = 0;
 const previewCache = new Map();
+const sessionMetricsCache = new Map();
 let THREE = null;
 let threeModulePromise = null;
 let cube3d = null;
@@ -7832,12 +7833,13 @@ async function saveManualEntry() {
 
 function renderHistory() {
   const sessionSolves = filteredSolves();
-  const listed = listedHistoryEntries(sessionSolves).slice(0, compactHistoryLimit);
+  const sessionMetrics = cachedSessionMetrics(currentSessionId, sessionSolves);
+  const listed = listedHistoryEntries(sessionMetrics.entries).slice(0, compactHistoryLimit);
   renderHistoryControls();
   elements.historyRows.replaceChildren(
     ...listed.map((entry) => renderSolveRow(entry.solve, entry.index + 1, sessionSolves, {
       compact: true,
-      metrics: solveRowMetrics(sessionSolves, entry.index, entry),
+      metrics: entry.metrics,
     })),
   );
   requestAnimationFrame(updateHistoryRowsMask);
@@ -7858,18 +7860,10 @@ function updateHistoryRowsMask() {
   rows.style.setProperty('--history-mask-end-alpha', progress.toFixed(3));
 }
 
-function listedHistoryEntries(sessionSolves) {
-  const entries = sessionSolves.map((solve, index) => ({
-    solve,
-    index,
-    single: effectiveDurationMs(solve),
-    tps: Number.isFinite(solve.bluetoothTps) ? solve.bluetoothTps : null,
-    ao5: rollingAverageAt(sessionSolves, index, 5),
-    ao12: rollingAverageAt(sessionSolves, index, 12),
-  }));
+function listedHistoryEntries(entries) {
   if (!historySortKey || !historySortDirection) return entries.slice(-compactHistoryLimit).reverse();
   const direction = historySortDirection === 'desc' ? -1 : 1;
-  return entries.sort((left, right) => {
+  return entries.slice().sort((left, right) => {
     const leftValue = left[historySortKey];
     const rightValue = right[historySortKey];
     const leftMissing = leftValue == null;
@@ -7943,17 +7937,67 @@ function solveRowRenderContext(rows) {
   const context = new Map();
   for (const sessionId of sessionIds) {
     const sessionSolves = solvesForSession(sessionId);
-    sessionSolves.forEach((solve, index) => {
-      if (rowIds.has(solve.id)) {
-        context.set(solve.id, {
+    const sessionMetrics = cachedSessionMetrics(sessionId, sessionSolves);
+    for (const entry of sessionMetrics.entries) {
+      if (rowIds.has(entry.solve.id)) {
+        context.set(entry.solve.id, {
           sessionSolves,
-          index,
-          metrics: solveRowMetrics(sessionSolves, index),
+          index: entry.index,
+          metrics: entry.metrics,
         });
       }
-    });
+    }
   }
   return context;
+}
+
+function cachedSessionMetrics(sessionId, sessionSolves) {
+  const cacheKey = sessionId || 'default';
+  const signature = sessionMetricsSignature(sessionSolves);
+  const cached = sessionMetricsCache.get(cacheKey);
+  if (cached?.signature === signature) return cached.metrics;
+
+  const metrics = buildSessionMetrics(sessionSolves);
+  sessionMetricsCache.set(cacheKey, { signature, metrics });
+  pruneSessionMetricsCache();
+  return metrics;
+}
+
+function sessionMetricsSignature(sessionSolves) {
+  return sessionSolves.map((solve) => [
+    solve.id,
+    solve.durationMs,
+    solve.effectiveDurationMs ?? '',
+    solve.penalty || '',
+    solve.bluetoothTps ?? '',
+  ].join(':')).join('|');
+}
+
+function buildSessionMetrics(sessionSolves) {
+  const byId = new Map();
+  const entries = sessionSolves.map((solve, index) => {
+    const metrics = solveRowMetrics(sessionSolves, index);
+    const entry = {
+      solve,
+      index,
+      single: effectiveDurationMs(solve),
+      tps: Number.isFinite(solve.bluetoothTps) ? solve.bluetoothTps : null,
+      ao5: metrics.ao5,
+      ao12: metrics.ao12,
+      metrics,
+    };
+    byId.set(solve.id, entry);
+    return entry;
+  });
+  return { entries, byId };
+}
+
+function pruneSessionMetricsCache() {
+  const validSessionIds = new Set(sessions.map((session) => session.id || 'default'));
+  validSessionIds.add('default');
+  for (const cacheKey of sessionMetricsCache.keys()) {
+    if (!validSessionIds.has(cacheKey)) sessionMetricsCache.delete(cacheKey);
+  }
 }
 
 function renderAllSolvesLoadMore(visibleCount, totalCount) {
@@ -8332,9 +8376,10 @@ function solveMatchesRecordFilter(solve, recordFilter) {
 }
 
 function solveRecordTypes(solve) {
-  const sessionSolves = solvesForSession(solve.sessionId);
-  const solveIndex = sessionSolves.findIndex((item) => item.id === solve.id);
-  return recordMarksAt(sessionSolves, solveIndex).map((mark) => mark.type);
+  const sessionId = solve.sessionId || 'default';
+  const sessionSolves = solvesForSession(sessionId);
+  const entry = cachedSessionMetrics(sessionId, sessionSolves).byId.get(solve.id);
+  return (entry?.metrics.recordMarks || []).map((mark) => mark.type);
 }
 
 function allSolvesDateBounds() {

@@ -1213,15 +1213,22 @@ function triggerInspectionEntryAnimation() {
 function inspectionTick() {
   if (appState !== 'inspection') return;
 
-  const elapsed = (performance.now() - inspectionStartedAt) / 1000;
-  const elapsedFloor = Math.floor(elapsed);
+  updateInspectionReminders();
+  renderTimer();
+  inspectionFrame = requestAnimationFrame(inspectionTick);
+}
+
+function updateInspectionReminders() {
+  if (!activeInspectionUsed || inspectionStartedAt === 0) return;
+  const elapsedFloor = Math.floor(inspectionElapsedSeconds());
   if (reminderSeconds.has(elapsedFloor) && !reminded.has(elapsedFloor)) {
     reminded.add(elapsedFloor);
     beep();
   }
+}
 
-  renderTimer();
-  inspectionFrame = requestAnimationFrame(inspectionTick);
+function inspectionElapsedSeconds() {
+  return (performance.now() - inspectionStartedAt) / 1000;
 }
 
 function startHold() {
@@ -1236,11 +1243,12 @@ function startHold() {
 
 function holdTick() {
   if (appState !== 'hold') return;
+  if (holdReturnState === 'inspection') updateInspectionReminders();
   const nextConfirmed = performance.now() - holdStartedAt >= holdToStartMs;
   if (nextConfirmed !== holdConfirmed) {
     holdConfirmed = nextConfirmed;
     renderTimer();
-  } else if (!holdConfirmed) {
+  } else if (!holdConfirmed || holdReturnState === 'inspection') {
     renderTimer();
   }
   holdFrame = requestAnimationFrame(holdTick);
@@ -1339,12 +1347,23 @@ function showPbToastForSolve(savedSolve) {
   const marks = recordMarksAt(sessionSolves, solveIndex)
     .filter((mark) => ['single', 'mo3', 'ao5', 'ao12', 'ao50', 'ao100'].includes(mark.type));
   if (marks.length === 0) return;
-  const title = marks.length === 1 ? marks[0].label : `${marks[0].label} +${marks.length - 1}`;
-  const meta = marks.map((mark) => `${mark.label} ${timeOrDash(mark.value)}`).join(' · ');
-  showPbToast(title, meta);
+  const primaryMark = marks[0];
+  showPbToast(pbToastRecordTitle(primaryMark), timeOrDash(primaryMark.value));
   if (marks.some((mark) => mark.type === 'single' || mark.type === 'ao5')) {
     launchPbConfetti();
   }
+}
+
+function pbToastRecordTitle(mark) {
+  const labels = {
+    single: '单次 PB',
+    mo3: 'mo3 PB',
+    ao5: 'ao5 PB',
+    ao12: 'ao12 PB',
+    ao50: 'ao50 PB',
+    ao100: 'ao100 PB',
+  };
+  return labels[mark?.type] || 'PB';
 }
 
 function showPbToast(title, meta) {
@@ -1360,7 +1379,7 @@ function showPbToast(title, meta) {
     pbToastTimer = window.setTimeout(() => {
       elements.pbToast.hidden = true;
     }, 260);
-  }, 3600);
+  }, 5600);
 }
 
 function launchPbConfetti() {
@@ -5376,8 +5395,7 @@ function renderTimer() {
     elements.timerHint.textContent = scrambleGuideReadyHint()
       || (inspectionEnabled ? '按 Space 开始观察' : '长按 Space 超过 0.5s，松开开始计时');
   } else if (appState === 'inspection') {
-    const elapsed = (performance.now() - inspectionStartedAt) / 1000;
-    const remaining = Math.max(0, inspectionSeconds - elapsed);
+    const elapsed = inspectionElapsedSeconds();
     const penalty = inspectionPenaltyForElapsed(elapsed);
     elements.statusText.textContent = penalty === 'ok' ? '观察中' : '观察超时';
     setTimerDisplayText(inspectionDisplayForElapsed(elapsed));
@@ -5385,8 +5403,18 @@ function renderTimer() {
       ? '长按 Space 超过 0.5s，松开开始计时'
       : `长按 Space 后松开开始计时，本次 ${penalty.toUpperCase()}`;
   } else if (appState === 'hold') {
-    elements.statusText.textContent = holdConfirmed ? '松开空格开始计时' : '长按确认中';
-    elements.timerHint.textContent = '短按不会启动';
+    if (holdReturnState === 'inspection' && activeInspectionUsed && inspectionStartedAt > 0) {
+      const elapsed = inspectionElapsedSeconds();
+      const penalty = inspectionPenaltyForElapsed(elapsed);
+      elements.statusText.textContent = holdConfirmed ? '松开空格开始计时' : '长按确认中';
+      setTimerDisplayText(inspectionDisplayForElapsed(elapsed));
+      elements.timerHint.textContent = penalty === 'ok'
+        ? '短按不会启动，观察倒计时继续'
+        : `松开开始计时，本次 ${penalty.toUpperCase()}`;
+    } else {
+      elements.statusText.textContent = holdConfirmed ? '松开空格开始计时' : '长按确认中';
+      elements.timerHint.textContent = '短按不会启动';
+    }
   } else if (appState === 'timing') {
     elements.statusText.textContent = '计时中';
     const elapsedMs = performance.now() - startedAt;
@@ -8894,7 +8922,7 @@ function numberOrDash(value, digits = 3) {
 
 function currentInspectionPenalty() {
   if (!activeInspectionUsed || inspectionStartedAt === 0) return 'ok';
-  return inspectionPenaltyForElapsed((performance.now() - inspectionStartedAt) / 1000);
+  return inspectionPenaltyForElapsed(inspectionElapsedSeconds());
 }
 
 function inspectionPenaltyForElapsed(elapsedSeconds) {

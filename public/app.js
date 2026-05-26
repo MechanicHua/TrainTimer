@@ -1,6 +1,7 @@
 import { applyMove, createSolvedCube, cubeStateFromScramble, facesFromCube, isSolvedFaces, parseScramble } from './cube-state.js';
 import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from './bluetooth-moves.js';
 import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv, solvesToCstimerJson, solvesToTextTable } from './solves-export.js';
+import { decodeGanBluetoothPacketFast } from './gan-bluetooth-fast.js';
 import { ganGyroQuaternionToCube3dBasis, ganGyroVelocityToCube3dBasis } from './gyro-orientation.js';
 import { parseSolveImport } from './solves-import.js';
 import { buildStatsSummary } from './stats-summary.js';
@@ -666,6 +667,7 @@ let bluetoothGanLastMoveCounter = null;
 let bluetoothGanPacketSequence = 0;
 let bluetoothGanLatestAppliedGyroSequence = 0;
 let bluetoothGanDecodeWarning = '';
+let bluetoothGanFastDecodeDisabled = false;
 let bluetoothGanMacPromptAllowed = true;
 let bluetoothGanLastStateLogAt = 0;
 let bluetoothGanLastStateLogSignature = '';
@@ -3019,6 +3021,7 @@ function setActiveBluetoothDevice(device) {
   bluetoothGanPendingInit = null;
   bluetoothGanLastMoveCounter = null;
   bluetoothGanDecodeWarning = '';
+  bluetoothGanFastDecodeDisabled = false;
   bluetoothGanLastStateLogAt = 0;
   bluetoothGanLastStateLogSignature = '';
   bluetoothGanLastStatusTitleAt = 0;
@@ -3477,6 +3480,7 @@ async function primeGanBluetoothService(service, characteristics) {
   };
   bluetoothGanLastMoveCounter = null;
   bluetoothGanDecodeWarning = '';
+  bluetoothGanFastDecodeDisabled = false;
   bluetoothGanLastStateLogAt = 0;
   bluetoothGanLastStateLogSignature = '';
   bluetoothGanLastStatusTitleAt = 0;
@@ -3659,12 +3663,7 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
 
   let decoded;
   try {
-    decoded = await postJson('/api/bluetooth/gan/decode', {
-      protocol: protocol.protocol,
-      mac,
-      keyVersion: protocol.keyVersion || 0,
-      bytes: [...dataViewBytes(value)],
-    });
+    decoded = await decodeGanBluetoothPacket(protocol, mac, [...dataViewBytes(value)]);
   } catch (error) {
     elements.bluetoothStatus.title = error.message || String(error);
     addBluetoothLog('错误', `${protocol.label} 解码失败`, `${label} · ${error.message || String(error)}`);
@@ -3733,6 +3732,25 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
     duplicate: duplicateMovePacket,
     tracked: trackingMoves,
   });
+}
+
+async function decodeGanBluetoothPacket(protocol, mac, bytes) {
+  const payload = {
+    protocol: protocol.protocol,
+    mac,
+    keyVersion: protocol.keyVersion || 0,
+    bytes,
+  };
+  if (!bluetoothGanFastDecodeDisabled) {
+    try {
+      const decoded = await decodeGanBluetoothPacketFast(payload);
+      if (decoded) return decoded;
+    } catch (error) {
+      bluetoothGanFastDecodeDisabled = true;
+      addBluetoothLog('警告', '浏览器本地 GAN 解码失败，已回退服务端解码', error.message || String(error));
+    }
+  }
+  return postJson('/api/bluetooth/gan/decode', payload);
 }
 
 function isGanGyroOnlyPacket(decoded, parsedMoves = []) {
@@ -4165,6 +4183,7 @@ function clearBluetoothLog() {
   lastBluetoothMovePacketSignature = '';
   bluetoothGanLastMoveCounter = null;
   bluetoothGanDecodeWarning = '';
+  bluetoothGanFastDecodeDisabled = false;
   bluetoothGanLastStateLogAt = 0;
   bluetoothGanLastStateLogSignature = '';
   bluetoothGanLastStatusTitleAt = 0;

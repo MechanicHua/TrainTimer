@@ -674,6 +674,8 @@ let bluetoothGanLatestAppliedGyroSequence = 0;
 let bluetoothGanDecodeWarning = '';
 let bluetoothGanFastDecodeDisabled = false;
 let bluetoothGanMacPromptAllowed = true;
+let bluetoothGanMacPromptInFlight = null;
+let bluetoothGanMacPromptDismissed = false;
 let bluetoothGanLastStateLogAt = 0;
 let bluetoothGanLastStateLogSignature = '';
 let bluetoothGanLastStatusTitleAt = 0;
@@ -3082,7 +3084,7 @@ async function connectBluetoothDevice(device, options = {}) {
   cleanupBluetoothSubscriptions();
   setActiveBluetoothDevice(device);
   addBluetoothLog('设备', bluetoothDevice.name || '未命名设备', bluetoothDevice.id || '');
-  bluetoothGanMacPromptAllowed = false;
+  bluetoothGanMacPromptAllowed = true;
   const quickMacTimeout = options.auto ? 2400 : 1800;
   await startBluetoothGanMacBackgroundRead(bluetoothDevice, quickMacTimeout);
   addBluetoothLog('连接', options.reconnect ? '正在重连 GATT' : '正在连接 GATT');
@@ -3100,7 +3102,7 @@ async function connectBluetoothDevice(device, options = {}) {
       : `未发现通知 · ${discovery.detail || '未发现可订阅特征'}`,
   );
   addBluetoothLog('服务', `发现 ${discovery.serviceCount} 个服务`, `${discovery.notifyCount} 路通知 · ${discovery.writeCount} 次初始化 · ${discovery.detail}`);
-  bluetoothGanMacPromptAllowed = false;
+  bluetoothGanMacPromptAllowed = true;
 }
 
 function disconnectBluetoothDevice() {
@@ -3129,6 +3131,8 @@ function setActiveBluetoothDevice(device) {
   bluetoothGanLastMoveCounter = null;
   bluetoothGanDecodeWarning = '';
   bluetoothGanFastDecodeDisabled = false;
+  bluetoothGanMacPromptInFlight = null;
+  bluetoothGanMacPromptDismissed = false;
   bluetoothGanLastStateLogAt = 0;
   bluetoothGanLastStateLogSignature = '';
   bluetoothGanLastStatusTitleAt = 0;
@@ -3151,6 +3155,8 @@ function handleBluetoothDisconnected() {
 function handleBluetoothConnectionError(error) {
   cleanupBluetoothSubscriptions();
   bluetoothGanMacPromptAllowed = true;
+  bluetoothGanMacPromptInFlight = null;
+  bluetoothGanMacPromptDismissed = false;
   resetBluetoothPhysicalState();
   resetBluetoothBattery();
   resetBluetoothGyro();
@@ -3350,7 +3356,7 @@ function isSameBluetoothDevice(left, right) {
 async function resolveBluetoothGanMacFromAdvertisements(device, timeoutMs = 3200) {
   if (!isLikelyGanDevice(device) || bluetoothGanMac) return bluetoothGanMac;
   if (typeof device.watchAdvertisements !== 'function') {
-    addBluetoothLog('GAN', '浏览器不能读取广播 MAC', '已跳过手动输入，仅使用已缓存 MAC 或等待后续广播');
+    addBluetoothLog('GAN', '浏览器不能读取广播 MAC', '将使用已缓存 MAC；没有缓存时会提示一次输入并保存');
     return '';
   }
 
@@ -3371,7 +3377,7 @@ async function resolveBluetoothGanMacFromAdvertisements(device, timeoutMs = 3200
           addBluetoothLog('GAN', '忽略旧设备广播 MAC', mac);
         }
       } else {
-        addBluetoothLog('GAN', '未读取到广播 MAC', '后台会继续尝试；不会弹出手动输入');
+        addBluetoothLog('GAN', '未读取到广播 MAC', '后台会继续尝试；没有缓存时会提示一次输入并保存');
       }
       resolve(mac);
     };
@@ -3433,9 +3439,47 @@ async function ensureBluetoothGanMac(options = {}) {
     void startBluetoothGanMacBackgroundRead(bluetoothDevice, options.timeoutMs || 9000);
   }
   if (options.allowPrompt && bluetoothGanMacPromptAllowed) {
-    addBluetoothLog('GAN', '已禁用手动 MAC 输入', '正在后台读取广播 MAC');
+    const prompted = await promptBluetoothGanMacOnce(bluetoothDevice);
+    if (prompted) return prompted;
   }
   return '';
+}
+
+async function promptBluetoothGanMacOnce(device) {
+  if (!isLikelyGanDevice(device) || bluetoothGanMac || bluetoothGanMacPromptDismissed) return bluetoothGanMac;
+  if (bluetoothGanMacPromptInFlight) return bluetoothGanMacPromptInFlight;
+
+  bluetoothGanMacPromptInFlight = Promise.resolve().then(() => {
+    const fallback = cachedBluetoothGanMac(device) || '';
+    const deviceLabel = device?.name || device?.id || 'GAN 蓝牙魔方';
+    const input = prompt(
+      `${deviceLabel} 需要 MAC 地址解密转动、电量和状态。\n\n当前浏览器不能读取广播 MAC，所以需要输入一次；保存后后续连接会自动使用缓存。\n请输入 6 组十六进制 MAC，例如 01:23:45:67:89:ab。`,
+      fallback,
+    );
+    if (input === null) {
+      bluetoothGanMacPromptDismissed = true;
+      addBluetoothLog('GAN', '未输入 MAC', '浏览器不能读取广播 MAC，本次无法解析 GAN 加密包');
+      return '';
+    }
+
+    const normalized = normalizeBluetoothMac(input);
+    if (!normalized) {
+      bluetoothGanMacPromptDismissed = true;
+      addBluetoothLog('GAN', 'MAC 格式无效', '需要 6 组十六进制，例如 01:23:45:67:89:ab');
+      alert('GAN MAC 格式无效，请输入 6 组十六进制，例如 01:23:45:67:89:ab。');
+      return '';
+    }
+
+    setBluetoothGanMac(normalized, device);
+    bluetoothGanMacPromptDismissed = false;
+    addBluetoothLog('GAN', '已保存 MAC', `${normalized} · 后续连接会自动使用`);
+    void primePendingGanBluetoothInitialization();
+    return bluetoothGanMac;
+  }).finally(() => {
+    bluetoothGanMacPromptInFlight = null;
+  });
+
+  return bluetoothGanMacPromptInFlight;
 }
 
 function setBluetoothGanMac(mac, device) {
@@ -3603,8 +3647,8 @@ async function primeGanBluetoothService(service, characteristics) {
   const mac = await ensureBluetoothGanMac({ waitForAdvertisement: true, timeoutMs: 2200 });
   if (!mac) {
     bluetoothGanPendingInit = { protocol: bluetoothGanSession, writeCharacteristic };
-    setBluetoothDeviceNameStatus('GAN', '正在后台读取 GAN 广播 MAC，用于解析状态、转动和电量');
-    addBluetoothLog('GAN', `${protocol.label} 等待后台 MAC`, '不会弹出手动输入；读到广播 MAC 后会自动初始化');
+    setBluetoothDeviceNameStatus('GAN', '正在读取或等待 GAN MAC，用于解析状态、转动和电量');
+    addBluetoothLog('GAN', `${protocol.label} 等待 MAC`, '读到广播 MAC 会自动初始化；读不到时会提示一次并缓存');
     void startBluetoothGanMacBackgroundRead(bluetoothDevice, 15000);
     return 0;
   }
@@ -3756,12 +3800,12 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
     return;
   }
 
-  const mac = await ensureBluetoothGanMac({ allowPrompt: false });
+  const mac = await ensureBluetoothGanMac({ allowPrompt: true });
   if (!mac) {
     elements.bluetoothStatus.title = '缺少 MAC，不能解密 GAN 状态、转动和电量';
     if (bluetoothGanDecodeWarning !== 'missing-mac') {
       bluetoothGanDecodeWarning = 'missing-mac';
-      addBluetoothLog('GAN', `${protocol.label} 等待后台 MAC`, '已跳过通用 Giiker 解码，避免把加密字节误判成转动');
+      addBluetoothLog('GAN', `${protocol.label} 等待 MAC`, '已跳过通用 Giiker 解码，避免把加密字节误判成转动');
     }
     void startBluetoothGanMacBackgroundRead(bluetoothDevice, 15000);
     addBluetoothLog('数据/GAN原始', label, `${hex} · 等待后台 MAC，未解析`);

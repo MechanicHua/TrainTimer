@@ -6527,7 +6527,7 @@ async function importAlgorithmTrainerCustomCases() {
     const text = await file.text();
     const imported = parseAlgorithmTrainerCustomCaseImport(text);
     if (imported.length === 0) {
-      alert('没有可导入的自定义公式。JSON 可以是公式数组，或包含 cases 数组的对象。');
+      alert('没有可导入的自定义公式。支持 JSON 数组、包含 cases 数组的对象，或每行一条的 TXT/CSV 公式列表。');
       return;
     }
 
@@ -6580,13 +6580,120 @@ function deleteAlgorithmTrainerCustomCase() {
 }
 
 function parseAlgorithmTrainerCustomCaseImport(text) {
-  const parsed = JSON.parse(text);
-  const rawCases = Array.isArray(parsed) ? parsed : parsed?.cases;
-  if (!Array.isArray(rawCases)) return [];
-  return rawCases
-    .map(normalizeAlgorithmTrainerCustomCase)
+  const input = String(text || '').trim();
+  if (!input) return [];
+  try {
+    const parsed = JSON.parse(input);
+    const rawCases = Array.isArray(parsed) ? parsed : parsed?.cases;
+    if (Array.isArray(rawCases)) {
+      return rawCases
+        .map(normalizeAlgorithmTrainerCustomCase)
+        .filter(Boolean)
+        .map((item) => ({ ...item, id: createAlgorithmTrainerCustomCaseId() }));
+    }
+  } catch {
+    // Fall through to plain-text import.
+  }
+  return parseAlgorithmTrainerPlainTextImport(input);
+}
+
+function parseAlgorithmTrainerPlainTextImport(text) {
+  return String(text || '')
+    .split(/\r?\n/)
+    .map((line, index) => normalizeAlgorithmTrainerPlainTextLine(line, index))
     .filter(Boolean)
     .map((item) => ({ ...item, id: createAlgorithmTrainerCustomCaseId() }));
+}
+
+function normalizeAlgorithmTrainerPlainTextLine(line, index) {
+  const cleaned = String(line || '')
+    .trim()
+    .replace(/^[-*•]\s+/, '')
+    .replace(/^\d+[.)、]\s+/, '');
+  if (!cleaned || cleaned.startsWith('#') || cleaned.startsWith('//')) return null;
+
+  const splitPattern = cleaned.includes('|') ? /\|/ : (cleaned.includes('\t') ? /\t/ : null);
+  if (splitPattern) {
+    const parts = cleaned.split(splitPattern).map((part) => part.trim()).filter(Boolean);
+    return normalizeAlgorithmTrainerPlainTextParts(parts, index);
+  }
+
+  const colonMatch = cleaned.match(/^(.+?)\s*[:：]\s*(.+)$/);
+  if (colonMatch) {
+    const labelParts = colonMatch[1].split(/\s*[/>]\s*/).map((part) => part.trim()).filter(Boolean);
+    const name = labelParts.pop() || `Custom ${index + 1}`;
+    const group = labelParts.pop() || 'Custom';
+    return normalizeAlgorithmTrainerCustomCase({
+      name,
+      group,
+      algorithm: colonMatch[2],
+    }, index);
+  }
+
+  if (/[,\uFF0C;]/.test(cleaned)) {
+    const parts = splitAlgorithmTrainerDelimitedLine(cleaned).map((part) => part.trim()).filter(Boolean);
+    const item = normalizeAlgorithmTrainerPlainTextParts(parts, index);
+    if (item) return item;
+  }
+
+  if (!looksLikeAlgorithmText(cleaned)) return null;
+  return normalizeAlgorithmTrainerCustomCase({
+    name: `Custom ${index + 1}`,
+    group: 'Custom',
+    algorithm: cleaned,
+  }, index);
+}
+
+function normalizeAlgorithmTrainerPlainTextParts(parts, index) {
+  if (!Array.isArray(parts) || parts.length < 2) return null;
+  const algIndex = parts.findIndex(looksLikeAlgorithmText);
+  if (algIndex < 0) return null;
+  const algorithm = parts[algIndex];
+  const before = parts.slice(0, algIndex);
+  const after = parts.slice(algIndex + 1);
+  let group = 'Custom';
+  let name = `Custom ${index + 1}`;
+  if (before.length >= 2) {
+    group = before[0];
+    name = before.slice(1).join(' / ');
+  } else if (before.length === 1) {
+    name = before[0];
+    if (after.length > 0 && !looksLikeAlgorithmText(after[0])) group = after.shift();
+  }
+  const hint = after.join(' · ');
+  return normalizeAlgorithmTrainerCustomCase({
+    name,
+    group,
+    algorithm,
+    hint,
+  }, index);
+}
+
+function splitAlgorithmTrainerDelimitedLine(line) {
+  const parts = [];
+  let current = '';
+  let quoted = false;
+  for (const char of String(line || '')) {
+    if (char === '"') {
+      quoted = !quoted;
+      continue;
+    }
+    if (!quoted && (char === ',' || char === '\uFF0C' || char === ';')) {
+      parts.push(current);
+      current = '';
+      continue;
+    }
+    current += char;
+  }
+  parts.push(current);
+  return parts;
+}
+
+function looksLikeAlgorithmText(value) {
+  const tokens = String(value || '').trim().split(/\s+/).filter(Boolean);
+  if (tokens.length < 2) return false;
+  const moveTokens = tokens.filter((token) => /^([URFDLBMESxyz]|[urfdlb]|[URFDLB]w)(2|')?$/.test(token));
+  return moveTokens.length >= 2 && moveTokens.length / tokens.length >= 0.72;
 }
 
 function createAlgorithmTrainerCustomCaseId() {

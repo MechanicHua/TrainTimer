@@ -401,6 +401,13 @@ const elements = {
   cubeNet: document.querySelector('#cubeNet'),
   historyPath: document.querySelector('#historyPath'),
   historyRows: document.querySelector('#historyRows'),
+  historySelectAll: document.querySelector('#historySelectAll'),
+  historyCfopPanel: document.querySelector('#historyCfopPanel'),
+  historyCfopToggle: document.querySelector('#historyCfopToggle'),
+  historyCfopTitle: document.querySelector('#historyCfopTitle'),
+  historyCfopMeta: document.querySelector('#historyCfopMeta'),
+  historyCfopBody: document.querySelector('#historyCfopBody'),
+  historyCfopStages: document.querySelector('#historyCfopStages'),
   historySortButtons: [...document.querySelectorAll('[data-history-sort]')],
   historyActionsMenu: document.querySelector('#historyActionsMenu'),
   selectAllSolves: document.querySelector('#selectAllSolves'),
@@ -594,6 +601,7 @@ if (!['single', 'tps', 'ao5', 'ao12'].includes(historySortKey) || !['asc', 'desc
   historySortKey = '';
   historySortDirection = '';
 }
+let historyCfopCollapsed = localStorage.getItem('trainTimer.historyCfopCollapsed') === '1';
 let algorithmTrainerCustomCases = loadAlgorithmTrainerCustomCases();
 let algorithmTrainerSet = localStorage.getItem('trainTimer.algorithmTrainerSet') || 'pll';
 if (!algorithmTrainerAllCases().some((item) => item.set === algorithmTrainerSet)) algorithmTrainerSet = 'pll';
@@ -882,6 +890,8 @@ elements.importDialog.addEventListener('close', () => {
   pendingImportPreview = null;
 });
 elements.selectAllSolves?.addEventListener('change', toggleSelectAllSolves);
+elements.historySelectAll?.addEventListener('change', toggleSelectAllVisibleHistory);
+elements.historyCfopToggle?.addEventListener('click', toggleHistoryCfopPanel);
 elements.selectAllSessionSolves.addEventListener('change', toggleSelectAllSessionSolves);
 elements.allSolvesSearch.addEventListener('input', handleAllSolvesFilterChange);
 elements.allSolvesFromDate.addEventListener('change', handleAllSolvesFilterChange);
@@ -2042,6 +2052,23 @@ function toggleSelectAllSolves() {
   render();
 }
 
+function toggleSelectAllVisibleHistory() {
+  if (!elements.historySelectAll) return;
+  const ids = compactHistoryEntries().map((entry) => entry.solve.id);
+  if (elements.historySelectAll.checked) {
+    ids.forEach((id) => selectedSolveIds.add(id));
+  } else {
+    ids.forEach((id) => selectedSolveIds.delete(id));
+  }
+  render();
+}
+
+function toggleHistoryCfopPanel() {
+  historyCfopCollapsed = !historyCfopCollapsed;
+  localStorage.setItem('trainTimer.historyCfopCollapsed', historyCfopCollapsed ? '1' : '0');
+  renderHistoryCfopPanel();
+}
+
 function closeHistoryMenuAfterAction(event) {
   const target = event.target instanceof HTMLElement ? event.target : null;
   const button = target?.closest('button');
@@ -2297,6 +2324,7 @@ function handleHistoryChange(event) {
   if (event.target.matches('.solve-check')) {
     if (event.target.checked) selectedSolveIds.add(id);
     else selectedSolveIds.delete(id);
+    event.target.closest('.history-row')?.classList.toggle('selected', event.target.checked);
     renderSelectionControls();
     return;
   }
@@ -2404,6 +2432,8 @@ function renderSolveDialog() {
 
 function renderSolveSolutionPanel(solve) {
   const analysis = solveCfopAnalysis(solve);
+  const cfopDisplay = cfopDisplayForSolve(solve, analysis);
+  const displayedStages = cfopDisplay.hasData ? cfopDisplay.stages : analysis.stages;
   const records = analysis.records;
   const hasMoves = records.length > 0;
   elements.solveSolutionPanel.hidden = !hasMoves;
@@ -2418,18 +2448,22 @@ function renderSolveSolutionPanel(solve) {
     return;
   }
 
-  const stageText = analysis.finalSolved ? '已复原' : '未复原';
+  const stageText = analysis.finalSolved || displayedStages.some((stage) => stage.key === 'pll' && stage.completed)
+    ? '已复原'
+    : '未复原';
   const sourceText = solve.bluetoothDeviceName || (solve.timerSource === 'bluetooth' ? '蓝牙魔方' : '');
+  const cfopText = analysis.bottomFace ? `CFOP 底面 ${analysis.bottomFace}${analysis.confidence ? ` · 判断${analysis.confidence}` : ''}` : '';
   elements.solveDetailBluetoothStats.textContent = '完整解法';
   elements.solveBluetoothReplayMeta.textContent = [
     `${records.length} 步`,
     Number.isFinite(solve.bluetoothTps) ? `${solve.bluetoothTps.toFixed(3)} TPS` : '',
     stageText,
+    cfopText,
     sourceText,
   ].filter(Boolean).join(' · ');
 
   elements.solveCfopStages.replaceChildren(
-    ...analysis.stages.map((stage) => renderCfopStageCard(stage)),
+    ...displayedStages.map((stage) => renderCfopStageCard(stage)),
   );
   elements.solveDetailBluetoothMoves.replaceChildren(
     ...records.map((record, index) => renderSolveMoveChip(record, index)),
@@ -2590,7 +2624,7 @@ function createCfopDefinitions() {
   const edgeCubies = [...cubies.values()].filter((cubie) => cubie.length === 2);
   const cornerCubies = [...cubies.values()].filter((cubie) => cubie.length === 3);
   const definitions = new Map();
-  for (const bottomFace of cube3dFaces) {
+  for (const bottomFace of cfopBottomFaceOrder) {
     const topFace = cubeOppositeFaces[bottomFace];
     const crossCells = edgeCubies
       .filter((cubie) => cubie.some((sticker) => sticker.color === bottomFace))
@@ -2641,14 +2675,6 @@ function cfopFaceGridPosition(face, [x, y, z]) {
   throw new Error(`Unsupported face: ${face}`);
 }
 
-function detectCfopCrossDefinition(faces) {
-  for (const face of cfopBottomFaceOrder) {
-    const definition = cfopDefinitions.get(face);
-    if (definition && isFaceletSetSolved(faces, definition.crossCells)) return definition;
-  }
-  return null;
-}
-
 function solveCfopAnalysis(solve) {
   const records = solveMoveRecords(solve);
   const stageTemplate = cfopStageTemplate();
@@ -2656,60 +2682,25 @@ function solveCfopAnalysis(solve) {
     return { records, stages: stageTemplate, finalSolved: false };
   }
 
-  const completions = {
+  const snapshots = cfopSnapshotsForSolve(solve, records);
+  if (snapshots.length === 0) {
+    return { records, stages: stageTemplate, finalSolved: false };
+  }
+
+  const candidates = [...cfopDefinitions.values()]
+    .map((definition, index) => analyzeCfopDefinition(definition, snapshots, index))
+    .sort(compareCfopCandidates);
+  const best = candidates[0];
+  const completions = best || {
     cross: null,
     bottomFace: '',
     pairs: new Map(),
     f2l: null,
     oll: null,
     pll: null,
+    confidence: '',
   };
-  let cfopDefinition = null;
-  let cube;
-  try {
-    cube = createSolvedCube();
-    for (const move of parseScramble(solve.scramble)) applyMove(cube, move);
-  } catch {
-    return { records, stages: stageTemplate, finalSolved: false };
-  }
-
-  const recordCompletion = (stepIndex) => {
-    const faces = facesFromCube(cube);
-    if (completions.cross == null) {
-      cfopDefinition = detectCfopCrossDefinition(faces);
-      if (cfopDefinition) {
-        completions.cross = stepIndex;
-        completions.bottomFace = cfopDefinition.bottomFace;
-      }
-      else return;
-    }
-
-    if (completions.f2l == null) {
-      for (const slot of cfopDefinition.pairSlots) {
-        if (!completions.pairs.has(slot.key) && isFaceletSetSolved(faces, slot.cells)) {
-          completions.pairs.set(slot.key, stepIndex);
-        }
-      }
-      if (completions.pairs.size === cfopDefinition.pairSlots.length) completions.f2l = stepIndex;
-      else return;
-    }
-
-    if (completions.oll == null) {
-      if (isFaceletSetSolved(faces, cfopDefinition.ollCells)) completions.oll = stepIndex;
-      else return;
-    }
-
-    if (completions.pll == null && isSolvedFaces(faces)) completions.pll = stepIndex;
-  };
-
-  for (let index = 0; index < records.length; index += 1) {
-    try {
-      applyMove(cube, parseScramble(records[index].move)[0]);
-      recordCompletion(index + 1);
-    } catch {
-      break;
-    }
-  }
+  const cfopDefinition = best?.definition || null;
 
   const pairSlots = cfopDefinition?.pairSlots || cfopFallbackPairSlots;
   const orderedPairs = pairSlots
@@ -2743,8 +2734,96 @@ function solveCfopAnalysis(solve) {
     records,
     stages,
     finalSolved: completions.pll != null,
-    bottomFace: completions.bottomFace,
+    bottomFace: completions.cross != null ? completions.bottomFace : '',
+    confidence: completions.confidence,
   };
+}
+
+function cfopSnapshotsForSolve(solve, records) {
+  try {
+    const cube = createSolvedCube();
+    for (const move of parseScramble(solve.scramble)) applyMove(cube, move);
+    const snapshots = [{ step: 0, faces: facesFromCube(cube) }];
+    for (let index = 0; index < records.length; index += 1) {
+      applyMove(cube, parseScramble(records[index].move)[0]);
+      snapshots.push({ step: index + 1, faces: facesFromCube(cube) });
+    }
+    return snapshots;
+  } catch {
+    return [];
+  }
+}
+
+function analyzeCfopDefinition(definition, snapshots, order) {
+  const completions = {
+    definition,
+    cross: null,
+    bottomFace: definition.bottomFace,
+    pairs: new Map(),
+    f2l: null,
+    oll: null,
+    pll: null,
+    crossStableSnapshots: 0,
+    order,
+  };
+
+  for (const snapshot of snapshots) {
+    const faces = snapshot.faces;
+    const crossSolved = isFaceletSetSolved(faces, definition.crossCells);
+    if (completions.cross == null && crossSolved) completions.cross = snapshot.step;
+    if (completions.cross == null || !crossSolved) continue;
+
+    completions.crossStableSnapshots += 1;
+    for (const slot of definition.pairSlots) {
+      if (!completions.pairs.has(slot.key) && isFaceletSetSolved(faces, slot.cells)) {
+        completions.pairs.set(slot.key, snapshot.step);
+      }
+    }
+    if (completions.f2l == null && completions.pairs.size === definition.pairSlots.length) completions.f2l = snapshot.step;
+    if (completions.f2l == null) continue;
+
+    if (completions.oll == null && isFaceletSetSolved(faces, definition.ollCells)) completions.oll = snapshot.step;
+    if (completions.oll == null) continue;
+
+    if (completions.pll == null && isSolvedFaces(faces)) completions.pll = snapshot.step;
+  }
+
+  completions.score = cfopCandidateScore(completions, snapshots[snapshots.length - 1]?.step || 0);
+  completions.confidence = cfopCandidateConfidence(completions);
+  return completions;
+}
+
+function cfopCandidateScore(candidate, lastStep) {
+  let score = 0;
+  if (candidate.cross != null) score += 1000 + Math.max(0, lastStep - candidate.cross);
+  score += candidate.pairs.size * 520;
+  if (candidate.f2l != null) score += 4200 + Math.max(0, lastStep - candidate.f2l) * 4;
+  if (candidate.oll != null) score += 2600 + Math.max(0, lastStep - candidate.oll) * 2;
+  if (candidate.pll != null) score += 2200;
+  score += candidate.crossStableSnapshots * 8;
+  return score;
+}
+
+function compareCfopCandidates(left, right) {
+  return right.score - left.score
+    || compareCfopStep(left.f2l, right.f2l)
+    || compareCfopStep(left.oll, right.oll)
+    || compareCfopStep(left.cross, right.cross)
+    || left.order - right.order;
+}
+
+function compareCfopStep(left, right) {
+  if (left == null && right == null) return 0;
+  if (left == null) return 1;
+  if (right == null) return -1;
+  return left - right;
+}
+
+function cfopCandidateConfidence(candidate) {
+  if (candidate.pll != null && candidate.oll != null && candidate.f2l != null) return '高';
+  if (candidate.f2l != null) return '中';
+  if (candidate.cross != null || candidate.pairs.size > 0) return '低';
+  return '';
 }
 
 function cfopStageTemplate() {
@@ -8033,9 +8112,8 @@ async function saveManualEntry() {
 }
 
 function renderHistory() {
+  const listed = compactHistoryEntries();
   const sessionSolves = filteredSolves();
-  const sessionMetrics = cachedSessionMetrics(currentSessionId, sessionSolves);
-  const listed = listedHistoryEntries(sessionMetrics.entries).slice(0, compactHistoryLimit);
   renderHistoryControls();
   elements.historyRows.replaceChildren(
     ...listed.map((entry) => renderSolveRow(entry.solve, entry.index + 1, sessionSolves, {
@@ -8043,7 +8121,125 @@ function renderHistory() {
       metrics: entry.metrics,
     })),
   );
+  renderHistoryCfopPanel();
   requestAnimationFrame(updateHistoryRowsMask);
+}
+
+function compactHistoryEntries() {
+  const sessionSolves = filteredSolves();
+  const sessionMetrics = cachedSessionMetrics(currentSessionId, sessionSolves);
+  return listedHistoryEntries(sessionMetrics.entries).slice(0, compactHistoryLimit);
+}
+
+function renderHistoryCfopPanel() {
+  if (!elements.historyCfopPanel) return;
+  const source = historyCfopPanelSource();
+  if (!source) {
+    elements.historyCfopPanel.hidden = true;
+    elements.historyCfopStages.replaceChildren();
+    return;
+  }
+
+  elements.historyCfopPanel.hidden = false;
+  elements.historyCfopPanel.classList.toggle('collapsed', historyCfopCollapsed);
+  elements.historyCfopToggle.setAttribute('aria-expanded', historyCfopCollapsed ? 'false' : 'true');
+  elements.historyCfopBody.hidden = false;
+  elements.historyCfopTitle.textContent = source.title;
+  elements.historyCfopMeta.textContent = source.meta;
+
+  if (source.kind === 'multi') {
+    elements.historyCfopStages.replaceChildren(renderHistoryCfopEmpty(`已选 ${source.count} 条，单独选择一条可查看 CFOP 步骤。`));
+    return;
+  }
+
+  const display = cfopDisplayForSolve(source.solve);
+  if (!display.hasData) {
+    elements.historyCfopStages.replaceChildren(renderHistoryCfopEmpty('这条成绩没有可用于 CFOP 分段的蓝牙步骤。'));
+    return;
+  }
+
+  elements.historyCfopMeta.textContent = `${source.meta} · ${display.meta}`;
+  elements.historyCfopStages.replaceChildren(
+    ...display.stages.map((stage) => renderCfopStageCard(stage)),
+  );
+}
+
+function historyCfopPanelSource() {
+  if (selectedSolveIds.size > 1) {
+    return {
+      kind: 'multi',
+      title: '复原详情',
+      meta: '多选操作',
+      count: selectedSolveIds.size,
+    };
+  }
+
+  if (selectedSolveIds.size === 1) {
+    const [selectedId] = selectedSolveIds;
+    const solve = solves.find((item) => item.id === selectedId);
+    if (!solve) return null;
+    return {
+      kind: 'selected',
+      title: '选中成绩 CFOP',
+      meta: `${sessionNameForSolve(solve)} · ${displaySolveTime(solve)}`,
+      solve,
+    };
+  }
+
+  const latest = latestSessionSolve();
+  if (appState !== 'done' || latest?.timerSource !== 'bluetooth') return null;
+  return {
+    kind: 'latest',
+    title: '上一轮 CFOP',
+    meta: `${displaySolveTime(latest)} · 刚完成`,
+    solve: latest,
+  };
+}
+
+function cfopDisplayForSolve(solve, analysis = solveCfopAnalysis(solve)) {
+  const storedStages = normalizeStoredCfopStages(solve?.cfopStages);
+  const analyzedCompletedCount = analysis.stages.filter((stage) => stage.completed).length;
+  const storedCompletedCount = storedStages.filter((stage) => stage.completed).length;
+  const storedCompleted = storedCompletedCount > 0;
+  const stages = storedCompletedCount > analyzedCompletedCount ? storedStages : analysis.stages;
+  const completedCount = stages.filter((stage) => stage.completed).length;
+  const hasData = analysis.records.length > 0 || storedCompleted;
+  const moveCount = analysis.records.length || (solve?.bluetoothMoveCount ?? 0);
+  const bottomFace = analysis.bottomFace ? `底面 ${analysis.bottomFace}` : '';
+  const confidence = analysis.confidence ? `判断 ${analysis.confidence}` : '';
+  const tps = Number.isFinite(solve?.bluetoothTps) ? `${solve.bluetoothTps.toFixed(2)} TPS` : '';
+  return {
+    stages,
+    hasData,
+    meta: [
+      `${completedCount}/${stages.length} 步`,
+      moveCount > 0 ? `${moveCount} 手` : '',
+      tps,
+      bottomFace,
+      confidence,
+    ].filter(Boolean).join(' · '),
+  };
+}
+
+function normalizeStoredCfopStages(stages) {
+  if (!Array.isArray(stages)) return [];
+  return stages.map((stage, index) => ({
+    key: String(stage?.key || `stage-${index}`),
+    label: String(stage?.label || cfopStageTemplate()[index]?.label || ''),
+    name: String(stage?.name || cfopStageTemplate()[index]?.name || ''),
+    completed: stage?.completed === true,
+    completedAt: Number.isFinite(Number(stage?.completedAt)) ? Number(stage.completedAt) : null,
+    turns: Number.isFinite(Number(stage?.turns)) ? Number(stage.turns) : 0,
+    durationMs: Number.isFinite(Number(stage?.durationMs)) ? Number(stage.durationMs) : null,
+    tps: Number.isFinite(Number(stage?.tps)) ? Number(stage.tps) : null,
+  }));
+}
+
+function renderHistoryCfopEmpty(text) {
+  const node = document.createElement('div');
+  node.className = 'history-cfop-empty';
+  node.textContent = text;
+  return node;
 }
 
 function updateHistoryRowsMask() {
@@ -8301,12 +8497,14 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
   const row = document.createElement('div');
   row.className = recordMarks.length > 0 ? 'history-row has-record' : 'history-row';
   if (options.compact) row.classList.add('compact-history-row');
+  row.classList.toggle('selected', selectedSolveIds.has(solve.id));
   const sessionLabel = options.showSession ? sessionNameForSolve(solve) : '';
   const createdAtText = new Date(solve.createdAt).toLocaleString();
   const metadataText = solveRowMetadataText(solve);
   const rowTitle = [recordTitle, sessionLabel, createdAtText, metadataText].filter(Boolean).join(' · ');
   if (rowTitle) row.title = rowTitle;
   row.innerHTML = options.compact ? `
+        <span><input class="solve-check" data-id="${solve.id}" type="checkbox" ${selectedSolveIds.has(solve.id) ? 'checked' : ''} aria-label="选择第 ${solveNumber} 条成绩" /></span>
         <span>${solveNumber}</span>
         <span class="time" title="${escapeHtml([solve.duration, formatRecordTitle(singleMarks)].filter(Boolean).join(' · '))}">
           <span>${displaySolveTime(solve)}</span>
@@ -8465,6 +8663,13 @@ function renderHistoryControls() {
   }
   elements.clearAllButton.disabled = filteredSolves().length === 0;
   elements.manageSolvesButton.disabled = solves.length === 0;
+  if (elements.historySelectAll) {
+    const compactIds = compactHistoryEntries().map((entry) => entry.solve.id);
+    const checkedCount = compactIds.filter((id) => selectedSolveIds.has(id)).length;
+    elements.historySelectAll.checked = compactIds.length > 0 && checkedCount === compactIds.length;
+    elements.historySelectAll.indeterminate = checkedCount > 0 && checkedCount < compactIds.length;
+    elements.historySelectAll.disabled = compactIds.length === 0;
+  }
   if (elements.selectAllSolves) {
     const visibleIds = visibleSolves().map((solve) => solve.id);
     elements.selectAllSolves.checked = visibleIds.length > 0 && visibleIds.every((id) => selectedSolveIds.has(id));
@@ -8528,6 +8733,7 @@ function renderAllSolvesDateShortcuts() {
 
 function renderSelectionControls() {
   renderHistoryControls();
+  renderHistoryCfopPanel();
   if (elements.allSolvesDialog.open) renderAllSolvesControls();
   if (elements.exportDialog.open) renderExportDialog();
   if (elements.statsDialog.open) renderStatsDialog();

@@ -201,6 +201,7 @@
         </div>
         <div class="history-table">
           <div class="history-head">
+            <span><input id="historySelectAll" type="checkbox" aria-label="选择当前可见成绩" /></span>
             <span>#</span>
             <span><button class="history-sort-button" data-history-sort="single" type="button">成绩<span class="sort-arrow" aria-hidden="true"></span></button></span>
             <span><button class="history-sort-button" data-history-sort="tps" type="button">TPS<span class="sort-arrow" aria-hidden="true"></span></button></span>
@@ -210,6 +211,18 @@
           </div>
           <div id="historyRows" class="history-rows"></div>
         </div>
+        <section id="historyCfopPanel" class="history-cfop-panel" hidden>
+          <button id="historyCfopToggle" class="history-cfop-toggle" type="button" aria-expanded="true">
+            <span>
+              <strong id="historyCfopTitle">复原详情</strong>
+              <small id="historyCfopMeta">-</small>
+            </span>
+            <i aria-hidden="true"></i>
+          </button>
+          <div id="historyCfopBody" class="history-cfop-body">
+            <div id="historyCfopStages" class="history-cfop-stages" aria-label="CFOP 步骤计时和 TPS"></div>
+          </div>
+        </section>
       </section>
 
       <dialog id="allSolvesDialog" class="all-solves-dialog">

@@ -1425,7 +1425,7 @@ body[data-state="timing"] .timer-display {
 
 .history-panel .history-head,
 .history-panel .history-row {
-  grid-template-columns: 22px minmax(58px, 0.9fr) minmax(38px, 0.58fr) minmax(48px, 0.72fr) minmax(50px, 0.74fr) minmax(50px, 0.58fr);
+  grid-template-columns: 18px 22px minmax(58px, 0.9fr) minmax(38px, 0.58fr) minmax(48px, 0.72fr) minmax(50px, 0.74fr) minmax(50px, 0.58fr);
   gap: 3px;
   padding: 0 4px;
 }
@@ -1491,6 +1491,23 @@ body[data-state="timing"] .timer-display {
 
 .history-row.has-record:hover {
   background: rgba(var(--accent-rgb), 0.115);
+}
+
+.history-head input[type="checkbox"],
+.history-row input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.history-row.selected {
+  background: rgba(var(--accent-rgb), 0.13);
+  color: rgba(245, 245, 247, 0.9);
+}
+
+.history-row.selected:hover {
+  background: rgba(var(--accent-rgb), 0.18);
 }
 
 .history-row span {
@@ -1712,6 +1729,105 @@ body[data-state="timing"] .timer-display {
   color: var(--accent-strong);
 }
 
+.history-cfop-panel {
+  flex: 0 0 auto;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  animation: panel-in 220ms var(--ease) both;
+}
+
+.history-cfop-toggle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18px;
+  align-items: center;
+  width: 100%;
+  min-height: 34px;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.history-cfop-toggle:hover {
+  color: var(--accent-strong);
+  transform: none;
+}
+
+.history-cfop-toggle span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.history-cfop-toggle strong {
+  color: rgba(245, 245, 247, 0.9);
+  font-size: 13px;
+  font-weight: 780;
+}
+
+.history-cfop-toggle small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 640;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-cfop-toggle i {
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  opacity: 0.66;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 180ms var(--ease), opacity 180ms var(--ease);
+}
+
+.history-cfop-panel.collapsed .history-cfop-toggle i {
+  transform: rotate(-45deg);
+}
+
+.history-cfop-body {
+  max-height: 260px;
+  overflow: hidden;
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    max-height 220ms var(--ease),
+    opacity 180ms var(--ease),
+    transform 220ms var(--ease);
+}
+
+.history-cfop-panel.collapsed .history-cfop-body {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.history-cfop-stages {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding-top: 6px;
+}
+
+.history-cfop-stages .solve-cfop-card {
+  min-height: 58px;
+  padding: 6px 7px;
+}
+
+.history-cfop-empty {
+  grid-column: 1 / -1;
+  padding: 8px 0 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 640;
+}
+
 .action-row .icon-delete-button {
   width: 34px;
   color: #ffb4ad;
@@ -1825,7 +1941,7 @@ body[data-state="timing"] .timer-band {
 }
 
 .solve-dialog {
-  width: min(860px, calc(100vw - 32px));
+  width: min(790px, calc(100vw - 32px));
 }
 
 .solve-dialog::backdrop,
@@ -1859,6 +1975,10 @@ dialog[open] {
 .manual-entry-inner,
 .bluetooth-log-inner {
   padding: 18px;
+}
+
+.solve-dialog-inner {
+  padding: 16px;
 }
 
 .solve-dialog-inner {
@@ -3090,9 +3210,9 @@ dialog[open] {
 
 .solve-detail-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 0.9fr);
-  gap: 10px 12px;
-  margin-top: 12px;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.76fr) minmax(0, 0.82fr);
+  gap: 8px 10px;
+  margin-top: 10px;
 }
 
 .solve-detail-grid > div,
@@ -3103,13 +3223,13 @@ dialog[open] {
 .solve-detail-grid > div > span,
 .solve-detail-grid > div > label {
   display: block;
-  margin-bottom: 7px;
+  margin-bottom: 5px;
 }
 
 .solve-detail-scramble {
-  min-height: 70px;
-  padding: 10px 11px;
-  border: 1px solid var(--line-soft);
+  min-height: 62px;
+  padding: 9px 10px;
+  border: 0;
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.055);
   color: var(--ink-strong);
@@ -3120,11 +3240,12 @@ dialog[open] {
 
 .solve-solution-panel {
   display: grid;
-  gap: 9px;
+  gap: 8px;
   padding: 10px;
-  border: 1px solid var(--line-soft);
+  border: 0;
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.055);
 }
 
 .solve-solution-panel[hidden] {
@@ -3162,6 +3283,8 @@ dialog[open] {
   min-width: 70px;
   min-height: 32px;
   padding: 0 12px;
+  border: 0;
+  background: rgba(var(--accent-rgb), 0.13);
   white-space: nowrap;
 }
 
@@ -3176,14 +3299,15 @@ dialog[open] {
   min-width: 0;
   gap: 2px;
   padding: 7px;
-  border: 1px solid rgba(var(--accent-rgb), 0.16);
+  border: 0;
   border-radius: 8px;
   background: rgba(var(--accent-rgb), 0.08);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.1);
 }
 
 .solve-cfop-card.pending {
-  border-color: rgba(142, 142, 147, 0.18);
   background: rgba(142, 142, 147, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(142, 142, 147, 0.11);
 }
 
 .solve-cfop-card strong {
@@ -3212,12 +3336,12 @@ dialog[open] {
 
 .solve-move-sequence {
   display: flex;
-  max-height: 94px;
+  max-height: 84px;
   overflow: auto;
   flex-wrap: wrap;
   gap: 6px;
   padding: 8px;
-  border: 1px solid var(--line-soft);
+  border: 0;
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.055);
 }
@@ -3229,7 +3353,7 @@ dialog[open] {
   min-width: 0;
   min-height: 28px;
   padding: 0 9px;
-  border: 1px solid rgba(var(--accent-rgb), 0.14);
+  border: 0;
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.07);
   color: var(--ink);
@@ -3246,7 +3370,6 @@ dialog[open] {
 }
 
 .solve-move-chip.active {
-  border-color: rgba(var(--accent-rgb), 0.46);
   background: rgba(var(--accent-rgb), 0.14);
   color: var(--accent);
   transform: translateY(-1px);
@@ -3254,16 +3377,30 @@ dialog[open] {
 
 .solve-detail-grid textarea {
   width: 100%;
-  min-height: 86px;
+  min-height: 76px;
   resize: none;
-  padding: 9px 11px;
+  padding: 8px 10px;
 }
 
 .solve-detail-grid input,
 .solve-detail-grid select {
   width: 100%;
-  min-height: 36px;
-  padding: 0 12px;
+  min-height: 34px;
+  padding: 0 10px;
+}
+
+.solve-dialog .dialog-header-actions button,
+.solve-detail-grid input,
+.solve-detail-grid select,
+.solve-detail-grid textarea {
+  border: 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.055);
+}
+
+.solve-dialog .dialog-header-actions button {
+  min-height: 32px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.055);
 }
 
 .dialog-actions {
@@ -3276,6 +3413,7 @@ dialog[open] {
 .dialog-actions button {
   min-height: 34px;
   padding: 0 12px;
+  border: 0;
   white-space: nowrap;
 }
 
@@ -3505,7 +3643,7 @@ dialog[open] {
 
   .history-panel .history-head,
   .history-panel .history-row {
-    grid-template-columns: 22px minmax(58px, 0.9fr) minmax(38px, 0.58fr) minmax(48px, 0.72fr) minmax(50px, 0.74fr) minmax(50px, 0.58fr);
+    grid-template-columns: 18px 22px minmax(58px, 0.9fr) minmax(38px, 0.58fr) minmax(48px, 0.72fr) minmax(50px, 0.74fr) minmax(50px, 0.58fr);
     gap: 3px;
   }
 
@@ -3633,13 +3771,14 @@ dialog[open] {
   }
 
   .history-panel .history-row {
-    grid-template-columns: minmax(86px, 1fr) 48px 54px 54px;
+    grid-template-columns: 24px minmax(86px, 1fr) 48px 54px;
     min-height: 48px;
     padding: 6px 8px;
   }
 
-  .history-panel .history-row span:nth-child(1),
-  .history-panel .history-row span:nth-child(5) {
+  .history-panel .history-row span:nth-child(2),
+  .history-panel .history-row span:nth-child(5),
+  .history-panel .history-row span:nth-child(6) {
     display: none;
   }
 

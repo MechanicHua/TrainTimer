@@ -65,6 +65,24 @@ test('decodes GAN Gen4 move and battery packets', () => {
   assert.equal(battery.batteryLevel, 93);
 });
 
+test('decodes bundled GAN Gen4 move records in one notification', () => {
+  const movePlain = [
+    0x01, 0x07, 0x76, 0xcd, 0x0a, 0x00, 0x3a, 0x00, 0x10,
+    0x01, 0x07, 0x76, 0xcd, 0x0a, 0x00, 0x3b, 0x00, 0x60,
+    0x74, 0xa9,
+  ];
+  const move = decodeGanBluetoothPacket({
+    protocol: 'v4',
+    mac,
+    bytes: encodeGanPayload(movePlain, { mac }),
+  });
+
+  assert.equal(move.mode, 'move');
+  assert.equal(move.moveCounter, 59);
+  assert.deepEqual(move.moves, ['L', "R'"]);
+  assert.deepEqual(move.historyMoves, ['L', "R'"]);
+});
+
 test('decodes GAN Gen4 solved state packets', () => {
   const solvedPlain = [
     0xed, 0x0e, 0xc5, 0x00, 0x05, 0x39, 0x70, 0x00, 0x00, 0x09,

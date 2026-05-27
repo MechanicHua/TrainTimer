@@ -30,6 +30,19 @@ test('browser GAN fast decoder matches Gen4 state packets', async () => {
   assert.deepEqual(actual, expected);
 });
 
+test('browser GAN fast decoder matches bundled Gen4 move records', async () => {
+  const movePlain = [
+    0x01, 0x07, 0x76, 0xcd, 0x0a, 0x00, 0x3a, 0x00, 0x10,
+    0x01, 0x07, 0x76, 0xcd, 0x0a, 0x00, 0x3b, 0x00, 0x60,
+    0x74, 0xa9,
+  ];
+  const bytes = encodeGanPayload(movePlain, { mac });
+  const expected = decodeGanBluetoothPacket({ protocol: 'v4', mac, bytes });
+  const actual = await decodeGanBluetoothPacketFast({ protocol: 'v4', mac, bytes });
+
+  assert.deepEqual(actual, expected);
+});
+
 test('browser GAN fast decoder matches Gen3 move packets', async () => {
   const movePlain = [0x55, 0x01, 0x08, 0, 0, 0, 0, 42, 0, 0x02, 0, 0, 0, 0, 0, 0];
   const bytes = encodeGanPayload(movePlain, { mac });

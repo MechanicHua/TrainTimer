@@ -637,6 +637,8 @@ let pbToastQueue = [];
 let pbToastActive = false;
 let pbToastTimer = 0;
 let pbConfettiTimer = 0;
+const pbToastVisibleMs = 3600;
+const pbToastExitMs = 200;
 let scrambleCopyHintTimer = 0;
 let bluetoothDevice = null;
 let bluetoothDeviceDisconnectHandler = null;
@@ -1412,8 +1414,8 @@ function showNextPbToast() {
     pbToastTimer = window.setTimeout(() => {
       elements.pbToast.hidden = true;
       showNextPbToast();
-    }, 260);
-  }, 6400);
+    }, pbToastExitMs);
+  }, pbToastVisibleMs);
 }
 
 function updatePbToastQueueIndicator() {

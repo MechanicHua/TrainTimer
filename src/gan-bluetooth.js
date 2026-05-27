@@ -209,14 +209,14 @@ function parseGanV4(bits, bytes = []) {
   const mode = bitNumber(bits, 0, 8);
   const length = bitNumber(bits, 8, 16);
   if (mode === 0x01) {
-    const axis = ganAxisMasks.indexOf(bitNumber(bits, 66, 72));
-    const move = moveFromFacePower(ganFaces[axis], bitNumber(bits, 64, 66));
+    const records = parseGanV4MoveRecords(bytes);
+    const moves = records.map((record) => record.move);
     return {
-      mode: move ? 'move' : 'move-invalid',
-      moveCounter: bitNumber(bits, 56, 64) << 8 | bitNumber(bits, 48, 56),
+      mode: moves.length > 0 ? 'move' : 'move-invalid',
+      moveCounter: records.at(-1)?.moveCounter ?? (bitNumber(bits, 56, 64) << 8 | bitNumber(bits, 48, 56)),
       counterModulo: 256,
-      moves: move ? [move] : [],
-      historyMoves: move ? [move] : [],
+      moves,
+      historyMoves: moves,
     };
   }
   if (mode === 0xed) {
@@ -275,6 +275,23 @@ function parseGanV4(bits, bytes = []) {
   }
   if ([0xf5, 0xf6, 0xfa, 0xfc, 0xfd, 0xfe, 0xff].includes(mode)) return { mode: 'hardware' };
   return { mode: `mode-${mode}` };
+}
+
+function parseGanV4MoveRecords(bytes = []) {
+  const normalized = normalizeBytes(bytes);
+  const records = [];
+  for (let offset = 0; offset + 8 < normalized.length; offset += 9) {
+    if (normalized[offset] !== 0x01) break;
+    const action = normalized[offset + 8];
+    const axis = ganAxisMasks.indexOf(action & 0x3f);
+    const move = moveFromFacePower(ganFaces[axis], action >> 6);
+    if (!move) break;
+    records.push({
+      move,
+      moveCounter: normalized[offset + 7] << 8 | normalized[offset + 6],
+    });
+  }
+  return records;
 }
 
 function parseGanHistoryMoves(bits, start, count, faces) {

@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cubeStateFromScramble, createSolvedCube, facesFromCube, isSolvedFaces, parseScramble } from '../src/cube-state.js';
+import {
+  correctionMovesToScrambleTarget,
+  cubeFacesSignature,
+  cubeStateFromScramble,
+  createSolvedCube,
+  facesFromCube,
+  isSolvedFaces,
+  parseScramble,
+} from '../src/cube-state.js';
 
 test('parses WCA-style 3x3 moves', () => {
   assert.deepEqual(parseScramble("R U2 F' M x r Uw2"), [
@@ -54,4 +62,24 @@ test('slice, wide, and rotation moves match equivalent layer turns', () => {
   assert.deepEqual(cubeStateFromScramble('z'), cubeStateFromScramble("F S B'"));
   assert.deepEqual(cubeStateFromScramble('r'), cubeStateFromScramble("R M'"));
   assert.deepEqual(cubeStateFromScramble('Uw'), cubeStateFromScramble("U E'"));
+});
+
+test('finds a short correction from current scramble state to target state', () => {
+  const target = "R U R' U'";
+  const input = "R D U D'";
+  const correction = correctionMovesToScrambleTarget(target, input, {
+    maxDepth: 5,
+    maxMs: 1000,
+    maxNodes: 500000,
+  });
+
+  assert.deepEqual(correction, ["R'", "U'"]);
+  assert.equal(
+    cubeFacesSignature(cubeStateFromScramble(`${input} ${correction.join(' ')}`)),
+    cubeFacesSignature(cubeStateFromScramble(target)),
+  );
+});
+
+test('returns no correction when current scramble state already matches target', () => {
+  assert.deepEqual(correctionMovesToScrambleTarget("R U R' U'", "R U R' U'"), []);
 });

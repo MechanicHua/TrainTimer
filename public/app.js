@@ -1,4 +1,4 @@
-import { applyMove, createSolvedCube, cubeStateFromScramble, facesFromCube, isSolvedFaces, parseScramble } from './cube-state.js';
+import { applyMove, correctionMovesToScrambleTarget, createSolvedCube, cubeStateFromScramble, facesFromCube, isSolvedFaces, parseScramble } from './cube-state.js';
 import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from './bluetooth-moves.js';
 import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv, solvesToCstimerJson, solvesToTextTable } from './solves-export.js';
 import { decodeGanBluetoothPacketFast } from './gan-bluetooth-fast.js';
@@ -691,6 +691,8 @@ let scrambleGuideLastMatchedInputLength = 0;
 let scrambleGuideLastMatchedRemainingMoves = [];
 let scrambleGuideCompleted = false;
 let scrambleGuideSupported = false;
+let scrambleGuideCorrectionCacheKey = '';
+let scrambleGuideCorrectionCacheMoves = [];
 let bluetoothNextSolveGestureCandidate = null;
 let bluetoothNextSolveGestureFlushTimer = 0;
 let bluetoothNextSolveGestureLoading = false;
@@ -5657,6 +5659,8 @@ function resetScrambleGuide() {
   scrambleGuideLastMatchedRemainingMoves = [];
   scrambleGuideCompleted = false;
   scrambleGuideSupported = false;
+  scrambleGuideCorrectionCacheKey = '';
+  scrambleGuideCorrectionCacheMoves = [];
 
   const currentPuzzle = scramble?.puzzle || scramblePuzzle;
   if (currentPuzzle !== 'three' || !scramble?.scramble) return;
@@ -5721,68 +5725,28 @@ function scrambleMoveAtomicTokens(move) {
   return [scrambleMoveNotation(move)];
 }
 
-function inverseScrambleMoveNotation(move) {
-  if (!move) return '';
-  if (move.suffix === '2') return `${move.face}2`;
-  if (move.suffix === "'") return move.face;
-  return `${move.face}'`;
-}
-
-function inverseScrambleMoveTokens(moves) {
-  const parsedMoves = [];
-  for (const move of moves) {
-    try {
-      parsedMoves.push(parseScramble(move)[0]);
-    } catch {
-      return [];
-    }
-  }
-  return parsedMoves.reverse().map(inverseScrambleMoveNotation).filter(Boolean);
-}
-
-function simplifyScrambleMoveTokens(tokens) {
-  const simplified = [];
-  for (const token of tokens.filter(Boolean)) {
-    let move;
-    try {
-      move = parseScramble(token)[0];
-    } catch {
-      simplified.push(token);
-      continue;
-    }
-    const previousToken = simplified.at(-1);
-    let previousMove = null;
-    try {
-      previousMove = previousToken ? parseScramble(previousToken)[0] : null;
-    } catch {
-      previousMove = null;
-    }
-    if (!previousMove || previousMove.face !== move.face) {
-      simplified.push(scrambleMoveNotation(move));
-      continue;
-    }
-    simplified.pop();
-    const turns = (scrambleMoveQuarterTurns(previousMove) + scrambleMoveQuarterTurns(move)) % 4;
-    if (turns === 1) simplified.push(move.face);
-    else if (turns === 2) simplified.push(`${move.face}2`);
-    else if (turns === 3) simplified.push(`${move.face}'`);
-  }
-  return simplified;
-}
-
-function scrambleMoveQuarterTurns(move) {
-  if (move.suffix === '2') return 2;
-  if (move.suffix === "'") return 3;
-  return 1;
-}
-
 function scrambleGuideCorrectionMoves() {
-  if (!scrambleGuideSupported || scrambleGuideInputMoves.length <= scrambleGuideLastMatchedInputLength) return [];
-  const undoWrongMoves = inverseScrambleMoveTokens(scrambleGuideInputMoves.slice(scrambleGuideLastMatchedInputLength));
-  const remainingMoves = scrambleGuideLastMatchedRemainingMoves.length > 0
-    ? scrambleGuideLastMatchedRemainingMoves
-    : scrambleGuideMoves.slice(scrambleGuideCorrectPrefix);
-  return simplifyScrambleMoveTokens([...undoWrongMoves, ...remainingMoves]);
+  if (!scrambleGuideSupported || scrambleGuideInputMoves.length === 0) return [];
+  const cacheKey = [
+    scrambleGuideMoves.join(' '),
+    scrambleGuideInputMoves.join(' '),
+    scrambleGuideCorrectPrefix,
+    scrambleGuideLastMatchedInputLength,
+    scrambleGuideLastMatchedRemainingMoves.join(' '),
+  ].join('|');
+  if (cacheKey === scrambleGuideCorrectionCacheKey) return scrambleGuideCorrectionCacheMoves;
+
+  scrambleGuideCorrectionCacheKey = cacheKey;
+  scrambleGuideCorrectionCacheMoves = correctionMovesToScrambleTarget(
+    scrambleGuideMoves,
+    scrambleGuideInputMoves,
+    {
+      maxDepth: 5,
+      maxNodes: 120000,
+      maxMs: 36,
+    },
+  );
+  return scrambleGuideCorrectionCacheMoves;
 }
 
 function scrambleGuideCorrectionText() {

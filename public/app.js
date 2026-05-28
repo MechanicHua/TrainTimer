@@ -13,7 +13,7 @@ const localApiOrigin = 'http://127.0.0.1:3211';
 const localHttpHost = /^(127\.0\.0\.1|localhost|\[::1\])$/.test(location.hostname);
 const apiOrigin = localHttpHost ? '' : localApiOrigin;
 const inspectionSeconds = 15;
-const inspectionDnfSeconds = 17;
+const inspectionDnfSeconds = inspectionSeconds;
 const holdToStartMs = 500;
 const reminderSeconds = new Set([8, 12]);
 const compactHistoryLimit = 48;
@@ -1078,6 +1078,8 @@ function scrambleChangeLocked() {
 function handleKeyDown(event) {
   if (shouldIgnoreTimerKey(event)) return;
 
+  if (handleEscapeKey(event)) return;
+
   if (appState === 'done' && handleDoneQuickAction(event)) return;
 
   if (event.code === 'KeyL' && canToggleScrambleLock()) {
@@ -1111,6 +1113,25 @@ function handleKeyDown(event) {
   } else if (appState === 'timing') {
     finishTiming();
   }
+}
+
+function handleEscapeKey(event) {
+  if (event.code !== 'Escape') return false;
+
+  if (appState === 'inspection' || (appState === 'hold' && holdReturnState === 'inspection')) {
+    event.preventDefault();
+    cancelInspection();
+    return true;
+  }
+
+  if (appState === 'timing') {
+    event.preventDefault();
+    activePenalty = 'dnf';
+    finishTiming();
+    return true;
+  }
+
+  return false;
 }
 
 function handleGlobalShortcut(event) {
@@ -1218,6 +1239,23 @@ function startInspection(options = {}) {
   triggerInspectionEntryAnimation();
   renderTimer();
   inspectionFrame = requestAnimationFrame(inspectionTick);
+}
+
+function cancelInspection() {
+  cancelAnimationFrame(inspectionFrame);
+  cancelAnimationFrame(holdFrame);
+  window.clearTimeout(inspectionEntryTimer);
+  delete document.body.dataset.inspectionEnter;
+  inspectionEntryTimer = 0;
+  inspectionStartedAt = 0;
+  inspectionBluetoothStartBlockedUntil = 0;
+  activeInspectionUsed = false;
+  activePenalty = 'ok';
+  holdConfirmed = false;
+  holdReturnState = 'ready';
+  reminded.clear();
+  appState = 'ready';
+  render();
 }
 
 function triggerInspectionEntryAnimation() {
@@ -5585,7 +5623,7 @@ function renderTimer() {
     elements.statusText.textContent = penalty === 'ok' ? '观察中' : '观察超时';
     setTimerDisplayText(inspectionDisplayForElapsed(elapsed));
     elements.timerHint.textContent = penalty === 'ok'
-      ? '长按 Space 超过 0.5s，松开开始计时'
+      ? '长按 Space 超过 0.5s，松开开始计时 · Esc 退出观察'
       : `长按 Space 后松开开始计时，本次 ${penalty.toUpperCase()}`;
   } else if (appState === 'hold') {
     if (holdReturnState === 'inspection' && activeInspectionUsed && inspectionStartedAt > 0) {
@@ -5604,7 +5642,7 @@ function renderTimer() {
     elements.statusText.textContent = '计时中';
     const elapsedMs = performance.now() - startedAt;
     setTimerDisplayText(timingDisplayText(elapsedMs));
-    elements.timerHint.textContent = timerDisplayModeHint(elapsedMs) || '按任意键结束本次计时';
+    elements.timerHint.textContent = timerDisplayModeHint(elapsedMs) || '按任意键结束本次计时 · Esc 记为 DNF';
   } else if (appState === 'saving') {
     elements.statusText.textContent = finishSource === 'bluetooth' ? '蓝牙复原' : '保存中';
     elements.timerHint.textContent = finishSource === 'bluetooth' ? '检测到已复原，正在写入成绩' : '正在写入成绩';

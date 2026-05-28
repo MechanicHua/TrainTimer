@@ -2251,6 +2251,7 @@ dialog[open] {
   border-radius: 8px;
   padding: 16px;
   background: rgba(255, 255, 255, 0.055);
+  animation: algorithm-card-in 220ms var(--ease) both;
 }
 
 .algorithm-trainer-head {
@@ -2315,7 +2316,7 @@ dialog[open] {
 .algorithm-trainer-alg {
   margin: 16px 0 0;
   color: var(--ink-strong);
-  font-size: clamp(18px, 2.3vw, 28px);
+  font-size: clamp(18px, 1.45rem, 26px);
   font-weight: 650;
   line-height: 1.42;
   letter-spacing: 0;
@@ -2331,6 +2332,7 @@ dialog[open] {
   aspect-ratio: 4 / 3;
   margin: 14px auto 0;
   opacity: 0.76;
+  animation: algorithm-preview-in 220ms var(--ease) both;
 }
 
 .algorithm-trainer-preview.empty {
@@ -2427,6 +2429,7 @@ dialog[open] {
 .algorithm-trainer-timer button.running {
   background: rgba(var(--accent-highlight-rgb), 0.16);
   color: var(--accent-strong);
+  animation: algorithm-timer-pulse 900ms var(--ease) infinite;
 }
 
 .algorithm-trainer-actions {
@@ -2457,12 +2460,16 @@ dialog[open] {
   background: rgba(255, 255, 255, 0.045);
   color: var(--ink);
   text-align: left;
+  animation: algorithm-list-in 180ms var(--ease) both;
+  animation-delay: calc(var(--item-index, 0) * 14ms);
+  transition: background-color 160ms var(--ease), color 160ms var(--ease), transform 160ms var(--ease);
 }
 
 .algorithm-trainer-item:hover,
 .algorithm-trainer-item.active {
   background: rgba(var(--accent-rgb), 0.14);
   color: var(--ink-strong);
+  transform: translateY(-1px);
 }
 
 .algorithm-trainer-item.starred strong::before {
@@ -3594,6 +3601,49 @@ dialog[open] {
   }
   50% {
     text-shadow: 0 0 42px rgba(var(--accent-rgb), 0.2);
+  }
+}
+
+@keyframes algorithm-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes algorithm-preview-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 0.76;
+    transform: translateY(0);
+  }
+}
+
+@keyframes algorithm-list-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes algorithm-timer-pulse {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 1px rgba(var(--accent-highlight-rgb), 0.12);
+  }
+  50% {
+    box-shadow: inset 0 0 0 1px rgba(var(--accent-highlight-rgb), 0.32), 0 0 18px rgba(var(--accent-highlight-rgb), 0.16);
   }
 }
 

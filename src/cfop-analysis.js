@@ -41,7 +41,7 @@ export function solveCfopAnalysis(solve) {
     return { records, stages: stageTemplate, finalSolved: false };
   }
 
-  const snapshots = cfopSnapshotsForSolve(solve, records);
+  const snapshots = cfopSnapshotsForSolve(solve, records, finalSolvedByStatePacket);
   if (snapshots.length === 0) {
     return { records, stages: stageTemplate, finalSolved: false };
   }
@@ -54,6 +54,7 @@ export function solveCfopAnalysis(solve) {
     cross: null,
     bottomFace: '',
     pairs: new Map(),
+    crossSnapshotFaces: null,
     f2l: null,
     oll: null,
     pll: null,
@@ -188,7 +189,7 @@ function cfopFaceGridPosition(face, [x, y, z]) {
   throw new Error(`Unsupported face: ${face}`);
 }
 
-function cfopSnapshotsForSolve(solve, records) {
+function cfopSnapshotsForSolve(solve, records, finalSolvedByStatePacket = false) {
   try {
     const cube = createSolvedCube();
     for (const move of parseScramble(solve.scramble)) applyMove(cube, move);
@@ -196,6 +197,10 @@ function cfopSnapshotsForSolve(solve, records) {
     for (let index = 0; index < records.length; index += 1) {
       applyMove(cube, parseScramble(records[index].move)[0]);
       snapshots.push({ step: index + 1, faces: facesFromCube(cube) });
+    }
+    const currentFaces = facesFromCube(cube);
+    if (finalSolvedByStatePacket && !isSolvedFaces(currentFaces)) {
+      snapshots.push({ step: records.length, faces: facesFromCube(createSolvedCube()) });
     }
     return snapshots;
   } catch {
@@ -209,6 +214,7 @@ function analyzeCfopDefinition(definition, snapshots, order, finalSolvedByStateP
     cross: null,
     bottomFace: definition.bottomFace,
     pairs: new Map(),
+    crossSnapshotFaces: null,
     f2l: null,
     oll: null,
     pll: null,
@@ -220,7 +226,10 @@ function analyzeCfopDefinition(definition, snapshots, order, finalSolvedByStateP
   for (const snapshot of snapshots) {
     const faces = snapshot.faces;
     const crossSolved = isFaceletSetSolved(faces, definition.crossCells);
-    if (completions.cross == null && crossSolved) completions.cross = snapshot.step;
+    if (completions.cross == null && crossSolved) {
+      completions.cross = snapshot.step;
+      completions.crossSnapshotFaces = faces;
+    }
     if (completions.cross == null || !crossSolved) continue;
 
     completions.crossStableSnapshots += 1;
@@ -249,11 +258,8 @@ function analyzeCfopDefinition(definition, snapshots, order, finalSolvedByStateP
 }
 
 function cfopCrossSolvedPairCount(completions, definition) {
-  if (completions.cross == null) return 0;
-  return definition.pairSlots.filter((slot) => {
-    const completedAt = completions.pairs.get(slot.key);
-    return completedAt != null && completedAt <= completions.cross;
-  }).length;
+  if (completions.cross == null || !completions.crossSnapshotFaces) return 0;
+  return definition.pairSlots.filter((slot) => isFaceletSetSolved(completions.crossSnapshotFaces, slot.cells)).length;
 }
 
 function cfopCrossStageName(pairCount) {

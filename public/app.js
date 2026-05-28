@@ -1,4 +1,5 @@
 import { applyMove, correctionMovesToScrambleTarget, createSolvedCube, cubeStateFromScramble, facesFromCube, isSolvedFaces, parseScramble } from './cube-state.js';
+import { algorithmTrainerCases } from './algorithm-trainer-cases.js';
 import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from './bluetooth-moves.js';
 import { cfopStagesForSave, cfopStageTemplate, solveCfopAnalysis, solveMoveRecords } from './cfop-analysis.js';
 import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv, solvesToCstimerJson, solvesToTextTable } from './solves-export.js';
@@ -50,6 +51,7 @@ const statsChartLabels = {
 };
 const algorithmTrainerSetLabels = {
   pll: 'PLL',
+  oll: 'OLL 全套',
   oll2: '2-Look OLL',
   f2l: 'F2L 入门',
   custom: 'Custom',
@@ -251,51 +253,6 @@ const puzzleLabels = new Map([
   ['skewb', 'Skewb'],
   ['sq1', 'Square-1'],
 ]);
-const algorithmTrainerCases = [
-  { id: 'pll-aa', set: 'pll', name: 'Aa Perm', group: 'Corners', algorithm: "x R' U R' D2 R U' R' D2 R2 x'", hint: '相邻角块顺时针换位' },
-  { id: 'pll-ab', set: 'pll', name: 'Ab Perm', group: 'Corners', algorithm: "x R2 D2 R U R' D2 R U' R x'", hint: '相邻角块逆时针换位' },
-  { id: 'pll-e', set: 'pll', name: 'E Perm', group: 'Corners', algorithm: "x' R U' R' D R U R' D' R U R' D R U' R' D' x", hint: '对角角块互换' },
-  { id: 'pll-h', set: 'pll', name: 'H Perm', group: 'Edges', algorithm: 'M2 U M2 U2 M2 U M2', hint: '四棱对换' },
-  { id: 'pll-ua', set: 'pll', name: 'Ua Perm', group: 'Edges', algorithm: "M2 U M U2 M' U M2", hint: '三棱顺时针轮换' },
-  { id: 'pll-ub', set: 'pll', name: 'Ub Perm', group: 'Edges', algorithm: "M2 U' M U2 M' U' M2", hint: '三棱逆时针轮换' },
-  { id: 'pll-z', set: 'pll', name: 'Z Perm', group: 'Edges', algorithm: "M' U M2 U M2 U M' U2 M2", hint: '相邻两组棱块互换' },
-  { id: 'pll-ja', set: 'pll', name: 'Ja Perm', group: 'Adjacent', algorithm: "x R2 F R F' R U2 r' U r U2 x'", hint: '一组角棱块相邻换位' },
-  { id: 'pll-jb', set: 'pll', name: 'Jb Perm', group: 'Adjacent', algorithm: "R U R' F' R U R' U' R' F R2 U' R'", hint: '最常用 J 形换位' },
-  { id: 'pll-t', set: 'pll', name: 'T Perm', group: 'Adjacent', algorithm: "R U R' U' R' F R2 U' R' U' R U R' F'", hint: '一组角块和一组棱块互换' },
-  { id: 'pll-f', set: 'pll', name: 'F Perm', group: 'Adjacent', algorithm: "R' U' F' R U R' U' R' F R2 U' R' U' R U R' U R", hint: 'F 形相邻换位' },
-  { id: 'pll-ra', set: 'pll', name: 'Ra Perm', group: 'Adjacent', algorithm: "R U' R' U' R U R D R' U' R D' R' U2 R'", hint: 'R 形换位之一' },
-  { id: 'pll-rb', set: 'pll', name: 'Rb Perm', group: 'Adjacent', algorithm: "R2 F R U R U' R' F' R U2 R' U2 R", hint: 'R 形换位之二' },
-  { id: 'pll-v', set: 'pll', name: 'V Perm', group: 'Diagonal', algorithm: "R' U R' U' y R' F' R2 U' R' U R' F R F", hint: '对角角棱换位' },
-  { id: 'pll-y', set: 'pll', name: 'Y Perm', group: 'Diagonal', algorithm: "F R U' R' U' R U R' F' R U R' U' R' F R F'", hint: 'Y 形对角换位' },
-  { id: 'pll-na', set: 'pll', name: 'Na Perm', group: 'Diagonal', algorithm: "R U R' U R U R' F' R U R' U' R' F R2 U' R' U2 R U' R'", hint: 'N 形对角换位之一' },
-  { id: 'pll-nb', set: 'pll', name: 'Nb Perm', group: 'Diagonal', algorithm: "R' U R U' R' F' U' F R U R' F R' F' R U' R", hint: 'N 形对角换位之二' },
-  { id: 'pll-ga', set: 'pll', name: 'Ga Perm', group: 'G Perms', algorithm: "R2 U R' U R' U' R U' R2 D U' R' U R D'", hint: 'G 形换位之一' },
-  { id: 'pll-gb', set: 'pll', name: 'Gb Perm', group: 'G Perms', algorithm: "R' U' R U D' R2 U R' U R U' R U' R2 D", hint: 'G 形换位之二' },
-  { id: 'pll-gc', set: 'pll', name: 'Gc Perm', group: 'G Perms', algorithm: "R2 U' R U' R U R' U R2 D' U R U' R' D", hint: 'G 形换位之三' },
-  { id: 'pll-gd', set: 'pll', name: 'Gd Perm', group: 'G Perms', algorithm: "R U R' U' D R2 U' R U' R' U R' U R2 D'", hint: 'G 形换位之四' },
-  { id: 'oll2-edge-line', set: 'oll2', name: 'Edge Line', group: 'Edges', algorithm: "F R U R' U' F'", hint: '顶层棱块成一条线' },
-  { id: 'oll2-edge-l', set: 'oll2', name: 'Edge L', group: 'Edges', algorithm: "f R U R' U' f'", hint: '顶层棱块成 L 形' },
-  { id: 'oll2-edge-dot', set: 'oll2', name: 'Edge Dot', group: 'Edges', algorithm: "F R U R' U' F' f R U R' U' f'", hint: '顶层没有已翻好的棱块' },
-  { id: 'oll2-corner-sune', set: 'oll2', name: 'Sune', group: 'Corners', algorithm: "R U R' U R U2 R'", hint: '一个角块朝上，右手 Sune' },
-  { id: 'oll2-corner-antisune', set: 'oll2', name: 'Anti-Sune', group: 'Corners', algorithm: "R U2 R' U' R U' R'", hint: '一个角块朝上，反 Sune' },
-  { id: 'oll2-corner-pi', set: 'oll2', name: 'Pi', group: 'Corners', algorithm: "R U2 R2 U' R2 U' R2 U2 R", hint: '两个前角朝前，形状像 Pi' },
-  { id: 'oll2-corner-h', set: 'oll2', name: 'H', group: 'Corners', algorithm: "R U R' U R U' R' U R U2 R'", hint: '没有角块朝上，左右对称' },
-  { id: 'oll2-corner-l', set: 'oll2', name: 'L', group: 'Corners', algorithm: "F R' F' r U R U' r'", hint: '两个相邻角块形成 L 形' },
-  { id: 'oll2-corner-t', set: 'oll2', name: 'T', group: 'Corners', algorithm: "r U R' U' r' F R F'", hint: '两个角块朝上，形状像 T' },
-  { id: 'oll2-corner-u', set: 'oll2', name: 'U', group: 'Corners', algorithm: "R2 D R' U2 R D' R' U2 R'", hint: '两个角块朝上，形状像 U' },
-  { id: 'f2l-fr-basic-insert', set: 'f2l', name: 'FR Insert', group: 'Basic Inserts', algorithm: "U R U' R'", hint: '配对块在 U 层，插入右前槽' },
-  { id: 'f2l-fl-basic-insert', set: 'f2l', name: 'FL Insert', group: 'Basic Inserts', algorithm: "U' L' U L", hint: '配对块在 U 层，插入左前槽' },
-  { id: 'f2l-fr-three-move', set: 'f2l', name: 'Right 3-Move', group: 'Corner Edge Split', algorithm: "R U R'", hint: '右手三步把角棱合入右前槽' },
-  { id: 'f2l-fl-three-move', set: 'f2l', name: 'Left 3-Move', group: 'Corner Edge Split', algorithm: "L' U' L", hint: '左手三步把角棱合入左前槽' },
-  { id: 'f2l-fr-split-u2', set: 'f2l', name: 'Right Split U2', group: 'Corner Edge Split', algorithm: "R U2 R' U' R U R'", hint: '角棱分离时用 U2 调整后右手插入' },
-  { id: 'f2l-fl-split-u2', set: 'f2l', name: 'Left Split U2', group: 'Corner Edge Split', algorithm: "L' U2 L U L' U' L", hint: '镜像 U2 调整后左手插入' },
-  { id: 'f2l-fr-edge-flip', set: 'f2l', name: 'Right Edge Flip', group: 'Edge Flip', algorithm: "R U' R' U R U R'", hint: '处理右前槽常见棱块翻向问题' },
-  { id: 'f2l-fl-edge-flip', set: 'f2l', name: 'Left Edge Flip', group: 'Edge Flip', algorithm: "L' U L U' L' U' L", hint: '处理左前槽常见棱块翻向问题' },
-  { id: 'f2l-fr-slot-reset', set: 'f2l', name: 'Right Slot Reset', group: 'Slot Control', algorithm: "U' R U R' U R U' R'", hint: '先把块带出再重新插入右前槽' },
-  { id: 'f2l-fl-slot-reset', set: 'f2l', name: 'Left Slot Reset', group: 'Slot Control', algorithm: "U L' U' L U' L' U L", hint: '先把块带出再重新插入左前槽' },
-  { id: 'f2l-fr-rotate-insert', set: 'f2l', name: 'Rotated Right Insert', group: 'Back Slots', algorithm: "y R U' R' U R U R'", hint: '转体后用右手处理后侧槽位' },
-  { id: 'f2l-fl-rotate-insert', set: 'f2l', name: 'Rotated Left Insert', group: 'Back Slots', algorithm: "y' L' U L U' L' U' L", hint: '转体后用左手处理后侧槽位' },
-];
 const untaggedFilterValue = '__untagged';
 
 const elements = {
@@ -6210,7 +6167,7 @@ function handleAlgorithmTrainerOverviewClick(event) {
   chooseNextAlgorithmTrainerCase();
 }
 
-function renderAlgorithmTrainerListItem(item) {
+function renderAlgorithmTrainerListItem(item, index = 0) {
   const stats = algorithmTrainerStats[item.id] || { success: 0, total: 0, streak: 0 };
   const row = document.createElement('button');
   row.type = 'button';
@@ -6221,6 +6178,7 @@ function renderAlgorithmTrainerListItem(item) {
   ].filter(Boolean).join(' ');
   const reviewReason = algorithmTrainerFocus === 'review' ? algorithmTrainerReviewReason(item) : '';
   row.title = [item.algorithm, reviewReason].filter(Boolean).join(' · ');
+  row.style.setProperty('--item-index', String(Math.min(index, 12)));
   row.innerHTML = `
     <strong>${escapeHtml(item.name)}</strong>
     <span>${escapeHtml(item.group)}</span>

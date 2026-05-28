@@ -43,8 +43,8 @@ test('builds copyable single-solve summary with metadata', () => {
   assert.match(text, /完整解法: R U2 F'/);
   assert.match(text, /转动数: 3/);
   assert.match(text, /CFOP 分段:/);
-  assert.match(text, /C Cross: 2\.500 · 8 手 · 3\.20 TPS/);
-  assert.match(text, /P PLL: 未完成 · 0 手 · TPS --/);
+  assert.match(text, /C Cross: 2\.500 · 8 步 · 3\.20 TPS/);
+  assert.match(text, /P PLL: 未完成 · 0 步 · TPS --/);
   assert.match(text, /TPS: 0\.250/);
   assert.match(text, /蓝牙设备: GoCube/);
   assert.match(text, /蓝牙协议: gocube-move/);

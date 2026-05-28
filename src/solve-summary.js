@@ -27,7 +27,7 @@ export function buildSolveSummary(solve, sessionName = '') {
     if (cfopStages.length > 0) {
       lines.push('CFOP 分段:');
       lines.push(...cfopStages.map((stage) => (
-        `${stage.label || '-'} ${stage.name || ''}: ${stage.completed ? stageTimeText(stage.durationMs) : '未完成'} · ${stage.turns ?? 0} 手 · ${Number.isFinite(stage.tps) ? `${stage.tps.toFixed(2)} TPS` : 'TPS --'}`
+        `${stage.label || '-'} ${stage.name || ''}: ${stage.completed ? stageTimeText(stage.durationMs) : '未完成'} · ${stage.turns ?? 0} 步 · ${Number.isFinite(stage.tps) ? `${stage.tps.toFixed(2)} TPS` : 'TPS --'}`
       )));
     }
     if (Number.isFinite(solve.bluetoothTps)) lines.push(`TPS: ${solve.bluetoothTps.toFixed(3)}`);

@@ -2438,7 +2438,7 @@ function renderSolveDialog() {
   const bluetoothSources = formatList(solve.bluetoothSources);
   const bluetoothDetail = [bluetoothDevice, bluetoothProtocols].filter(Boolean).join(' · ');
   const positionText = solveIndex >= 0 ? `第 ${solveNumber} / ${sessionSolves.length} 条` : '未知位置';
-  elements.solveDetailMeta.textContent = `${sessionNameForSolve(solve)} · ${positionText} · ${new Date(solve.createdAt).toLocaleString()} · ${timerSource} · ${puzzleLabel(solve.scramblePuzzle || 'three')} · ${solve.inspectionEnabled ? '开启观察' : '无观察'} · ${bluetoothMoveCount} 手 · ${bluetoothTps}${bluetoothDetail ? ` · ${bluetoothDetail}` : ''} · ${solve.scrambleSource || 'unknown'}`;
+  elements.solveDetailMeta.textContent = `${sessionNameForSolve(solve)} · ${positionText} · ${new Date(solve.createdAt).toLocaleString()} · ${timerSource} · ${puzzleLabel(solve.scramblePuzzle || 'three')} · ${solve.inspectionEnabled ? '开启观察' : '无观察'} · ${bluetoothMoveCount} 步 · ${bluetoothTps}${bluetoothDetail ? ` · ${bluetoothDetail}` : ''} · ${solve.scrambleSource || 'unknown'}`;
   elements.prevSolveButton.disabled = solveIndex <= 0;
   elements.nextSolveDetailButton.disabled = solveIndex < 0 || solveIndex >= sessionSolves.length - 1;
   elements.solveDetailTimeInput.value = solve.duration || formatTime(solve.durationMs);
@@ -2501,7 +2501,7 @@ function renderCfopStageCard(stage) {
     <strong>${escapeHtml(stage.label)}</strong>
     <span>${escapeHtml(stage.name)}</span>
     <em>${stage.completed ? escapeHtml(timeText) : '未完成'}</em>
-    <small>${stage.turns} 手 · ${escapeHtml(tpsText)}</small>
+    <small>${stage.turns} 步 · ${escapeHtml(tpsText)}</small>
   `;
   return card;
 }
@@ -8234,7 +8234,7 @@ function cfopDisplayForSolve(solve, analysis = solveCfopAnalysis(solve)) {
     hasData,
     meta: [
       `${completedCount}/${stages.length} 步`,
-      moveCount > 0 ? `${moveCount} 手` : '',
+      moveCount > 0 ? `${moveCount} 步` : '',
       tps,
       bottomFace,
       confidence,
@@ -8611,7 +8611,7 @@ function solveTpsText(solve) {
 
 function solveTpsTitle(solve) {
   if (!Number.isFinite(solve.bluetoothTps)) return '无蓝牙 TPS 数据';
-  return `${solve.bluetoothMoveCount ?? 0} 手 · ${solve.bluetoothTps.toFixed(3)} TPS`;
+  return `${solve.bluetoothMoveCount ?? 0} 步 · ${solve.bluetoothTps.toFixed(3)} TPS`;
 }
 
 function renderAverageButton(solveId, solveNumber, size, value, marks) {

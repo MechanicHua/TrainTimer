@@ -2324,6 +2324,29 @@ dialog[open] {
   gap: 8px;
 }
 
+.algorithm-trainer-reveal-button {
+  min-height: 30px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 760;
+  transition: background-color 160ms var(--ease), color 160ms var(--ease), transform 160ms var(--ease);
+}
+
+.algorithm-trainer-reveal-button:hover:not(:disabled),
+.algorithm-trainer-reveal-button.active {
+  background: rgba(var(--accent-rgb), 0.17);
+  color: var(--ink-strong);
+  transform: translateY(-1px);
+}
+
+.algorithm-trainer-reveal-button:disabled {
+  opacity: 0.36;
+}
+
 .algorithm-trainer-star-button {
   width: 30px;
   height: 30px;
@@ -2369,6 +2392,22 @@ dialog[open] {
   font-weight: 650;
   line-height: 1.42;
   letter-spacing: 0;
+  animation: algorithm-answer-reveal 180ms var(--ease) both;
+}
+
+.algorithm-trainer-alg.hidden {
+  display: grid;
+  min-height: 72px;
+  place-items: center;
+  border: 1px dashed rgba(var(--accent-rgb), 0.35);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(var(--accent-rgb), 0.10), transparent 52%),
+    rgba(255, 255, 255, 0.035);
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 15px;
+  font-weight: 760;
+  animation: algorithm-answer-hide 220ms var(--ease) both;
 }
 
 .algorithm-trainer-preview {
@@ -3690,6 +3729,28 @@ dialog[open] {
   to {
     opacity: 0.76;
     transform: translateY(0);
+  }
+}
+
+@keyframes algorithm-answer-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes algorithm-answer-hide {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 

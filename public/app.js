@@ -327,6 +327,7 @@ const elements = {
   algorithmTrainerOverview: document.querySelector('#algorithmTrainerOverview'),
   algorithmTrainerName: document.querySelector('#algorithmTrainerName'),
   algorithmTrainerGroup: document.querySelector('#algorithmTrainerGroup'),
+  algorithmTrainerRevealButton: document.querySelector('#algorithmTrainerRevealButton'),
   algorithmTrainerStarButton: document.querySelector('#algorithmTrainerStarButton'),
   algorithmTrainerScore: document.querySelector('#algorithmTrainerScore'),
   algorithmTrainerAlg: document.querySelector('#algorithmTrainerAlg'),
@@ -560,6 +561,7 @@ let algorithmTrainerSearch = localStorage.getItem('trainTimer.algorithmTrainerSe
 let algorithmTrainerCurrentId = localStorage.getItem('trainTimer.algorithmTrainerCurrentId') || '';
 let algorithmTrainerStats = loadAlgorithmTrainerStats();
 let algorithmTrainerStarredIds = loadAlgorithmTrainerStarredIds();
+let algorithmTrainerAlgorithmHidden = localStorage.getItem('trainTimer.algorithmTrainerAlgorithmHidden') === '1';
 let algorithmTrainerTimerStartedAt = 0;
 let algorithmTrainerTimerFrame = 0;
 let startedAt = 0;
@@ -719,6 +721,7 @@ elements.algorithmTrainerNextButton.addEventListener('click', chooseNextAlgorith
 elements.algorithmTrainerPassButton.addEventListener('click', () => recordAlgorithmTrainerResult(true));
 elements.algorithmTrainerFailButton.addEventListener('click', () => recordAlgorithmTrainerResult(false));
 elements.algorithmTrainerTimerButton.addEventListener('click', toggleAlgorithmTrainerTimer);
+elements.algorithmTrainerRevealButton.addEventListener('click', toggleAlgorithmTrainerAlgorithmHidden);
 elements.algorithmTrainerStarButton.addEventListener('click', toggleAlgorithmTrainerStarred);
 elements.algorithmTrainerCopySetupButton.addEventListener('click', copyAlgorithmTrainerSetup);
 elements.algorithmTrainerApplySetupButton.addEventListener('click', applyAlgorithmTrainerSetupToTimer);
@@ -6035,6 +6038,7 @@ function handleAlgorithmTrainerKeyDown(event) {
     Backspace: () => recordAlgorithmTrainerResult(false),
     KeyF: () => recordAlgorithmTrainerResult(false),
     KeyN: () => chooseNextAlgorithmTrainerCase(),
+    KeyH: () => toggleAlgorithmTrainerAlgorithmHidden(),
     KeyS: () => toggleAlgorithmTrainerStarred(),
     KeyC: () => { void copyAlgorithmTrainerSetup(); },
     KeyA: () => applyAlgorithmTrainerSetupToTimer(),
@@ -6090,7 +6094,7 @@ function renderAlgorithmTrainerDialog() {
   elements.algorithmTrainerMeta.textContent = `${setLabel} · ${allSetCases.length} 条${groupLabel}${focusText}${searchText} · ${totals.success}/${totals.total} 掌握`;
   elements.algorithmTrainerName.textContent = current?.name || '-';
   elements.algorithmTrainerGroup.textContent = current ? algorithmTrainerCaseDetailLabel(current) : '-';
-  elements.algorithmTrainerAlg.textContent = current?.algorithm || '-';
+  renderAlgorithmTrainerAlgorithm(current);
   elements.algorithmTrainerHint.textContent = searchActive && visibleCases.length === 0
     ? `没有匹配“${algorithmTrainerSearchQuery()}”的公式`
     : (scopedCases.length === 0 && algorithmTrainerFocus !== 'all'
@@ -6102,6 +6106,7 @@ function renderAlgorithmTrainerDialog() {
   elements.algorithmTrainerEditButton.disabled = !customSelected;
   elements.algorithmTrainerDeleteButton.disabled = !customSelected;
   elements.algorithmTrainerExportButton.disabled = algorithmTrainerCustomCases.length === 0;
+  renderAlgorithmTrainerRevealButton(current);
   renderAlgorithmTrainerStarButton(current);
   renderAlgorithmTrainerSetup(current);
   renderAlgorithmTrainerTimer(currentStats);
@@ -6214,7 +6219,8 @@ function renderAlgorithmTrainerListItem(item, index = 0) {
     algorithmTrainerCaseStarred(item.id) ? 'starred' : '',
   ].filter(Boolean).join(' ');
   const reviewReason = algorithmTrainerFocus === 'review' ? algorithmTrainerReviewReason(item) : '';
-  row.title = [item.algorithm, reviewReason].filter(Boolean).join(' · ');
+  const algorithmTitle = algorithmTrainerAlgorithmHidden ? '' : item.algorithm;
+  row.title = [algorithmTitle, reviewReason].filter(Boolean).join(' · ');
   row.style.setProperty('--item-index', String(Math.min(index, 12)));
   row.innerHTML = `
     <strong>${escapeHtml(item.name)}</strong>
@@ -6237,6 +6243,35 @@ function renderAlgorithmTrainerEmpty(focusLabel) {
     ? `没有匹配“${algorithmTrainerSearchQuery()}”的公式`
     : `${focusLabel}范围暂无案例`;
   return row;
+}
+
+function renderAlgorithmTrainerAlgorithm(current) {
+  const hidden = Boolean(current && algorithmTrainerAlgorithmHidden);
+  elements.algorithmTrainerAlg.classList.toggle('hidden', hidden);
+  elements.algorithmTrainerAlg.textContent = current
+    ? (hidden ? '公式已隐藏' : current.algorithm)
+    : '-';
+  elements.algorithmTrainerAlg.title = current
+    ? (hidden ? '按 H 或点击显示公式' : current.algorithm)
+    : '';
+}
+
+function renderAlgorithmTrainerRevealButton(current) {
+  const hidden = Boolean(current && algorithmTrainerAlgorithmHidden);
+  elements.algorithmTrainerRevealButton.disabled = !current;
+  elements.algorithmTrainerRevealButton.textContent = hidden ? '显示公式' : '隐藏公式';
+  elements.algorithmTrainerRevealButton.classList.toggle('active', hidden);
+  elements.algorithmTrainerRevealButton.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+  elements.algorithmTrainerRevealButton.title = current
+    ? (hidden ? 'H 显示当前公式' : 'H 隐藏当前公式，进行记忆训练')
+    : '没有可隐藏的公式';
+}
+
+function toggleAlgorithmTrainerAlgorithmHidden() {
+  if (!algorithmTrainerCurrentCase()) return;
+  algorithmTrainerAlgorithmHidden = !algorithmTrainerAlgorithmHidden;
+  localStorage.setItem('trainTimer.algorithmTrainerAlgorithmHidden', algorithmTrainerAlgorithmHidden ? '1' : '0');
+  renderAlgorithmTrainerDialog();
 }
 
 function chooseNextAlgorithmTrainerCase(options = {}) {

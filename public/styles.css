@@ -1731,8 +1731,8 @@ body[data-state="timing"] .timer-display {
 
 .history-cfop-panel {
   flex: 0 0 auto;
-  margin-top: 8px;
-  padding-top: 8px;
+  margin-top: 6px;
+  padding-top: 6px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   animation: panel-in 220ms var(--ease) both;
 }
@@ -1742,7 +1742,7 @@ body[data-state="timing"] .timer-display {
   grid-template-columns: minmax(0, 1fr) 18px;
   align-items: center;
   width: 100%;
-  min-height: 34px;
+  min-height: 30px;
   gap: 8px;
   padding: 0;
   border: 0;
@@ -1792,10 +1792,14 @@ body[data-state="timing"] .timer-display {
 }
 
 .history-cfop-body {
-  max-height: 260px;
-  overflow: hidden;
+  max-height: min(224px, 32dvh);
+  overflow-x: hidden;
+  overflow-y: auto;
   opacity: 1;
+  padding-right: 2px;
   transform: translateY(0);
+  scrollbar-color: rgba(var(--accent-rgb), 0.34) transparent;
+  scrollbar-width: thin;
   transition:
     max-height 220ms var(--ease),
     opacity 180ms var(--ease),
@@ -1804,20 +1808,62 @@ body[data-state="timing"] .timer-display {
 
 .history-cfop-panel.collapsed .history-cfop-body {
   max-height: 0;
+  overflow: hidden;
   opacity: 0;
   transform: translateY(-4px);
+}
+
+.history-cfop-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.history-cfop-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.history-cfop-body::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.24);
 }
 
 .history-cfop-stages {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  padding-top: 6px;
+  gap: 5px;
+  padding-top: 5px;
 }
 
 .history-cfop-stages .solve-cfop-card {
-  min-height: 58px;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "label name"
+    "time meta";
+  align-items: baseline;
+  min-height: 45px;
+  gap: 2px 6px;
   padding: 6px 7px;
+}
+
+.history-cfop-stages .solve-cfop-card strong {
+  grid-area: label;
+  font-size: 11px;
+}
+
+.history-cfop-stages .solve-cfop-card span {
+  grid-area: name;
+  font-size: 10px;
+}
+
+.history-cfop-stages .solve-cfop-card em {
+  grid-area: time;
+  font-size: 13px;
+}
+
+.history-cfop-stages .solve-cfop-card small {
+  grid-area: meta;
+  min-width: 0;
+  font-size: 10px;
+  text-align: right;
 }
 
 .history-cfop-empty {

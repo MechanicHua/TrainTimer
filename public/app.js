@@ -401,7 +401,6 @@ const elements = {
   cubeNet: document.querySelector('#cubeNet'),
   historyPath: document.querySelector('#historyPath'),
   historyRows: document.querySelector('#historyRows'),
-  historySelectAll: document.querySelector('#historySelectAll'),
   historyCfopPanel: document.querySelector('#historyCfopPanel'),
   historyCfopToggle: document.querySelector('#historyCfopToggle'),
   historyCfopTitle: document.querySelector('#historyCfopTitle'),
@@ -629,6 +628,7 @@ let reminded = new Set();
 let activePenalty = 'ok';
 let finishSource = 'manual';
 let selectedSolveIds = new Set();
+let historySelectionAnchorId = null;
 let pendingDeletedSolves = [];
 let pendingImportSnapshot = null;
 let pendingImportPreview = null;
@@ -890,7 +890,6 @@ elements.importDialog.addEventListener('close', () => {
   pendingImportPreview = null;
 });
 elements.selectAllSolves?.addEventListener('change', toggleSelectAllSolves);
-elements.historySelectAll?.addEventListener('change', toggleSelectAllVisibleHistory);
 elements.historyCfopToggle?.addEventListener('click', toggleHistoryCfopPanel);
 elements.selectAllSessionSolves.addEventListener('change', toggleSelectAllSessionSolves);
 elements.allSolvesSearch.addEventListener('input', handleAllSolvesFilterChange);
@@ -2052,17 +2051,6 @@ function toggleSelectAllSolves() {
   render();
 }
 
-function toggleSelectAllVisibleHistory() {
-  if (!elements.historySelectAll) return;
-  const ids = compactHistoryEntries().map((entry) => entry.solve.id);
-  if (elements.historySelectAll.checked) {
-    ids.forEach((id) => selectedSolveIds.add(id));
-  } else {
-    ids.forEach((id) => selectedSolveIds.delete(id));
-  }
-  render();
-}
-
 function toggleHistoryCfopPanel() {
   historyCfopCollapsed = !historyCfopCollapsed;
   localStorage.setItem('trainTimer.historyCfopCollapsed', historyCfopCollapsed ? '1' : '0');
@@ -2357,7 +2345,40 @@ function handleHistoryClick(event) {
 
   const deleteButton = target?.closest('[data-delete-id]');
   const id = deleteButton?.dataset.deleteId;
-  if (id) deleteSolve(id);
+  if (id) {
+    deleteSolve(id);
+    return;
+  }
+
+  const row = target?.closest('.compact-history-row[data-solve-id]');
+  if (row) handleCompactHistoryRowSelection(event, row);
+}
+
+function handleCompactHistoryRowSelection(event, row) {
+  const id = row.dataset.solveId;
+  if (!id) return;
+
+  const ids = compactHistoryEntries().map((entry) => entry.solve.id);
+  const index = ids.indexOf(id);
+  if (index < 0) return;
+
+  if (event.shiftKey && historySelectionAnchorId && ids.includes(historySelectionAnchorId)) {
+    const anchorIndex = ids.indexOf(historySelectionAnchorId);
+    const [from, to] = anchorIndex < index ? [anchorIndex, index] : [index, anchorIndex];
+    const rangeIds = ids.slice(from, to + 1);
+    selectedSolveIds = event.metaKey || event.ctrlKey
+      ? new Set([...selectedSolveIds, ...rangeIds])
+      : new Set(rangeIds);
+  } else if (event.metaKey || event.ctrlKey) {
+    if (selectedSolveIds.has(id)) selectedSolveIds.delete(id);
+    else selectedSolveIds.add(id);
+    historySelectionAnchorId = id;
+  } else {
+    selectedSolveIds = new Set([id]);
+    historySelectionAnchorId = id;
+  }
+
+  renderHistory();
 }
 
 function handleAllSolvesRowsClick(event) {
@@ -8496,7 +8517,13 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
   const recordTitle = formatRecordTitle(recordMarks);
   const row = document.createElement('div');
   row.className = recordMarks.length > 0 ? 'history-row has-record' : 'history-row';
-  if (options.compact) row.classList.add('compact-history-row');
+  if (options.compact) {
+    row.classList.add('compact-history-row');
+    row.dataset.solveId = solve.id;
+    row.tabIndex = 0;
+    row.setAttribute('role', 'option');
+    row.setAttribute('aria-selected', selectedSolveIds.has(solve.id) ? 'true' : 'false');
+  }
   row.classList.toggle('selected', selectedSolveIds.has(solve.id));
   const sessionLabel = options.showSession ? sessionNameForSolve(solve) : '';
   const createdAtText = new Date(solve.createdAt).toLocaleString();
@@ -8504,7 +8531,6 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
   const rowTitle = [recordTitle, sessionLabel, createdAtText, metadataText].filter(Boolean).join(' · ');
   if (rowTitle) row.title = rowTitle;
   row.innerHTML = options.compact ? `
-        <span><input class="solve-check" data-id="${solve.id}" type="checkbox" ${selectedSolveIds.has(solve.id) ? 'checked' : ''} aria-label="选择第 ${solveNumber} 条成绩" /></span>
         <span>${solveNumber}</span>
         <span class="time" title="${escapeHtml([solve.duration, formatRecordTitle(singleMarks)].filter(Boolean).join(' · '))}">
           <span>${displaySolveTime(solve)}</span>
@@ -8663,13 +8689,6 @@ function renderHistoryControls() {
   }
   elements.clearAllButton.disabled = filteredSolves().length === 0;
   elements.manageSolvesButton.disabled = solves.length === 0;
-  if (elements.historySelectAll) {
-    const compactIds = compactHistoryEntries().map((entry) => entry.solve.id);
-    const checkedCount = compactIds.filter((id) => selectedSolveIds.has(id)).length;
-    elements.historySelectAll.checked = compactIds.length > 0 && checkedCount === compactIds.length;
-    elements.historySelectAll.indeterminate = checkedCount > 0 && checkedCount < compactIds.length;
-    elements.historySelectAll.disabled = compactIds.length === 0;
-  }
   if (elements.selectAllSolves) {
     const visibleIds = visibleSolves().map((solve) => solve.id);
     elements.selectAllSolves.checked = visibleIds.length > 0 && visibleIds.every((id) => selectedSolveIds.has(id));

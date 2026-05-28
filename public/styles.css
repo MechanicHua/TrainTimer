@@ -1425,7 +1425,7 @@ body[data-state="timing"] .timer-display {
 
 .history-panel .history-head,
 .history-panel .history-row {
-  grid-template-columns: 18px 22px minmax(58px, 0.9fr) minmax(38px, 0.58fr) minmax(48px, 0.72fr) minmax(50px, 0.74fr) minmax(50px, 0.58fr);
+  grid-template-columns: 22px minmax(58px, 0.9fr) minmax(38px, 0.58fr) minmax(48px, 0.72fr) minmax(50px, 0.74fr) minmax(50px, 0.58fr);
   gap: 3px;
   padding: 0 4px;
 }
@@ -1491,6 +1491,16 @@ body[data-state="timing"] .timer-display {
 
 .history-row.has-record:hover {
   background: rgba(var(--accent-rgb), 0.115);
+}
+
+.compact-history-row {
+  cursor: pointer;
+  user-select: none;
+}
+
+.compact-history-row:focus-visible {
+  outline: 2px solid rgba(var(--accent-rgb), 0.72);
+  outline-offset: -2px;
 }
 
 .history-head input[type="checkbox"],
@@ -3689,7 +3699,7 @@ dialog[open] {
 
   .history-panel .history-head,
   .history-panel .history-row {
-    grid-template-columns: 18px 22px minmax(58px, 0.9fr) minmax(38px, 0.58fr) minmax(48px, 0.72fr) minmax(50px, 0.74fr) minmax(50px, 0.58fr);
+    grid-template-columns: 22px minmax(58px, 0.9fr) minmax(38px, 0.58fr) minmax(48px, 0.72fr) minmax(50px, 0.74fr) minmax(50px, 0.58fr);
     gap: 3px;
   }
 
@@ -3817,14 +3827,14 @@ dialog[open] {
   }
 
   .history-panel .history-row {
-    grid-template-columns: 24px minmax(86px, 1fr) 48px 54px;
+    grid-template-columns: minmax(86px, 1fr) 48px 54px;
     min-height: 48px;
     padding: 6px 8px;
   }
 
-  .history-panel .history-row span:nth-child(2),
-  .history-panel .history-row span:nth-child(5),
-  .history-panel .history-row span:nth-child(6) {
+  .history-panel .history-row span:nth-child(1),
+  .history-panel .history-row span:nth-child(4),
+  .history-panel .history-row span:nth-child(5) {
     display: none;
   }
 

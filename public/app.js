@@ -325,11 +325,13 @@ const elements = {
   algorithmTrainerNextButton: document.querySelector('#algorithmTrainerNextButton'),
   algorithmTrainerResetButton: document.querySelector('#algorithmTrainerResetButton'),
   algorithmTrainerOverview: document.querySelector('#algorithmTrainerOverview'),
+  algorithmTrainerCard: document.querySelector('.algorithm-trainer-card'),
   algorithmTrainerName: document.querySelector('#algorithmTrainerName'),
   algorithmTrainerGroup: document.querySelector('#algorithmTrainerGroup'),
   algorithmTrainerRevealButton: document.querySelector('#algorithmTrainerRevealButton'),
   algorithmTrainerStarButton: document.querySelector('#algorithmTrainerStarButton'),
   algorithmTrainerScore: document.querySelector('#algorithmTrainerScore'),
+  algorithmTrainerFeedback: document.querySelector('#algorithmTrainerFeedback'),
   algorithmTrainerAlg: document.querySelector('#algorithmTrainerAlg'),
   algorithmTrainerPreview: document.querySelector('#algorithmTrainerPreview'),
   algorithmTrainerHint: document.querySelector('#algorithmTrainerHint'),
@@ -562,6 +564,9 @@ let algorithmTrainerCurrentId = localStorage.getItem('trainTimer.algorithmTraine
 let algorithmTrainerStats = loadAlgorithmTrainerStats();
 let algorithmTrainerStarredIds = loadAlgorithmTrainerStarredIds();
 let algorithmTrainerAlgorithmHidden = localStorage.getItem('trainTimer.algorithmTrainerAlgorithmHidden') === '1';
+let algorithmTrainerFeedback = null;
+let algorithmTrainerFeedbackTimer = 0;
+let algorithmTrainerRenderedCaseId = '';
 let algorithmTrainerTimerStartedAt = 0;
 let algorithmTrainerTimerFrame = 0;
 let startedAt = 0;
@@ -832,7 +837,10 @@ elements.statsDialog.addEventListener('close', () => {
   statsScope = 'session';
 });
 elements.algorithmTrainerDialog.addEventListener('keydown', handleAlgorithmTrainerKeyDown);
-elements.algorithmTrainerDialog.addEventListener('close', cancelAlgorithmTrainerTimer);
+elements.algorithmTrainerDialog.addEventListener('close', () => {
+  cancelAlgorithmTrainerTimer();
+  clearAlgorithmTrainerFeedback();
+});
 elements.allSolvesDialog.addEventListener('close', () => {
   selectedSolveIds.clear();
   render();
@@ -6084,6 +6092,7 @@ function renderAlgorithmTrainerDialog() {
     algorithmTrainerCurrentId = current.id;
     localStorage.setItem('trainTimer.algorithmTrainerCurrentId', algorithmTrainerCurrentId);
   }
+  const renderedCaseChanged = (current?.id || '') !== algorithmTrainerRenderedCaseId;
   if (!current) cancelAlgorithmTrainerTimer();
   const totals = algorithmTrainerTotals(allCases);
   const setLabel = algorithmTrainerSetLabels[algorithmTrainerSet] || algorithmTrainerSet.toUpperCase();
@@ -6102,6 +6111,7 @@ function renderAlgorithmTrainerDialog() {
     : (current?.hint || '选择随机下一条开始练习'));
   const currentStats = algorithmTrainerStats[current?.id] || { success: 0, total: 0, streak: 0 };
   elements.algorithmTrainerScore.textContent = algorithmTrainerProgressText(currentStats);
+  renderAlgorithmTrainerFeedback();
   const customSelected = current?.set === 'custom';
   elements.algorithmTrainerEditButton.disabled = !customSelected;
   elements.algorithmTrainerDeleteButton.disabled = !customSelected;
@@ -6118,6 +6128,7 @@ function renderAlgorithmTrainerDialog() {
   elements.algorithmTrainerList.replaceChildren(
     ...(listRows.length > 0 ? listRows.map(renderAlgorithmTrainerListItem) : [renderAlgorithmTrainerEmpty(searchActive ? '搜索' : focusLabel)]),
   );
+  resetAlgorithmTrainerCardScroll(renderedCaseChanged, current);
 }
 
 function renderAlgorithmTrainerOverview(cases) {
@@ -6245,6 +6256,46 @@ function renderAlgorithmTrainerEmpty(focusLabel) {
   return row;
 }
 
+function resetAlgorithmTrainerCardScroll(renderedCaseChanged, current) {
+  algorithmTrainerRenderedCaseId = current?.id || '';
+  if (!renderedCaseChanged || !elements.algorithmTrainerCard) return;
+  const resetScroll = () => {
+    elements.algorithmTrainerCard.scrollTop = 0;
+  };
+  resetScroll();
+  requestAnimationFrame(resetScroll);
+}
+
+function renderAlgorithmTrainerFeedback() {
+  const feedback = algorithmTrainerFeedback;
+  elements.algorithmTrainerFeedback.hidden = !feedback;
+  elements.algorithmTrainerFeedback.className = `algorithm-trainer-feedback ${feedback?.type || ''}`.trim();
+  elements.algorithmTrainerFeedback.textContent = feedback?.text || '';
+}
+
+function setAlgorithmTrainerFeedback(item, success, stats) {
+  window.clearTimeout(algorithmTrainerFeedbackTimer);
+  const progress = algorithmTrainerProgressText(stats);
+  algorithmTrainerFeedback = {
+    type: success ? 'success' : 'miss',
+    text: success
+      ? `已掌握 ${item.name} · ${progress}`
+      : `未掌握 ${item.name} · 已加入复习`,
+  };
+  algorithmTrainerFeedbackTimer = window.setTimeout(() => {
+    algorithmTrainerFeedback = null;
+    algorithmTrainerFeedbackTimer = 0;
+    renderAlgorithmTrainerFeedback();
+  }, 1800);
+}
+
+function clearAlgorithmTrainerFeedback() {
+  window.clearTimeout(algorithmTrainerFeedbackTimer);
+  algorithmTrainerFeedback = null;
+  algorithmTrainerFeedbackTimer = 0;
+  renderAlgorithmTrainerFeedback();
+}
+
 function renderAlgorithmTrainerAlgorithm(current) {
   const hidden = Boolean(current && algorithmTrainerAlgorithmHidden);
   elements.algorithmTrainerAlg.classList.toggle('hidden', hidden);
@@ -6318,6 +6369,7 @@ function recordAlgorithmTrainerResult(success) {
   stats.updatedAt = new Date().toISOString();
   algorithmTrainerStats[current.id] = stats;
   saveAlgorithmTrainerStats();
+  setAlgorithmTrainerFeedback(current, success, stats);
   chooseNextAlgorithmTrainerCase();
 }
 

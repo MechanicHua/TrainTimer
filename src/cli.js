@@ -2,13 +2,12 @@
 import readline from 'node:readline';
 import { generateScramble } from './scramble.js';
 import { formatTime, getHistoryPath, loadSolves, saveSolve, summarizeSolves } from './history.js';
+import { inspectionDisplayForElapsed, inspectionPenaltyForElapsed, inspectionReminderSeconds, inspectionSeconds } from './inspection.js';
 
-const inspectionSeconds = 15;
-const inspectionDnfSeconds = 17;
 const holdToStartMs = 500;
 const spaceReleaseQuietMs = 180;
 const shortPressCancelQuietMs = holdToStartMs + 25;
-const reminderSeconds = new Set([8, 12]);
+const reminderSeconds = new Set(inspectionReminderSeconds);
 const args = new Set(process.argv.slice(2));
 
 if (args.has('--help') || args.has('-h')) {
@@ -222,7 +221,7 @@ async function runTimer({ inspectionEnabled }) {
     } else if (state === 'inspection') {
       const elapsed = (performance.now() - inspectionStartedAt) / 1000;
       const penalty = inspectionPenaltyForElapsed(elapsed);
-      lines.push(`状态: ${penalty === 'ok' ? '观察中' : '观察超时'} ${inspectionDisplayForElapsed(elapsed)}`);
+      lines.push(`状态: ${penalty === 'ok' ? '观察中' : '观察超时'} ${inspectionDisplayForElapsed(elapsed, { unit: true })}`);
       lines.push(penalty === 'ok'
         ? '持续按住空格超过 0.5s 后松开开始计时；8s、12s 会响铃提醒。'
         : `持续按住空格超过 0.5s 后松开开始计时；本次 ${penalty.toUpperCase()}。`);
@@ -263,18 +262,6 @@ async function runTimer({ inspectionEnabled }) {
   function currentInspectionPenalty() {
     if (!inspectionEnabled || inspectionStartedAt == null) return 'ok';
     return inspectionPenaltyForElapsed((performance.now() - inspectionStartedAt) / 1000);
-  }
-
-  function inspectionPenaltyForElapsed(elapsedSeconds) {
-    if (elapsedSeconds >= inspectionDnfSeconds) return 'dnf';
-    if (elapsedSeconds >= inspectionSeconds) return '+2';
-    return 'ok';
-  }
-
-  function inspectionDisplayForElapsed(elapsedSeconds) {
-    if (elapsedSeconds >= inspectionDnfSeconds) return 'DNF';
-    if (elapsedSeconds >= inspectionSeconds) return '+2';
-    return `${Math.max(0, inspectionSeconds - elapsedSeconds).toFixed(1)}s`;
   }
 
   function displayLatestTime() {

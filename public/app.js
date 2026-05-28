@@ -7,6 +7,7 @@ import { decodeGanBluetoothPacketFast } from './gan-bluetooth-fast.js';
 import { ganBluetoothMovesFromDecoded } from './gan-move-history.js';
 import { ganGyroQuaternionToCube3dBasis, ganGyroVelocityToCube3dBasis } from './gyro-orientation.js';
 import { countMoveSteps } from './move-metrics.js';
+import { inspectionDisplayForElapsed, inspectionPenaltyForElapsed, inspectionReminderSeconds, inspectionSeconds } from './inspection.js';
 import { parseSolveImport } from './solves-import.js';
 import { buildStatsSummary } from './stats-summary.js';
 import { buildSolveSummary } from './solve-summary.js';
@@ -15,10 +16,8 @@ import { bestAverageRecord, bestMeanRecord, bestSingleRecord, recordMarksAt, rol
 const localApiOrigin = 'http://127.0.0.1:3211';
 const localHttpHost = /^(127\.0\.0\.1|localhost|\[::1\])$/.test(location.hostname);
 const apiOrigin = localHttpHost ? '' : localApiOrigin;
-const inspectionSeconds = 15;
-const inspectionDnfSeconds = inspectionSeconds;
 const holdToStartMs = 500;
-const reminderSeconds = new Set([8, 12]);
+const reminderSeconds = new Set(inspectionReminderSeconds);
 const compactHistoryLimit = 48;
 const allSolvesRenderBatchSize = 180;
 const bluetoothNextSolveGestureWindowMs = 700;
@@ -8934,19 +8933,6 @@ function numberOrDash(value, digits = 3) {
 function currentInspectionPenalty() {
   if (!activeInspectionUsed || inspectionStartedAt === 0) return 'ok';
   return inspectionPenaltyForElapsed(inspectionElapsedSeconds());
-}
-
-function inspectionPenaltyForElapsed(elapsedSeconds) {
-  if (elapsedSeconds >= inspectionDnfSeconds) return 'dnf';
-  if (elapsedSeconds >= inspectionSeconds) return '+2';
-  return 'ok';
-}
-
-function inspectionDisplayForElapsed(elapsedSeconds) {
-  if (elapsedSeconds >= inspectionDnfSeconds) return 'DNF';
-  if (elapsedSeconds >= inspectionSeconds) return '+2';
-  const remainingTenths = Math.ceil(Math.max(0, inspectionSeconds - elapsedSeconds - 0.0001) * 10);
-  return (remainingTenths / 10).toFixed(1);
 }
 
 function parseTimeInput(value) {

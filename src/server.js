@@ -30,7 +30,7 @@ const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const publicRoot = join(projectRoot, 'public');
 const srcRoot = join(projectRoot, 'src');
 const nodeModulesRoot = join(projectRoot, 'node_modules');
-const publicSrcModules = new Set(['algorithm-trainer-cases.js', 'bluetooth-moves.js', 'cfop-analysis.js', 'cube-state.js', 'move-metrics.js', 'rolling-averages.js', 'solve-summary.js', 'solves-export.js', 'solves-import.js', 'stats-summary.js']);
+const publicSrcModules = new Set(['algorithm-trainer-cases.js', 'bluetooth-moves.js', 'cfop-analysis.js', 'cube-state.js', 'inspection.js', 'move-metrics.js', 'rolling-averages.js', 'solve-summary.js', 'solves-export.js', 'solves-import.js', 'stats-summary.js']);
 const vendorModules = new Map([
   ['three.module.js', join(nodeModulesRoot, 'three', 'build', 'three.module.js')],
 ]);
@@ -74,19 +74,27 @@ const corsHeaders = {
 listen(requestedPort);
 
 function listen(port) {
-  server.once('error', (error) => {
+  const handleError = (error) => {
+    server.off('listening', handleListening);
     if (error.code === 'EADDRINUSE' && port < requestedPort + 20) {
       listen(port + 1);
       return;
     }
     throw error;
-  });
+  };
 
-  server.listen(port, host, () => {
-    const url = `http://${host}:${port}`;
+  const handleListening = () => {
+    server.off('error', handleError);
+    const address = server.address();
+    const actualPort = address && typeof address === 'object' ? address.port : port;
+    const url = `http://${host}:${actualPort}`;
     console.log(`TrainTimer web UI: ${url}`);
     console.log(`History file: ${getHistoryPath()}`);
-  });
+  };
+
+  server.once('error', handleError);
+  server.once('listening', handleListening);
+  server.listen(port, host);
 }
 
 async function handleApi(request, response) {

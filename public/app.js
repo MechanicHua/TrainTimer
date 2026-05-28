@@ -6265,7 +6265,16 @@ function resetAlgorithmTrainerCardScroll(renderedCaseChanged, current) {
     elements.algorithmTrainerCard.scrollTop = 0;
   };
   resetScroll();
+  pulseAlgorithmTrainerCard();
   requestAnimationFrame(resetScroll);
+}
+
+function pulseAlgorithmTrainerCard() {
+  const card = elements.algorithmTrainerCard;
+  if (!card) return;
+  card.classList.remove('case-enter');
+  void card.offsetWidth;
+  card.classList.add('case-enter');
 }
 
 function renderAlgorithmTrainerFeedback() {
@@ -9009,6 +9018,7 @@ function renderCubeNet(scrambleText) {
 
 function renderCubeFacesNet(container, faces, baseClass) {
   const fragment = document.createDocumentFragment();
+  let stickerIndex = 0;
 
   container.className = `${baseClass} sticker-preview`;
   container.replaceChildren();
@@ -9022,6 +9032,8 @@ function renderCubeFacesNet(container, faces, baseClass) {
         sticker.style.background = previewStickerColor(faces[face][row][col].color);
         sticker.style.gridColumn = `${xOffset + col + 1}`;
         sticker.style.gridRow = `${yOffset + row + 1}`;
+        sticker.style.setProperty('--sticker-index', String(stickerIndex));
+        stickerIndex += 1;
         fragment.append(sticker);
       }
     }

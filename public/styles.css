@@ -2289,6 +2289,10 @@ dialog[open] {
   animation: algorithm-card-in 220ms var(--ease) both;
 }
 
+.algorithm-trainer-card.case-enter {
+  animation: algorithm-card-refresh 240ms var(--ease) both;
+}
+
 .algorithm-trainer-card::-webkit-scrollbar {
   width: 8px;
 }
@@ -2466,6 +2470,8 @@ dialog[open] {
 .algorithm-trainer-preview .sticker {
   border-radius: 3px;
   opacity: 0.78;
+  animation: algorithm-sticker-in 260ms var(--ease) both;
+  animation-delay: calc(var(--sticker-index, 0) * 5ms);
 }
 
 .algorithm-trainer-hint {
@@ -3757,6 +3763,18 @@ dialog[open] {
   }
 }
 
+@keyframes algorithm-card-refresh {
+  0% {
+    transform: translateY(4px) scale(0.994);
+  }
+  70% {
+    transform: translateY(-1px) scale(1.003);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
 @keyframes algorithm-preview-in {
   from {
     opacity: 0;
@@ -3765,6 +3783,17 @@ dialog[open] {
   to {
     opacity: 0.76;
     transform: translateY(0);
+  }
+}
+
+@keyframes algorithm-sticker-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px) scale(0.92);
+  }
+  to {
+    opacity: 0.78;
+    transform: translateY(0) scale(1);
   }
 }
 

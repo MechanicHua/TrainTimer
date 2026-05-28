@@ -70,6 +70,12 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
+const staticHeaders = {
+  ...corsHeaders,
+  'Cache-Control': 'no-store, max-age=0',
+  Pragma: 'no-cache',
+  Expires: '0',
+};
 
 listen(requestedPort);
 
@@ -462,7 +468,7 @@ async function serveStatic(request, response) {
 
   try {
     const content = await readFile(filePath);
-    response.writeHead(200, { ...corsHeaders, 'Content-Type': contentTypes[extname(filePath)] || 'application/octet-stream' });
+    response.writeHead(200, { ...staticHeaders, 'Content-Type': contentTypes[extname(filePath)] || 'application/octet-stream' });
     response.end(content);
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { algorithmTrainerBuiltInCasesForSet, algorithmTrainerCases } from '../src/algorithm-trainer-cases.js';
+import { algorithmTrainerBuiltInCasesForSet, algorithmTrainerCaseBelongsToSet, algorithmTrainerCases } from '../src/algorithm-trainer-cases.js';
 import { cubeStateFromScramble, isSolvedFaces, parseScramble } from '../src/cube-state.js';
 
 const expectedSetCounts = {
@@ -22,11 +22,18 @@ test('built-in algorithm trainer cases have stable ids and expected set counts',
 
 test('built-in algorithm trainer aggregate sets expose practical training pools', () => {
   const cfopCases = algorithmTrainerBuiltInCasesForSet('cfopFull');
+  const ollCase = cfopCases.find((item) => item.set === 'oll');
+  const f2lCase = cfopCases.find((item) => item.set === 'f2lFull');
+  const pllCase = cfopCases.find((item) => item.set === 'pll');
 
   assert.equal(cfopCases.length, 119);
   assert.equal(cfopCases.filter((item) => item.set === 'f2lFull').length, 41);
   assert.equal(cfopCases.filter((item) => item.set === 'oll').length, 57);
   assert.equal(cfopCases.filter((item) => item.set === 'pll').length, 21);
+  assert.equal(algorithmTrainerCaseBelongsToSet(ollCase, 'cfopFull'), true);
+  assert.equal(algorithmTrainerCaseBelongsToSet(f2lCase, 'cfopFull'), true);
+  assert.equal(algorithmTrainerCaseBelongsToSet(pllCase, 'cfopFull'), true);
+  assert.equal(algorithmTrainerCaseBelongsToSet(ollCase, 'pll'), false);
 });
 
 test('built-in algorithm trainer cases parse and generate solved inverse setups', () => {

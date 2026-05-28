@@ -1,5 +1,5 @@
 import { applyMove, correctionMovesToScrambleTarget, createSolvedCube, cubeStateFromScramble, facesFromCube, isSolvedFaces, parseScramble } from './cube-state.js';
-import { algorithmTrainerBuiltInCasesForSet, algorithmTrainerCases } from './algorithm-trainer-cases.js';
+import { algorithmTrainerBuiltInCasesForSet, algorithmTrainerCaseBelongsToSet, algorithmTrainerCases } from './algorithm-trainer-cases.js';
 import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from './bluetooth-moves.js';
 import { cfopStagesForSave, cfopStageTemplate, solveCfopAnalysis, solveMoveRecords } from './cfop-analysis.js';
 import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv, solvesToCstimerJson, solvesToTextTable } from './solves-export.js';
@@ -6920,7 +6920,7 @@ function algorithmTrainerTimedSetAverage(cases) {
 }
 
 function algorithmTrainerCurrentCase(cases = algorithmTrainerCasesForSet()) {
-  return cases.find((item) => item.id === algorithmTrainerCurrentId && item.set === algorithmTrainerSet) || null;
+  return cases.find((item) => item.id === algorithmTrainerCurrentId && algorithmTrainerCaseBelongsToSet(item, algorithmTrainerSet)) || null;
 }
 
 function algorithmTrainerProgressText(stats = {}) {

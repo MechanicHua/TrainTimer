@@ -706,11 +706,9 @@ elements.algorithmTrainerGroupFilter.addEventListener('change', () => {
   localStorage.setItem('trainTimer.algorithmTrainerGroup', algorithmTrainerGroup);
   chooseNextAlgorithmTrainerCase();
 });
-elements.algorithmTrainerSearch.addEventListener('input', () => {
-  algorithmTrainerSearch = elements.algorithmTrainerSearch.value.trim();
-  localStorage.setItem('trainTimer.algorithmTrainerSearch', algorithmTrainerSearch);
-  chooseNextAlgorithmTrainerCase({ renderOnly: true });
-});
+elements.algorithmTrainerSearch.addEventListener('input', handleAlgorithmTrainerSearchInput);
+elements.algorithmTrainerSearch.addEventListener('change', handleAlgorithmTrainerSearchInput);
+elements.algorithmTrainerSearch.addEventListener('search', handleAlgorithmTrainerSearchInput);
 elements.algorithmTrainerNextButton.addEventListener('click', chooseNextAlgorithmTrainerCase);
 elements.algorithmTrainerPassButton.addEventListener('click', () => recordAlgorithmTrainerResult(true));
 elements.algorithmTrainerFailButton.addEventListener('click', () => recordAlgorithmTrainerResult(false));
@@ -6023,6 +6021,12 @@ function shouldIgnoreAlgorithmTrainerShortcut(event) {
   return target instanceof HTMLElement && Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
 }
 
+function handleAlgorithmTrainerSearchInput() {
+  algorithmTrainerSearch = elements.algorithmTrainerSearch.value.trim();
+  localStorage.setItem('trainTimer.algorithmTrainerSearch', algorithmTrainerSearch);
+  renderAlgorithmTrainerDialog();
+}
+
 function renderAlgorithmTrainerDialog() {
   if (!elements.algorithmTrainerDialog.open) return;
   elements.algorithmTrainerSet.value = algorithmTrainerSet;
@@ -6054,7 +6058,7 @@ function renderAlgorithmTrainerDialog() {
   const searchText = searchActive ? ` · 搜索 ${visibleCases.length}/${focusBaseCases.length}` : '';
   elements.algorithmTrainerMeta.textContent = `${setLabel} · ${allSetCases.length} 条${groupLabel}${focusText}${searchText} · ${totals.success}/${totals.total} 掌握`;
   elements.algorithmTrainerName.textContent = current?.name || '-';
-  elements.algorithmTrainerGroup.textContent = current?.group || '-';
+  elements.algorithmTrainerGroup.textContent = current ? algorithmTrainerCaseGroupLabel(current) : '-';
   elements.algorithmTrainerAlg.textContent = current?.algorithm || '-';
   elements.algorithmTrainerHint.textContent = searchActive && visibleCases.length === 0
     ? `没有匹配“${algorithmTrainerSearchQuery()}”的公式`
@@ -6183,7 +6187,7 @@ function renderAlgorithmTrainerListItem(item, index = 0) {
   row.style.setProperty('--item-index', String(Math.min(index, 12)));
   row.innerHTML = `
     <strong>${escapeHtml(item.name)}</strong>
-    <span>${escapeHtml(item.group)}</span>
+    <span>${escapeHtml(algorithmTrainerCaseGroupLabel(item))}</span>
     <em>${escapeHtml(algorithmTrainerProgressText(stats))}</em>
   `;
   row.addEventListener('click', () => {
@@ -6837,9 +6841,25 @@ function algorithmTrainerSearchText(item) {
   return [
     item.name,
     item.group,
+    algorithmTrainerCaseSetShortLabel(item),
     item.algorithm,
     item.hint,
   ].filter(Boolean).join(' ').toLowerCase();
+}
+
+function algorithmTrainerCaseGroupLabel(item) {
+  const group = item?.group || '-';
+  if (algorithmTrainerSet !== 'cfopFull') return group;
+  const setLabel = algorithmTrainerCaseSetShortLabel(item);
+  return setLabel ? `${setLabel} · ${group}` : group;
+}
+
+function algorithmTrainerCaseSetShortLabel(item) {
+  if (!item?.set) return '';
+  if (item.set === 'f2lFull') return 'F2L';
+  if (item.set === 'oll') return 'OLL';
+  if (item.set === 'pll') return 'PLL';
+  return algorithmTrainerSetLabels[item.set] || '';
 }
 
 function algorithmTrainerCaseStarred(caseId) {

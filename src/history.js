@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
+import { countMoveSteps } from './move-metrics.js';
 import { averageOfLast, bestAverageOf, bestMeanOf, meanOfLast } from './rolling-averages.js';
 
 const defaultHistoryPath = join(homedir(), '.train-timer', 'solves.json');
@@ -204,7 +205,7 @@ export function normalizeSolve(solve) {
   const bluetoothMoveLog = normalizeBluetoothMoveLog(solve.bluetoothMoveLog, bluetoothMoves);
   const importedBluetoothMoveCount = Number(solve.bluetoothMoveCount);
   const bluetoothMoveCount = bluetoothMoves.length > 0
-    ? bluetoothMoves.length
+    ? countMoveSteps(bluetoothMoves)
     : (Number.isFinite(importedBluetoothMoveCount) ? Math.max(0, Math.round(importedBluetoothMoveCount)) : 0);
   const bluetoothTpsText = String(solve.bluetoothTps ?? '').trim();
   const importedBluetoothTps = Number(bluetoothTpsText);
@@ -233,6 +234,7 @@ export function normalizeSolve(solve) {
     timerSource: solve.timerSource === 'bluetooth' ? 'bluetooth' : 'manual',
     bluetoothMoves,
     bluetoothMoveLog,
+    bluetoothSolvedByStatePacket: solve.bluetoothSolvedByStatePacket === true,
     cfopStages,
     bluetoothMoveCount,
     bluetoothTps,

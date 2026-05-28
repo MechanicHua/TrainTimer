@@ -1,9 +1,11 @@
 import { applyMove, correctionMovesToScrambleTarget, createSolvedCube, cubeStateFromScramble, facesFromCube, isSolvedFaces, parseScramble } from './cube-state.js';
 import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from './bluetooth-moves.js';
+import { cfopStagesForSave, cfopStageTemplate, solveCfopAnalysis, solveMoveRecords } from './cfop-analysis.js';
 import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv, solvesToCstimerJson, solvesToTextTable } from './solves-export.js';
 import { decodeGanBluetoothPacketFast } from './gan-bluetooth-fast.js';
 import { ganBluetoothMovesFromDecoded } from './gan-move-history.js';
 import { ganGyroQuaternionToCube3dBasis, ganGyroVelocityToCube3dBasis } from './gyro-orientation.js';
+import { countMoveSteps } from './move-metrics.js';
 import { parseSolveImport } from './solves-import.js';
 import { buildStatsSummary } from './stats-summary.js';
 import { buildSolveSummary } from './solve-summary.js';
@@ -238,23 +240,6 @@ const previewStickerColors = new Map([
   ['#2563eb', '#3d56b6'],
   ['#f97316', '#b8794c'],
 ]);
-const cubeFaceNormals = {
-  U: [0, 1, 0],
-  R: [1, 0, 0],
-  F: [0, 0, 1],
-  D: [0, -1, 0],
-  L: [-1, 0, 0],
-  B: [0, 0, -1],
-};
-const cubeOppositeFaces = { U: 'D', D: 'U', R: 'L', L: 'R', F: 'B', B: 'F' };
-const cfopBottomFaceOrder = ['D', 'U', 'F', 'B', 'L', 'R'];
-const cfopFallbackPairSlots = Array.from({ length: 4 }, (_, index) => ({
-  key: `pair-${index + 1}`,
-  label: `F${index + 1}`,
-  name: `F2L Pair ${index + 1}`,
-  cells: [],
-}));
-const cfopDefinitions = createCfopDefinitions();
 const puzzleLabels = new Map([
   ['two', '2x2'],
   ['three', '3x3'],
@@ -989,7 +974,7 @@ window.__trainTimerDebug = {
   state() {
     return {
       appState,
-      bluetoothMoveCount: bluetoothMoves.length,
+      bluetoothMoveCount: bluetoothMoveStepCount(),
       bluetoothMoves: bluetoothMoveSequence(),
       bluetoothMetadata: bluetoothSolveMetadata(),
       bluetoothGyro,
@@ -1360,6 +1345,7 @@ async function finishTiming(options = {}) {
     scramblePuzzle: scramble.puzzle || scramblePuzzle,
     bluetoothMoves: bluetoothMovesForSave,
     bluetoothMoveLog: bluetoothMoveLogForSave,
+    bluetoothSolvedByStatePacket,
   });
 
   const data = await postJson('/api/solves', {
@@ -1373,6 +1359,7 @@ async function finishTiming(options = {}) {
     timerSource: finishSource,
     bluetoothMoves: bluetoothMovesForSave,
     bluetoothMoveLog: bluetoothMoveLogForSave,
+    bluetoothSolvedByStatePacket,
     cfopStages,
     bluetoothDeviceName: bluetoothMetadata.deviceName,
     bluetoothProtocols: bluetoothMetadata.protocols,
@@ -2469,7 +2456,7 @@ function renderSolveDialog() {
   elements.solveDetailTitle.textContent = `成绩 ${displaySolveTime(solve)}`;
   const timerSource = solve.timerSource === 'bluetooth' ? '蓝牙停表' : '手动停表';
   const bluetoothMoves = Array.isArray(solve.bluetoothMoves) ? solve.bluetoothMoves : [];
-  const bluetoothMoveCount = solve.bluetoothMoveCount ?? (Array.isArray(solve.bluetoothMoves) ? solve.bluetoothMoves.length : 0);
+  const bluetoothMoveCount = solve.bluetoothMoveCount ?? (Array.isArray(solve.bluetoothMoves) ? countMoveSteps(solve.bluetoothMoves) : 0);
   const bluetoothTps = Number.isFinite(solve.bluetoothTps) ? `${solve.bluetoothTps.toFixed(3)} TPS` : 'TPS -';
   const bluetoothDevice = solve.bluetoothDeviceName || '';
   const bluetoothProtocols = formatList(solve.bluetoothProtocols);
@@ -2652,292 +2639,6 @@ function updateSolveReplayHighlight() {
     chip.classList.toggle('active', active);
     if (active) chip.scrollIntoView({ block: 'nearest', inline: 'center' });
   });
-}
-
-function solveMoveRecords(solve) {
-  if (!solve) return [];
-  const moveLog = Array.isArray(solve.bluetoothMoveLog) ? solve.bluetoothMoveLog : [];
-  const moves = Array.isArray(solve.bluetoothMoves) ? solve.bluetoothMoves : [];
-  const records = moveLog.length > 0
-    ? moveLog.map((entry, index) => ({
-      step: Number.isFinite(Number(entry.step)) ? Number(entry.step) : index + 1,
-      move: String(entry.move || '').trim(),
-      elapsedMs: Number.isFinite(Number(entry.elapsedMs)) ? Number(entry.elapsedMs) : null,
-    }))
-    : moves.map((move, index) => ({ step: index + 1, move, elapsedMs: null }));
-  return records.filter((record) => /^[UDRLFB](2|')?$/.test(record.move));
-}
-
-function createCfopDefinitions() {
-  const stickers = createSolvedCube();
-  const cubies = new Map();
-  for (const sticker of stickers) {
-    const key = sticker.pos.join(',');
-    if (!cubies.has(key)) cubies.set(key, []);
-    cubies.get(key).push({
-      color: sticker.face,
-      cell: cfopSolvedStickerCell(sticker),
-    });
-  }
-
-  const edgeCubies = [...cubies.values()].filter((cubie) => cubie.length === 2);
-  const cornerCubies = [...cubies.values()].filter((cubie) => cubie.length === 3);
-  const definitions = new Map();
-  for (const bottomFace of cfopBottomFaceOrder) {
-    const topFace = cubeOppositeFaces[bottomFace];
-    const crossCells = edgeCubies
-      .filter((cubie) => cubie.some((sticker) => sticker.color === bottomFace))
-      .flatMap((cubie) => cubie.map((sticker) => sticker.cell));
-    const pairSlots = cornerCubies
-      .filter((corner) => corner.some((sticker) => sticker.color === bottomFace))
-      .map((corner, index) => {
-        const sideFaces = corner.map((sticker) => sticker.color).filter((face) => face !== bottomFace);
-        const edge = edgeCubies.find((candidate) => (
-          sideFaces.every((face) => candidate.some((sticker) => sticker.color === face))
-        ));
-        return {
-          key: `${bottomFace}-${sideFaces.join('')}`,
-          label: `F${index + 1}`,
-          name: `F2L ${sideFaces.join('/')}`,
-          cells: [
-            ...corner.map((sticker) => sticker.cell),
-            ...(edge ? edge.map((sticker) => sticker.cell) : []),
-          ],
-        };
-      });
-    const ollCells = Array.from({ length: 9 }, (_, index) => [topFace, Math.floor(index / 3), index % 3]);
-    definitions.set(bottomFace, { bottomFace, topFace, crossCells, pairSlots, ollCells });
-  }
-  return definitions;
-}
-
-function cfopSolvedStickerCell(sticker) {
-  const face = cfopFaceFromNormal(sticker.normal);
-  const [row, col] = cfopFaceGridPosition(face, sticker.pos);
-  return [face, row, col];
-}
-
-function cfopFaceFromNormal(normal) {
-  for (const [face, candidate] of Object.entries(cubeFaceNormals)) {
-    if (normal.every((value, index) => value === candidate[index])) return face;
-  }
-  throw new Error(`Invalid sticker normal: ${normal.join(',')}`);
-}
-
-function cfopFaceGridPosition(face, [x, y, z]) {
-  if (face === 'U') return [z + 1, x + 1];
-  if (face === 'D') return [1 - z, x + 1];
-  if (face === 'F') return [1 - y, x + 1];
-  if (face === 'B') return [1 - y, 1 - x];
-  if (face === 'R') return [1 - y, 1 - z];
-  if (face === 'L') return [1 - y, z + 1];
-  throw new Error(`Unsupported face: ${face}`);
-}
-
-function solveCfopAnalysis(solve) {
-  const records = solveMoveRecords(solve);
-  const stageTemplate = cfopStageTemplate();
-  if (!solve?.scramble || records.length === 0 || (solve.scramblePuzzle || 'three') !== 'three') {
-    return { records, stages: stageTemplate, finalSolved: false };
-  }
-
-  const snapshots = cfopSnapshotsForSolve(solve, records);
-  if (snapshots.length === 0) {
-    return { records, stages: stageTemplate, finalSolved: false };
-  }
-
-  const candidates = [...cfopDefinitions.values()]
-    .map((definition, index) => analyzeCfopDefinition(definition, snapshots, index))
-    .sort(compareCfopCandidates);
-  const best = candidates[0];
-  const completions = best || {
-    cross: null,
-    bottomFace: '',
-    pairs: new Map(),
-    f2l: null,
-    oll: null,
-    pll: null,
-    confidence: '',
-  };
-  const cfopDefinition = best?.definition || null;
-
-  const pairSlots = cfopDefinition?.pairSlots || cfopFallbackPairSlots;
-  const orderedPairs = pairSlots
-    .map((slot) => ({ ...slot, completedAt: completions.pairs.get(slot.key) ?? null }))
-    .sort((left, right) => {
-      const leftStep = left.completedAt ?? Number.POSITIVE_INFINITY;
-      const rightStep = right.completedAt ?? Number.POSITIVE_INFINITY;
-      return leftStep - rightStep || pairSlots.findIndex((slot) => slot.key === left.key) - pairSlots.findIndex((slot) => slot.key === right.key);
-    });
-  const pairStages = orderedPairs.map((slot, index) => ({
-    key: slot.key,
-    label: `F${index + 1}`,
-    name: slot.name,
-    completedAt: slot.completedAt,
-  }));
-
-  const boundaries = [
-    { key: 'cross', label: 'C', name: 'Cross', completedAt: completions.cross },
-    ...pairStages,
-    { key: 'oll', label: 'O', name: 'OLL', completedAt: completions.oll },
-    { key: 'pll', label: 'P', name: 'PLL', completedAt: completions.pll },
-  ];
-  let previousStep = 0;
-  const stages = boundaries.map((boundary) => {
-    const stage = cfopStageFromBoundary(boundary, records, previousStep);
-    if (boundary.completedAt != null) previousStep = Math.max(previousStep, boundary.completedAt);
-    return stage;
-  });
-
-  return {
-    records,
-    stages,
-    finalSolved: completions.pll != null,
-    bottomFace: completions.cross != null ? completions.bottomFace : '',
-    confidence: completions.confidence,
-  };
-}
-
-function cfopSnapshotsForSolve(solve, records) {
-  try {
-    const cube = createSolvedCube();
-    for (const move of parseScramble(solve.scramble)) applyMove(cube, move);
-    const snapshots = [{ step: 0, faces: facesFromCube(cube) }];
-    for (let index = 0; index < records.length; index += 1) {
-      applyMove(cube, parseScramble(records[index].move)[0]);
-      snapshots.push({ step: index + 1, faces: facesFromCube(cube) });
-    }
-    return snapshots;
-  } catch {
-    return [];
-  }
-}
-
-function analyzeCfopDefinition(definition, snapshots, order) {
-  const completions = {
-    definition,
-    cross: null,
-    bottomFace: definition.bottomFace,
-    pairs: new Map(),
-    f2l: null,
-    oll: null,
-    pll: null,
-    crossStableSnapshots: 0,
-    order,
-  };
-
-  for (const snapshot of snapshots) {
-    const faces = snapshot.faces;
-    const crossSolved = isFaceletSetSolved(faces, definition.crossCells);
-    if (completions.cross == null && crossSolved) completions.cross = snapshot.step;
-    if (completions.cross == null || !crossSolved) continue;
-
-    completions.crossStableSnapshots += 1;
-    for (const slot of definition.pairSlots) {
-      if (!completions.pairs.has(slot.key) && isFaceletSetSolved(faces, slot.cells)) {
-        completions.pairs.set(slot.key, snapshot.step);
-      }
-    }
-    if (completions.f2l == null && completions.pairs.size === definition.pairSlots.length) completions.f2l = snapshot.step;
-    if (completions.f2l == null) continue;
-
-    if (completions.oll == null && isFaceletSetSolved(faces, definition.ollCells)) completions.oll = snapshot.step;
-    if (completions.oll == null) continue;
-
-    if (completions.pll == null && isSolvedFaces(faces)) completions.pll = snapshot.step;
-  }
-
-  completions.score = cfopCandidateScore(completions, snapshots[snapshots.length - 1]?.step || 0);
-  completions.confidence = cfopCandidateConfidence(completions);
-  return completions;
-}
-
-function cfopCandidateScore(candidate, lastStep) {
-  let score = 0;
-  if (candidate.cross != null) score += 1000 + Math.max(0, lastStep - candidate.cross);
-  score += candidate.pairs.size * 520;
-  if (candidate.f2l != null) score += 4200 + Math.max(0, lastStep - candidate.f2l) * 4;
-  if (candidate.oll != null) score += 2600 + Math.max(0, lastStep - candidate.oll) * 2;
-  if (candidate.pll != null) score += 2200;
-  score += candidate.crossStableSnapshots * 8;
-  return score;
-}
-
-function compareCfopCandidates(left, right) {
-  return right.score - left.score
-    || compareCfopStep(left.f2l, right.f2l)
-    || compareCfopStep(left.oll, right.oll)
-    || compareCfopStep(left.cross, right.cross)
-    || left.order - right.order;
-}
-
-function compareCfopStep(left, right) {
-  if (left == null && right == null) return 0;
-  if (left == null) return 1;
-  if (right == null) return -1;
-  return left - right;
-}
-
-function cfopCandidateConfidence(candidate) {
-  if (candidate.pll != null && candidate.oll != null && candidate.f2l != null) return '高';
-  if (candidate.f2l != null) return '中';
-  if (candidate.cross != null || candidate.pairs.size > 0) return '低';
-  return '';
-}
-
-function cfopStageTemplate() {
-  return [
-    { label: 'C', name: 'Cross', completed: false, turns: 0, durationMs: null, tps: null },
-    ...cfopFallbackPairSlots.map((slot, index) => ({ label: `F${index + 1}`, name: slot.name, completed: false, turns: 0, durationMs: null, tps: null })),
-    { label: 'O', name: 'OLL', completed: false, turns: 0, durationMs: null, tps: null },
-    { label: 'P', name: 'PLL', completed: false, turns: 0, durationMs: null, tps: null },
-  ];
-}
-
-function cfopStageFromBoundary(boundary, records, previousStep) {
-  const completed = boundary.completedAt != null;
-  const endStep = completed ? Math.max(previousStep, boundary.completedAt) : previousStep;
-  const turns = completed ? Math.max(0, endStep - previousStep) : 0;
-  const startElapsed = elapsedAtSolveStep(records, previousStep);
-  const endElapsed = elapsedAtSolveStep(records, endStep);
-  const durationMs = completed && Number.isFinite(startElapsed) && Number.isFinite(endElapsed)
-    ? Math.max(0, endElapsed - startElapsed)
-    : null;
-  const tps = durationMs > 0 ? Math.round((turns / (durationMs / 1000)) * 100) / 100 : null;
-  return {
-    key: boundary.key,
-    label: boundary.label,
-    name: boundary.name,
-    completed,
-    completedAt: boundary.completedAt,
-    turns,
-    durationMs,
-    tps,
-  };
-}
-
-function elapsedAtSolveStep(records, step) {
-  if (step <= 0) return 0;
-  const record = records[step - 1];
-  return Number.isFinite(record?.elapsedMs) ? record.elapsedMs : null;
-}
-
-function isFaceletSetSolved(faces, cells) {
-  return cells.every(([face, row, col]) => faces?.[face]?.[row]?.[col]?.face === face);
-}
-
-function cfopStagesForSave(solve) {
-  const analysis = solveCfopAnalysis(solve);
-  return analysis.stages.map((stage) => ({
-    key: stage.key || '',
-    label: stage.label,
-    name: stage.name,
-    completed: Boolean(stage.completed),
-    completedAt: stage.completedAt ?? null,
-    turns: stage.turns,
-    durationMs: Number.isFinite(stage.durationMs) ? Math.round(stage.durationMs) : null,
-    tps: Number.isFinite(stage.tps) ? stage.tps : null,
-  }));
 }
 
 function solveWithDerivedCfop(solve) {
@@ -3966,8 +3667,6 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
   const physicalFaces = decoded.facelets ? facesFromFacelets(decoded.facelets) : null;
   const statePacketSolved = decoded.stateSolved === true || Boolean(physicalFaces && isSolvedFaces(physicalFaces));
   if (statePacketSolved && decoded.stateSolved !== true) decoded = { ...decoded, stateSolved: true };
-  const stoppedFromStatePacket = statePacketSolved
-    && stopTimingFromBluetoothSolved(packetReceivedAt, { byStatePacket: true });
   const hasMoveCounter = Number.isInteger(decoded.moveCounter);
   const previousMoveCounter = bluetoothGanLastMoveCounter;
   const duplicateMovePacket = hasMoveCounter
@@ -3982,6 +3681,10 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
   const moveHandling = handleBluetoothMovesForCurrentState(parsedMoves, label, decoded.protocol || protocol.label, deviceName);
   const trackingMoves = moveHandling.trackingMoves;
   const stoppedFromMoves = wasTimingBeforeMoves && appState !== 'timing' && bluetoothSolved;
+  const stoppedFromStatePacket = statePacketSolved
+    && wasTimingBeforeMoves
+    && !stoppedFromMoves
+    && stopTimingFromBluetoothSolved(packetReceivedAt, { byStatePacket: true });
   const solvedByStatePacket = stoppedFromStatePacket || markGanBluetoothStateSolved(decoded);
   const gyroOnlyPacket = isGanGyroOnlyPacket(decoded, parsedMoves);
   if (gyroOnlyPacket) {
@@ -4017,7 +3720,7 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
       ganBluetoothPacketLog(hex, decoded, ignoredReason),
     );
   }
-  if (!stoppedFromStatePacket && solvedByStatePacket) finishTimingFromBluetooth(packetReceivedAt);
+  if (!stoppedFromStatePacket && !stoppedFromMoves && solvedByStatePacket) finishTimingFromBluetooth(packetReceivedAt);
   if (!gyroOnlyPacket) console.info('GAN Bluetooth cube notification', {
     characteristic: uuid,
     value: hex,
@@ -4454,7 +4157,7 @@ function bluetoothFeedKindClass(kind) {
 function renderBluetoothLog() {
   const connected = bluetoothDevice?.gatt?.connected ? '已连接' : '未连接';
   const battery = bluetoothBatteryLevel == null ? '电量 -' : `电量 ${bluetoothBatteryLevel}%`;
-  elements.bluetoothLogMeta.textContent = `${connected} · ${battery} · ${bluetoothLog.length} 条事件 · ${bluetoothMoves.length} 次转动`;
+  elements.bluetoothLogMeta.textContent = `${connected} · ${battery} · ${bluetoothLog.length} 条事件 · ${bluetoothMoveStepCount()} 步`;
   renderBluetoothMoves();
 
   if (bluetoothLog.length === 0) {
@@ -4538,7 +4241,7 @@ function bluetoothLogPayload() {
     gyro: bluetoothGyro,
     facelets: bluetoothPhysicalFacelets,
     faceletsTime: bluetoothPhysicalStateTime,
-    moveCount: bluetoothMoves.length,
+    moveCount: bluetoothMoveStepCount(),
     moves: bluetoothMoves,
     events: bluetoothLog,
   };
@@ -4623,13 +4326,16 @@ function updateBluetoothSolvedFromMoves(moves) {
 function renderBluetoothMoves(options = {}) {
   const shouldRenderState = !options.skipStatePreview;
   const moveText = bluetoothMoveSequence().slice(-40).join(' ');
-  const rowText = bluetoothMoves.length === 0
+  const hasMoves = bluetoothMoves.length > 0;
+  const stepCount = bluetoothMoveStepCount();
+  const rowText = !hasMoves
     ? (appState === 'timing' ? '暂无解析出的转动' : '计时开始后记录转动')
     : moveText;
-  const statusText = bluetoothMoves.length === 0
+  const statusText = !hasMoves
     ? (bluetoothSolved ? '已复原' : (appState === 'timing' ? '未同步' : '等待计时'))
     : (bluetoothSolved ? '已复原' : '未复原');
   const renderKey = [
+    stepCount,
     bluetoothMoves.length,
     bluetoothSolved ? 1 : 0,
     appState,
@@ -4640,11 +4346,11 @@ function renderBluetoothMoves(options = {}) {
   if (renderKey === bluetoothMovesRenderKey) return;
   bluetoothMovesRenderKey = renderKey;
 
-  elements.bluetoothMoveCount.textContent = String(bluetoothMoves.length);
+  elements.bluetoothMoveCount.textContent = String(stepCount);
   elements.bluetoothSolveStatus.parentElement.classList.toggle('solved', bluetoothSolved);
   elements.bluetoothSolveStatus.textContent = statusText;
   elements.bluetoothMoveRows.textContent = rowText;
-  elements.bluetoothMoveRows.title = bluetoothMoves.length === 0 ? '' : moveText;
+  elements.bluetoothMoveRows.title = hasMoves ? moveText : '';
   if (shouldRenderState) renderBluetoothStateSurface();
 }
 
@@ -4658,6 +4364,10 @@ function renderBluetoothStateSurface() {
 
 function bluetoothMoveSequence() {
   return bluetoothMoves.slice().reverse().map((entry) => entry.move);
+}
+
+function bluetoothMoveStepCount() {
+  return countMoveSteps(bluetoothMoveSequence());
 }
 
 function bluetoothMoveRecordSequence() {
@@ -4734,8 +4444,9 @@ function renderBluetoothStatePreview() {
   const liveFaces = bluetooth3dPreferredLiveFaces();
   if (liveFaces && bluetoothLivePreviewMode()) {
     const solved = isSolvedFaces(liveFaces);
+    const stepCount = bluetoothMoveStepCount();
     const metaText = bluetoothMoveDerivedPreviewActive()
-      ? `蓝牙转动实时状态 · ${bluetoothMoves.length} 步 · ${solved ? '已复原' : '未复原'}`
+      ? `蓝牙转动实时状态 · ${stepCount} 步 · ${solved ? '已复原' : '未复原'}`
       : `GAN 实时状态 · ${solved ? '已复原' : '未复原'}`;
     renderCubeFacesNet(elements.bluetoothStateNet, liveFaces, 'bluetooth-state-net');
     elements.bluetoothStateMeta.textContent = metaText;
@@ -4756,9 +4467,10 @@ function renderBluetoothStatePreview() {
   try {
     const faces = cubeStateFromScramble(stateText);
     const replaySolved = isSolvedFaces(faces);
+    const stepCount = bluetoothMoveStepCount();
     const metaText = bluetoothMoves.length === 0
       ? (bluetoothSolvedByStatePacket ? 'GAN 状态已复原' : (appState === 'timing' ? '打乱状态' : '计时开始后同步'))
-      : `${bluetoothMoves.length} 步 · ${bluetoothSolvedByStatePacket && !replaySolved ? 'GAN 状态已复原' : (replaySolved ? '已复原' : '未复原')}`;
+      : `${stepCount} 步 · ${bluetoothSolvedByStatePacket && !replaySolved ? 'GAN 状态已复原' : (replaySolved ? '已复原' : '未复原')}`;
     renderCubeFacesNet(elements.bluetoothStateNet, faces, 'bluetooth-state-net');
     elements.bluetoothStateMeta.textContent = metaText;
     renderBluetoothCube3d(faces, metaText);
@@ -5135,7 +4847,7 @@ function renderBluetoothCube3dCurrent() {
   if (bluetoothLivePreviewMode()) {
     const liveFaces = bluetooth3dPreferredLiveFaces();
     if (liveFaces) {
-      const source = bluetoothMoveDerivedPreviewActive() ? `蓝牙转动实时状态 · ${bluetoothMoves.length} 步` : 'GAN 实时状态';
+      const source = bluetoothMoveDerivedPreviewActive() ? `蓝牙转动实时状态 · ${bluetoothMoveStepCount()} 步` : 'GAN 实时状态';
       renderBluetoothCube3d(liveFaces, `${source} · ${isSolvedFaces(liveFaces) ? '已复原' : '未复原'}`);
     } else {
       renderBluetoothCube3d(null, '等待 GAN 状态包');
@@ -5152,9 +4864,10 @@ function renderBluetoothCube3dCurrent() {
     const moveText = bluetoothMoveSequence().join(' ');
     const stateText = [scramble.scramble, moveText].filter(Boolean).join(' ');
     const faces = cubeStateFromScramble(stateText);
+    const stepCount = bluetoothMoveStepCount();
     const metaText = bluetoothMoves.length === 0
       ? (appState === 'timing' ? '打乱状态' : '等待蓝牙转动')
-      : `${bluetoothMoves.length} 步 · ${isSolvedFaces(faces) ? '已复原' : '未复原'}`;
+      : `${stepCount} 步 · ${isSolvedFaces(faces) ? '已复原' : '未复原'}`;
     renderBluetoothCube3d(faces, metaText);
   } catch {
     renderBluetoothCube3d(null, '状态无效');

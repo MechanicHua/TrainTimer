@@ -1,3 +1,5 @@
+import { countMoveSteps } from './move-metrics.js';
+
 const exportColumns = [
   'id',
   'sessionId',
@@ -247,7 +249,7 @@ function penaltyLabel(penalty) {
 
 function bluetoothMoveCount(solve) {
   if (Number.isFinite(solve.bluetoothMoveCount)) return solve.bluetoothMoveCount;
-  return Array.isArray(solve.bluetoothMoves) ? solve.bluetoothMoves.length : '';
+  return Array.isArray(solve.bluetoothMoves) ? countMoveSteps(solve.bluetoothMoves) : '';
 }
 
 function bluetoothTpsText(solve) {

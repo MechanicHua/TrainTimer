@@ -1,3 +1,5 @@
+import { countMoveSteps } from './move-metrics.js';
+
 export function buildSolveSummary(solve, sessionName = '') {
   const lines = [
     `TrainTimer Solve${sessionName ? ` - ${sessionName}` : ''}`,
@@ -18,7 +20,7 @@ export function buildSolveSummary(solve, sessionName = '') {
   const bluetoothMoves = Array.isArray(solve.bluetoothMoves) ? solve.bluetoothMoves : [];
   if (bluetoothMoves.length > 0) {
     lines.push(`完整解法: ${bluetoothMoves.join(' ')}`);
-    lines.push(`转动数: ${solve.bluetoothMoveCount ?? bluetoothMoves.length}`);
+    lines.push(`转动数: ${solve.bluetoothMoveCount ?? countMoveSteps(bluetoothMoves)}`);
     const moveLog = Array.isArray(solve.bluetoothMoveLog) ? solve.bluetoothMoveLog : [];
     if (moveLog.length > 0 && moveLog.length !== bluetoothMoves.length) {
       lines.push(`完整解法: ${moveLog.map((entry) => entry.move).filter(Boolean).join(' ')}`);

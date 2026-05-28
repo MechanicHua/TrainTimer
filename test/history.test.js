@@ -341,6 +341,7 @@ test('normalizes manually entered solve metadata', async () => {
       { step: 1, move: 'R', source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', time: '12:00:00', isoTime: '2026-05-24T08:15:31.000Z', elapsedMs: 120 },
       { step: 2, move: 'U2', source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', time: '12:00:01', isoTime: '2026-05-24T08:15:32.000Z', elapsedMs: 480 },
     ],
+    bluetoothSolvedByStatePacket: false,
     cfopStages: [],
     bluetoothMoveCount: 2,
     bluetoothTps: 0.162,
@@ -398,6 +399,22 @@ test('preserves imported bluetooth summary fields when move list is unavailable'
     bestAo50: null,
     bestAo100: null,
   });
+});
+
+test('normalizes bluetooth move count with half-turn metric', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'train-timer-'));
+  const file = join(dir, 'solves.json');
+
+  await saveSolve({
+    id: 'double-flick',
+    durationMs: 10000,
+    timerSource: 'bluetooth',
+    bluetoothMoves: ['R', 'R', 'U2'],
+  }, file);
+
+  const history = await loadHistory(file);
+  assert.equal(history.solves[0].bluetoothMoveCount, 2);
+  assert.equal(history.solves[0].bluetoothTps, 0.2);
 });
 
 test('keeps empty bluetooth TPS null for ordinary solves', async () => {

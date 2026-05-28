@@ -30,7 +30,7 @@ const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const publicRoot = join(projectRoot, 'public');
 const srcRoot = join(projectRoot, 'src');
 const nodeModulesRoot = join(projectRoot, 'node_modules');
-const publicSrcModules = new Set(['bluetooth-moves.js', 'cube-state.js', 'rolling-averages.js', 'solve-summary.js', 'solves-export.js', 'solves-import.js', 'stats-summary.js']);
+const publicSrcModules = new Set(['bluetooth-moves.js', 'cfop-analysis.js', 'cube-state.js', 'move-metrics.js', 'rolling-averages.js', 'solve-summary.js', 'solves-export.js', 'solves-import.js', 'stats-summary.js']);
 const vendorModules = new Map([
   ['three.module.js', join(nodeModulesRoot, 'three', 'build', 'three.module.js')],
 ]);
@@ -305,6 +305,7 @@ async function handleApi(request, response) {
       timerSource: body.timerSource === 'bluetooth' ? 'bluetooth' : 'manual',
       bluetoothMoves: Array.isArray(body.bluetoothMoves) ? body.bluetoothMoves : [],
       bluetoothMoveLog: Array.isArray(body.bluetoothMoveLog) ? body.bluetoothMoveLog : [],
+      bluetoothSolvedByStatePacket: body.bluetoothSolvedByStatePacket === true,
       cfopStages: Array.isArray(body.cfopStages) ? body.cfopStages : [],
       bluetoothDeviceName: typeof body.bluetoothDeviceName === 'string' ? body.bluetoothDeviceName : '',
       bluetoothProtocols: Array.isArray(body.bluetoothProtocols) ? body.bluetoothProtocols : [],

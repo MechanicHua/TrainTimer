@@ -1,3 +1,12 @@
+export const algorithmTrainerSetMembers = {
+  cfopFull: ['f2lFull', 'oll', 'pll'],
+};
+
+export function algorithmTrainerBuiltInCasesForSet(setId) {
+  const members = algorithmTrainerSetMembers[setId] || [setId];
+  return algorithmTrainerCases.filter((item) => members.includes(item.set));
+}
+
 export const algorithmTrainerCases = [
   { id: 'pll-aa', set: 'pll', name: 'Aa Perm', group: 'Corners', algorithm: "x R' U R' D2 R U' R' D2 R2 x'", hint: '相邻角块顺时针换位' },
   { id: 'pll-ab', set: 'pll', name: 'Ab Perm', group: 'Corners', algorithm: "x R2 D2 R U R' D2 R U' R x'", hint: '相邻角块逆时针换位' },

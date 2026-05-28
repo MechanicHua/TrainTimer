@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { algorithmTrainerCases } from '../src/algorithm-trainer-cases.js';
+import { algorithmTrainerBuiltInCasesForSet, algorithmTrainerCases } from '../src/algorithm-trainer-cases.js';
 import { cubeStateFromScramble, isSolvedFaces, parseScramble } from '../src/cube-state.js';
 
 const expectedSetCounts = {
@@ -18,6 +18,15 @@ test('built-in algorithm trainer cases have stable ids and expected set counts',
   for (const [set, count] of Object.entries(expectedSetCounts)) {
     assert.equal(algorithmTrainerCases.filter((item) => item.set === set).length, count);
   }
+});
+
+test('built-in algorithm trainer aggregate sets expose practical training pools', () => {
+  const cfopCases = algorithmTrainerBuiltInCasesForSet('cfopFull');
+
+  assert.equal(cfopCases.length, 119);
+  assert.equal(cfopCases.filter((item) => item.set === 'f2lFull').length, 41);
+  assert.equal(cfopCases.filter((item) => item.set === 'oll').length, 57);
+  assert.equal(cfopCases.filter((item) => item.set === 'pll').length, 21);
 });
 
 test('built-in algorithm trainer cases parse and generate solved inverse setups', () => {

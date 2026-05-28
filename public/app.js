@@ -1,5 +1,5 @@
 import { applyMove, correctionMovesToScrambleTarget, createSolvedCube, cubeStateFromScramble, facesFromCube, isSolvedFaces, parseScramble } from './cube-state.js';
-import { algorithmTrainerCases } from './algorithm-trainer-cases.js';
+import { algorithmTrainerBuiltInCasesForSet, algorithmTrainerCases } from './algorithm-trainer-cases.js';
 import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from './bluetooth-moves.js';
 import { cfopStagesForSave, cfopStageTemplate, solveCfopAnalysis, solveMoveRecords } from './cfop-analysis.js';
 import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv, solvesToCstimerJson, solvesToTextTable } from './solves-export.js';
@@ -50,6 +50,7 @@ const statsChartLabels = {
   tps: 'TPS',
 };
 const algorithmTrainerSetLabels = {
+  cfopFull: 'CFOP 全套',
   pll: 'PLL',
   oll: 'OLL 全套',
   oll2: '2-Look OLL',
@@ -546,7 +547,7 @@ if (!['single', 'tps', 'ao5', 'ao12'].includes(historySortKey) || !['asc', 'desc
 let historyCfopCollapsed = localStorage.getItem('trainTimer.historyCfopCollapsed') === '1';
 let algorithmTrainerCustomCases = loadAlgorithmTrainerCustomCases();
 let algorithmTrainerSet = localStorage.getItem('trainTimer.algorithmTrainerSet') || 'pll';
-if (!algorithmTrainerAllCases().some((item) => item.set === algorithmTrainerSet)) algorithmTrainerSet = 'pll';
+if (!algorithmTrainerSetExists(algorithmTrainerSet)) algorithmTrainerSet = 'pll';
 let algorithmTrainerFocus = localStorage.getItem('trainTimer.algorithmTrainerFocus') || 'all';
 if (!Object.hasOwn(algorithmTrainerFocusLabels, algorithmTrainerFocus)) algorithmTrainerFocus = 'all';
 let algorithmTrainerGroup = localStorage.getItem('trainTimer.algorithmTrainerGroup') || 'all';
@@ -687,7 +688,7 @@ elements.confirmDeleteToggle.addEventListener('change', updateTimerSettingsFromC
 elements.algorithmTrainerButton.addEventListener('click', openAlgorithmTrainerDialog);
 elements.algorithmTrainerSet.addEventListener('change', () => {
   algorithmTrainerSet = elements.algorithmTrainerSet.value || 'pll';
-  if (!Object.hasOwn(algorithmTrainerSetLabels, algorithmTrainerSet)) algorithmTrainerSet = 'pll';
+  if (!algorithmTrainerSetExists(algorithmTrainerSet)) algorithmTrainerSet = 'pll';
   algorithmTrainerSearch = '';
   elements.algorithmTrainerSearch.value = '';
   localStorage.setItem('trainTimer.algorithmTrainerSet', algorithmTrainerSet);
@@ -6763,8 +6764,13 @@ function algorithmTrainerAllCases() {
   return [...algorithmTrainerCases, ...algorithmTrainerCustomCases];
 }
 
+function algorithmTrainerSetExists(setId) {
+  return setId === 'custom' || algorithmTrainerBuiltInCasesForSet(setId).length > 0;
+}
+
 function algorithmTrainerCasesForSet() {
-  return algorithmTrainerAllCases().filter((item) => item.set === algorithmTrainerSet);
+  if (algorithmTrainerSet === 'custom') return algorithmTrainerCustomCases;
+  return algorithmTrainerBuiltInCasesForSet(algorithmTrainerSet);
 }
 
 function renderAlgorithmTrainerGroupOptions(cases) {

@@ -1999,6 +1999,7 @@ body[data-state="timing"] .timer-band {
   grid-template-areas:
     "header header"
     "toolbar toolbar"
+    "editor editor"
     "overview overview"
     "card list";
   column-gap: 14px;
@@ -2011,6 +2012,10 @@ body[data-state="timing"] .timer-band {
 
 .algorithm-dialog-inner > .algorithm-trainer-toolbar {
   grid-area: toolbar;
+}
+
+.algorithm-dialog-inner > .algorithm-trainer-editor {
+  grid-area: editor;
 }
 
 .algorithm-dialog-inner > .algorithm-trainer-overview {
@@ -2225,6 +2230,140 @@ dialog[open] {
   width: 100%;
   min-width: 0;
   padding-right: 10px;
+}
+
+.algorithm-trainer-editor {
+  margin-top: 12px;
+  border: 1px solid rgba(var(--accent-rgb), 0.22);
+  border-radius: 8px;
+  padding: 10px;
+  background:
+    linear-gradient(135deg, rgba(var(--accent-rgb), 0.10), transparent 58%),
+    rgba(0, 0, 0, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  animation: algorithm-editor-in 180ms var(--ease) both;
+}
+
+.algorithm-trainer-editor[hidden] {
+  display: none;
+}
+
+.algorithm-trainer-editor-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.algorithm-trainer-editor-head div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.algorithm-trainer-editor-head strong {
+  color: var(--ink-strong);
+  font-size: 14px;
+  font-weight: 780;
+}
+
+.algorithm-trainer-editor-head span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.algorithm-trainer-editor-head button,
+.algorithm-trainer-editor-actions button {
+  min-height: 30px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 760;
+  transition: background-color 160ms var(--ease), color 160ms var(--ease), transform 160ms var(--ease), opacity 160ms var(--ease);
+}
+
+.algorithm-trainer-editor-head button:hover,
+.algorithm-trainer-editor-actions button:hover:not(:disabled) {
+  background: rgba(var(--accent-rgb), 0.18);
+  color: var(--ink-strong);
+  transform: translateY(-1px);
+}
+
+.algorithm-trainer-editor-actions button {
+  background: var(--accent);
+  color: #071316;
+}
+
+.algorithm-trainer-editor-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
+}
+
+.algorithm-trainer-editor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.42fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.algorithm-trainer-editor-grid label {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.algorithm-trainer-editor-grid label.wide {
+  grid-column: 1 / -1;
+}
+
+.algorithm-trainer-editor-grid span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 720;
+}
+
+.algorithm-trainer-editor-grid input {
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.075);
+  color: var(--ink-strong);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 160ms var(--ease), box-shadow 160ms var(--ease), background-color 160ms var(--ease);
+}
+
+.algorithm-trainer-editor-grid input:focus {
+  border-color: rgba(var(--accent-rgb), 0.72);
+  background: rgba(255, 255, 255, 0.095);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.13);
+}
+
+.algorithm-trainer-editor-error {
+  min-height: 16px;
+  margin: 7px 0 0;
+  color: #ff8a84;
+  font-size: 11px;
+  font-weight: 720;
+}
+
+.algorithm-trainer-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
 }
 
 .algorithm-trainer-overview {
@@ -3775,6 +3914,17 @@ dialog[open] {
   }
 }
 
+@keyframes algorithm-editor-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @keyframes algorithm-preview-in {
   from {
     opacity: 0;
@@ -4120,6 +4270,20 @@ dialog[open] {
 
   .algorithm-trainer-timer {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .algorithm-trainer-editor-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .algorithm-trainer-editor-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .algorithm-trainer-editor-head button,
+  .algorithm-trainer-editor-actions button {
+    width: 100%;
   }
 
   .algorithm-trainer-overview {

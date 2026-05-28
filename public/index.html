@@ -788,6 +788,37 @@
             <button id="algorithmTrainerNextButton" type="button" title="N 随机下一条">随机下一条</button>
             <button id="algorithmTrainerResetButton" type="button">重置记录</button>
           </div>
+          <section id="algorithmTrainerEditor" class="algorithm-trainer-editor" hidden>
+            <div class="algorithm-trainer-editor-head">
+              <div>
+                <strong id="algorithmTrainerEditorTitle">添加自定义公式</strong>
+                <span id="algorithmTrainerEditorMeta">填写名称和公式</span>
+              </div>
+              <button id="algorithmTrainerEditorCancelButton" type="button">取消</button>
+            </div>
+            <div class="algorithm-trainer-editor-grid">
+              <label>
+                <span>名称</span>
+                <input id="algorithmTrainerEditorName" type="text" maxlength="80" autocomplete="off" placeholder="例如 Jb Perm" />
+              </label>
+              <label>
+                <span>分组</span>
+                <input id="algorithmTrainerEditorGroup" type="text" maxlength="80" autocomplete="off" placeholder="Custom" />
+              </label>
+              <label class="wide">
+                <span>公式</span>
+                <input id="algorithmTrainerEditorAlgorithm" type="text" maxlength="220" autocomplete="off" placeholder="R U R' U'" />
+              </label>
+              <label class="wide">
+                <span>提示</span>
+                <input id="algorithmTrainerEditorHint" type="text" maxlength="160" autocomplete="off" placeholder="识别要点，可留空" />
+              </label>
+            </div>
+            <p id="algorithmTrainerEditorError" class="algorithm-trainer-editor-error" aria-live="polite"></p>
+            <div class="algorithm-trainer-editor-actions">
+              <button id="algorithmTrainerEditorSaveButton" type="button">保存公式</button>
+            </div>
+          </section>
           <div id="algorithmTrainerOverview" class="algorithm-trainer-overview" aria-label="算法训练概览"></div>
           <section class="algorithm-trainer-card" aria-live="polite">
             <div class="algorithm-trainer-head">

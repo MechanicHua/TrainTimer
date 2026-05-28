@@ -326,6 +326,16 @@ const elements = {
   algorithmTrainerImportFile: document.querySelector('#algorithmTrainerImportFile'),
   algorithmTrainerNextButton: document.querySelector('#algorithmTrainerNextButton'),
   algorithmTrainerResetButton: document.querySelector('#algorithmTrainerResetButton'),
+  algorithmTrainerEditor: document.querySelector('#algorithmTrainerEditor'),
+  algorithmTrainerEditorTitle: document.querySelector('#algorithmTrainerEditorTitle'),
+  algorithmTrainerEditorMeta: document.querySelector('#algorithmTrainerEditorMeta'),
+  algorithmTrainerEditorName: document.querySelector('#algorithmTrainerEditorName'),
+  algorithmTrainerEditorGroup: document.querySelector('#algorithmTrainerEditorGroup'),
+  algorithmTrainerEditorAlgorithm: document.querySelector('#algorithmTrainerEditorAlgorithm'),
+  algorithmTrainerEditorHint: document.querySelector('#algorithmTrainerEditorHint'),
+  algorithmTrainerEditorError: document.querySelector('#algorithmTrainerEditorError'),
+  algorithmTrainerEditorSaveButton: document.querySelector('#algorithmTrainerEditorSaveButton'),
+  algorithmTrainerEditorCancelButton: document.querySelector('#algorithmTrainerEditorCancelButton'),
   algorithmTrainerOverview: document.querySelector('#algorithmTrainerOverview'),
   algorithmTrainerCard: document.querySelector('.algorithm-trainer-card'),
   algorithmTrainerName: document.querySelector('#algorithmTrainerName'),
@@ -569,6 +579,8 @@ let algorithmTrainerAlgorithmHidden = localStorage.getItem('trainTimer.algorithm
 let algorithmTrainerFeedback = null;
 let algorithmTrainerFeedbackTimer = 0;
 let algorithmTrainerRenderedCaseId = '';
+let algorithmTrainerEditorMode = '';
+let algorithmTrainerEditorId = '';
 let algorithmTrainerTimerStartedAt = 0;
 let algorithmTrainerTimerFrame = 0;
 let startedAt = 0;
@@ -702,6 +714,7 @@ elements.accentThemeSelect.addEventListener('change', updateTimerSettingsFromCon
 elements.confirmDeleteToggle.addEventListener('change', updateTimerSettingsFromControls);
 elements.algorithmTrainerButton.addEventListener('click', openAlgorithmTrainerDialog);
 elements.algorithmTrainerSet.addEventListener('change', () => {
+  closeAlgorithmTrainerEditor({ render: false });
   algorithmTrainerSet = elements.algorithmTrainerSet.value || 'pll';
   if (!algorithmTrainerSetExists(algorithmTrainerSet)) algorithmTrainerSet = 'pll';
   algorithmTrainerSearch = '';
@@ -711,12 +724,14 @@ elements.algorithmTrainerSet.addEventListener('change', () => {
   chooseNextAlgorithmTrainerCase();
 });
 elements.algorithmTrainerFocus.addEventListener('change', () => {
+  closeAlgorithmTrainerEditor({ render: false });
   algorithmTrainerFocus = elements.algorithmTrainerFocus.value || 'all';
   if (!Object.hasOwn(algorithmTrainerFocusLabels, algorithmTrainerFocus)) algorithmTrainerFocus = 'all';
   localStorage.setItem('trainTimer.algorithmTrainerFocus', algorithmTrainerFocus);
   chooseNextAlgorithmTrainerCase();
 });
 elements.algorithmTrainerGroupFilter.addEventListener('change', () => {
+  closeAlgorithmTrainerEditor({ render: false });
   algorithmTrainerGroup = elements.algorithmTrainerGroupFilter.value || 'all';
   localStorage.setItem('trainTimer.algorithmTrainerGroup', algorithmTrainerGroup);
   chooseNextAlgorithmTrainerCase();
@@ -740,6 +755,17 @@ elements.algorithmTrainerImportButton.addEventListener('click', () => elements.a
 elements.algorithmTrainerImportFile.addEventListener('change', importAlgorithmTrainerCustomCases);
 elements.algorithmTrainerResetButton.addEventListener('click', resetAlgorithmTrainerStats);
 elements.algorithmTrainerOverview.addEventListener('click', handleAlgorithmTrainerOverviewClick);
+elements.algorithmTrainerEditorSaveButton.addEventListener('click', saveAlgorithmTrainerEditor);
+elements.algorithmTrainerEditorCancelButton.addEventListener('click', () => closeAlgorithmTrainerEditor());
+elements.algorithmTrainerEditor.addEventListener('keydown', handleAlgorithmTrainerEditorKeyDown);
+[
+  elements.algorithmTrainerEditorName,
+  elements.algorithmTrainerEditorGroup,
+  elements.algorithmTrainerEditorAlgorithm,
+  elements.algorithmTrainerEditorHint,
+].forEach((input) => {
+  input.addEventListener('input', renderAlgorithmTrainerEditorValidation);
+});
 elements.bluetoothButton.addEventListener('click', () => connectBluetoothCube());
 elements.bluetoothAnyButton.addEventListener('click', () => connectBluetoothCube({ compatibilityMode: true }));
 elements.bluetoothReconnectButton.addEventListener('click', reconnectBluetoothCube);
@@ -842,6 +868,7 @@ elements.algorithmTrainerDialog.addEventListener('keydown', handleAlgorithmTrain
 elements.algorithmTrainerDialog.addEventListener('close', () => {
   cancelAlgorithmTrainerTimer();
   clearAlgorithmTrainerFeedback();
+  closeAlgorithmTrainerEditor({ render: false });
 });
 elements.allSolvesDialog.addEventListener('close', () => {
   selectedSolveIds.clear();
@@ -6040,7 +6067,16 @@ function openAlgorithmTrainerDialog() {
 }
 
 function handleAlgorithmTrainerKeyDown(event) {
-  if (!elements.algorithmTrainerDialog.open || shouldIgnoreAlgorithmTrainerShortcut(event)) return;
+  if (!elements.algorithmTrainerDialog.open) return;
+  if (algorithmTrainerEditorOpen()) {
+    if (event.code === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      closeAlgorithmTrainerEditor();
+    }
+    return;
+  }
+  if (shouldIgnoreAlgorithmTrainerShortcut(event)) return;
 
   const actions = {
     Space: () => toggleAlgorithmTrainerTimer(),
@@ -6067,6 +6103,7 @@ function shouldIgnoreAlgorithmTrainerShortcut(event) {
 }
 
 function handleAlgorithmTrainerSearchInput() {
+  closeAlgorithmTrainerEditor({ render: false });
   algorithmTrainerSearch = elements.algorithmTrainerSearch.value.trim();
   localStorage.setItem('trainTimer.algorithmTrainerSearch', algorithmTrainerSearch);
   renderAlgorithmTrainerDialog();
@@ -6115,13 +6152,22 @@ function renderAlgorithmTrainerDialog() {
   elements.algorithmTrainerScore.textContent = algorithmTrainerProgressText(currentStats);
   renderAlgorithmTrainerFeedback();
   const customSelected = current?.set === 'custom';
-  elements.algorithmTrainerEditButton.disabled = !customSelected;
-  elements.algorithmTrainerDeleteButton.disabled = !customSelected;
+  const editorOpen = algorithmTrainerEditorOpen();
+  elements.algorithmTrainerAddButton.disabled = editorOpen;
+  elements.algorithmTrainerEditButton.disabled = editorOpen || !customSelected;
+  elements.algorithmTrainerDeleteButton.disabled = editorOpen || !customSelected;
   elements.algorithmTrainerExportButton.disabled = algorithmTrainerCustomCases.length === 0;
+  elements.algorithmTrainerNextButton.disabled = editorOpen;
+  elements.algorithmTrainerPassButton.disabled = editorOpen || !current;
+  elements.algorithmTrainerFailButton.disabled = editorOpen || !current;
   renderAlgorithmTrainerRevealButton(current);
   renderAlgorithmTrainerStarButton(current);
   renderAlgorithmTrainerSetup(current);
   renderAlgorithmTrainerTimer(currentStats);
+  if (editorOpen) {
+    elements.algorithmTrainerTimerButton.disabled = true;
+    renderAlgorithmTrainerEditorValidation();
+  }
   const listRows = searchActive
     ? visibleCases
     : (scopedCases.length > 0 || algorithmTrainerFocus === 'all'
@@ -6242,6 +6288,7 @@ function renderAlgorithmTrainerListItem(item, index = 0) {
   `;
   row.addEventListener('click', () => {
     cancelAlgorithmTrainerTimer();
+    closeAlgorithmTrainerEditor({ render: false });
     algorithmTrainerCurrentId = item.id;
     localStorage.setItem('trainTimer.algorithmTrainerCurrentId', algorithmTrainerCurrentId);
     renderAlgorithmTrainerDialog();
@@ -6588,89 +6635,175 @@ function renderAlgorithmTrainerTimer(stats = {}) {
 function resetAlgorithmTrainerStats() {
   if (!confirm('清空算法训练记录？')) return;
   cancelAlgorithmTrainerTimer();
+  closeAlgorithmTrainerEditor({ render: false });
   algorithmTrainerStats = {};
   saveAlgorithmTrainerStats();
   renderAlgorithmTrainerDialog();
 }
 
 function addAlgorithmTrainerCustomCase() {
-  const name = prompt('自定义公式名称，例如 Jb Perm 或 左手 OLL。');
-  if (name === null) return;
-  const cleanName = name.trim();
-  if (!cleanName) return;
-
-  const algorithm = prompt("输入公式，例如 R U R' U'。");
-  if (algorithm === null) return;
-  const cleanAlgorithm = validateAlgorithmTrainerInput(algorithm);
-  if (!cleanAlgorithm) return;
-
-  const group = prompt('分组名称，可留空。', 'Custom');
-  if (group === null) return;
-  const hint = prompt('提示或识别要点，可留空。', '');
-  if (hint === null) return;
-
-  const item = {
-    id: createAlgorithmTrainerCustomCaseId(),
-    set: 'custom',
-    name: cleanName.slice(0, 80),
-    group: (group.trim() || 'Custom').slice(0, 80),
-    algorithm: cleanAlgorithm.slice(0, 220),
-    hint: hint.trim().slice(0, 160),
-  };
-  algorithmTrainerCustomCases = [...algorithmTrainerCustomCases, item];
-  saveAlgorithmTrainerCustomCases();
-  cancelAlgorithmTrainerTimer();
-  algorithmTrainerSet = 'custom';
-  algorithmTrainerFocus = 'all';
-  algorithmTrainerCurrentId = item.id;
-  localStorage.setItem('trainTimer.algorithmTrainerSet', algorithmTrainerSet);
-  localStorage.setItem('trainTimer.algorithmTrainerFocus', algorithmTrainerFocus);
-  localStorage.setItem('trainTimer.algorithmTrainerCurrentId', algorithmTrainerCurrentId);
-  renderAlgorithmTrainerDialog();
+  openAlgorithmTrainerEditor('add');
 }
 
 function editAlgorithmTrainerCustomCase() {
+  openAlgorithmTrainerEditor('edit');
+}
+
+function algorithmTrainerEditorOpen() {
+  return Boolean(algorithmTrainerEditorMode);
+}
+
+function openAlgorithmTrainerEditor(mode) {
+  const editing = mode === 'edit';
   const current = algorithmTrainerCurrentCase();
-  if (!current || current.set !== 'custom') return;
+  if (editing && (!current || current.set !== 'custom')) return;
+  cancelAlgorithmTrainerTimer();
+  clearAlgorithmTrainerFeedback();
+  algorithmTrainerEditorMode = editing ? 'edit' : 'add';
+  algorithmTrainerEditorId = editing ? current.id : '';
+  elements.algorithmTrainerEditor.hidden = false;
+  elements.algorithmTrainerEditorTitle.textContent = editing ? '编辑自定义公式' : '添加自定义公式';
+  elements.algorithmTrainerEditorName.value = editing ? current.name || '' : '';
+  elements.algorithmTrainerEditorGroup.value = editing ? current.group || 'Custom' : 'Custom';
+  elements.algorithmTrainerEditorAlgorithm.value = editing ? current.algorithm || '' : '';
+  elements.algorithmTrainerEditorHint.value = editing ? current.hint || '' : '';
+  elements.algorithmTrainerEditorError.textContent = '';
+  renderAlgorithmTrainerDialog();
+  renderAlgorithmTrainerEditorValidation();
+  requestAnimationFrame(() => {
+    const target = editing ? elements.algorithmTrainerEditorAlgorithm : elements.algorithmTrainerEditorName;
+    target.focus();
+    target.select();
+  });
+}
 
-  const name = prompt('编辑公式名称。', current.name || '');
-  if (name === null) return;
-  const cleanName = name.trim();
-  if (!cleanName) return;
+function closeAlgorithmTrainerEditor(options = {}) {
+  const wasOpen = algorithmTrainerEditorOpen();
+  algorithmTrainerEditorMode = '';
+  algorithmTrainerEditorId = '';
+  elements.algorithmTrainerEditor.hidden = true;
+  elements.algorithmTrainerEditorError.textContent = '';
+  elements.algorithmTrainerEditorSaveButton.disabled = true;
+  elements.algorithmTrainerEditorMeta.textContent = '填写名称和公式';
+  if (wasOpen && options.render !== false) renderAlgorithmTrainerDialog();
+}
 
-  const algorithm = prompt('编辑公式。', current.algorithm || '');
-  if (algorithm === null) return;
-  const cleanAlgorithm = validateAlgorithmTrainerInput(algorithm);
-  if (!cleanAlgorithm) return;
+function handleAlgorithmTrainerEditorKeyDown(event) {
+  if (event.code === 'Escape') {
+    event.preventDefault();
+    event.stopPropagation();
+    closeAlgorithmTrainerEditor();
+    return;
+  }
 
-  const group = prompt('编辑分组名称，可留空。', current.group || 'Custom');
-  if (group === null) return;
-  const hint = prompt('编辑提示或识别要点，可留空。', current.hint || '');
-  if (hint === null) return;
+  if (event.code !== 'Enter' || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) return;
+  event.preventDefault();
+  event.stopPropagation();
+  saveAlgorithmTrainerEditor();
+}
 
-  const updated = {
-    ...current,
-    name: cleanName.slice(0, 80),
-    group: (group.trim() || 'Custom').slice(0, 80),
-    algorithm: cleanAlgorithm.slice(0, 220),
-    hint: hint.trim().slice(0, 160),
-  };
-  const duplicate = algorithmTrainerCustomCases.some((item) => (
-    item.id !== current.id && algorithmTrainerCustomCaseKey(item) === algorithmTrainerCustomCaseKey(updated)
+function renderAlgorithmTrainerEditorValidation() {
+  if (!algorithmTrainerEditorOpen()) return;
+  const rawAlgorithm = elements.algorithmTrainerEditorAlgorithm.value;
+  const name = elements.algorithmTrainerEditorName.value.trim();
+  let cleanAlgorithm = '';
+  let errorText = '';
+  try {
+    cleanAlgorithm = cleanAlgorithmTrainerAlgorithm(rawAlgorithm);
+  } catch (error) {
+    errorText = error.message || String(error);
+  }
+
+  const stepText = cleanAlgorithm ? `${algorithmTrainerAlgorithmStepCount(cleanAlgorithm)} 步` : '填写名称和公式';
+  elements.algorithmTrainerEditorMeta.textContent = cleanAlgorithm
+    ? `${stepText} · 保存前已验证记号`
+    : stepText;
+  elements.algorithmTrainerEditorError.textContent = errorText;
+  elements.algorithmTrainerEditorSaveButton.disabled = !name || !cleanAlgorithm || Boolean(errorText);
+}
+
+function saveAlgorithmTrainerEditor() {
+  if (!algorithmTrainerEditorOpen()) return;
+  const item = algorithmTrainerEditorValidatedItem();
+  if (!item) return;
+
+  const duplicate = algorithmTrainerCustomCases.some((entry) => (
+    entry.id !== item.id && algorithmTrainerCustomCaseKey(entry) === algorithmTrainerCustomCaseKey(item)
   ));
   if (duplicate) {
-    alert('已存在相同名称、分组和公式的自定义公式。');
+    setAlgorithmTrainerEditorError('已存在相同名称、分组和公式的自定义公式。');
     return;
   }
 
   cancelAlgorithmTrainerTimer();
-  algorithmTrainerCustomCases = algorithmTrainerCustomCases.map((item) => (
-    item.id === current.id ? updated : item
-  ));
+  if (algorithmTrainerEditorMode === 'edit') {
+    algorithmTrainerCustomCases = algorithmTrainerCustomCases.map((entry) => (
+      entry.id === item.id ? item : entry
+    ));
+  } else {
+    algorithmTrainerCustomCases = [...algorithmTrainerCustomCases, item];
+  }
   saveAlgorithmTrainerCustomCases();
-  algorithmTrainerCurrentId = updated.id;
+  algorithmTrainerSet = 'custom';
+  algorithmTrainerFocus = 'all';
+  algorithmTrainerGroup = 'all';
+  algorithmTrainerSearch = '';
+  algorithmTrainerCurrentId = item.id;
+  elements.algorithmTrainerSearch.value = '';
+  localStorage.setItem('trainTimer.algorithmTrainerSet', algorithmTrainerSet);
+  localStorage.setItem('trainTimer.algorithmTrainerFocus', algorithmTrainerFocus);
+  localStorage.setItem('trainTimer.algorithmTrainerGroup', algorithmTrainerGroup);
+  localStorage.setItem('trainTimer.algorithmTrainerSearch', algorithmTrainerSearch);
   localStorage.setItem('trainTimer.algorithmTrainerCurrentId', algorithmTrainerCurrentId);
+  closeAlgorithmTrainerEditor({ render: false });
   renderAlgorithmTrainerDialog();
+}
+
+function algorithmTrainerEditorValidatedItem() {
+  const editing = algorithmTrainerEditorMode === 'edit';
+  const existing = editing
+    ? algorithmTrainerCustomCases.find((item) => item.id === algorithmTrainerEditorId)
+    : null;
+  if (editing && !existing) {
+    setAlgorithmTrainerEditorError('当前自定义公式不存在，无法保存编辑。');
+    return null;
+  }
+
+  const name = elements.algorithmTrainerEditorName.value.trim();
+  if (!name) {
+    setAlgorithmTrainerEditorError('请填写公式名称。');
+    elements.algorithmTrainerEditorName.focus();
+    return null;
+  }
+
+  let cleanAlgorithm = '';
+  try {
+    cleanAlgorithm = cleanAlgorithmTrainerAlgorithm(elements.algorithmTrainerEditorAlgorithm.value);
+  } catch (error) {
+    setAlgorithmTrainerEditorError(`公式无效：${error.message || String(error)}`);
+    elements.algorithmTrainerEditorAlgorithm.focus();
+    return null;
+  }
+  if (!cleanAlgorithm) {
+    setAlgorithmTrainerEditorError('请填写公式。');
+    elements.algorithmTrainerEditorAlgorithm.focus();
+    return null;
+  }
+
+  return {
+    ...(existing || {}),
+    id: existing?.id || createAlgorithmTrainerCustomCaseId(),
+    set: 'custom',
+    name: name.slice(0, 80),
+    group: (elements.algorithmTrainerEditorGroup.value.trim() || 'Custom').slice(0, 80),
+    algorithm: cleanAlgorithm.slice(0, 220),
+    hint: elements.algorithmTrainerEditorHint.value.trim().slice(0, 160),
+  };
+}
+
+function setAlgorithmTrainerEditorError(message) {
+  elements.algorithmTrainerEditorError.textContent = message;
+  elements.algorithmTrainerEditorSaveButton.disabled = true;
 }
 
 function exportAlgorithmTrainerCustomCases() {
@@ -6719,6 +6852,7 @@ async function importAlgorithmTrainerCustomCases() {
     }
 
     cancelAlgorithmTrainerTimer();
+    closeAlgorithmTrainerEditor({ render: false });
     algorithmTrainerCustomCases = [...algorithmTrainerCustomCases, ...nextItems];
     saveAlgorithmTrainerCustomCases();
     algorithmTrainerSet = 'custom';
@@ -6741,6 +6875,7 @@ function deleteAlgorithmTrainerCustomCase() {
   if (!current || current.set !== 'custom') return;
   if (!confirm(`删除自定义公式“${current.name}”？`)) return;
   cancelAlgorithmTrainerTimer();
+  closeAlgorithmTrainerEditor({ render: false });
   algorithmTrainerCustomCases = algorithmTrainerCustomCases.filter((item) => item.id !== current.id);
   delete algorithmTrainerStats[current.id];
   algorithmTrainerStarredIds.delete(current.id);
@@ -6750,15 +6885,6 @@ function deleteAlgorithmTrainerCustomCase() {
   algorithmTrainerCurrentId = algorithmTrainerCustomCases[0]?.id || '';
   localStorage.setItem('trainTimer.algorithmTrainerCurrentId', algorithmTrainerCurrentId);
   renderAlgorithmTrainerDialog();
-}
-
-function validateAlgorithmTrainerInput(value) {
-  try {
-    return cleanAlgorithmTrainerAlgorithm(value);
-  } catch (error) {
-    alert(`公式无效：${error.message || String(error)}`);
-    return '';
-  }
 }
 
 function parseAlgorithmTrainerCustomCaseImport(text) {

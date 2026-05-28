@@ -66,6 +66,22 @@ export function createSolvedCube() {
   return stickers;
 }
 
+export function cubeFromFaces(faces) {
+  const cube = createSolvedCube();
+
+  for (const sticker of cube) {
+    const face = faceFromNormal(sticker.normal);
+    const [row, col] = faceGridPosition(face, sticker.pos);
+    const source = faces?.[face]?.[row]?.[col];
+    const sourceFace = source?.face;
+    if (!sourceFace || !faceColors[sourceFace]) throw new Error(`Invalid cube facelet at ${face}${row}${col}`);
+    sticker.face = sourceFace;
+    sticker.color = source.color || faceColors[sourceFace];
+  }
+
+  return cube;
+}
+
 export function cubeStateFromScramble(scramble) {
   const cube = createSolvedCube();
   for (const move of parseScramble(scramble)) applyMove(cube, move);

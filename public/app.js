@@ -1,10 +1,15 @@
-import { applyMove, correctionMovesToScrambleTarget, createSolvedCube, cubeStateFromScramble, facesFromCube, isSolvedFaces, parseScramble } from './cube-state.js';
+import { applyMove, correctionMovesToScrambleTarget, createSolvedCube, cubeFromFaces, cubeStateFromScramble, facesFromCube, isSolvedFaces, parseScramble } from './cube-state.js';
 import { algorithmTrainerBuiltInCasesForSet, algorithmTrainerCaseBelongsToSet, algorithmTrainerCases } from './algorithm-trainer-cases.js';
 import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from './bluetooth-moves.js';
 import { cfopStagesForSave, cfopStageTemplate, solveCfopAnalysis, solveMoveRecords } from './cfop-analysis.js';
 import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv, solvesToCstimerJson, solvesToTextTable } from './solves-export.js';
 import { decodeGanBluetoothPacketFast } from './gan-bluetooth-fast.js';
-import { ganBluetoothMovesFromDecoded } from './gan-move-history.js';
+import {
+  ganBluetoothIsDuplicateMovePacket,
+  ganBluetoothMoveCounterDelta,
+  ganBluetoothMovesFromDecoded,
+  ganBluetoothNextMoveCounter,
+} from './gan-move-history.js';
 import { ganGyroQuaternionToCube3dBasis, ganGyroVelocityToCube3dBasis } from './gyro-orientation.js';
 import { countMoveSteps } from './move-metrics.js';
 import { inspectionDisplayForElapsed, inspectionPenaltyForElapsed, inspectionReminderSeconds, inspectionSeconds } from './inspection.js';
@@ -622,6 +627,7 @@ let bluetoothGanSession = null;
 let bluetoothGanMacReadPromise = null;
 let bluetoothGanPendingInit = null;
 let bluetoothGanLastMoveCounter = null;
+let bluetoothGanLastStateCounter = null;
 let bluetoothGanPacketSequence = 0;
 let bluetoothGanLatestAppliedGyroSequence = 0;
 let bluetoothGanDecodeWarning = '';
@@ -955,6 +961,7 @@ window.__trainTimerDebug = {
         protocol: bluetoothGanSession?.protocol || '',
         label: bluetoothGanSession?.label || '',
         moveCounter: bluetoothGanLastMoveCounter,
+        stateCounter: bluetoothGanLastStateCounter,
       },
       bluetoothAvailability: bluetoothAvailability(),
       bluetoothRequest: bluetoothRequestSummary(bluetoothRequestOptions(false)),
@@ -2928,6 +2935,7 @@ function setActiveBluetoothDevice(device) {
   bluetoothGanMacReadPromise = null;
   bluetoothGanPendingInit = null;
   bluetoothGanLastMoveCounter = null;
+  bluetoothGanLastStateCounter = null;
   bluetoothGanDecodeWarning = '';
   bluetoothGanFastDecodeDisabled = false;
   bluetoothGanMacPromptInFlight = null;
@@ -3429,6 +3437,7 @@ async function primeGanBluetoothService(service, characteristics) {
     writeUuid: protocol.writeUuid,
   };
   bluetoothGanLastMoveCounter = null;
+  bluetoothGanLastStateCounter = null;
   bluetoothGanDecodeWarning = '';
   bluetoothGanFastDecodeDisabled = false;
   bluetoothGanLastStateLogAt = 0;
@@ -3625,13 +3634,10 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
   if (statePacketSolved && decoded.stateSolved !== true) decoded = { ...decoded, stateSolved: true };
   const hasMoveCounter = Number.isInteger(decoded.moveCounter);
   const previousMoveCounter = bluetoothGanLastMoveCounter;
-  const duplicateMovePacket = hasMoveCounter
-    && ganBluetoothDecodedMoveCount(decoded) > 0
-    && decoded.moveCounter === previousMoveCounter;
+  const duplicateMovePacket = ganBluetoothIsDuplicateMovePacket(decoded, previousMoveCounter);
   const parsedMoves = duplicateMovePacket ? [] : ganBluetoothMovesFromDecoded(decoded, previousMoveCounter);
-  if (hasMoveCounter && (decoded.mode === 'state' || decoded.mode === 'move' || parsedMoves.length > 0)) {
-    bluetoothGanLastMoveCounter = decoded.moveCounter;
-  }
+  bluetoothGanLastMoveCounter = ganBluetoothNextMoveCounter(previousMoveCounter, decoded, parsedMoves);
+  if (hasMoveCounter && decoded.mode === 'state') bluetoothGanLastStateCounter = decoded.moveCounter;
 
   const wasTimingBeforeMoves = appState === 'timing';
   const moveHandling = handleBluetoothMovesForCurrentState(parsedMoves, label, decoded.protocol || protocol.label, deviceName);
@@ -3650,7 +3656,10 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
   const updatePacketUi = () => {
     if (decoded.batteryLevel != null) updateBluetoothBattery(decoded.batteryLevel, decoded.protocol || protocol.label);
     if (decoded.gyro) void updateBluetoothGyro(decoded.gyro);
-    if (decoded.facelets) updateBluetoothPhysicalState(decoded, { faces: physicalFaces });
+    if (decoded.facelets) {
+      updateBluetoothPhysicalState(decoded, { faces: physicalFaces });
+      syncBluetoothSolveCubeFromGanState(decoded, physicalFaces);
+    }
     if (stoppedFromStatePacket) renderBluetoothMoves();
   };
   if (stoppedFromStatePacket || stoppedFromMoves) {
@@ -3685,12 +3694,6 @@ async function processGanBluetoothPacket(uuid, value, deviceName, hex, label) {
     duplicate: duplicateMovePacket,
     tracked: trackingMoves,
   });
-}
-
-function ganBluetoothDecodedMoveCount(decoded = {}) {
-  const moves = Array.isArray(decoded.moves) ? decoded.moves.length : 0;
-  const historyMoves = Array.isArray(decoded.historyMoves) ? decoded.historyMoves.length : 0;
-  return Math.max(moves, historyMoves);
 }
 
 async function decodeGanBluetoothPacket(protocol, mac, bytes) {
@@ -3805,6 +3808,32 @@ function ganBluetoothPacketLog(hex, decoded, ignoredReason = '') {
   if (Array.isArray(decoded.moves) && decoded.moves.length > 0) detail.push(`moves=${decoded.moves.join(' ')}`);
   if (ignoredReason) detail.push(`未计入=${ignoredReason}`);
   return detail.join(' · ');
+}
+
+function syncBluetoothSolveCubeFromGanState(decoded, faces) {
+  if (appState !== 'timing' || !faces) return false;
+  if (Number.isInteger(decoded.moveCounter) && Number.isInteger(bluetoothGanLastMoveCounter)) {
+    const delta = ganBluetoothMoveCounterDelta(
+      decoded.moveCounter,
+      bluetoothGanLastMoveCounter,
+      decoded.counterModulo,
+    );
+    if (!Number.isInteger(delta) || delta > 6) return false;
+  }
+
+  try {
+    bluetoothSolveCube = cubeFromFaces(faces);
+    bluetoothSolveCubeValid = true;
+    bluetoothMoveDerivedFaces = faces;
+    bluetoothMoveDerivedStateTime = performance.now();
+    return true;
+  } catch (error) {
+    bluetoothSolveCubeValid = false;
+    bluetoothMoveDerivedFaces = null;
+    bluetoothMoveDerivedStateTime = 0;
+    addBluetoothLog('警告', 'GAN 状态校准失败，继续使用转动包判定', error.message || String(error));
+    return false;
+  }
 }
 
 function markGanBluetoothStateSolved(decoded, options = {}) {
@@ -4141,6 +4170,7 @@ function clearBluetoothLog() {
   bluetoothSolved = false;
   lastBluetoothMovePacketSignature = '';
   bluetoothGanLastMoveCounter = null;
+  bluetoothGanLastStateCounter = null;
   bluetoothGanDecodeWarning = '';
   bluetoothGanFastDecodeDisabled = false;
   bluetoothGanLastStateLogAt = 0;
@@ -4186,6 +4216,7 @@ function bluetoothLogPayload() {
       protocol: bluetoothGanSession?.protocol || '',
       label: bluetoothGanSession?.label || '',
       moveCounter: bluetoothGanLastMoveCounter,
+      stateCounter: bluetoothGanLastStateCounter,
     },
     webBluetooth: bluetoothAvailability(),
     request: {

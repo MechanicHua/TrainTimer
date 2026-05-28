@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  applyMove,
   correctionMovesToScrambleTarget,
+  cubeFromFaces,
   cubeFacesSignature,
   cubeStateFromScramble,
   createSolvedCube,
@@ -40,6 +42,14 @@ test('four quarter turns return the preview to solved state', () => {
 test('detects solved state after applying inverse moves', () => {
   assert.equal(isSolvedFaces(cubeStateFromScramble('R U')), false);
   assert.equal(isSolvedFaces(cubeStateFromScramble("R U U' R'")), true);
+});
+
+test('rebuilds a movable cube from face state snapshots', () => {
+  const faces = cubeStateFromScramble('R U');
+  const cube = cubeFromFaces(faces);
+  for (const move of parseScramble("U' R'")) applyMove(cube, move);
+
+  assert.equal(isSolvedFaces(facesFromCube(cube)), true);
 });
 
 test('single R and U moves follow standard face-turn direction', () => {

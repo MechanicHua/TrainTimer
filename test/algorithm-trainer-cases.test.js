@@ -5,6 +5,7 @@ import { cubeStateFromScramble, isSolvedFaces, parseScramble } from '../src/cube
 
 const expectedSetCounts = {
   pll: 21,
+  pll2: 6,
   oll: 57,
   oll2: 10,
   f2lFull: 41,
@@ -22,17 +23,25 @@ test('built-in algorithm trainer cases have stable ids and expected set counts',
 
 test('built-in algorithm trainer aggregate sets expose practical training pools', () => {
   const cfopCases = algorithmTrainerBuiltInCasesForSet('cfopFull');
+  const fourLookCases = algorithmTrainerBuiltInCasesForSet('fourLookLastLayer');
   const ollCase = cfopCases.find((item) => item.set === 'oll');
   const f2lCase = cfopCases.find((item) => item.set === 'f2lFull');
   const pllCase = cfopCases.find((item) => item.set === 'pll');
+  const twoLookOllCase = fourLookCases.find((item) => item.set === 'oll2');
+  const twoLookPllCase = fourLookCases.find((item) => item.set === 'pll2');
 
   assert.equal(cfopCases.length, 119);
   assert.equal(cfopCases.filter((item) => item.set === 'f2lFull').length, 41);
   assert.equal(cfopCases.filter((item) => item.set === 'oll').length, 57);
   assert.equal(cfopCases.filter((item) => item.set === 'pll').length, 21);
+  assert.equal(fourLookCases.length, 16);
+  assert.equal(fourLookCases.filter((item) => item.set === 'oll2').length, 10);
+  assert.equal(fourLookCases.filter((item) => item.set === 'pll2').length, 6);
   assert.equal(algorithmTrainerCaseBelongsToSet(ollCase, 'cfopFull'), true);
   assert.equal(algorithmTrainerCaseBelongsToSet(f2lCase, 'cfopFull'), true);
   assert.equal(algorithmTrainerCaseBelongsToSet(pllCase, 'cfopFull'), true);
+  assert.equal(algorithmTrainerCaseBelongsToSet(twoLookOllCase, 'fourLookLastLayer'), true);
+  assert.equal(algorithmTrainerCaseBelongsToSet(twoLookPllCase, 'fourLookLastLayer'), true);
   assert.equal(algorithmTrainerCaseBelongsToSet(ollCase, 'pll'), false);
 });
 

@@ -1,5 +1,5 @@
 import { applyMove, correctionMovesToScrambleTarget, createSolvedCube, cubeFromFaces, cubeStateFromScramble, facesFromCube, isSolvedFaces, parseScramble } from './cube-state.js';
-import { algorithmTrainerBuiltInCasesForSet, algorithmTrainerCaseBelongsToSet, algorithmTrainerCases } from './algorithm-trainer-cases.js';
+import { algorithmTrainerBuiltInCasesForSet, algorithmTrainerCaseBelongsToSet, algorithmTrainerCases, algorithmTrainerSetMembers } from './algorithm-trainer-cases.js';
 import { algorithmTrainerAlgorithmIsValid, algorithmTrainerAlgorithmStepCount, algorithmTrainerSetupText, cleanAlgorithmTrainerAlgorithm } from './algorithm-trainer-utils.js';
 import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from './bluetooth-moves.js';
 import { cfopStagesForSave, cfopStageTemplate, solveCfopAnalysis, solveMoveRecords } from './cfop-analysis.js';
@@ -56,7 +56,9 @@ const statsChartLabels = {
 };
 const algorithmTrainerSetLabels = {
   cfopFull: 'CFOP 全套',
+  fourLookLastLayer: '4LLL 入门',
   pll: 'PLL',
+  pll2: '2-Look PLL',
   oll: 'OLL 全套',
   oll2: '2-Look OLL',
   f2lFull: 'F2L 全套',
@@ -6961,7 +6963,7 @@ function algorithmTrainerSearchText(item) {
 
 function algorithmTrainerCaseGroupLabel(item) {
   const group = item?.group || '-';
-  if (algorithmTrainerSet !== 'cfopFull') return group;
+  if (!algorithmTrainerSetMembers[algorithmTrainerSet]) return group;
   const setLabel = algorithmTrainerCaseSetShortLabel(item);
   return setLabel ? `${setLabel} · ${group}` : group;
 }
@@ -6975,7 +6977,9 @@ function algorithmTrainerCaseSetShortLabel(item) {
   if (!item?.set) return '';
   if (item.set === 'f2lFull') return 'F2L';
   if (item.set === 'oll') return 'OLL';
+  if (item.set === 'oll2') return '2L OLL';
   if (item.set === 'pll') return 'PLL';
+  if (item.set === 'pll2') return '2L PLL';
   return algorithmTrainerSetLabels[item.set] || '';
 }
 

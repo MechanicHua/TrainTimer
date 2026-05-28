@@ -1,5 +1,6 @@
 export const algorithmTrainerSetMembers = {
   cfopFull: ['f2lFull', 'oll', 'pll'],
+  fourLookLastLayer: ['oll2', 'pll2'],
 };
 
 export function algorithmTrainerBuiltInCasesForSet(setId) {
@@ -34,6 +35,12 @@ export const algorithmTrainerCases = [
   { id: 'pll-gb', set: 'pll', name: 'Gb Perm', group: 'G Perms', algorithm: "R' U' R U D' R2 U R' U R U' R U' R2 D", hint: 'G 形换位之二' },
   { id: 'pll-gc', set: 'pll', name: 'Gc Perm', group: 'G Perms', algorithm: "R2 U' R U' R U R' U R2 D' U R U' R' D", hint: 'G 形换位之三' },
   { id: 'pll-gd', set: 'pll', name: 'Gd Perm', group: 'G Perms', algorithm: "R U R' U' D R2 U' R U' R' U R' U R2 D'", hint: 'G 形换位之四' },
+  { id: 'pll2-corner-adjacent', set: 'pll2', name: 'Adjacent Corners', group: 'Corner Permutation', algorithm: "R U R' U' R' F R2 U' R' U' R U R' F'", hint: '2-Look PLL · 先换相邻角块，T Perm' },
+  { id: 'pll2-corner-diagonal', set: 'pll2', name: 'Diagonal Corners', group: 'Corner Permutation', algorithm: "F R U' R' U' R U R' F' R U R' U' R' F R F'", hint: '2-Look PLL · 先换对角角块，Y Perm' },
+  { id: 'pll2-edge-ua', set: 'pll2', name: 'Ua Edges', group: 'Edge Permutation', algorithm: "M2 U M U2 M' U M2", hint: '2-Look PLL · 三棱顺时针轮换' },
+  { id: 'pll2-edge-ub', set: 'pll2', name: 'Ub Edges', group: 'Edge Permutation', algorithm: "M2 U' M U2 M' U' M2", hint: '2-Look PLL · 三棱逆时针轮换' },
+  { id: 'pll2-edge-h', set: 'pll2', name: 'H Edges', group: 'Edge Permutation', algorithm: 'M2 U M2 U2 M2 U M2', hint: '2-Look PLL · 四棱对换' },
+  { id: 'pll2-edge-z', set: 'pll2', name: 'Z Edges', group: 'Edge Permutation', algorithm: "M' U M2 U M2 U M' U2 M2", hint: '2-Look PLL · 相邻两组棱块互换' },
   { id: 'oll-01', set: 'oll', name: 'OLL 1', group: 'Dot Case', algorithm: "R U2 R2 F R F' U2 R' F R F'", hint: 'Dot Case · SpeedCubeDB OLL 1' },
   { id: 'oll-02', set: 'oll', name: 'OLL 2', group: 'Dot Case', algorithm: "y' R U' R2 D' r U r' D R2 U R'", hint: 'Dot Case · SpeedCubeDB OLL 2' },
   { id: 'oll-03', set: 'oll', name: 'OLL 3', group: 'Dot Case', algorithm: "y' f R U R' U' f' U' F R U R' U' F'", hint: 'Dot Case · SpeedCubeDB OLL 3' },

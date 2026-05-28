@@ -1,23 +1,23 @@
-import { applyMove, correctionMovesToScrambleTarget, createSolvedCube, cubeFromFaces, cubeStateFromScramble, facesFromCube, isSolvedFaces, parseScramble } from './cube-state.js';
-import { algorithmTrainerBuiltInCasesForSet, algorithmTrainerCaseBelongsToSet, algorithmTrainerCases, algorithmTrainerSetMembers } from './algorithm-trainer-cases.js';
-import { algorithmTrainerAlgorithmIsValid, algorithmTrainerAlgorithmStepCount, algorithmTrainerSetupText, cleanAlgorithmTrainerAlgorithm } from './algorithm-trainer-utils.js';
-import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from './bluetooth-moves.js';
-import { cfopStagesForSave, cfopStageTemplate, solveCfopAnalysis, solveMoveRecords } from './cfop-analysis.js';
-import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv, solvesToCstimerJson, solvesToTextTable } from './solves-export.js';
-import { decodeGanBluetoothPacketFast } from './gan-bluetooth-fast.js';
+import { applyMove, correctionMovesToScrambleTarget, createSolvedCube, cubeFromFaces, cubeStateFromScramble, facesFromCube, isSolvedFaces, parseScramble } from './cube-state.js?v=20260528-gan-latency';
+import { algorithmTrainerBuiltInCasesForSet, algorithmTrainerCaseBelongsToSet, algorithmTrainerCases, algorithmTrainerSetMembers } from './algorithm-trainer-cases.js?v=20260528-gan-latency';
+import { algorithmTrainerAlgorithmIsValid, algorithmTrainerAlgorithmStepCount, algorithmTrainerSetupText, cleanAlgorithmTrainerAlgorithm } from './algorithm-trainer-utils.js?v=20260528-gan-latency';
+import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from './bluetooth-moves.js?v=20260528-gan-latency';
+import { cfopStagesForSave, cfopStageTemplate, solveCfopAnalysis, solveMoveRecords } from './cfop-analysis.js?v=20260528-gan-latency';
+import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv, solvesToCstimerJson, solvesToTextTable } from './solves-export.js?v=20260528-gan-latency';
+import { decodeGanBluetoothPacketFast } from './gan-bluetooth-fast.js?v=20260528-gan-latency';
 import {
   ganBluetoothIsDuplicateMovePacket,
   ganBluetoothMoveCounterDelta,
   ganBluetoothMovesFromDecoded,
   ganBluetoothNextMoveCounter,
-} from './gan-move-history.js';
-import { ganGyroQuaternionToCube3dBasis, ganGyroVelocityToCube3dBasis } from './gyro-orientation.js';
-import { countMoveSteps } from './move-metrics.js';
-import { inspectionDisplayForElapsed, inspectionPenaltyForElapsed, inspectionReminderSeconds, inspectionSeconds } from './inspection.js';
-import { parseSolveImport } from './solves-import.js';
-import { buildStatsSummary } from './stats-summary.js';
-import { buildSolveSummary } from './solve-summary.js';
-import { bestAverageRecord, bestMeanRecord, bestSingleRecord, recordMarksAt, rollingAverageAt, rollingAverageDetailAt, rollingMeanAt, rollingMeanDetailAt } from './rolling-averages.js';
+} from './gan-move-history.js?v=20260528-gan-latency';
+import { ganGyroQuaternionToCube3dBasis, ganGyroVelocityToCube3dBasis } from './gyro-orientation.js?v=20260528-gan-latency';
+import { countMoveSteps } from './move-metrics.js?v=20260528-gan-latency';
+import { inspectionDisplayForElapsed, inspectionPenaltyForElapsed, inspectionReminderSeconds, inspectionSeconds } from './inspection.js?v=20260528-gan-latency';
+import { parseSolveImport } from './solves-import.js?v=20260528-gan-latency';
+import { buildStatsSummary } from './stats-summary.js?v=20260528-gan-latency';
+import { buildSolveSummary } from './solve-summary.js?v=20260528-gan-latency';
+import { bestAverageRecord, bestMeanRecord, bestSingleRecord, recordMarksAt, rollingAverageAt, rollingAverageDetailAt, rollingMeanAt, rollingMeanDetailAt } from './rolling-averages.js?v=20260528-gan-latency';
 
 const localApiOrigin = 'http://127.0.0.1:3211';
 const localHttpHost = /^(127\.0\.0\.1|localhost|\[::1\])$/.test(location.hostname);

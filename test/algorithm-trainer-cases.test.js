@@ -7,6 +7,7 @@ const expectedSetCounts = {
   pll: 21,
   oll: 57,
   oll2: 10,
+  f2lFull: 41,
   f2l: 12,
 };
 

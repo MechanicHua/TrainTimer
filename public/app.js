@@ -53,6 +53,7 @@ const algorithmTrainerSetLabels = {
   pll: 'PLL',
   oll: 'OLL 全套',
   oll2: '2-Look OLL',
+  f2lFull: 'F2L 全套',
   f2l: 'F2L 入门',
   custom: 'Custom',
 };

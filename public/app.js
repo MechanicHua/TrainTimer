@@ -1,5 +1,6 @@
 import { applyMove, correctionMovesToScrambleTarget, createSolvedCube, cubeFromFaces, cubeStateFromScramble, facesFromCube, isSolvedFaces, parseScramble } from './cube-state.js';
 import { algorithmTrainerBuiltInCasesForSet, algorithmTrainerCaseBelongsToSet, algorithmTrainerCases } from './algorithm-trainer-cases.js';
+import { algorithmTrainerAlgorithmIsValid, algorithmTrainerAlgorithmStepCount, algorithmTrainerSetupText, cleanAlgorithmTrainerAlgorithm } from './algorithm-trainer-utils.js';
 import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from './bluetooth-moves.js';
 import { cfopStagesForSave, cfopStageTemplate, solveCfopAnalysis, solveMoveRecords } from './cfop-analysis.js';
 import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv, solvesToCstimerJson, solvesToTextTable } from './solves-export.js';
@@ -6088,7 +6089,7 @@ function renderAlgorithmTrainerDialog() {
   const searchText = searchActive ? ` · 搜索 ${visibleCases.length}/${focusBaseCases.length}` : '';
   elements.algorithmTrainerMeta.textContent = `${setLabel} · ${allSetCases.length} 条${groupLabel}${focusText}${searchText} · ${totals.success}/${totals.total} 掌握`;
   elements.algorithmTrainerName.textContent = current?.name || '-';
-  elements.algorithmTrainerGroup.textContent = current ? algorithmTrainerCaseGroupLabel(current) : '-';
+  elements.algorithmTrainerGroup.textContent = current ? algorithmTrainerCaseDetailLabel(current) : '-';
   elements.algorithmTrainerAlg.textContent = current?.algorithm || '-';
   elements.algorithmTrainerHint.textContent = searchActive && visibleCases.length === 0
     ? `没有匹配“${algorithmTrainerSearchQuery()}”的公式`
@@ -6217,7 +6218,7 @@ function renderAlgorithmTrainerListItem(item, index = 0) {
   row.style.setProperty('--item-index', String(Math.min(index, 12)));
   row.innerHTML = `
     <strong>${escapeHtml(item.name)}</strong>
-    <span>${escapeHtml(algorithmTrainerCaseGroupLabel(item))}</span>
+    <span>${escapeHtml(algorithmTrainerCaseDetailLabel(item))}</span>
     <em>${escapeHtml(algorithmTrainerProgressText(stats))}</em>
   `;
   row.addEventListener('click', () => {
@@ -6351,18 +6352,6 @@ function renderAlgorithmTrainerPreview(setup, supported) {
     elements.algorithmTrainerPreview.textContent = '无法生成状态预览';
     elements.algorithmTrainerPreview.title = '训练打乱解析失败';
   }
-}
-
-function algorithmTrainerSetupText(algorithm = '') {
-  const tokens = String(algorithm || '').trim().split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) return '';
-  return tokens.slice().reverse().map(invertAlgorithmTrainerToken).join(' ');
-}
-
-function invertAlgorithmTrainerToken(token) {
-  if (token.endsWith('2')) return token;
-  if (token.endsWith("'")) return token.slice(0, -1);
-  return `${token}'`;
 }
 
 function algorithmTrainerSetupCanApply(setupText) {
@@ -6514,7 +6503,7 @@ function addAlgorithmTrainerCustomCase() {
 
   const algorithm = prompt("输入公式，例如 R U R' U'。");
   if (algorithm === null) return;
-  const cleanAlgorithm = algorithm.trim().replace(/\s+/g, ' ');
+  const cleanAlgorithm = validateAlgorithmTrainerInput(algorithm);
   if (!cleanAlgorithm) return;
 
   const group = prompt('分组名称，可留空。', 'Custom');
@@ -6553,7 +6542,7 @@ function editAlgorithmTrainerCustomCase() {
 
   const algorithm = prompt('编辑公式。', current.algorithm || '');
   if (algorithm === null) return;
-  const cleanAlgorithm = algorithm.trim().replace(/\s+/g, ' ');
+  const cleanAlgorithm = validateAlgorithmTrainerInput(algorithm);
   if (!cleanAlgorithm) return;
 
   const group = prompt('编辑分组名称，可留空。', current.group || 'Custom');
@@ -6665,6 +6654,15 @@ function deleteAlgorithmTrainerCustomCase() {
   renderAlgorithmTrainerDialog();
 }
 
+function validateAlgorithmTrainerInput(value) {
+  try {
+    return cleanAlgorithmTrainerAlgorithm(value);
+  } catch (error) {
+    alert(`公式无效：${error.message || String(error)}`);
+    return '';
+  }
+}
+
 function parseAlgorithmTrainerCustomCaseImport(text) {
   const input = String(text || '').trim();
   if (!input) return [];
@@ -6722,7 +6720,7 @@ function normalizeAlgorithmTrainerPlainTextLine(line, index) {
     if (item) return item;
   }
 
-  if (!looksLikeAlgorithmText(cleaned)) return null;
+  if (!algorithmTrainerAlgorithmIsValid(cleaned)) return null;
   return normalizeAlgorithmTrainerCustomCase({
     name: `Custom ${index + 1}`,
     group: 'Custom',
@@ -6776,10 +6774,7 @@ function splitAlgorithmTrainerDelimitedLine(line) {
 }
 
 function looksLikeAlgorithmText(value) {
-  const tokens = String(value || '').trim().split(/\s+/).filter(Boolean);
-  if (tokens.length < 2) return false;
-  const moveTokens = tokens.filter((token) => /^([URFDLBMESxyz]|[urfdlb]|[URFDLB]w)(2|')?$/.test(token));
-  return moveTokens.length >= 2 && moveTokens.length / tokens.length >= 0.72;
+  return algorithmTrainerAlgorithmIsValid(value);
 }
 
 function createAlgorithmTrainerCustomCaseId() {
@@ -6884,6 +6879,11 @@ function algorithmTrainerCaseGroupLabel(item) {
   return setLabel ? `${setLabel} · ${group}` : group;
 }
 
+function algorithmTrainerCaseDetailLabel(item) {
+  const stepCount = algorithmTrainerAlgorithmStepCount(item?.algorithm || '');
+  return `${algorithmTrainerCaseGroupLabel(item)} · ${stepCount} 步`;
+}
+
 function algorithmTrainerCaseSetShortLabel(item) {
   if (!item?.set) return '';
   if (item.set === 'f2lFull') return 'F2L';
@@ -6986,7 +6986,12 @@ function loadAlgorithmTrainerCustomCases() {
 function normalizeAlgorithmTrainerCustomCase(item, index) {
   if (!item || typeof item !== 'object') return null;
   const name = String(item.name || item.case || item.label || '').trim().slice(0, 80);
-  const algorithm = String(item.algorithm || item.alg || item.moves || '').trim().replace(/\s+/g, ' ').slice(0, 220);
+  let algorithm = '';
+  try {
+    algorithm = cleanAlgorithmTrainerAlgorithm(item.algorithm || item.alg || item.moves || '');
+  } catch {
+    return null;
+  }
   if (!name || !algorithm) return null;
   const rawId = String(item.id || '').trim();
   return {

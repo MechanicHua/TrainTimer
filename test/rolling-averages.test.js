@@ -7,6 +7,7 @@ import {
   bestMeanRecord,
   bestMeanOf,
   bestSingleRecord,
+  chronologicalSolves,
   effectiveDurationMs,
   meanOfLast,
   recordMarksAt,
@@ -47,6 +48,18 @@ test('computes current and best averages with +2 penalties', () => {
 
   assert.equal(averageOfLast(penalized, 5), 41000 / 3);
   assert.equal(bestAverageOf(penalized, 5), 38000 / 3);
+});
+
+test('orders solves by createdAt while preserving ties and undated solves', () => {
+  const ordered = chronologicalSolves([
+    { id: 'second', createdAt: '2026-01-01T00:01:00.000Z' },
+    { id: 'undated' },
+    { id: 'first', createdAt: '2026-01-01T00:00:00.000Z' },
+    { id: 'tie-a', createdAt: '2026-01-01T00:02:00.000Z' },
+    { id: 'tie-b', createdAt: '2026-01-01T00:02:00.000Z' },
+  ]);
+
+  assert.deepEqual(ordered.map((solve) => solve.id), ['undated', 'first', 'second', 'tie-a', 'tie-b']);
 });
 
 test('describes rolling average windows with trimmed solves', () => {

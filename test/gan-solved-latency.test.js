@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { decodeGanBluetoothPacket, encodeGanPayload } from '../src/gan-bluetooth.js';
-import { applyMove, cubeFromFaces, facesFromCube, isSolvedFaces, parseScramble } from '../src/cube-state.js';
+import { applyMove, cubeFromFaces, facesFromCube, isSolvedFaces, parseMoveToken } from '../src/cube-state.js';
 import {
   ganBluetoothIsDuplicateMovePacket,
   ganBluetoothMovesFromDecoded,
@@ -69,7 +69,7 @@ function applyGanMovePacketsFromState({ facelets, previousMoveCounter, packets }
     lastMoveCounter = ganBluetoothNextMoveCounter(lastMoveCounter, decoded, moves);
 
     for (const moveText of moves) {
-      applyMove(cube, parseScramble(moveText)[0]);
+      applyMove(cube, parseMoveToken(moveText));
       appliedMoves.push(moveText);
     }
   }

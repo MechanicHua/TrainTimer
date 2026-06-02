@@ -1,15 +1,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  applyMovesToFacelets,
   applyMove,
+  correctionMovesFromFacesToScrambleTarget,
   correctionMovesToScrambleTarget,
+  cubeFromFacelets,
   cubeFromFaces,
   cubeFacesSignature,
   cubeStateFromScramble,
   createSolvedCube,
+  facesToFaceletString,
+  faceletsFromCube,
+  faceletsFromScramble,
+  facesFromFacelets,
   facesFromCube,
   isSolvedFaces,
+  parseMoveToken,
   parseScramble,
+  relativeFaceletsForScrambleTarget,
+  relativeFaceletsForScrambleTargetFacelets,
+  shortCorrectionMovesForRelativeFacelets,
+  solvedFaceletString,
+  warmShortCorrectionSearch,
 } from '../src/cube-state.js';
 
 test('parses WCA-style 3x3 moves', () => {
@@ -24,6 +37,12 @@ test('parses WCA-style 3x3 moves', () => {
   ]);
 });
 
+test('parses cached single move tokens for hot paths', () => {
+  assert.deepEqual(parseMoveToken("Uw2"), { face: 'u', suffix: '2' });
+  assert.deepEqual(parseMoveToken("R'"), { face: 'R', suffix: "'" });
+  assert.throws(() => parseMoveToken('Rw3'), /Unsupported scramble move/);
+});
+
 test('cube preview keeps nine stickers on each face', () => {
   const faces = cubeStateFromScramble("R U R' U'");
   for (const face of Object.values(faces)) {
@@ -31,6 +50,39 @@ test('cube preview keeps nine stickers on each face', () => {
     assert.equal(face.flat().length, 9);
     assert.ok(face.flat().every((sticker) => sticker?.color));
   }
+});
+
+test('exports facelets directly from a movable cube', () => {
+  const scramble = "R U R' U' F2 L D";
+  const cube = createSolvedCube();
+  for (const move of parseScramble(scramble)) applyMove(cube, move);
+
+  assert.equal(faceletsFromCube(cube), facesToFaceletString(cubeStateFromScramble(scramble)));
+  assert.equal(faceletsFromCube(createSolvedCube()), solvedFaceletString);
+});
+
+test('fast facelet engine matches movable cube state previews', () => {
+  const scramble = "R U R' U' F2 L D B2 x y' Uw2 M E' S";
+  const cube = createSolvedCube();
+  for (const move of parseScramble(scramble)) applyMove(cube, move);
+  const facelets = faceletsFromScramble(scramble);
+
+  assert.equal(facelets, faceletsFromCube(cube));
+  assert.deepEqual(facesFromFacelets(facelets), facesFromCube(cube));
+  assert.deepEqual(cubeStateFromScramble(scramble), facesFromFacelets(facelets));
+});
+
+test('fast facelet engine can continue from an arbitrary facelet state', () => {
+  const start = faceletsFromScramble("R U F2 L D");
+  const continued = applyMovesToFacelets(start, "B2 R' U2");
+
+  assert.equal(continued, faceletsFromScramble("R U F2 L D B2 R' U2"));
+});
+
+test('rebuilds a movable cube directly from facelets', () => {
+  const facelets = facesToFaceletString(cubeStateFromScramble("R U R' U' F2"));
+  const cube = cubeFromFacelets(facelets);
+  assert.equal(faceletsFromCube(cube), facelets);
 });
 
 test('four quarter turns return the preview to solved state', () => {
@@ -92,4 +144,137 @@ test('finds a short correction from current scramble state to target state', () 
 
 test('returns no correction when current scramble state already matches target', () => {
   assert.deepEqual(correctionMovesToScrambleTarget("R U R' U'", "R U R' U'"), []);
+});
+
+test('finds a correction from synced cube faces to a scramble target', () => {
+  const target = "R U R' U'";
+  const currentFaces = cubeStateFromScramble('R U D U\' D\'');
+  const correction = correctionMovesFromFacesToScrambleTarget(target, currentFaces, {
+    maxDepth: 5,
+    maxMs: 1000,
+    maxNodes: 500000,
+  });
+
+  const cube = cubeFromFaces(currentFaces);
+  for (const move of parseScramble(correction.join(' '))) applyMove(cube, move);
+
+  assert.deepEqual(correction, ['U', "R'", "U'"]);
+  assert.equal(
+    cubeFacesSignature(facesFromCube(cube)),
+    cubeFacesSignature(cubeStateFromScramble(target)),
+  );
+});
+
+test('face-based correction stays short after multiple wrong turns', () => {
+  const target = "R U R' U' F2 L D";
+  const wrongInput = "R U R' U' F F D R R' U U'";
+  const correction = correctionMovesFromFacesToScrambleTarget(target, cubeStateFromScramble(wrongInput), {
+    maxDepth: 6,
+    maxMs: 1000,
+    maxNodes: 500000,
+  });
+
+  assert.ok(correction.length > 0);
+  assert.ok(correction.length < parseScramble(wrongInput).length);
+  assert.equal(
+    cubeFacesSignature(cubeStateFromScramble(`${wrongInput} ${correction.join(' ')}`)),
+    cubeFacesSignature(cubeStateFromScramble(target)),
+  );
+});
+
+test('builds relative facelets from synced cube state to scramble target', () => {
+  assert.equal(
+    relativeFaceletsForScrambleTarget('R U', cubeStateFromScramble('R')),
+    facesToFaceletString(cubeStateFromScramble("U'")),
+  );
+  assert.equal(
+    relativeFaceletsForScrambleTarget('R U', cubeStateFromScramble('R U')),
+    solvedFaceletString,
+  );
+});
+
+test('builds relative facelets directly from a cached target state', () => {
+  const target = 'R U F2 L D';
+  const current = cubeStateFromScramble('R U F F D');
+  const targetFacelets = facesToFaceletString(cubeStateFromScramble(target));
+
+  assert.equal(
+    relativeFaceletsForScrambleTargetFacelets(targetFacelets, current),
+    relativeFaceletsForScrambleTarget(target, current),
+  );
+});
+
+test('finds short exact corrections from relative facelets without cube cloning search', () => {
+  const target = "F R U R' U' F' L2 D B2";
+  const current = `${target} U R2`;
+  const targetFacelets = facesToFaceletString(cubeStateFromScramble(target));
+  const currentFacelets = facesToFaceletString(cubeStateFromScramble(current));
+  const correction = shortCorrectionMovesForRelativeFacelets(
+    relativeFaceletsForScrambleTargetFacelets(targetFacelets, currentFacelets),
+    { maxDepth: 4, maxMs: 1000 },
+  );
+
+  assert.deepEqual(correction, ['R2', "U'"]);
+  assert.equal(
+    cubeFacesSignature(cubeStateFromScramble(`${current} ${correction.join(' ')}`)),
+    cubeFacesSignature(cubeStateFromScramble(target)),
+  );
+});
+
+test('finds six-step local corrections after warming the bidirectional table', () => {
+  const target = "R U R' U' F2 L D";
+  const current = `${target} R U F D L' D`;
+  const targetFacelets = facesToFaceletString(cubeStateFromScramble(target));
+  const currentFacelets = facesToFaceletString(cubeStateFromScramble(current));
+  const relative = relativeFaceletsForScrambleTargetFacelets(targetFacelets, currentFacelets);
+
+  assert.equal(warmShortCorrectionSearch({ maxDepth: 6, maxMs: 1000, maxNodes: 200000 }), true);
+  const correction = shortCorrectionMovesForRelativeFacelets(relative, {
+    maxDepth: 6,
+    maxMs: 1000,
+    maxNodes: 200000,
+  });
+
+  assert.ok(Array.isArray(correction));
+  assert.ok(correction.length <= 6);
+  assert.equal(
+    cubeFacesSignature(cubeStateFromScramble(`${current} ${correction.join(' ')}`)),
+    cubeFacesSignature(cubeStateFromScramble(target)),
+  );
+});
+
+test('finds eight-step local corrections after warming the bidirectional table', () => {
+  const target = "R U R' U' F2 L D B2 R2 U2";
+  const current = `${target} R U F D L B R2 U2`;
+  const targetFacelets = facesToFaceletString(cubeStateFromScramble(target));
+  const currentFacelets = facesToFaceletString(cubeStateFromScramble(current));
+  const relative = relativeFaceletsForScrambleTargetFacelets(targetFacelets, currentFacelets);
+
+  assert.equal(warmShortCorrectionSearch({ maxDepth: 8, maxMs: 1000, maxNodes: 1000000 }), true);
+  const correction = shortCorrectionMovesForRelativeFacelets(relative, {
+    maxDepth: 8,
+    maxMs: 100,
+    maxNodes: 1000000,
+  });
+
+  assert.ok(Array.isArray(correction));
+  assert.ok(correction.length <= 8);
+  assert.equal(
+    cubeFacesSignature(cubeStateFromScramble(`${current} ${correction.join(' ')}`)),
+    cubeFacesSignature(cubeStateFromScramble(target)),
+  );
+});
+
+test('short exact correction returns null when depth limit is too small', () => {
+  const relative = facesToFaceletString(cubeStateFromScramble('R U F'));
+  assert.equal(shortCorrectionMovesForRelativeFacelets(relative, { maxDepth: 2, maxMs: 1000 }), null);
+});
+
+test('warms short correction search tables and caches misses', () => {
+  assert.equal(warmShortCorrectionSearch({ maxDepth: 4, maxMs: 1000 }), true);
+  const relative = facesToFaceletString(cubeStateFromScramble('R U F R'));
+  assert.equal(shortCorrectionMovesForRelativeFacelets(relative, { maxDepth: 3, maxMs: 1000 }), null);
+  const startedAt = performance.now();
+  assert.equal(shortCorrectionMovesForRelativeFacelets(relative, { maxDepth: 3, maxMs: 1000 }), null);
+  assert.ok(performance.now() - startedAt < 1);
 });

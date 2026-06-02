@@ -1,0 +1,21 @@
+{
+  "name": "train-timer",
+  "version": "0.1.0",
+  "description": "Local command-line speedcubing timer with solve history and TNoodle-compatible scramble integration.",
+  "type": "module",
+  "bin": {
+    "train-timer": "./src/cli.js"
+  },
+  "scripts": {
+    "start": "node ./src/cli.js",
+    "web": "node ./src/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "GPL-3.0-or-later",
+  "dependencies": {
+    "three": "0.165.0"
+  }
+}

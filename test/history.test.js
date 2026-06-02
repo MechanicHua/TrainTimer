@@ -492,6 +492,23 @@ test('summarizes average of 5 and 12 with best and worst trimmed', () => {
   assert.equal(summary.bestAo12, 16100);
 });
 
+test('summarizes rolling averages by solve time instead of storage order', () => {
+  const solves = [
+    { id: 't2', createdAt: '2026-01-01T00:01:00.000Z', durationMs: 20000 },
+    { id: 't3', createdAt: '2026-01-01T00:02:00.000Z', durationMs: 21000 },
+    { id: 't4', createdAt: '2026-01-01T00:03:00.000Z', durationMs: 22000 },
+    { id: 't5', createdAt: '2026-01-01T00:04:00.000Z', durationMs: 23000 },
+    { id: 't6', createdAt: '2026-01-01T00:05:00.000Z', durationMs: 24000 },
+    { id: 't1', createdAt: '2026-01-01T00:00:00.000Z', durationMs: 100000 },
+  ];
+
+  const summary = summarizeSolves(solves);
+
+  assert.equal(summary.latest, 24000);
+  assert.equal(summary.mo3, 23000);
+  assert.equal(summary.ao5, 22000);
+});
+
 test('summarizes bluetooth move count and TPS', () => {
   const summary = summarizeSolves([
     { durationMs: 2000, timerSource: 'bluetooth', bluetoothMoves: ['R', 'U2', "F'", 'D'] },

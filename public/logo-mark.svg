@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">TrainTimer logo mark</title>
+  <desc id="desc">A speedcubing timer mark combining a 3x3 cube face with stopwatch arcs.</desc>
+  <defs>
+    <linearGradient id="bg" x1="96" y1="64" x2="416" y2="448" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#24242a"/>
+      <stop offset="0.56" stop-color="#111113"/>
+      <stop offset="1" stop-color="#08080a"/>
+    </linearGradient>
+    <linearGradient id="timerA" x1="128" y1="92" x2="420" y2="396" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#18d6df"/>
+      <stop offset="1" stop-color="#8dffbe"/>
+    </linearGradient>
+    <linearGradient id="timerB" x1="104" y1="392" x2="396" y2="116" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff9f0a"/>
+      <stop offset="1" stop-color="#facc15"/>
+    </linearGradient>
+  </defs>
+  <rect x="24" y="24" width="464" height="464" rx="96" fill="url(#bg)"/>
+  <path d="M138 111a190 190 0 0 1 233 56" fill="none" stroke="url(#timerA)" stroke-width="28" stroke-linecap="round"/>
+  <path d="M409 226a190 190 0 0 1-72 157" fill="none" stroke="url(#timerA)" stroke-width="28" stroke-linecap="round"/>
+  <path d="M119 330a190 190 0 0 1-2-146" fill="none" stroke="url(#timerB)" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="390" cy="184" r="13" fill="#f5f5f7"/>
+  <g transform="translate(129 139) rotate(-7 127 127)">
+    <rect x="0" y="0" width="254" height="254" rx="42" fill="#08080a"/>
+    <rect x="16" y="16" width="66" height="66" rx="12" fill="#f5f5f7"/>
+    <rect x="94" y="16" width="66" height="66" rx="12" fill="#dc2626"/>
+    <rect x="172" y="16" width="66" height="66" rx="12" fill="#16a34a"/>
+    <rect x="16" y="94" width="66" height="66" rx="12" fill="#f97316"/>
+    <rect x="94" y="94" width="66" height="66" rx="12" fill="#facc15"/>
+    <rect x="172" y="94" width="66" height="66" rx="12" fill="#2563eb"/>
+    <rect x="16" y="172" width="66" height="66" rx="12" fill="#16a34a"/>
+    <rect x="94" y="172" width="66" height="66" rx="12" fill="#f5f5f7"/>
+    <rect x="172" y="172" width="66" height="66" rx="12" fill="#dc2626"/>
+  </g>
+</svg>

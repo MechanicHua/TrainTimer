@@ -1,11 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ganGyroQuaternionToCube3dBasis, ganGyroVelocityToCube3dBasis, normalizeQuaternion } from '../public/gyro-orientation.js';
+import {
+  ganGyroQuaternionToCube3dBasis,
+  ganGyroQuaternionToCube3dBasisInto,
+  ganGyroVelocityToCube3dBasis,
+  ganGyroVelocityToCube3dBasisInto,
+  normalizeQuaternion,
+  normalizeQuaternionInto,
+  shouldAcceptGyroRawSample,
+} from '../public/gyro-orientation.js';
 
 test('normalizes valid quaternions and rejects invalid values', () => {
   assert.deepEqual(normalizeQuaternion({ x: 0, y: 0, z: 0, w: 2 }), { x: 0, y: 0, z: 0, w: 1 });
   assert.equal(normalizeQuaternion({ x: 0, y: 0, z: 0, w: 0 }), null);
   assert.equal(normalizeQuaternion({ x: 0, y: Number.NaN, z: 0, w: 1 }), null);
+});
+
+test('writes normalized quaternions into a reusable target', () => {
+  const target = { x: 9, y: 9, z: 9, w: 9 };
+  assert.equal(normalizeQuaternionInto({ x: 0, y: 0, z: 0, w: 2 }, target), target);
+  assert.deepEqual(target, { x: 0, y: 0, z: 0, w: 1 });
 });
 
 test('maps GAN gyro axes into the 3D cube coordinate basis', () => {
@@ -37,6 +51,42 @@ test('maps GAN gyro velocity into the 3D cube coordinate basis', () => {
   assert.equal(ganGyroVelocityToCube3dBasis({ x: 1, y: Number.NaN, z: 0 }), null);
 });
 
+test('writes mapped gyro values into reusable targets', () => {
+  const quaternionTarget = {};
+  const velocityTarget = {};
+  assert.equal(ganGyroQuaternionToCube3dBasisInto({ x: 0, y: 0, z: 0, w: 2 }, quaternionTarget), quaternionTarget);
+  assert.deepEqual(quaternionTarget, { x: 0, y: 0, z: -0, w: 1 });
+  assert.equal(ganGyroVelocityToCube3dBasisInto({ x: 2, y: -3, z: 4 }, velocityTarget), velocityTarget);
+  assert.deepEqual(velocityTarget, { x: 2, y: 4, z: 3 });
+});
+
+test('adaptive gyro sample filter coalesces tiny high-rate jitter', () => {
+  const previous = rawQuaternion(axisAngleQuaternion([0, 1, 0], 0));
+  const tinyJitter = rawQuaternion(axisAngleQuaternion([0, 1, 0], 0.004));
+  const deliberateMotion = rawQuaternion(axisAngleQuaternion([0, 1, 0], 0.01));
+
+  assert.equal(shouldAcceptGyroRawSample(tinyJitter, previous, 4), false);
+  assert.equal(shouldAcceptGyroRawSample(tinyJitter, previous, 24), false);
+  assert.equal(shouldAcceptGyroRawSample(tinyJitter, previous, 70), true);
+  assert.equal(shouldAcceptGyroRawSample(deliberateMotion, previous, 24), true);
+});
+
+test('adaptive gyro sample filter keeps fast motion responsive', () => {
+  const previous = rawQuaternion(axisAngleQuaternion([0, 1, 0], 0));
+  const fastTurn = rawQuaternion(axisAngleQuaternion([0, 1, 0], 0.06));
+  const velocitySpike = { ...previous, vx: 40 };
+
+  assert.equal(shouldAcceptGyroRawSample(fastTurn, previous, 2), true);
+  assert.equal(shouldAcceptGyroRawSample(velocitySpike, previous, 2), true);
+});
+
+test('adaptive gyro sample filter rejects invalid samples and accepts initial sync', () => {
+  const initial = rawQuaternion(axisAngleQuaternion([1, 0, 0], 0.02));
+
+  assert.equal(shouldAcceptGyroRawSample(initial, null, 0), true);
+  assert.equal(shouldAcceptGyroRawSample({ ...initial, qw: Number.NaN }, null, 0), false);
+});
+
 function axisAngleQuaternion(axis, angle) {
   const half = angle / 2;
   const sin = Math.sin(half);
@@ -45,6 +95,18 @@ function axisAngleQuaternion(axis, angle) {
     y: axis[1] * sin,
     z: axis[2] * sin,
     w: Math.cos(half),
+  };
+}
+
+function rawQuaternion(quaternion, velocity = {}) {
+  return {
+    qw: quaternion.w,
+    qx: quaternion.x,
+    qy: quaternion.y,
+    qz: quaternion.z,
+    vx: velocity.x || 0,
+    vy: velocity.y || 0,
+    vz: velocity.z || 0,
   };
 }
 

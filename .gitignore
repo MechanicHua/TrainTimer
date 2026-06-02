@@ -9,3 +9,4 @@ coverage/
 output/
 
 *.log
+gemini-code-*.html

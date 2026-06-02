@@ -30,6 +30,21 @@ test('state-packet solved fallback completes CFOP when final GAN move is not in 
   assert.equal(pll.name, 'PLL');
 });
 
+test('state-packet solved fallback does not synthesize full CFOP timing without stage evidence', () => {
+  const solve = {
+    scramble: 'R U F',
+    scramblePuzzle: 'three',
+    bluetoothMoveLog: [{ move: 'U', elapsedMs: 1000 }],
+    bluetoothSolvedByStatePacket: true,
+  };
+  const analysis = solveCfopAnalysis(solve);
+  const stages = cfopStagesForSave(solve);
+
+  assert.equal(analysis.finalSolved, true);
+  assert.equal(stages.every((stage) => stage.completed), false);
+  assert.equal(stages[0].durationMs, null);
+});
+
 test('cross stage is named for solved F2L pairs present at cross completion', () => {
   const analysis = solveCfopAnalysis({
     scramble: 'U',
@@ -39,4 +54,36 @@ test('cross stage is named for solved F2L pairs present at cross completion', ()
 
   assert.equal(analysis.stages[0].name, 'xxxxcross');
   assert.equal(analysis.stages[0].completed, true);
+});
+
+test('CFOP analysis prefers staged progress over final-state-only bottom candidates', () => {
+  const moves = [
+    'B', 'L', 'F', 'R', 'D', 'D', "D'", "D'", "D'", 'B', 'B', "D'",
+    'F', 'F', 'D', 'L', 'D', 'D', "L'", "D'", 'L', 'D', "L'", "D'",
+    'F', 'D', 'D', "F'", 'D', 'F', "D'", "F'", 'D', 'D', "B'", 'D',
+    'B', "D'", "B'", "D'", 'B', "D'", "D'", 'B', "D'", "B'", 'D', 'B',
+    'D', "B'", 'D', "D'", "D'", "D'", 'F', 'L', "B'", "L'", "F'", 'B',
+    'D', 'B', "D'", "B'", 'D', 'D', "D'", 'L', 'B', "D'", "B'", "D'",
+    'B', 'D', "B'", "L'", 'B', 'D', "B'", "D'", "B'", 'L', 'B', "L'",
+  ];
+  const analysis = solveCfopAnalysis({
+    scramble: "F R' U2 B U2 F2 D2 B U2 L2 B D2 R F' D' B F' L' D'",
+    scramblePuzzle: 'three',
+    bluetoothMoveLog: moves.map((move, index) => ({ move, elapsedMs: (index + 1) * 100 })),
+  });
+
+  assert.equal(analysis.bottomFace, 'U');
+  assert.deepEqual(
+    analysis.stages.map((stage) => [stage.label, stage.completedAt, stage.turns]),
+    [
+      ['C', 10, 10],
+      ['F1', 18, 8],
+      ['F2', 26, 8],
+      ['F3', 34, 8],
+      ['F4', 42, 8],
+      ['O', 55, 13],
+      ['P', 74, 19],
+    ],
+  );
+  assert.ok(analysis.stages.slice(1).every((stage) => stage.durationMs > 0));
 });

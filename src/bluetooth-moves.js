@@ -1,4 +1,4 @@
-const movePattern = /(^|[^A-Za-z0-9'’′`])([URFDLBurfdlb](?:2|['’′`])?)(?=$|[^A-Za-z0-9'’′`])/g;
+const movePattern = /(^|[^A-Za-z0-9'’′`])([URFDLBMESurfdlbmes](?:2|['’′`])?)(?=$|[^A-Za-z0-9'’′`])/g;
 const jsonMoveKeys = new Set(['move', 'moves', 'turn', 'turns', 'notation', 'sequence', 'seq']);
 const goCubeAxisPermutation = [5, 2, 0, 3, 1, 4];
 const goCubeFaces = 'URFDLB';
@@ -14,19 +14,29 @@ export function decodeBluetoothMoves(input) {
   const bytes = bytesFromInput(input);
   const goCube = decodeGoCubePacket(bytes);
   if (goCube) return goCube;
-  const giiker = decodeGiikerPacket(bytes);
-  if (giiker) return giiker;
 
   const text = printableText(bytes);
   const jsonMoves = parseJsonMoves(text);
   const moves = normalizeMoves(jsonMoves.length > 0 ? jsonMoves : parseTextMoves(text));
+  if (moves.length > 0) {
+    return {
+      bytes,
+      text,
+      moves,
+      batteryLevel: null,
+      protocol: jsonMoves.length > 0 ? 'notation-json' : 'notation-text',
+    };
+  }
+
+  const giiker = decodeGiikerPacket(bytes);
+  if (giiker) return giiker;
 
   return {
     bytes,
     text,
     moves,
     batteryLevel: null,
-    protocol: moves.length > 0 ? (jsonMoves.length > 0 ? 'notation-json' : 'notation-text') : 'raw',
+    protocol: 'raw',
   };
 }
 
@@ -185,6 +195,6 @@ function normalizeMoves(moves) {
 
 function normalizeMove(move) {
   const normalized = String(move || '').trim().replace(/[’′`]/g, "'");
-  const match = normalized.match(/^([URFDLBurfdlb])([2']?)$/);
+  const match = normalized.match(/^([URFDLBMESurfdlbmes])([2']?)$/);
   return match ? `${match[1].toUpperCase()}${match[2]}` : null;
 }

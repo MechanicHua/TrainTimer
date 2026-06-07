@@ -31,11 +31,11 @@ test('decodes JSON move notifications explicitly', () => {
 });
 
 test('decodes separated text moves and unicode prime notation', () => {
-  const encoded = new TextEncoder().encode('R,U2;F′ D`');
+  const encoded = new TextEncoder().encode('R,U2;F′ D` M E2 S\'');
   const decoded = decodeBluetoothMoves(encoded);
 
   assert.equal(decoded.protocol, 'notation-text');
-  assert.deepEqual(decoded.moves, ['R', 'U2', "F'", "D'"]);
+  assert.deepEqual(decoded.moves, ['R', 'U2', "F'", "D'", 'M', 'E2', "S'"]);
 });
 
 test('decodes GoCube and Rubiks Connected move packets', () => {

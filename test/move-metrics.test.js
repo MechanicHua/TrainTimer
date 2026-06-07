@@ -7,6 +7,11 @@ test('counts adjacent quarter double flicks as one half-turn step', () => {
   assert.equal(countMoveSteps(['R', 'R', 'U2', "F'", "F'", 'L']), 4);
 });
 
+test('keeps slice moves in logical solve steps', () => {
+  assert.deepEqual(logicalMoveSequence(['M', 'M', "E'", "S'", "S'"]), ['M2', "E'", 'S2']);
+  assert.equal(countMoveSteps(['M', 'M', "E'", "S'", "S'"]), 3);
+});
+
 test('keeps opposite adjacent turns as separate undo steps', () => {
   assert.deepEqual(logicalMoveSequence(['R', "R'", 'U', "U'"]), ['R', "R'", 'U', "U'"]);
   assert.equal(countMoveSteps(['R', "R'", 'U', "U'"]), 4);

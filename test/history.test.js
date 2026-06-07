@@ -20,6 +20,7 @@ import {
   updateSession,
   updateSolves,
 } from '../src/history.js';
+import { faceletsFromScramble } from '../src/cube-state.js';
 
 test('formats solve times with millisecond precision', () => {
   assert.equal(formatTime(1234.4), '1.234');
@@ -276,7 +277,7 @@ test('normalizes and updates solve tags', async () => {
   await replaceSolves(
     [
       { id: 'a', durationMs: 10000, tags: 'PLL, 慢十字, PLL' },
-      { id: 'b', durationMs: 12000, timerSource: 'bluetooth', bluetoothMoves: 'R U2 F′ invalid' },
+      { id: 'b', durationMs: 12000, timerSource: 'bluetooth', bluetoothMoves: 'R U2 F′ M E2 S′ invalid' },
     ],
     file,
   );
@@ -285,10 +286,10 @@ test('normalizes and updates solve tags', async () => {
   assert.deepEqual(history.solves.find((solve) => solve.id === 'a').tags, ['PLL', '慢十字']);
   assert.deepEqual(history.solves.find((solve) => solve.id === 'b').tags, []);
   assert.equal(history.solves.find((solve) => solve.id === 'a').timerSource, 'manual');
-  assert.deepEqual(history.solves.find((solve) => solve.id === 'b').bluetoothMoves, ['R', 'U2', "F'"]);
-  assert.deepEqual(history.solves.find((solve) => solve.id === 'b').bluetoothMoveLog.map((entry) => entry.move), ['R', 'U2', "F'"]);
-  assert.equal(history.solves.find((solve) => solve.id === 'b').bluetoothMoveCount, 3);
-  assert.equal(history.solves.find((solve) => solve.id === 'b').bluetoothTps, 0.25);
+  assert.deepEqual(history.solves.find((solve) => solve.id === 'b').bluetoothMoves, ['R', 'U2', "F'", 'M', 'E2', "S'"]);
+  assert.deepEqual(history.solves.find((solve) => solve.id === 'b').bluetoothMoveLog.map((entry) => entry.move), ['R', 'U2', "F'", 'M', 'E2', "S'"]);
+  assert.equal(history.solves.find((solve) => solve.id === 'b').bluetoothMoveCount, 6);
+  assert.equal(history.solves.find((solve) => solve.id === 'b').bluetoothTps, 0.5);
 
   await updateSolves(['a', 'b'], { tags: ['失误', 'PLL', '失误'] }, file);
   history = await loadHistory(file);
@@ -306,14 +307,18 @@ test('normalizes manually entered solve metadata', async () => {
   await saveSolve({
     createdAt: '2026-05-24T08:15:30.000Z',
     durationMs: 12345.6,
+    timerStartedAt: '2026-05-24T08:15:18.654Z',
+    timerStartedAtMs: 1716538518654,
+    timerFinishedAt: '2026-05-24T08:15:31.000Z',
+    timerFinishedAtMs: 1716538531000,
     penalty: '+2',
     comment: 'manual entry',
     tags: ['PLL', '慢十字'],
     timerSource: 'bluetooth',
     bluetoothMoves: ['R', 'U2'],
     bluetoothMoveLog: [
-      { step: 1, move: 'R', elapsedMs: 120, source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', time: '12:00:00', isoTime: '2026-05-24T08:15:31.000Z' },
-      { step: 2, move: 'U2', elapsedMs: 480, source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', time: '12:00:01', isoTime: '2026-05-24T08:15:32.000Z' },
+      { step: 1, move: 'R', elapsedMs: 120, timestampMs: 1716538518774, solveStartedAtMs: 1716538518654, solveStartedAtIsoTime: '2026-05-24T08:15:18.654Z', source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', time: '12:00:00', isoTime: '2026-05-24T08:15:31.000Z' },
+      { step: 2, move: 'U2', elapsedMs: 480, timestampMs: 1716538519134, solveStartedAtMs: 1716538518654, solveStartedAtIsoTime: '2026-05-24T08:15:18.654Z', source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', time: '12:00:01', isoTime: '2026-05-24T08:15:32.000Z' },
     ],
     bluetoothMoveCount: 2,
     bluetoothTps: 0.162,
@@ -332,17 +337,22 @@ test('normalizes manually entered solve metadata', async () => {
     id: undefined,
     createdAt: '2026-05-24T08:15:30.000Z',
     durationMs: 12346,
+    timerStartedAt: '2026-05-24T08:15:18.654Z',
+    timerStartedAtMs: 1716538518654,
+    timerFinishedAt: '2026-05-24T08:15:31.000Z',
+    timerFinishedAtMs: 1716538531000,
     penalty: '+2',
     comment: 'manual entry',
     tags: ['PLL', '慢十字'],
     timerSource: 'bluetooth',
     bluetoothMoves: ['R', 'U2'],
     bluetoothMoveLog: [
-      { step: 1, move: 'R', source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', time: '12:00:00', isoTime: '2026-05-24T08:15:31.000Z', elapsedMs: 120 },
-      { step: 2, move: 'U2', source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', time: '12:00:01', isoTime: '2026-05-24T08:15:32.000Z', elapsedMs: 480 },
+      { step: 1, move: 'R', source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', time: '12:00:00', isoTime: '2026-05-24T08:15:31.000Z', elapsedMs: 120, timestampMs: 1716538518774, solveStartedAtMs: 1716538518654, solveStartedAtIsoTime: '2026-05-24T08:15:18.654Z' },
+      { step: 2, move: 'U2', source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', time: '12:00:01', isoTime: '2026-05-24T08:15:32.000Z', elapsedMs: 480, timestampMs: 1716538519134, solveStartedAtMs: 1716538518654, solveStartedAtIsoTime: '2026-05-24T08:15:18.654Z' },
     ],
     bluetoothSolvedByStatePacket: false,
     cfopStages: [],
+    opEvents: [],
     bluetoothMoveCount: 2,
     bluetoothTps: 0.162,
     bluetoothDeviceName: 'Giiker Super Cube',
@@ -356,6 +366,83 @@ test('normalizes manually entered solve metadata', async () => {
     effectiveDurationMs: 14346,
     effectiveDuration: '14.346',
   });
+});
+
+test('normalizes OP events with per-move timing data', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'train-timer-'));
+  const file = join(dir, 'solves.json');
+  const startFacelets = faceletsFromScramble("R U R'");
+
+  await saveSolve({
+    durationMs: 9000,
+    opEvents: [
+      {
+        kind: 'oll',
+        caseId: 'oll-27',
+        name: 'OLL 27',
+        group: 'OCLL',
+        algorithm: "R U R' U R U2 R'",
+        confidence: 'unique',
+        matchCount: 1,
+        startStep: 11.4,
+        endStep: 17.2,
+        completedAt: 17.2,
+        turns: 7,
+        durationMs: 875.4,
+        observationMs: 125.2,
+        tps: 8,
+        moves: ['R', 'U', "R'", 'U', 'R', 'U2', "R'"],
+        formulaAccepted: true,
+        formulaReason: 'accepted',
+        startFacelets,
+        signature: 'oll-signature',
+        moveTimings: [
+          { step: 11, move: 'R', elapsedMs: 6125.4, deltaMs: 125.4, timestampMs: 100125.4, isoTime: '2026-06-03T00:00:00.125Z' },
+          { step: 12, move: 'U', elapsedMs: 6250.1, deltaMs: 124.7, timestampMs: 100250.1, isoTime: '2026-06-03T00:00:00.250Z' },
+        ],
+      },
+    ],
+  }, file);
+
+  const history = await loadHistory(file);
+  assert.deepEqual(history.solves[0].opEvents, [
+    {
+      kind: 'oll',
+      caseId: 'oll-27',
+      name: 'OLL 27',
+      group: 'OCLL',
+      algorithm: "R U R' U R U2 R'",
+      pdfLabel: '',
+      source: '',
+      confidence: 'unique',
+      matchCount: 1,
+      startStep: 11,
+      endStep: 17,
+      completedAt: 17,
+      turns: 7,
+      durationMs: 875,
+      observationMs: 125,
+      tps: 8,
+      moves: ['R', 'U', "R'", 'U', 'R', 'U2', "R'"],
+      startedAtElapsedMs: null,
+      firstMoveElapsedMs: null,
+      completedAtElapsedMs: null,
+      startedAtTimestampMs: null,
+      firstMoveTimestampMs: null,
+      completedAtTimestampMs: null,
+      startedAtIsoTime: '',
+      firstMoveIsoTime: '',
+      completedAtIsoTime: '',
+      startFacelets,
+      signature: 'oll-signature',
+      formulaAccepted: true,
+      formulaReason: 'accepted',
+      moveTimings: [
+        { step: 11, move: 'R', elapsedMs: 6125, deltaMs: 125, timestampMs: 100125, isoTime: '2026-06-03T00:00:00.125Z' },
+        { step: 12, move: 'U', elapsedMs: 6250, deltaMs: 125, timestampMs: 100250, isoTime: '2026-06-03T00:00:00.250Z' },
+      ],
+    },
+  ]);
 });
 
 test('preserves imported bluetooth summary fields when move list is unavailable', async () => {

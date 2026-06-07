@@ -47,12 +47,27 @@ const solves = [
     scramblePuzzle: 'four',
     inspectionEnabled: true,
     timerSource: 'bluetooth',
+    timerStartedAt: '2026-05-23T10:00:58.000Z',
+    timerStartedAtMs: 1779530458000,
+    timerFinishedAt: '2026-05-23T10:01:10.000Z',
+    timerFinishedAtMs: 1779530470000,
     bluetoothMoves: ['R', 'U2', "F'"],
+    bluetoothMoveLog: [
+      { step: 1, move: 'R', elapsedMs: 300, timestampMs: 1779530458300, solveStartedAtMs: 1779530458000 },
+      { step: 2, move: 'U2', elapsedMs: 700, timestampMs: 1779530458700, solveStartedAtMs: 1779530458000 },
+      { step: 3, move: "F'", elapsedMs: 1200, timestampMs: 1779530459200, solveStartedAtMs: 1779530458000 },
+    ],
     bluetoothMoveCount: 3,
     bluetoothTps: 0.25,
     bluetoothDeviceName: 'GoCube',
     bluetoothProtocols: ['gocube-move'],
     bluetoothSources: ['0x0003'],
+    cfopStages: [
+      { key: 'oll', label: 'O', name: 'OLL', completed: true, startStep: 1, endStep: 2, durationMs: 700, observationMs: 300, tps: 2.86 },
+    ],
+    opEvents: [
+      { kind: 'pll', caseId: 'pll-t', name: 'T Perm', pdfLabel: 'T', startStep: 1, endStep: 3, durationMs: 1200, observationMs: 300, tps: 2.5, moves: ['R', 'U2', "F'"], formulaAccepted: false, formulaReason: 'pll-not-solved' },
+    ],
     tags: ['PLL', '慢十字'],
     comment: 'PLL "lockup"',
   },
@@ -78,9 +93,13 @@ test('builds listed exports in provided order', () => {
 
 test('exports CSV with stable columns and quoting', () => {
   const csv = solvesToCsv([solves[1]], sessions);
-  assert.equal(csv.split('\n')[0], 'id,sessionId,sessionName,createdAt,durationMs,duration,penalty,effectiveDurationMs,effectiveDuration,scramble,scrambleSource,scramblePuzzle,inspectionEnabled,timerSource,bluetoothMoves,bluetoothMoveCount,bluetoothTps,bluetoothDeviceName,bluetoothProtocols,bluetoothSources,tags,comment');
+  assert.equal(csv.split('\n')[0], 'id,sessionId,sessionName,createdAt,durationMs,duration,penalty,effectiveDurationMs,effectiveDuration,scramble,scrambleSource,scramblePuzzle,inspectionEnabled,timerSource,timerStartedAt,timerStartedAtMs,timerFinishedAt,timerFinishedAtMs,bluetoothMoves,bluetoothMoveLog,bluetoothMoveCount,bluetoothTps,bluetoothDeviceName,bluetoothProtocols,bluetoothSources,cfopStages,opEvents,tags,comment');
   assert.match(csv, /"F, R"/);
-  assert.match(csv, /test,four,true,bluetooth,R U2 F',3,0.25,GoCube,gocube-move,0x0003/);
+  assert.match(csv, /test,four,true,bluetooth,2026-05-23T10:00:58\.000Z,1779530458000,2026-05-23T10:01:10\.000Z,1779530470000,R U2 F',/);
+  assert.match(csv, /""timestampMs"":1779530458300/);
+  assert.match(csv, /""key"":""oll""/);
+  assert.match(csv, /""kind"":""pll""/);
+  assert.match(csv, /,3,0.25,GoCube,gocube-move,0x0003/);
   assert.match(csv, /PLL;慢十字/);
   assert.match(csv, /"PLL ""lockup"""/);
 });

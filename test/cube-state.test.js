@@ -15,6 +15,7 @@ import {
   faceletsFromScramble,
   facesFromFacelets,
   facesFromCube,
+  isSolvedFacelets,
   isSolvedFaces,
   parseMoveToken,
   parseScramble,
@@ -94,6 +95,9 @@ test('four quarter turns return the preview to solved state', () => {
 test('detects solved state after applying inverse moves', () => {
   assert.equal(isSolvedFaces(cubeStateFromScramble('R U')), false);
   assert.equal(isSolvedFaces(cubeStateFromScramble("R U U' R'")), true);
+  assert.equal(isSolvedFacelets(faceletsFromScramble('R U')), false);
+  assert.equal(isSolvedFacelets(faceletsFromScramble("R U U' R'")), true);
+  assert.equal(isSolvedFacelets('invalid'), false);
 });
 
 test('rebuilds a movable cube from face state snapshots', () => {

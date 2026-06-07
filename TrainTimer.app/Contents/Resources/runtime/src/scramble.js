@@ -18,9 +18,11 @@ const axes = {
 const faces = Object.keys(axes);
 const suffixes = ['', "'", '2'];
 
-export async function generateScramble(puzzle = defaultPuzzle()) {
+const defaultExternalTimeoutMs = 15000;
+
+export async function generateScramble(puzzle = defaultPuzzle(), options = {}) {
   const normalizedPuzzle = normalizePuzzle(puzzle);
-  const external = await generateExternalScramble(normalizedPuzzle);
+  const external = await generateExternalScramble(normalizedPuzzle, options);
   if (external) return external;
 
   if (normalizedPuzzle !== 'three') {
@@ -37,20 +39,21 @@ export async function generateScramble(puzzle = defaultPuzzle()) {
     puzzle: normalizedPuzzle,
     source: 'fallback-333-random-moves',
     warning:
-      '未检测到内置 TNoodle JAR、tnoodle 命令或 TNOODLE_JAR，当前使用本地备用 3x3 随机步打乱。',
+      'TNoodle 当前未能及时生成 3x3 打乱，已使用本地备用随机步打乱。',
   };
 }
 
-export async function drawScrambleSvg(scramble, puzzle = defaultPuzzle()) {
+export async function drawScrambleSvg(scramble, puzzle = defaultPuzzle(), options = {}) {
   const normalizedScramble = String(scramble || '').trim();
   if (!normalizedScramble) return null;
 
   const normalizedPuzzle = normalizePuzzle(puzzle);
   const commands = tnoodleCommandCandidates('draw', normalizedPuzzle, normalizedScramble);
+  const timeout = externalTimeoutMs(options);
 
   for (const candidate of commands) {
     try {
-      const { stdout } = await execFileAsync(candidate.command, candidate.args, { timeout: 15000, maxBuffer: 1024 * 1024 });
+      const { stdout } = await execFileAsync(candidate.command, candidate.args, { timeout, maxBuffer: 1024 * 1024 });
       const svg = normalizeSvgOutput(stdout);
       if (svg) return { svg, puzzle: normalizedPuzzle, source: candidate.source };
     } catch {
@@ -61,12 +64,13 @@ export async function drawScrambleSvg(scramble, puzzle = defaultPuzzle()) {
   return null;
 }
 
-async function generateExternalScramble(puzzle) {
+async function generateExternalScramble(puzzle, options = {}) {
   const commands = tnoodleCommandCandidates('scramble', puzzle);
+  const timeout = externalTimeoutMs(options);
 
   for (const candidate of commands) {
     try {
-      const { stdout } = await execFileAsync(candidate.command, candidate.args, { timeout: 15000 });
+      const { stdout } = await execFileAsync(candidate.command, candidate.args, { timeout });
       const scramble = normalizeExternalOutput(stdout);
       if (scramble) return { scramble, puzzle, source: candidate.source };
     } catch {
@@ -75,6 +79,11 @@ async function generateExternalScramble(puzzle) {
   }
 
   return null;
+}
+
+function externalTimeoutMs(options = {}) {
+  const timeout = Number(options.timeoutMs ?? process.env.TRAIN_TIMER_TNOODLE_TIMEOUT_MS);
+  return Number.isFinite(timeout) && timeout > 0 ? Math.max(100, Math.floor(timeout)) : defaultExternalTimeoutMs;
 }
 
 function defaultPuzzle() {

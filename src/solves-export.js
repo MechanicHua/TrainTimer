@@ -15,12 +15,19 @@ const exportColumns = [
   'scramblePuzzle',
   'inspectionEnabled',
   'timerSource',
+  'timerStartedAt',
+  'timerStartedAtMs',
+  'timerFinishedAt',
+  'timerFinishedAtMs',
   'bluetoothMoves',
+  'bluetoothMoveLog',
   'bluetoothMoveCount',
   'bluetoothTps',
   'bluetoothDeviceName',
   'bluetoothProtocols',
   'bluetoothSources',
+  'cfopStages',
+  'opEvents',
   'tags',
   'comment',
 ];
@@ -77,12 +84,19 @@ export function solvesToCsv(solves, sessions = []) {
       solve.scramblePuzzle || 'three',
       solve.inspectionEnabled,
       solve.timerSource || 'manual',
+      solve.timerStartedAt || '',
+      solve.timerStartedAtMs ?? '',
+      solve.timerFinishedAt || '',
+      solve.timerFinishedAtMs ?? '',
       Array.isArray(solve.bluetoothMoves) ? solve.bluetoothMoves.join(' ') : '',
+      structuredJsonCell(solve.bluetoothMoveLog),
       solve.bluetoothMoveCount ?? (Array.isArray(solve.bluetoothMoves) ? solve.bluetoothMoves.length : 0),
       solve.bluetoothTps ?? '',
       solve.bluetoothDeviceName || '',
       Array.isArray(solve.bluetoothProtocols) ? solve.bluetoothProtocols.join(';') : '',
       Array.isArray(solve.bluetoothSources) ? solve.bluetoothSources.join(';') : '',
+      structuredJsonCell(solve.cfopStages),
+      structuredJsonCell(solve.opEvents),
       Array.isArray(solve.tags) ? solve.tags.join(';') : '',
       solve.comment,
     ]),
@@ -284,6 +298,10 @@ function csvCell(value, delimiter = ',') {
   const text = String(value ?? '');
   const pattern = new RegExp(`[${delimiter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"\\n]`);
   return pattern.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+function structuredJsonCell(value) {
+  return Array.isArray(value) && value.length > 0 ? JSON.stringify(value) : '';
 }
 
 function textCell(value) {

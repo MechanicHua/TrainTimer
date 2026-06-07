@@ -25,6 +25,9 @@ test('builds copyable single-solve summary with metadata', () => {
         { label: 'C', name: 'Cross', completed: true, durationMs: 2500, turns: 8, tps: 3.2 },
         { label: 'P', name: 'PLL', completed: false, durationMs: null, turns: 0, tps: null },
       ],
+      opEvents: [
+        { kind: 'oll', name: 'OLL 27', caseId: 'oll-27', pdfLabel: 'S+', durationMs: 700, observationMs: 120, turns: 7, tps: 10, moves: ['R', 'U', "R'", 'U', 'R', 'U2', "R'"] },
+      ],
     },
     '默认',
   );
@@ -45,6 +48,8 @@ test('builds copyable single-solve summary with metadata', () => {
   assert.match(text, /CFOP 分段:/);
   assert.match(text, /C Cross: 2\.500 · 8 步 · 3\.20 TPS/);
   assert.match(text, /P PLL: 未完成 · 0 步 · TPS --/);
+  assert.match(text, /OP 状态:/);
+  assert.match(text, /OLL OLL 27 · S\+: 0\.700 · 7 步 · 10\.00 TPS · 观察 0\.120 · R U R' U R U2 R'/);
   assert.match(text, /TPS: 0\.250/);
   assert.match(text, /蓝牙设备: GoCube/);
   assert.match(text, /蓝牙协议: gocube-move/);

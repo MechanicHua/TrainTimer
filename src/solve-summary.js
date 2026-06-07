@@ -29,7 +29,14 @@ export function buildSolveSummary(solve, sessionName = '') {
     if (cfopStages.length > 0) {
       lines.push('CFOP 分段:');
       lines.push(...cfopStages.map((stage) => (
-        `${stage.label || '-'} ${stage.name || ''}: ${stage.completed ? stageTimeText(stage.durationMs) : '未完成'} · ${stage.turns ?? 0} 步 · ${Number.isFinite(stage.tps) ? `${stage.tps.toFixed(2)} TPS` : 'TPS --'}`
+        `${stage.label || '-'} ${stage.name || ''}: ${stage.completed ? stageTimeText(stage.durationMs) : '未完成'} · ${stage.turns ?? 0} 步 · ${Number.isFinite(stage.tps) ? `${stage.tps.toFixed(2)} TPS` : 'TPS --'}${Number.isFinite(stage.observationMs) ? ` · 观察 ${stageTimeText(stage.observationMs)}` : ''}`
+      )));
+    }
+    const opEvents = Array.isArray(solve.opEvents) ? solve.opEvents : [];
+    if (opEvents.length > 0) {
+      lines.push('OP 状态:');
+      lines.push(...opEvents.map((event) => (
+        `${String(event.kind || '').toUpperCase()} ${opEventLabel(event)}: ${stageTimeText(event.durationMs)} · ${event.turns ?? 0} 步 · ${Number.isFinite(event.tps) ? `${event.tps.toFixed(2)} TPS` : 'TPS --'}${Number.isFinite(event.observationMs) ? ` · 观察 ${stageTimeText(event.observationMs)}` : ''} · ${Array.isArray(event.moves) ? event.moves.join(' ') : ''}`
       )));
     }
     if (Number.isFinite(solve.bluetoothTps)) lines.push(`TPS: ${solve.bluetoothTps.toFixed(3)}`);
@@ -41,6 +48,11 @@ export function buildSolveSummary(solve, sessionName = '') {
   }
 
   return lines.join('\n');
+}
+
+function opEventLabel(event) {
+  const name = event.name || event.caseId || '-';
+  return event.pdfLabel ? `${name} · ${event.pdfLabel}` : name;
 }
 
 function displaySolveTime(solve) {

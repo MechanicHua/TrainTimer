@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseSolveImport } from '../src/solves-import.js';
+import { solvesToCsv } from '../src/solves-export.js';
 
 test('parses TrainTimer JSON exports', () => {
   const parsed = parseSolveImport('solves.json', JSON.stringify({
@@ -71,6 +72,61 @@ test('parses exported CSV solves and sessions', () => {
       comment: '',
     },
   ]);
+});
+
+test('round-trips TrainTimer CSV timing, CFOP, and OP metadata', () => {
+  const solve = {
+    id: 'op1',
+    sessionId: 'default',
+    createdAt: '2026-06-03T10:00:00.000Z',
+    durationMs: 1500,
+    duration: '1.500',
+    penalty: 'ok',
+    effectiveDurationMs: 1500,
+    effectiveDuration: '1.500',
+    scramble: "R U R'",
+    scrambleSource: 'test',
+    scramblePuzzle: 'three',
+    inspectionEnabled: false,
+    timerSource: 'bluetooth',
+    timerStartedAt: '2026-06-03T09:59:58.500Z',
+    timerStartedAtMs: 1780451998500,
+    timerFinishedAt: '2026-06-03T10:00:00.000Z',
+    timerFinishedAtMs: 1780452000000,
+    bluetoothMoves: ['R', 'U', "R'"],
+    bluetoothMoveLog: [
+      { step: 1, move: 'R', elapsedMs: 300, timestampMs: 1780451998800, solveStartedAtMs: 1780451998500 },
+      { step: 2, move: 'U', elapsedMs: 900, timestampMs: 1780451999400, solveStartedAtMs: 1780451998500 },
+      { step: 3, move: "R'", elapsedMs: 1500, timestampMs: 1780452000000, solveStartedAtMs: 1780451998500 },
+    ],
+    bluetoothMoveCount: 3,
+    bluetoothTps: 2,
+    bluetoothDeviceName: 'GAN',
+    bluetoothProtocols: ['gan-gen4'],
+    bluetoothSources: ['move'],
+    cfopStages: [
+      { key: 'oll', label: 'O', name: 'OLL', completed: true, startStep: 1, endStep: 3, durationMs: 1500, observationMs: 300, tps: 2 },
+    ],
+    opEvents: [
+      { kind: 'pll', caseId: 'pll-t', name: 'T Perm', pdfLabel: 'T', startStep: 1, endStep: 3, durationMs: 1500, observationMs: 300, tps: 2, moves: ['R', 'U', "R'"], formulaAccepted: false, formulaReason: 'pll-not-solved' },
+    ],
+    tags: ['OP'],
+    comment: 'with OP metadata',
+  };
+
+  const parsed = parseSolveImport(
+    'op.csv',
+    solvesToCsv([solve], [{ id: 'default', name: 'Default', scramblePuzzle: 'three' }]),
+  );
+
+  assert.equal(parsed.source, 'csv');
+  assert.equal(parsed.solves[0].timerStartedAt, solve.timerStartedAt);
+  assert.equal(parsed.solves[0].timerStartedAtMs, solve.timerStartedAtMs);
+  assert.equal(parsed.solves[0].timerFinishedAt, solve.timerFinishedAt);
+  assert.equal(parsed.solves[0].timerFinishedAtMs, solve.timerFinishedAtMs);
+  assert.deepEqual(parsed.solves[0].bluetoothMoveLog, solve.bluetoothMoveLog);
+  assert.deepEqual(parsed.solves[0].cfopStages, solve.cfopStages);
+  assert.deepEqual(parsed.solves[0].opEvents, solve.opEvents);
 });
 
 test('creates ids for CSV rows without ids', () => {

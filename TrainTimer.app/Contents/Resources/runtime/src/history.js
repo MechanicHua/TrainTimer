@@ -216,12 +216,19 @@ export function normalizeSolve(solve) {
     ? Math.max(0, importedBluetoothTps)
     : computedBluetoothTps;
   const cfopStages = normalizeCfopStages(solve.cfopStages);
+  const opEvents = normalizeOpEvents(solve.opEvents);
+  const timerStartedAtMs = Number(solve.timerStartedAtMs);
+  const timerFinishedAtMs = Number(solve.timerFinishedAtMs);
 
   return {
     ...solve,
     id: typeof solve.id === 'string' && solve.id ? solve.id : randomId('solve'),
     durationMs,
     duration: solve.duration || formatTime(durationMs),
+    timerStartedAt: typeof solve.timerStartedAt === 'string' ? solve.timerStartedAt : '',
+    timerStartedAtMs: Number.isFinite(timerStartedAtMs) ? Math.max(0, Math.round(timerStartedAtMs)) : null,
+    timerFinishedAt: typeof solve.timerFinishedAt === 'string' ? solve.timerFinishedAt : '',
+    timerFinishedAtMs: Number.isFinite(timerFinishedAtMs) ? Math.max(0, Math.round(timerFinishedAtMs)) : null,
     penalty,
     effectiveDurationMs,
     effectiveDuration,
@@ -236,6 +243,7 @@ export function normalizeSolve(solve) {
     bluetoothMoveLog,
     bluetoothSolvedByStatePacket: solve.bluetoothSolvedByStatePacket === true,
     cfopStages,
+    opEvents,
     bluetoothMoveCount,
     bluetoothTps,
     bluetoothDeviceName: typeof solve.bluetoothDeviceName === 'string' ? solve.bluetoothDeviceName : '',
@@ -272,7 +280,7 @@ export function normalizeBluetoothMoves(moves) {
       .trim()
       .replace(/[’′`]/g, "'")
       .toUpperCase();
-    if (/^[URFDLB](?:2|')?$/.test(value)) normalized.push(value);
+    if (/^[URFDLBMES](?:2|')?$/.test(value)) normalized.push(value);
   }
 
   return normalized;
@@ -302,6 +310,8 @@ function normalizeBluetoothMoveLogEntry(entry, index) {
   const move = normalizeBluetoothMoves([entry])[0];
   if (!move) return null;
   const elapsedMs = Number(entry?.elapsedMs);
+  const timestampMs = Number(entry?.timestampMs);
+  const solveStartedAtMs = Number(entry?.solveStartedAtMs);
   return {
     step: Number.isFinite(Number(entry?.step)) ? Math.max(1, Math.round(Number(entry.step))) : index + 1,
     move,
@@ -311,6 +321,9 @@ function normalizeBluetoothMoveLogEntry(entry, index) {
     time: typeof entry?.time === 'string' ? entry.time : '',
     isoTime: typeof entry?.isoTime === 'string' ? entry.isoTime : '',
     elapsedMs: Number.isFinite(elapsedMs) ? Math.max(0, Math.round(elapsedMs)) : null,
+    timestampMs: Number.isFinite(timestampMs) ? Math.max(0, Math.round(timestampMs)) : null,
+    solveStartedAtMs: Number.isFinite(solveStartedAtMs) ? Math.max(0, Math.round(solveStartedAtMs)) : null,
+    solveStartedAtIsoTime: typeof entry?.solveStartedAtIsoTime === 'string' ? entry.solveStartedAtIsoTime : '',
   };
 }
 
@@ -321,17 +334,122 @@ function normalizeCfopStages(stages) {
     const durationMs = Number(stage?.durationMs);
     const tps = Number(stage?.tps);
     const completedAt = Number(stage?.completedAt);
+    const startStep = Number(stage?.startStep);
+    const endStep = Number(stage?.endStep);
+    const startedAtElapsedMs = Number(stage?.startedAtElapsedMs);
+    const firstMoveElapsedMs = Number(stage?.firstMoveElapsedMs);
+    const completedAtElapsedMs = Number(stage?.completedAtElapsedMs);
+    const observationMs = Number(stage?.observationMs);
+    const startedAtTimestampMs = Number(stage?.startedAtTimestampMs);
+    const firstMoveTimestampMs = Number(stage?.firstMoveTimestampMs);
+    const completedAtTimestampMs = Number(stage?.completedAtTimestampMs);
     return {
       key: typeof stage?.key === 'string' ? stage.key : '',
       label: typeof stage?.label === 'string' ? stage.label : '',
       name: typeof stage?.name === 'string' ? stage.name : '',
       completed: Boolean(stage?.completed),
       completedAt: Number.isFinite(completedAt) ? Math.max(0, Math.round(completedAt)) : null,
+      startStep: Number.isFinite(startStep) ? Math.max(0, Math.round(startStep)) : null,
+      endStep: Number.isFinite(endStep) ? Math.max(0, Math.round(endStep)) : null,
       turns: Number.isFinite(turns) ? Math.max(0, Math.round(turns)) : 0,
       durationMs: Number.isFinite(durationMs) ? Math.max(0, Math.round(durationMs)) : null,
       tps: Number.isFinite(tps) ? Math.max(0, tps) : null,
+      startedAtElapsedMs: Number.isFinite(startedAtElapsedMs) ? Math.max(0, Math.round(startedAtElapsedMs)) : null,
+      firstMoveElapsedMs: Number.isFinite(firstMoveElapsedMs) ? Math.max(0, Math.round(firstMoveElapsedMs)) : null,
+      completedAtElapsedMs: Number.isFinite(completedAtElapsedMs) ? Math.max(0, Math.round(completedAtElapsedMs)) : null,
+      observationMs: Number.isFinite(observationMs) ? Math.max(0, Math.round(observationMs)) : null,
+      startedAtTimestampMs: Number.isFinite(startedAtTimestampMs) ? Math.max(0, Math.round(startedAtTimestampMs)) : null,
+      firstMoveTimestampMs: Number.isFinite(firstMoveTimestampMs) ? Math.max(0, Math.round(firstMoveTimestampMs)) : null,
+      completedAtTimestampMs: Number.isFinite(completedAtTimestampMs) ? Math.max(0, Math.round(completedAtTimestampMs)) : null,
+      startedAtIsoTime: typeof stage?.startedAtIsoTime === 'string' ? stage.startedAtIsoTime : '',
+      firstMoveIsoTime: typeof stage?.firstMoveIsoTime === 'string' ? stage.firstMoveIsoTime : '',
+      completedAtIsoTime: typeof stage?.completedAtIsoTime === 'string' ? stage.completedAtIsoTime : '',
     };
   }).filter((stage) => stage.label || stage.name);
+}
+
+function normalizeOpEvents(events) {
+  if (!Array.isArray(events)) return [];
+  return events.map((event) => {
+    const matchCount = optionalNumber(event?.matchCount);
+    const startStep = optionalNumber(event?.startStep);
+    const endStep = optionalNumber(event?.endStep);
+    const completedAt = optionalNumber(event?.completedAt);
+    const turns = optionalNumber(event?.turns);
+    const durationMs = optionalNumber(event?.durationMs);
+    const observationMs = optionalNumber(event?.observationMs);
+    const tps = optionalNumber(event?.tps);
+    const startedAtElapsedMs = optionalNumber(event?.startedAtElapsedMs);
+    const firstMoveElapsedMs = optionalNumber(event?.firstMoveElapsedMs);
+    const completedAtElapsedMs = optionalNumber(event?.completedAtElapsedMs);
+    const startedAtTimestampMs = optionalNumber(event?.startedAtTimestampMs);
+    const firstMoveTimestampMs = optionalNumber(event?.firstMoveTimestampMs);
+    const completedAtTimestampMs = optionalNumber(event?.completedAtTimestampMs);
+    return {
+      kind: ['oll', 'pll'].includes(event?.kind) ? event.kind : '',
+      caseId: typeof event?.caseId === 'string' ? event.caseId : '',
+      name: typeof event?.name === 'string' ? event.name : '',
+      group: typeof event?.group === 'string' ? event.group : '',
+      algorithm: typeof event?.algorithm === 'string' ? event.algorithm : '',
+      pdfLabel: typeof event?.pdfLabel === 'string' ? event.pdfLabel : '',
+      source: typeof event?.source === 'string' ? event.source : '',
+      confidence: typeof event?.confidence === 'string' ? event.confidence : '',
+      matchCount: matchCount != null ? Math.max(0, Math.round(matchCount)) : 0,
+      startStep: startStep != null ? Math.max(0, Math.round(startStep)) : null,
+      endStep: endStep != null ? Math.max(0, Math.round(endStep)) : null,
+      completedAt: completedAt != null ? Math.max(0, Math.round(completedAt)) : null,
+      turns: turns != null ? Math.max(0, Math.round(turns)) : 0,
+      durationMs: durationMs != null ? Math.max(0, Math.round(durationMs)) : null,
+      observationMs: observationMs != null ? Math.max(0, Math.round(observationMs)) : null,
+      tps: tps != null ? Math.max(0, tps) : null,
+      moves: normalizeBluetoothMoves(event?.moves),
+      startedAtElapsedMs: startedAtElapsedMs != null ? Math.max(0, Math.round(startedAtElapsedMs)) : null,
+      firstMoveElapsedMs: firstMoveElapsedMs != null ? Math.max(0, Math.round(firstMoveElapsedMs)) : null,
+      completedAtElapsedMs: completedAtElapsedMs != null ? Math.max(0, Math.round(completedAtElapsedMs)) : null,
+      startedAtTimestampMs: startedAtTimestampMs != null ? Math.max(0, Math.round(startedAtTimestampMs)) : null,
+      firstMoveTimestampMs: firstMoveTimestampMs != null ? Math.max(0, Math.round(firstMoveTimestampMs)) : null,
+      completedAtTimestampMs: completedAtTimestampMs != null ? Math.max(0, Math.round(completedAtTimestampMs)) : null,
+      startedAtIsoTime: typeof event?.startedAtIsoTime === 'string' ? event.startedAtIsoTime : '',
+      firstMoveIsoTime: typeof event?.firstMoveIsoTime === 'string' ? event.firstMoveIsoTime : '',
+      completedAtIsoTime: typeof event?.completedAtIsoTime === 'string' ? event.completedAtIsoTime : '',
+      startFacelets: normalizeFacelets(event?.startFacelets),
+      signature: typeof event?.signature === 'string' ? event.signature : '',
+      formulaAccepted: event?.formulaAccepted === true,
+      formulaReason: typeof event?.formulaReason === 'string' ? event.formulaReason : '',
+      moveTimings: normalizeOpMoveTimings(event?.moveTimings),
+    };
+  }).filter((event) => event.kind && event.caseId);
+}
+
+function normalizeOpMoveTimings(moveTimings) {
+  if (!Array.isArray(moveTimings)) return [];
+  return moveTimings.map((entry, index) => {
+    const move = normalizeBluetoothMoves([entry])[0];
+    if (!move) return null;
+    const step = optionalNumber(entry?.step);
+    const elapsedMs = optionalNumber(entry?.elapsedMs);
+    const deltaMs = optionalNumber(entry?.deltaMs);
+    const timestampMs = optionalNumber(entry?.timestampMs);
+    return {
+      step: step != null ? Math.max(1, Math.round(step)) : index + 1,
+      move,
+      elapsedMs: elapsedMs != null ? Math.max(0, Math.round(elapsedMs)) : null,
+      deltaMs: deltaMs != null ? Math.max(0, Math.round(deltaMs)) : null,
+      timestampMs: timestampMs != null ? Math.max(0, Math.round(timestampMs)) : null,
+      isoTime: typeof entry?.isoTime === 'string' ? entry.isoTime : '',
+    };
+  }).filter(Boolean);
+}
+
+function normalizeFacelets(value) {
+  const text = String(value || '').trim().toUpperCase();
+  return /^[URFDLB]{54}$/.test(text) ? text : '';
+}
+
+function optionalNumber(value) {
+  if (value == null || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 function normalizeStringList(values) {

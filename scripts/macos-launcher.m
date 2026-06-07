@@ -77,6 +77,35 @@ static NSString *TrainTimerTrim(NSString *text) {
   return [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 }
 
+static NSInteger TrainTimerPortInteger(NSString *port, NSInteger fallback) {
+  NSInteger value = port.integerValue;
+  return value > 0 && value < 65536 ? value : fallback;
+}
+
+static NSInteger TrainTimerManagedPortCount(void) {
+  NSString *value = [[NSProcessInfo processInfo] environment][@"TRAIN_TIMER_PORT_COUNT"];
+  NSInteger count = value.length > 0 ? value.integerValue : 30;
+  return count > 0 && count <= 200 ? count : 30;
+}
+
+static NSInteger TrainTimerManagedPortEnd(NSInteger basePort) {
+  return MIN((NSInteger)65535, basePort + TrainTimerManagedPortCount() - 1);
+}
+
+static NSString *TrainTimerURLString(NSString *host, NSInteger port) {
+  return [NSString stringWithFormat:@"http://%@:%ld", host ?: @"127.0.0.1", (long)port];
+}
+
+static NSInteger TrainTimerURLPort(NSString *url, NSInteger fallback) {
+  NSURLComponents *components = [NSURLComponents componentsWithString:url];
+  return TrainTimerPortInteger(components.port.stringValue, fallback);
+}
+
+static NSString *TrainTimerPortRangeLabel(NSString *basePort) {
+  NSInteger base = TrainTimerPortInteger(basePort, 3211);
+  return [NSString stringWithFormat:@"%ld-%ld", (long)base, (long)TrainTimerManagedPortEnd(base)];
+}
+
 static void TrainTimerAddPath(NSMutableArray<NSString *> *paths, NSString *path) {
   if (path.length == 0) return;
   if (![paths containsObject:path] && [[NSFileManager defaultManager] isExecutableFileAtPath:path]) {
@@ -129,6 +158,95 @@ static NSString *TrainTimerRuntimePath(NSString *nodePath) {
   return [paths componentsJoinedByString:@":"];
 }
 
+static NSString *TrainTimerRunCommandOutput(NSString *launchPath, NSArray<NSString *> *arguments, NSTimeInterval timeoutSeconds, int *statusOut) {
+  if (![[NSFileManager defaultManager] isExecutableFileAtPath:launchPath]) {
+    if (statusOut) *statusOut = 127;
+    return @"";
+  }
+
+  NSTask *task = [[NSTask alloc] init];
+  NSPipe *stdoutPipe = [NSPipe pipe];
+  NSPipe *stderrPipe = [NSPipe pipe];
+  task.launchPath = launchPath;
+  task.arguments = arguments ?: @[];
+  task.standardOutput = stdoutPipe;
+  task.standardError = stderrPipe;
+  task.standardInput = [NSFileHandle fileHandleForReadingAtPath:@"/dev/null"];
+
+  @try {
+    [task launch];
+  } @catch (__unused NSException *exception) {
+    if (statusOut) *statusOut = 126;
+    return @"";
+  }
+
+  NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:timeoutSeconds];
+  while (task.isRunning && [deadline timeIntervalSinceNow] > 0) {
+    [NSThread sleepForTimeInterval:0.05];
+  }
+
+  if (task.isRunning) {
+    [task terminate];
+    NSDate *killDeadline = [NSDate dateWithTimeIntervalSinceNow:0.5];
+    while (task.isRunning && [killDeadline timeIntervalSinceNow] > 0) {
+      [NSThread sleepForTimeInterval:0.05];
+    }
+    if (task.isRunning) kill(task.processIdentifier, SIGKILL);
+  }
+
+  NSData *data = [[stdoutPipe fileHandleForReading] readDataToEndOfFile];
+  if (statusOut) *statusOut = task.terminationStatus;
+  return [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] ?: @"";
+}
+
+static int TrainTimerRunCommandStatus(NSString *launchPath, NSArray<NSString *> *arguments, NSTimeInterval timeoutSeconds) {
+  int status = 1;
+  TrainTimerRunCommandOutput(launchPath, arguments, timeoutSeconds, &status);
+  return status;
+}
+
+static BOOL TrainTimerPortAcceptsConnections(NSString *host, NSInteger port) {
+  int descriptor = socket(AF_INET, SOCK_STREAM, 0);
+  if (descriptor < 0) return NO;
+
+  struct timeval timeout;
+  timeout.tv_sec = 0;
+  timeout.tv_usec = 150000;
+  setsockopt(descriptor, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+  setsockopt(descriptor, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+
+  struct sockaddr_in address;
+  memset(&address, 0, sizeof(address));
+  address.sin_family = AF_INET;
+  address.sin_port = htons((uint16_t)port);
+  if (inet_pton(AF_INET, (host ?: @"127.0.0.1").UTF8String, &address.sin_addr) != 1) {
+    close(descriptor);
+    return NO;
+  }
+
+  BOOL open = connect(descriptor, (struct sockaddr *)&address, sizeof(address)) == 0;
+  close(descriptor);
+  return open;
+}
+
+static NSArray<NSNumber *> *TrainTimerListeningPidsForPort(NSInteger port) {
+  NSString *portArgument = [NSString stringWithFormat:@"-iTCP:%ld", (long)port];
+  int status = 0;
+  NSString *output = TrainTimerRunCommandOutput(@"/usr/sbin/lsof",
+                                                @[@"-nP", @"-t", portArgument, @"-sTCP:LISTEN"],
+                                                2.0,
+                                                &status);
+  if (status != 0 && output.length == 0) return @[];
+
+  NSMutableArray<NSNumber *> *pids = [NSMutableArray array];
+  for (NSString *line in [output componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]]) {
+    NSString *trimmed = TrainTimerTrim(line);
+    pid_t pid = (pid_t)trimmed.intValue;
+    if (pid > 0) [pids addObject:@(pid)];
+  }
+  return pids;
+}
+
 static BOOL TrainTimerHealthCheck(NSString *baseURL) {
   NSURLComponents *components = [NSURLComponents componentsWithString:baseURL];
   NSString *host = components.host ?: @"127.0.0.1";
@@ -140,7 +258,7 @@ static BOOL TrainTimerHealthCheck(NSString *baseURL) {
 
   struct timeval timeout;
   timeout.tv_sec = 0;
-  timeout.tv_usec = 700000;
+  timeout.tv_usec = 200000;
   setsockopt(descriptor, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
   setsockopt(descriptor, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
 
@@ -264,6 +382,45 @@ static void TrainTimerTerminatePid(pid_t pid, NSTimeInterval graceSeconds) {
     kill(pid, SIGKILL);
     waitpid(pid, NULL, 0);
   }
+}
+
+static NSString *TrainTimerFindHealthyServiceURL(NSString *host, NSInteger basePort, NSInteger endPort) {
+  for (NSInteger port = basePort; port <= endPort; port++) {
+    NSString *url = TrainTimerURLString(host, port);
+    if (TrainTimerHealthCheck(url)) return url;
+  }
+  return nil;
+}
+
+static NSUInteger TrainTimerTerminateHealthyProjectServers(NSString *host, NSInteger basePort, NSInteger endPort) {
+  NSMutableSet<NSNumber *> *pids = [NSMutableSet set];
+  for (NSInteger port = basePort; port <= endPort; port++) {
+    NSString *url = TrainTimerURLString(host, port);
+    if (!TrainTimerHealthCheck(url)) continue;
+    for (NSNumber *pid in TrainTimerListeningPidsForPort(port)) {
+      [pids addObject:pid];
+    }
+  }
+
+  for (NSNumber *pid in pids) {
+    TrainTimerAppendLog([NSString stringWithFormat:@"Stopping TrainTimer server pid=%@", pid]);
+    TrainTimerTerminatePid((pid_t)pid.intValue, 1.5);
+  }
+  return pids.count;
+}
+
+static NSInteger TrainTimerFirstAvailablePort(NSString *host, NSInteger basePort, NSInteger endPort) {
+  for (NSInteger port = basePort; port <= endPort; port++) {
+    if (!TrainTimerPortAcceptsConnections(host, port)) return port;
+  }
+  return 0;
+}
+
+static BOOL TrainTimerOpenURLPreferChrome(NSURL *url) {
+  if (!url) return NO;
+  int chromeStatus = TrainTimerRunCommandStatus(@"/usr/bin/open", @[@"-b", @"com.google.Chrome", url.absoluteString], 3.0);
+  if (chromeStatus == 0) return YES;
+  return [[NSWorkspace sharedWorkspace] openURL:url];
 }
 
 static NSString *TrainTimerLaunchAgentLabel(void) {
@@ -409,6 +566,7 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
 @property(nonatomic, copy) NSString *projectRoot;
 @property(nonatomic, copy) NSString *nodePath;
 @property(nonatomic, copy) NSString *host;
+@property(nonatomic, copy) NSString *basePort;
 @property(nonatomic, copy) NSString *port;
 @property(nonatomic, copy) NSString *currentURL;
 @property(nonatomic, assign) pid_t serverPid;
@@ -434,8 +592,10 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
   _projectRoot = [projectRoot copy];
   _nodePath = [TrainTimerFindNode() copy];
   _host = @"127.0.0.1";
-  _port = [[[NSProcessInfo processInfo] environment][@"PORT"] ?: @"3211" copy];
-  _currentURL = [[NSString stringWithFormat:@"http://%@:%@", _host, _port] copy];
+  NSString *configuredPort = [[NSProcessInfo processInfo] environment][@"PORT"] ?: @"3211";
+  _basePort = [configuredPort copy];
+  _port = [_basePort copy];
+  _currentURL = [TrainTimerURLString(_host, TrainTimerPortInteger(_port, 3211)) copy];
   return self;
 }
 
@@ -559,7 +719,7 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
                                  fontSize:18
                                      bold:YES];
   self.urlField = [self labelWithFrame:NSMakeRect(24, 176, 468, 22)
-                                  text:[NSString stringWithFormat:@"地址：%@", self.currentURL]
+                                  text:[NSString stringWithFormat:@"地址：%@  管理端口：%@", self.currentURL, TrainTimerPortRangeLabel(self.basePort)]
                               fontSize:13
                                   bold:NO];
   self.messageField = [self labelWithFrame:NSMakeRect(24, 130, 468, 44)
@@ -610,7 +770,7 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
   self.running = YES;
   self.busy = NO;
   self.statusField.stringValue = @"状态：运行中";
-  self.urlField.stringValue = [NSString stringWithFormat:@"地址：%@", self.currentURL];
+  self.urlField.stringValue = [NSString stringWithFormat:@"地址：%@  管理端口：%@", self.currentURL, TrainTimerPortRangeLabel(self.basePort)];
   self.messageField.stringValue = @"本地网页服务正在运行。";
   [self setControlsEnabled:YES];
 }
@@ -619,13 +779,18 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
   self.running = NO;
   self.busy = NO;
   self.statusField.stringValue = @"状态：未运行";
-  self.urlField.stringValue = [NSString stringWithFormat:@"地址：%@", self.currentURL];
+  self.urlField.stringValue = [NSString stringWithFormat:@"地址：%@  管理端口：%@", self.currentURL, TrainTimerPortRangeLabel(self.basePort)];
   self.messageField.stringValue = message ?: @"本地网页服务未运行。";
   [self setControlsEnabled:YES];
 }
 
 - (void)startService:(id)sender {
-  if (self.running && TrainTimerHealthCheck(self.currentURL)) {
+  NSInteger basePort = TrainTimerPortInteger(self.basePort, 3211);
+  NSInteger endPort = TrainTimerManagedPortEnd(basePort);
+  NSString *healthyURL = TrainTimerFindHealthyServiceURL(self.host, basePort, endPort);
+  if (self.running && healthyURL.length > 0) {
+    self.currentURL = healthyURL;
+    self.port = [NSString stringWithFormat:@"%ld", (long)TrainTimerURLPort(healthyURL, basePort)];
     [self openWeb:nil];
     return;
   }
@@ -638,10 +803,25 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
   NSString *nodePath = self.nodePath;
   NSString *projectRoot = self.projectRoot;
   NSString *host = self.host;
-  NSString *port = self.port;
-  NSString *currentURL = self.currentURL;
+  NSString *basePortText = self.basePort;
 
   dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+    NSInteger startPort = TrainTimerPortInteger(basePortText, 3211);
+    NSInteger stopPort = TrainTimerManagedPortEnd(startPort);
+    TrainTimerAppendLog([NSString stringWithFormat:@"Preparing managed ports %ld-%ld", (long)startPort, (long)stopPort]);
+    TrainTimerStopLaunchAgent(YES);
+    NSUInteger stopped = TrainTimerTerminateHealthyProjectServers(host, startPort, stopPort);
+    NSInteger selectedPort = TrainTimerFirstAvailablePort(host, startPort, stopPort);
+    if (selectedPort <= 0) {
+      TrainTimerAppendLog(@"No available managed port");
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self showStoppedWithMessage:@"启动失败：管理端口段内没有可用端口。"];
+      });
+      return;
+    }
+
+    NSString *port = [NSString stringWithFormat:@"%ld", (long)selectedPort];
+    NSString *currentURL = TrainTimerURLString(host, selectedPort);
     NSString *runtimeRoot = nil;
     NSString *runtimeError = nil;
     if (!TrainTimerPrepareRuntime(projectRoot, &runtimeRoot, &runtimeError)) {
@@ -652,7 +832,11 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
       return;
     }
 
-    TrainTimerAppendLog([NSString stringWithFormat:@"Starting LaunchAgent with %@ from %@", nodePath, runtimeRoot]);
+    TrainTimerAppendLog([NSString stringWithFormat:@"Starting LaunchAgent with %@ from %@ on %@; stopped %lu old service(s)",
+                                                   nodePath,
+                                                   runtimeRoot,
+                                                   currentURL,
+                                                   (unsigned long)stopped]);
     if (!TrainTimerStartLaunchAgent(nodePath, runtimeRoot, host, port)) {
       dispatch_async(dispatch_get_main_queue(), ^{
         [self showStoppedWithMessage:@"启动失败。请查看日志。"];
@@ -661,16 +845,27 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
     }
 
     BOOL healthy = NO;
+    NSString *actualURL = currentURL;
     for (NSUInteger attempt = 0; attempt < 120; attempt++) {
       if (TrainTimerHealthCheck(currentURL)) {
         healthy = YES;
         break;
+      }
+      if (attempt % 8 == 0) {
+        NSString *foundURL = TrainTimerFindHealthyServiceURL(host, startPort, stopPort);
+        if (foundURL.length > 0) {
+          healthy = YES;
+          actualURL = foundURL;
+          break;
+        }
       }
       [NSThread sleepForTimeInterval:0.25];
     }
 
     dispatch_async(dispatch_get_main_queue(), ^{
       if (healthy) {
+        self.currentURL = actualURL;
+        self.port = [NSString stringWithFormat:@"%ld", (long)TrainTimerURLPort(actualURL, selectedPort)];
         [self showRunning];
         [self openWeb:nil];
       } else {
@@ -684,37 +879,51 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
 
 - (void)openWeb:(id)sender {
   NSURL *url = [NSURL URLWithString:self.currentURL];
-  BOOL opened = url ? [[NSWorkspace sharedWorkspace] openURL:url] : NO;
-  self.messageField.stringValue = opened ? @"网页已打开。" : [NSString stringWithFormat:@"无法自动打开网页：%@", self.currentURL];
+  BOOL opened = TrainTimerOpenURLPreferChrome(url);
+  self.messageField.stringValue = opened ? @"网页已用 Chrome 打开。" : [NSString stringWithFormat:@"无法自动打开网页：%@", self.currentURL];
 }
 
 - (void)stopService:(id)sender {
-  if (!self.running && !TrainTimerHealthCheck(self.currentURL)) {
+  NSInteger basePort = TrainTimerPortInteger(self.basePort, 3211);
+  NSInteger endPort = TrainTimerManagedPortEnd(basePort);
+  if (!self.running && !TrainTimerFindHealthyServiceURL(self.host, basePort, endPort)) {
     [self showStoppedWithMessage:@"本地网页服务未运行。"];
     return;
   }
 
   [self setBusyMessage:@"正在停止服务。"];
+  NSString *host = self.host;
+  NSString *basePortText = self.basePort;
   dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
     TrainTimerAppendLog(@"Stopping LaunchAgent service");
     TrainTimerStopLaunchAgent(YES);
+    NSInteger startPort = TrainTimerPortInteger(basePortText, 3211);
+    NSInteger stopPort = TrainTimerManagedPortEnd(startPort);
+    NSUInteger stopped = TrainTimerTerminateHealthyProjectServers(host, startPort, stopPort);
 
     dispatch_async(dispatch_get_main_queue(), ^{
-      [self showStoppedWithMessage:@"本地网页服务已停止。"];
+      [self showStoppedWithMessage:[NSString stringWithFormat:@"本地网页服务已停止；已清理 %lu 个项目端口服务。", (unsigned long)stopped]];
     });
   });
 }
 
 - (void)restartService:(id)sender {
-  if (!self.running && !TrainTimerHealthCheck(self.currentURL)) {
+  NSInteger basePort = TrainTimerPortInteger(self.basePort, 3211);
+  NSInteger endPort = TrainTimerManagedPortEnd(basePort);
+  if (!self.running && !TrainTimerFindHealthyServiceURL(self.host, basePort, endPort)) {
     [self startService:nil];
     return;
   }
 
   [self setBusyMessage:@"正在重启服务。"];
+  NSString *host = self.host;
+  NSString *basePortText = self.basePort;
   dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
     TrainTimerAppendLog(@"Restarting LaunchAgent service");
     TrainTimerStopLaunchAgent(YES);
+    NSInteger startPort = TrainTimerPortInteger(basePortText, 3211);
+    NSInteger stopPort = TrainTimerManagedPortEnd(startPort);
+    TrainTimerTerminateHealthyProjectServers(host, startPort, stopPort);
 
     dispatch_async(dispatch_get_main_queue(), ^{
       [self startService:nil];
@@ -726,9 +935,13 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
   if (self.busy && sender != nil) return;
 
   dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
-    BOOL healthy = TrainTimerHealthCheck(self.currentURL);
+    NSInteger basePort = TrainTimerPortInteger(self.basePort, 3211);
+    NSInteger endPort = TrainTimerManagedPortEnd(basePort);
+    NSString *healthyURL = TrainTimerFindHealthyServiceURL(self.host, basePort, endPort);
     dispatch_async(dispatch_get_main_queue(), ^{
-      if (healthy) {
+      if (healthyURL.length > 0) {
+        self.currentURL = healthyURL;
+        self.port = [NSString stringWithFormat:@"%ld", (long)TrainTimerURLPort(healthyURL, basePort)];
         [self showRunning];
       } else {
         [self showStoppedWithMessage:@"本地网页服务未运行。"];
@@ -742,10 +955,12 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
 static void TrainTimerRunDirectAction(NSString *requestedAction) {
   NSString *host = @"127.0.0.1";
   NSString *port = [[NSProcessInfo processInfo] environment][@"PORT"] ?: @"3211";
-  NSString *url = [NSString stringWithFormat:@"http://%@:%@", host, port];
+  NSInteger basePort = TrainTimerPortInteger(port, 3211);
+  NSInteger endPort = TrainTimerManagedPortEnd(basePort);
 
   if ([requestedAction isEqualToString:@"status"]) {
-    if (TrainTimerHealthCheck(url)) {
+    NSString *url = TrainTimerFindHealthyServiceURL(host, basePort, endPort);
+    if (url.length > 0) {
       fprintf(stdout, "TrainTimer %s\n", [url UTF8String]);
       exit(0);
     }

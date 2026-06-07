@@ -183,7 +183,7 @@ function parseCsvImport(text, options = {}) {
       : parseDurationMs(value('duration'));
     if (durationMs == null) throw new Error(`CSV 第 ${index + 2} 行缺少有效成绩`);
 
-    return {
+    const solve = {
       id: value('id') || createImportId(options),
       sessionId,
       createdAt: value('createdAt') || new Date().toISOString(),
@@ -204,6 +204,14 @@ function parseCsvImport(text, options = {}) {
       tags: parseTags(value('tags')),
       comment: value('comment'),
     };
+    assignOptionalString(solve, 'timerStartedAt', value('timerStartedAt'));
+    assignOptionalNumber(solve, 'timerStartedAtMs', value('timerStartedAtMs'));
+    assignOptionalString(solve, 'timerFinishedAt', value('timerFinishedAt'));
+    assignOptionalNumber(solve, 'timerFinishedAtMs', value('timerFinishedAtMs'));
+    assignOptionalArray(solve, 'bluetoothMoveLog', value('bluetoothMoveLog'), index + 2);
+    assignOptionalArray(solve, 'cfopStages', value('cfopStages'), index + 2);
+    assignOptionalArray(solve, 'opEvents', value('opEvents'), index + 2);
+    return solve;
   });
 
   return {
@@ -382,6 +390,24 @@ function parseMaybeJson(value) {
   } catch {
     return value;
   }
+}
+
+function assignOptionalString(target, key, value) {
+  const text = String(value || '').trim();
+  if (text) target[key] = text;
+}
+
+function assignOptionalNumber(target, key, value) {
+  const number = parseOptionalNumber(value);
+  if (number != null) target[key] = number;
+}
+
+function assignOptionalArray(target, key, value, rowNumber) {
+  const text = String(value || '').trim();
+  if (!text) return;
+  const parsed = parseMaybeJson(text);
+  if (!Array.isArray(parsed)) throw new Error(`CSV 第 ${rowNumber} 行 ${key} 不是 JSON 数组`);
+  target[key] = parsed;
 }
 
 function parseCsvRows(text, delimiter = ',') {

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
-import { extname, join, normalize, resolve } from 'node:path';
+import { rmSync } from 'node:fs';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { drawScrambleSvg, generateScramble } from './scramble.js';
@@ -30,13 +31,10 @@ import { createExportPayload, safeExportFilename, scopedExportHistory, solvesToC
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const publicRoot = join(projectRoot, 'public');
 const srcRoot = join(projectRoot, 'src');
-const nodeModulesRoot = join(projectRoot, 'node_modules');
-const publicSrcModules = new Set(['algorithm-trainer-cases.js', 'algorithm-trainer-utils.js', 'bluetooth-moves.js', 'cfop-analysis.js', 'cube-state.js', 'inspection.js', 'move-metrics.js', 'rolling-averages.js', 'solve-summary.js', 'solves-export.js', 'solves-import.js', 'stats-summary.js']);
-const vendorModules = new Map([
-  ['three.module.js', join(nodeModulesRoot, 'three', 'build', 'three.module.js')],
-]);
+const publicSrcModules = new Set(['algorithm-trainer-cases.js', 'algorithm-trainer-utils.js', 'bluetooth-moves.js', 'cfop-analysis.js', 'cube-state.js', 'inspection.js', 'move-metrics.js', 'op-analysis.js', 'op-case-diagrams.js', 'op-case-svg.js', 'op-formula-library.js', 'op-pdf-algorithms.js', 'op-poster-diagram-shapes.js', 'op-stats.js', 'replay-timing.js', 'rolling-averages.js', 'solve-summary.js', 'solves-export.js', 'solves-import.js', 'stats-summary.js']);
 const requestedPort = Number(process.env.PORT || 3211);
 const host = process.env.HOST || '127.0.0.1';
+let currentPort = requestedPort;
 
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -80,13 +78,60 @@ const staticHeaders = {
 
 let cubeCorrectionWarmupPromise = null;
 
+function bootstrapScrambleTimeoutMs() {
+  return positiveIntegerEnv('TRAIN_TIMER_BOOTSTRAP_SCRAMBLE_TIMEOUT_MS', 2500);
+}
+
+function scrambleTimeoutMs() {
+  return positiveIntegerEnv('TRAIN_TIMER_SCRAMBLE_TIMEOUT_MS', 7000);
+}
+
+function scramblePreviewTimeoutMs() {
+  return positiveIntegerEnv('TRAIN_TIMER_SCRAMBLE_PREVIEW_TIMEOUT_MS', 5000);
+}
+
+function positiveIntegerEnv(name, fallback) {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
+}
+
+function serverStatusPath() {
+  return join(dirname(getHistoryPath()), 'server-status.json');
+}
+
+async function writeServerStatus(url, port) {
+  const statusPath = serverStatusPath();
+  await mkdir(dirname(statusPath), { recursive: true });
+  await writeFile(statusPath, JSON.stringify({
+    app: 'TrainTimer',
+    host,
+    port,
+    url,
+    pid: process.pid,
+    updatedAt: new Date().toISOString(),
+    runtimeRoot: projectRoot,
+  }, null, 2));
+}
+
+function clearServerStatus() {
+  try {
+    rmSync(serverStatusPath(), { force: true });
+  } catch {
+    // Process shutdown should not be blocked by status cleanup.
+  }
+}
+
 listen(requestedPort);
-process.once('exit', stopCubeCorrectionSolver);
+process.once('exit', () => {
+  stopCubeCorrectionSolver();
+  clearServerStatus();
+});
 process.once('SIGINT', shutdown);
 process.once('SIGTERM', shutdown);
 
 function shutdown() {
   stopCubeCorrectionSolver();
+  clearServerStatus();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 500).unref();
 }
@@ -105,9 +150,11 @@ function listen(port) {
     server.off('error', handleError);
     const address = server.address();
     const actualPort = address && typeof address === 'object' ? address.port : port;
+    currentPort = actualPort;
     const url = `http://${host}:${actualPort}`;
     console.log(`TrainTimer web UI: ${url}`);
     console.log(`History file: ${getHistoryPath()}`);
+    void writeServerStatus(url, actualPort);
   };
 
   server.once('error', handleError);
@@ -119,13 +166,23 @@ async function handleApi(request, response) {
   const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
 
   if (request.method === 'GET' && url.pathname === '/api/health') {
-    sendJson(response, 200, { ok: true, app: 'TrainTimer' });
+    sendJson(response, 200, {
+      ok: true,
+      app: 'TrainTimer',
+      host,
+      port: currentPort,
+      url: `http://${host}:${currentPort}`,
+      pid: process.pid,
+    });
     return;
   }
 
   if (request.method === 'GET' && url.pathname === '/api/bootstrap') {
     const puzzle = url.searchParams.get('puzzle') || undefined;
-    const [history, scramble] = await Promise.all([loadHistory(), generateScramble(puzzle)]);
+    const [history, scramble] = await Promise.all([
+      loadHistory(),
+      generateScramble(puzzle, { timeoutMs: bootstrapScrambleTimeoutMs() }),
+    ]);
     sendJson(response, 200, {
       scramble,
       solves: history.solves,
@@ -138,13 +195,13 @@ async function handleApi(request, response) {
 
   if (request.method === 'POST' && url.pathname === '/api/scramble') {
     const body = await readJsonBody(request);
-    sendJson(response, 200, { scramble: await generateScramble(body.puzzle) });
+    sendJson(response, 200, { scramble: await generateScramble(body.puzzle, { timeoutMs: scrambleTimeoutMs() }) });
     return;
   }
 
   if (request.method === 'POST' && url.pathname === '/api/scramble-preview') {
     const body = await readJsonBody(request);
-    const preview = await drawScrambleSvg(body.scramble, body.puzzle);
+    const preview = await drawScrambleSvg(body.scramble, body.puzzle, { timeoutMs: scramblePreviewTimeoutMs() });
     sendJson(response, 200, preview || { svg: null, source: 'local-js-preview' });
     return;
   }
@@ -365,6 +422,10 @@ async function handleApi(request, response) {
     const solve = {
       id: randomUUID(),
       createdAt: createdAt.toISOString(),
+      timerStartedAt: typeof body.timerStartedAt === 'string' ? body.timerStartedAt : '',
+      timerStartedAtMs: Number.isFinite(Number(body.timerStartedAtMs)) ? Math.max(0, Math.round(Number(body.timerStartedAtMs))) : null,
+      timerFinishedAt: typeof body.timerFinishedAt === 'string' ? body.timerFinishedAt : '',
+      timerFinishedAtMs: Number.isFinite(Number(body.timerFinishedAtMs)) ? Math.max(0, Math.round(Number(body.timerFinishedAtMs))) : null,
       durationMs: Math.round(durationMs),
       duration: formatTime(durationMs),
       scramble: String(body.scramble || ''),
@@ -380,6 +441,7 @@ async function handleApi(request, response) {
       bluetoothMoveLog: Array.isArray(body.bluetoothMoveLog) ? body.bluetoothMoveLog : [],
       bluetoothSolvedByStatePacket: body.bluetoothSolvedByStatePacket === true,
       cfopStages: Array.isArray(body.cfopStages) ? body.cfopStages : [],
+      opEvents: Array.isArray(body.opEvents) ? body.opEvents : [],
       bluetoothDeviceName: typeof body.bluetoothDeviceName === 'string' ? body.bluetoothDeviceName : '',
       bluetoothProtocols: Array.isArray(body.bluetoothProtocols) ? body.bluetoothProtocols : [],
       bluetoothSources: Array.isArray(body.bluetoothSources) ? body.bluetoothSources : [],
@@ -418,6 +480,7 @@ async function handleApi(request, response) {
     if (Object.hasOwn(body, 'bluetoothDeviceName')) updates.bluetoothDeviceName = String(body.bluetoothDeviceName || '');
     if (Object.hasOwn(body, 'bluetoothMoveLog')) updates.bluetoothMoveLog = body.bluetoothMoveLog;
     if (Object.hasOwn(body, 'cfopStages')) updates.cfopStages = body.cfopStages;
+    if (Object.hasOwn(body, 'opEvents')) updates.opEvents = body.opEvents;
     if (Object.hasOwn(body, 'bluetoothProtocols')) updates.bluetoothProtocols = body.bluetoothProtocols;
     if (Object.hasOwn(body, 'bluetoothSources')) updates.bluetoothSources = body.bluetoothSources;
     if (Object.hasOwn(body, 'createdAt')) {
@@ -428,6 +491,10 @@ async function handleApi(request, response) {
       }
       updates.createdAt = createdAt.toISOString();
     }
+    if (Object.hasOwn(body, 'timerStartedAt')) updates.timerStartedAt = String(body.timerStartedAt || '');
+    if (Object.hasOwn(body, 'timerFinishedAt')) updates.timerFinishedAt = String(body.timerFinishedAt || '');
+    if (Object.hasOwn(body, 'timerStartedAtMs')) updates.timerStartedAtMs = Number.isFinite(Number(body.timerStartedAtMs)) ? Math.max(0, Math.round(Number(body.timerStartedAtMs))) : null;
+    if (Object.hasOwn(body, 'timerFinishedAtMs')) updates.timerFinishedAtMs = Number.isFinite(Number(body.timerFinishedAtMs)) ? Math.max(0, Math.round(Number(body.timerFinishedAtMs))) : null;
     if (Object.hasOwn(body, 'sessionId')) updates.sessionId = String(body.sessionId || 'default');
     const result = await updateSolve(id, updates);
 
@@ -530,9 +597,8 @@ async function serveStatic(request, response) {
   const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
   const pathname = decodeURIComponent(url.pathname);
   const relativePath = pathname === '/' ? 'index.html' : pathname.slice(1);
-  const vendorPath = relativePath.startsWith('vendor/') ? vendorModules.get(relativePath.slice('vendor/'.length)) : null;
-  const root = vendorPath ? nodeModulesRoot : (publicSrcModules.has(relativePath) ? srcRoot : publicRoot);
-  const filePath = normalize(vendorPath || join(root, relativePath));
+  const root = publicSrcModules.has(relativePath) ? srcRoot : publicRoot;
+  const filePath = normalize(join(root, relativePath));
 
   if (!filePath.startsWith(root)) {
     response.writeHead(403);

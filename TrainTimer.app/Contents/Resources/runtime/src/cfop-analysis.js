@@ -20,30 +20,52 @@ const cfopFallbackPairSlots = Array.from({ length: 4 }, (_, index) => ({
 const cfopDefinitions = createCfopDefinitions();
 
 export function solveMoveRecords(solve) {
+  return logicalMoveRecords(solvePhysicalMoveRecords(solve));
+}
+
+export function solvePhysicalMoveRecords(solve) {
   if (!solve) return [];
   const moveLog = Array.isArray(solve.bluetoothMoveLog) ? solve.bluetoothMoveLog : [];
   const moves = Array.isArray(solve.bluetoothMoves) ? solve.bluetoothMoves : [];
   const records = moveLog.length > 0
     ? moveLog.map((entry, index) => ({
+      ...entry,
       step: Number.isFinite(Number(entry.step)) ? Number(entry.step) : index + 1,
       move: String(entry.move || '').trim(),
       elapsedMs: Number.isFinite(Number(entry.elapsedMs)) ? Number(entry.elapsedMs) : null,
+      timestampMs: Number.isFinite(Number(entry.timestampMs)) ? Number(entry.timestampMs) : null,
+      isoTime: typeof entry.isoTime === 'string' ? entry.isoTime : '',
+      solveStartedAtMs: Number.isFinite(Number(entry.solveStartedAtMs)) ? Number(entry.solveStartedAtMs) : null,
+      solveStartedAtIsoTime: typeof entry.solveStartedAtIsoTime === 'string' ? entry.solveStartedAtIsoTime : '',
     }))
     : moves.map((move, index) => ({ step: index + 1, move, elapsedMs: null }));
-  return logicalMoveRecords(records);
+  return records
+    .map(physicalMoveRecord)
+    .filter(Boolean)
+    .map((record, index) => ({ ...record, step: index + 1 }));
+}
+
+function physicalMoveRecord(record) {
+  try {
+    const move = parseMoveToken(record?.move);
+    return { ...record, move: `${move.face}${move.suffix || ''}` };
+  } catch {
+    return null;
+  }
 }
 
 export function solveCfopAnalysis(solve) {
   const records = solveMoveRecords(solve);
+  const detectionRecords = solvePhysicalMoveRecords(solve);
   const stageTemplate = cfopStageTemplate();
   const finalSolvedByStatePacket = solveFinalSolvedByStatePacket(solve);
-  if (!solve?.scramble || (records.length === 0 && !finalSolvedByStatePacket) || (solve.scramblePuzzle || 'three') !== 'three') {
-    return { records, stages: stageTemplate, finalSolved: false };
+  if (!solve?.scramble || (detectionRecords.length === 0 && !finalSolvedByStatePacket) || (solve.scramblePuzzle || 'three') !== 'three') {
+    return { records, detectionRecords, stages: stageTemplate, finalSolved: false };
   }
 
-  const snapshots = cfopSnapshotsForSolve(solve, records);
+  const snapshots = cfopSnapshotsForSolve(solve, detectionRecords);
   if (snapshots.length === 0) {
-    return { records, stages: stageTemplate, finalSolved: false };
+    return { records, detectionRecords, stages: stageTemplate, finalSolved: false };
   }
 
   const candidates = [...cfopDefinitions.values()]
@@ -86,13 +108,14 @@ export function solveCfopAnalysis(solve) {
   ];
   let previousStep = 0;
   const stages = boundaries.map((boundary) => {
-    const stage = cfopStageFromBoundary(boundary, records, previousStep);
+    const stage = cfopStageFromBoundary(boundary, detectionRecords, previousStep, solve);
     if (boundary.completedAt != null) previousStep = Math.max(previousStep, boundary.completedAt);
     return stage;
   });
 
   return {
     records,
+    detectionRecords,
     stages,
     finalSolved: finalSolvedByStatePacket || completions.pll != null,
     bottomFace: completions.cross != null ? completions.bottomFace : '',
@@ -117,9 +140,21 @@ export function cfopStagesForSave(solve) {
     name: stage.name,
     completed: Boolean(stage.completed),
     completedAt: stage.completedAt ?? null,
+    startStep: stage.startStep ?? null,
+    endStep: stage.endStep ?? null,
     turns: stage.turns,
     durationMs: Number.isFinite(stage.durationMs) ? Math.round(stage.durationMs) : null,
     tps: Number.isFinite(stage.tps) ? stage.tps : null,
+    startedAtElapsedMs: Number.isFinite(stage.startedAtElapsedMs) ? Math.round(stage.startedAtElapsedMs) : null,
+    firstMoveElapsedMs: Number.isFinite(stage.firstMoveElapsedMs) ? Math.round(stage.firstMoveElapsedMs) : null,
+    completedAtElapsedMs: Number.isFinite(stage.completedAtElapsedMs) ? Math.round(stage.completedAtElapsedMs) : null,
+    observationMs: Number.isFinite(stage.observationMs) ? Math.round(stage.observationMs) : null,
+    startedAtTimestampMs: Number.isFinite(stage.startedAtTimestampMs) ? Math.round(stage.startedAtTimestampMs) : null,
+    firstMoveTimestampMs: Number.isFinite(stage.firstMoveTimestampMs) ? Math.round(stage.firstMoveTimestampMs) : null,
+    completedAtTimestampMs: Number.isFinite(stage.completedAtTimestampMs) ? Math.round(stage.completedAtTimestampMs) : null,
+    startedAtIsoTime: stage.startedAtIsoTime || '',
+    firstMoveIsoTime: stage.firstMoveIsoTime || '',
+    completedAtIsoTime: stage.completedAtIsoTime || '',
   }));
 }
 
@@ -326,14 +361,19 @@ function cfopCandidateConfidence(candidate) {
   return '';
 }
 
-function cfopStageFromBoundary(boundary, records, previousStep) {
+function cfopStageFromBoundary(boundary, records, previousStep, solve = null) {
   const completed = boundary.completedAt != null;
   const endStep = completed ? Math.max(previousStep, boundary.completedAt) : previousStep;
   const turns = completed ? Math.max(0, endStep - previousStep) : 0;
   const startElapsed = elapsedAtSolveStep(records, previousStep);
   const endElapsed = elapsedAtSolveStep(records, endStep);
+  const firstMoveStep = completed && turns > 0 ? previousStep + 1 : null;
+  const firstMoveElapsed = firstMoveStep == null ? null : elapsedAtSolveStep(records, firstMoveStep);
   const durationMs = completed && Number.isFinite(startElapsed) && Number.isFinite(endElapsed)
     ? Math.max(0, endElapsed - startElapsed)
+    : null;
+  const observationMs = completed && Number.isFinite(startElapsed) && Number.isFinite(firstMoveElapsed)
+    ? Math.max(0, firstMoveElapsed - startElapsed)
     : null;
   const tps = durationMs > 0 ? Math.round((turns / (durationMs / 1000)) * 100) / 100 : null;
   return {
@@ -342,9 +382,21 @@ function cfopStageFromBoundary(boundary, records, previousStep) {
     name: boundary.name,
     completed,
     completedAt: boundary.completedAt,
+    startStep: completed && turns > 0 ? previousStep + 1 : null,
+    endStep: completed ? endStep : null,
     turns,
     durationMs,
     tps,
+    startedAtElapsedMs: completed ? startElapsed : null,
+    firstMoveElapsedMs: firstMoveElapsed,
+    completedAtElapsedMs: completed ? endElapsed : null,
+    observationMs,
+    startedAtTimestampMs: completed ? timestampAtSolveStep(records, previousStep, solve) : null,
+    firstMoveTimestampMs: firstMoveStep == null ? null : timestampAtSolveStep(records, firstMoveStep, solve),
+    completedAtTimestampMs: completed ? timestampAtSolveStep(records, endStep, solve) : null,
+    startedAtIsoTime: completed ? isoTimeAtSolveStep(records, previousStep, solve) : '',
+    firstMoveIsoTime: firstMoveStep == null ? '' : isoTimeAtSolveStep(records, firstMoveStep, solve),
+    completedAtIsoTime: completed ? isoTimeAtSolveStep(records, endStep, solve) : '',
   };
 }
 
@@ -352,6 +404,34 @@ function elapsedAtSolveStep(records, step) {
   if (step <= 0) return 0;
   const record = records[step - 1];
   return Number.isFinite(record?.elapsedMs) ? record.elapsedMs : null;
+}
+
+function timestampAtSolveStep(records, step, solve = null) {
+  if (step <= 0) return solveStartTimestampMs(solve, records);
+  const record = records[step - 1];
+  return Number.isFinite(record?.timestampMs) ? record.timestampMs : null;
+}
+
+function isoTimeAtSolveStep(records, step, solve = null) {
+  if (step <= 0) return solveStartIsoTime(solve, records);
+  const record = records[step - 1];
+  return typeof record?.isoTime === 'string' ? record.isoTime : '';
+}
+
+function solveStartTimestampMs(solve, records) {
+  const explicit = Number(solve?.timerStartedAtMs ?? solve?.solveStartedAtMs);
+  if (Number.isFinite(explicit)) return explicit;
+  const firstRecordStart = Number(records[0]?.solveStartedAtMs);
+  if (Number.isFinite(firstRecordStart)) return firstRecordStart;
+  const startedAt = new Date(solve?.timerStartedAt || records[0]?.solveStartedAtIsoTime || '').getTime();
+  return Number.isFinite(startedAt) ? startedAt : null;
+}
+
+function solveStartIsoTime(solve, records) {
+  if (typeof solve?.timerStartedAt === 'string') return solve.timerStartedAt;
+  if (typeof records[0]?.solveStartedAtIsoTime === 'string') return records[0].solveStartedAtIsoTime;
+  const startedAtMs = solveStartTimestampMs(solve, records);
+  return Number.isFinite(startedAtMs) ? new Date(startedAtMs).toISOString() : '';
 }
 
 function isFaceletSetSolved(faces, cells) {

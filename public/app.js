@@ -1,8 +1,12 @@
-import { applyMoveToFacelets, applyMovesToFacelets, cubeFaceletSignature, cubeStateFromScramble, faceletsFromScramble, facesFromFacelets as cubeFacesFromFacelets, isSolvedFaces, parseMoveToken, parseScramble, relativeFaceletsForScrambleTargetFacelets, shortCorrectionMovesForRelativeFacelets, solvedFaceletString, warmShortCorrectionSearch } from './cube-state.js?v=20260602-facelet-engine';
+import { applyMoveToFacelets, applyMovesToFacelets, cubeFaceletSignature, cubeStateFromScramble, faceletsFromScramble, facesFromFacelets as cubeFacesFromFacelets, isSolvedFaces, isSolvedFacelets as cubeIsSolvedFacelets, parseMoveToken, parseScramble, relativeFaceletsForScrambleTargetFacelets, shortCorrectionMovesForRelativeFacelets, solvedFaceletString, warmShortCorrectionSearch } from './cube-state.js?v=20260602-facelet-engine';
 import { algorithmTrainerBuiltInCasesForSet, algorithmTrainerCaseBelongsToSet, algorithmTrainerCases, algorithmTrainerSetMembers } from './algorithm-trainer-cases.js?v=20260528-gan-latency';
 import { algorithmTrainerAlgorithmIsValid, algorithmTrainerAlgorithmStepCount, algorithmTrainerSetupText, cleanAlgorithmTrainerAlgorithm } from './algorithm-trainer-utils.js?v=20260528-gan-latency';
 import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from './bluetooth-moves.js?v=20260528-gan-latency';
 import { cfopStagesForSave, cfopStageTemplate, solveCfopAnalysis, solveMoveRecords } from './cfop-analysis.js?v=20260601-correction-perf';
+import { opEventsForSave } from './op-analysis.js?v=20260603-op-analysis';
+import { opCaseSvgMarkup } from './op-case-svg.js?v=20260603-op-poster-diagrams';
+import { buildOpFormulaLibrary } from './op-formula-library.js?v=20260603-op-formula-library';
+import { opCaseSamplesForSolves, summarizeOpStats } from './op-stats.js?v=20260603-op-stats';
 import { createExportPayload, exportHistoryForSolves, safeExportFilename, selectedExportHistory, solvesToCsv, solvesToCstimerCsv, solvesToCstimerJson, solvesToTextTable } from './solves-export.js?v=20260528-gan-latency';
 import { decodeGanBluetoothPacketFast } from './gan-bluetooth-fast.js?v=20260601-gan-scratch';
 import { extractGanMacFromManufacturerData, ganManufacturerDataOptions } from './gan-mac.js?v=20260601-gan-mac-cics';
@@ -17,12 +21,13 @@ import {
   ganGyroVelocityToCube3dBasisInto,
   shouldAcceptGyroRawSample,
 } from './gyro-orientation.js?v=20260601-gyro-filtered-hotpath';
-import { countMoveSteps } from './move-metrics.js?v=20260528-gan-latency';
+import { countMoveSteps, logicalMoveSequence } from './move-metrics.js?v=20260528-gan-latency';
 import { inspectionDisplayForElapsed, inspectionPenaltyForElapsed, inspectionReminderSeconds, inspectionSeconds } from './inspection.js?v=20260528-gan-latency';
 import { parseSolveImport } from './solves-import.js?v=20260528-gan-latency';
 import { buildStatsSummary } from './stats-summary.js?v=20260528-gan-latency';
 import { buildSolveSummary } from './solve-summary.js?v=20260528-gan-latency';
 import { bestAverageRecord, bestMeanRecord, bestSingleRecord, chronologicalSolves, recordMarksAt, rollingAverageAt, rollingAverageDetailAt, rollingMeanAt, rollingMeanDetailAt } from './rolling-averages.js?v=20260601-correction-perf';
+import { replayDelayBeforeMove, replayMoveAnimationDelay } from './replay-timing.js?v=20260603-replay-timing';
 
 const localApiOrigin = 'http://127.0.0.1:3211';
 const localHttpHost = /^(127\.0\.0\.1|localhost|\[::1\])$/.test(location.hostname);
@@ -511,6 +516,12 @@ const elements = {
   statsDistributionChart: document.querySelector('#statsDistributionChart'),
   statsDistributionMeta: document.querySelector('#statsDistributionMeta'),
   statsInsights: document.querySelector('#statsInsights'),
+  statsOpPanel: document.querySelector('#statsOpPanel'),
+  statsOpMeta: document.querySelector('#statsOpMeta'),
+  statsOpList: document.querySelector('#statsOpList'),
+  statsOpLibraryMeta: document.querySelector('#statsOpLibraryMeta'),
+  statsOpFormulaList: document.querySelector('#statsOpFormulaList'),
+  statsOpFormulaDetail: document.querySelector('#statsOpFormulaDetail'),
   statsRecordList: document.querySelector('#statsRecordList'),
   statsDetailGrid: document.querySelector('#statsDetailGrid'),
   statsSessionOverviewPanel: document.querySelector('#statsSessionOverviewPanel'),
@@ -641,6 +652,7 @@ let allSolvesDatePreset = 'all';
 let allSolvesVisibleLimit = allSolvesRenderBatchSize;
 let statsChartMode = localStorage.getItem('trainTimer.statsChartMode') || 'single';
 if (!statsChartModes.has(statsChartMode)) statsChartMode = 'single';
+let selectedOpFormulaCaseKey = localStorage.getItem('trainTimer.selectedOpFormulaCaseKey') || '';
 let historySortKey = localStorage.getItem('trainTimer.historySortKey') || '';
 let historySortDirection = localStorage.getItem('trainTimer.historySortDirection') || '';
 if (!['single', 'tps', 'ao5', 'ao12'].includes(historySortKey) || !['asc', 'desc'].includes(historySortDirection)) {
@@ -667,6 +679,8 @@ let algorithmTrainerEditorId = '';
 let algorithmTrainerTimerStartedAt = 0;
 let algorithmTrainerTimerFrame = 0;
 let startedAt = 0;
+let timerStartedAtMs = 0;
+let timerStartedAtIsoTime = '';
 let inspectionStartedAt = 0;
 let activeInspectionUsed = false;
 let inspectionBluetoothStartBlockedUntil = 0;
@@ -695,6 +709,8 @@ let solveReplayPlaying = false;
 let solveReplayPreviewActive = false;
 let solveReplayFacelets = '';
 let solveReplayPreviewLabel = '';
+let solveReplayFocusedOpKey = '';
+let solveReplayFocusedOpManual = false;
 let statsScope = 'session';
 let statsTrendChartRenderState = null;
 let statsTrendChartHoverIndex = -1;
@@ -1026,6 +1042,8 @@ elements.statsTrendChart?.addEventListener('pointermove', handleStatsTrendChartP
 elements.statsTrendChart?.addEventListener('pointerleave', handleStatsTrendChartPointerLeave);
 elements.statsDistributionChart?.addEventListener('pointermove', handleStatsDistributionChartPointerMove);
 elements.statsDistributionChart?.addEventListener('pointerleave', handleStatsDistributionChartPointerLeave);
+elements.statsOpFormulaList?.addEventListener('click', handleStatsOpFormulaCaseClick);
+elements.statsOpFormulaDetail?.addEventListener('click', handleStatsOpSampleClick);
 elements.manageSolvesButton.addEventListener('click', openAllSolvesDialog);
 elements.selectedStatsButton.addEventListener('click', openSelectedStatsDialog);
 elements.markSelectedButton.addEventListener('click', openMarkPenaltyDialog);
@@ -1223,7 +1241,11 @@ window.__trainTimerDebug = {
   startTimingForTest(elapsedMs = 0) {
     if (appState !== 'timing') startTiming();
     const elapsed = Math.max(0, Number(elapsedMs) || 0);
-    if (elapsed > 0) startedAt = performance.now() - elapsed;
+    if (elapsed > 0) {
+      startedAt = performance.now() - elapsed;
+      timerStartedAtMs = Date.now() - Math.round(elapsed);
+      timerStartedAtIsoTime = new Date(timerStartedAtMs).toISOString();
+    }
     renderTimingTimerTick();
     return this.state();
   },
@@ -1236,6 +1258,8 @@ window.__trainTimerDebug = {
       clearTimerTick();
       appState = 'ready';
       startedAt = 0;
+      timerStartedAtMs = 0;
+      timerStartedAtIsoTime = '';
       render();
     }
     return this.state();
@@ -2204,6 +2228,8 @@ function startTiming() {
   finishSource = 'manual';
   appState = 'timing';
   startedAt = performance.now();
+  timerStartedAtMs = Date.now();
+  timerStartedAtIsoTime = new Date(timerStartedAtMs).toISOString();
   armBluetoothSolveTracking();
   renderTimer();
   renderQuickActions();
@@ -2247,6 +2273,8 @@ async function finishTiming(options = {}) {
   clearTimerTick();
   const finishedAt = Number.isFinite(options.finishedAt) ? options.finishedAt : performance.now();
   const durationMs = Math.max(0, finishedAt - startedAt);
+  const timerFinishedAtMs = timerStartedAtMs > 0 ? timerStartedAtMs + Math.round(durationMs) : Date.now();
+  const timerFinishedAtIsoTime = new Date(timerFinishedAtMs).toISOString();
   appState = 'saving';
   setTimerDisplayText(formatTime(durationMs));
   elements.statusText.textContent = finishSource === 'bluetooth' ? '蓝牙复原' : '保存中';
@@ -2263,9 +2291,23 @@ async function finishTiming(options = {}) {
     bluetoothMoveLog: bluetoothMoveLogForSave,
     bluetoothSolvedByStatePacket,
   });
+  const opEvents = opEventsForSave({
+    scramble: scramble.scramble,
+    scramblePuzzle: scramble.puzzle || scramblePuzzle,
+    timerStartedAt: timerStartedAtIsoTime,
+    timerStartedAtMs,
+    bluetoothMoves: bluetoothMovesForSave,
+    bluetoothMoveLog: bluetoothMoveLogForSave,
+    bluetoothSolvedByStatePacket,
+  });
 
   const data = await postJson('/api/solves', {
     durationMs,
+    createdAt: timerFinishedAtIsoTime,
+    timerStartedAt: timerStartedAtIsoTime,
+    timerStartedAtMs,
+    timerFinishedAt: timerFinishedAtIsoTime,
+    timerFinishedAtMs,
     scramble: scramble.scramble,
     scrambleSource: scramble.source,
     scramblePuzzle: scramble.puzzle || scramblePuzzle,
@@ -2277,6 +2319,7 @@ async function finishTiming(options = {}) {
     bluetoothMoveLog: bluetoothMoveLogForSave,
     bluetoothSolvedByStatePacket,
     cfopStages,
+    opEvents,
     bluetoothDeviceName: bluetoothMetadata.deviceName,
     bluetoothProtocols: bluetoothMetadata.protocols,
     bluetoothSources: bluetoothMetadata.sources,
@@ -3360,6 +3403,7 @@ function loadMoreAllSolvesRows() {
 }
 
 function openSolveDialog(id) {
+  if (currentDetailSolveId !== id) stopSolveReplay();
   currentDetailSolveId = id;
   renderSolveDialog();
   if (!elements.solveDialog.open) elements.solveDialog.showModal();
@@ -3431,11 +3475,13 @@ function renderSolveSolutionPanel(solve) {
     sourceText,
   ].filter(Boolean).join(' · ');
 
+  const opEvents = opDisplayEventsForSolve(solve);
   elements.solveCfopStages.replaceChildren(
     ...displayedStages.map((stage) => renderCfopStageCard(stage)),
+    ...opEvents.map((event) => renderOpEventCard(event)),
   );
   elements.solveDetailBluetoothMoves.replaceChildren(
-    ...records.map((record, index) => renderSolveMoveChip(record, index)),
+    ...records.map((record, index) => renderSolveMoveChip(record, index, opEvents)),
   );
   updateSolveReplayHighlight();
 }
@@ -3445,31 +3491,170 @@ function renderCfopStageCard(stage) {
   card.className = `solve-cfop-card ${stage.completed ? 'completed' : 'pending'}`;
   const timeText = Number.isFinite(stage.durationMs) ? formatTime(stage.durationMs) : '--';
   const tpsText = Number.isFinite(stage.tps) ? `${stage.tps.toFixed(2)} TPS` : 'TPS --';
+  const observationText = Number.isFinite(stage.observationMs) ? ` · 观察 ${formatTime(stage.observationMs)}` : '';
   card.innerHTML = `
     <strong>${escapeHtml(stage.label)}</strong>
     <span>${escapeHtml(stage.name)}</span>
     <em>${stage.completed ? escapeHtml(timeText) : '未完成'}</em>
-    <small>${stage.turns} 步 · ${escapeHtml(tpsText)}</small>
+    <small>${stage.turns} 步 · ${escapeHtml(tpsText)}${escapeHtml(observationText)}</small>
   `;
   return card;
 }
 
-function renderSolveMoveChip(record, index) {
+function opEventKey(event) {
+  return [
+    event?.kind || '',
+    event?.caseId || '',
+    event?.startStep ?? '',
+    event?.endStep ?? '',
+  ].join(':');
+}
+
+function opEventForStep(opEvents, stepNumber) {
+  const step = Number(stepNumber);
+  if (!Number.isFinite(step)) return null;
+  return (Array.isArray(opEvents) ? opEvents : []).find((event) => {
+    const start = Number(event?.startStep);
+    const end = Number(event?.endStep);
+    return Number.isFinite(start) && Number.isFinite(end) && step >= start && step <= end;
+  }) || null;
+}
+
+function opMoveChipLabel(event) {
+  const kind = String(event?.kind || '').toUpperCase();
+  const label = event?.pdfLabel || event?.name || event?.caseId || '';
+  return [kind, label].filter(Boolean).join(' ');
+}
+
+function opEventRangeText(event) {
+  const start = Number(event?.startStep);
+  const end = Number(event?.endStep);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return '';
+  return start === end ? `第 ${start} 步` : `第 ${start}-${end} 步`;
+}
+
+function renderOpEventCard(event) {
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = 'solve-cfop-card completed op-event-card';
+  card.dataset.opEventKey = opEventKey(event);
+  card.dataset.opStartStep = String(event.startStep || '');
+  card.dataset.opEndStep = String(event.endStep || '');
+  const kind = String(event.kind || '').toUpperCase();
+  const label = event.pdfLabel ? `${event.name || event.caseId} · ${event.pdfLabel}` : (event.name || event.caseId);
+  const timeText = Number.isFinite(event.durationMs) ? formatTime(event.durationMs) : '--';
+  const tpsText = Number.isFinite(event.tps) ? `${event.tps.toFixed(2)} TPS` : 'TPS --';
+  const observationText = Number.isFinite(event.observationMs) ? ` · 观察 ${formatTime(event.observationMs)}` : '';
+  const formulaText = Array.isArray(event.moves) && event.moves.length > 0 ? event.moves.join(' ') : event.algorithm || '';
+  const formulaStatus = event.formulaAccepted === true
+    ? ''
+    : opFormulaReasonText(event.formulaReason);
+  const rangeText = opEventRangeText(event);
+  const diagram = opCaseSvgMarkup(event.kind, event.caseId, {
+    className: 'op-case-diagram op-case-diagram-thumb',
+    idPrefix: `op-event-${opEventKey(event)}`,
+    title: opCaseVisualTitle(kind, label),
+  });
+  if (diagram) card.classList.add('has-op-diagram');
+  card.title = [
+    `${kind} ${label}`,
+    rangeText,
+    formulaStatus,
+    formulaText,
+  ].filter(Boolean).join(' · ');
+  card.innerHTML = `
+    ${diagram ? `<div class="op-event-card-diagram">${diagram}</div>` : ''}
+    <div class="op-event-card-body">
+      <strong>${escapeHtml(kind)}</strong>
+      <span>${escapeHtml(label)}</span>
+      <em>${escapeHtml(timeText)}</em>
+      <small>${escapeHtml(rangeText ? `${rangeText} · ` : '')}${Number(event.turns) || 0} 步 · ${escapeHtml(tpsText)}${escapeHtml(observationText)}${escapeHtml(formulaStatus ? ` · ${formulaStatus}` : '')}</small>
+    </div>
+  `;
+  card.addEventListener('click', () => jumpToSolveOpEvent(event));
+  return card;
+}
+
+function opFormulaReasonText(reason) {
+  switch (reason) {
+    case 'accepted':
+    case '':
+      return '';
+    case 'too-long':
+      return '未入库：步骤过长';
+    case 'intermediate-op-case':
+      return '未入库：疑似多公式';
+    case 'oll-not-oriented':
+      return '未入库：OLL 未完成';
+    case 'oll-not-pll-state':
+      return '未入库：OLL 后不是有效 PLL';
+    case 'pll-not-solved':
+      return '未入库：PLL 未复原';
+    case 'invalid-moves':
+      return '未入库：步骤无效';
+    case 'ambiguous-start-state':
+      return '未入库：状态不唯一';
+    case 'stage-fallback':
+      return '未入库：阶段回退识别';
+    default:
+      return reason ? `未入库：${reason}` : '';
+  }
+}
+
+function opCaseVisualTitle(kind, label) {
+  const normalizedKind = String(kind || '').toUpperCase();
+  const text = String(label || '').trim();
+  if (!normalizedKind || !text) return text || normalizedKind;
+  return text.toUpperCase().startsWith(`${normalizedKind} `) ? text : `${normalizedKind} ${text}`;
+}
+
+function renderSolveMoveChip(record, index, opEvents = []) {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'solve-move-chip';
   button.dataset.replayStep = String(index);
+  const stepNumber = index + 1;
+  const opEvent = opEventForStep(opEvents, stepNumber);
+  if (opEvent) {
+    const kind = String(opEvent.kind || '').toLowerCase();
+    button.classList.add('op-range', `op-${kind}`);
+    button.dataset.opEventKey = opEventKey(opEvent);
+    button.dataset.opKind = kind;
+    button.dataset.opCase = opEvent.caseId || '';
+    if (stepNumber === Number(opEvent.startStep)) {
+      button.dataset.opLabel = opMoveChipLabel(opEvent);
+      button.classList.add('op-start');
+    }
+    if (stepNumber === Number(opEvent.endStep)) button.classList.add('op-end');
+  }
   const elapsed = Number.isFinite(record.elapsedMs) ? formatTime(record.elapsedMs) : '--';
-  button.title = `第 ${index + 1} 步 · ${record.move} · ${elapsed}`;
-  button.innerHTML = `<span>${index + 1}</span><strong>${escapeHtml(record.move)}</strong>`;
+  const opText = opEvent ? `${opMoveChipLabel(opEvent)} · ${opEventRangeText(opEvent)}` : '';
+  button.title = [`第 ${stepNumber} 步`, record.move, elapsed, opText].filter(Boolean).join(' · ');
+  button.innerHTML = `<span>${stepNumber}</span><strong>${escapeHtml(record.move)}</strong>`;
   button.addEventListener('click', () => {
     const solve = solves.find((item) => item.id === currentDetailSolveId);
     stopSolveReplay({ keepStep: true });
     solveReplayStep = index;
+    solveReplayFocusedOpKey = opEvent ? opEventKey(opEvent) : '';
+    solveReplayFocusedOpManual = false;
     showSolveReplayPreview(solve, index + 1);
     updateSolveReplayHighlight();
   });
   return button;
+}
+
+function jumpToSolveOpEvent(event) {
+  const solve = solves.find((item) => item.id === currentDetailSolveId);
+  if (!solve) return;
+  const startStep = Number(event?.startStep);
+  if (!Number.isFinite(startStep) || startStep < 1) return;
+  stopSolveReplay({ keepStep: true });
+  solveReplayFocusedOpKey = opEventKey(event);
+  solveReplayFocusedOpManual = true;
+  const previewStepCount = Math.max(0, Math.round(startStep) - 1);
+  solveReplayStep = previewStepCount - 1;
+  showSolveReplayPreview(solve, previewStepCount);
+  updateSolveReplayHighlight();
 }
 
 function toggleSolveReplay() {
@@ -3488,10 +3673,16 @@ function startSolveReplay() {
   if (cube3d?.turnAnimation) completeBluetoothCube3dTurnAnimation(false);
   cancelBluetooth3dMovePulse();
   solveReplayPlaying = true;
+  solveReplayFocusedOpManual = false;
   solveReplayStep = solveReplayStep >= 0 && solveReplayStep < records.length ? solveReplayStep : -1;
   elements.solveReplayButton.textContent = '暂停';
   showSolveReplayPreview(solve, Math.max(0, solveReplayStep + 1));
-  solveReplayTimer = window.setTimeout(() => advanceSolveReplay(solve, records), 120);
+  const nextStepIndex = solveReplayStep + 1;
+  const delay = replayDelayBeforeMove(records, nextStepIndex, {
+    fallbackDelayMs: 120,
+    minimumDelayMs: 120,
+  });
+  solveReplayTimer = window.setTimeout(() => advanceSolveReplay(solve, records), delay);
 }
 
 function advanceSolveReplay(solve, records) {
@@ -3504,17 +3695,19 @@ function advanceSolveReplay(solve, records) {
   updateSolveReplayHighlight();
   const current = records[solveReplayStep];
   const stepToApply = solveReplayStep + 1;
-  const animationDelay = current.move.endsWith('2') ? 470 : 330;
+  const animationDelay = replayMoveAnimationDelay(current.move);
   triggerBluetoothCube3dTurnAnimation(current.move, {
     onComplete: () => showSolveReplayPreview(solve, stepToApply),
   });
   window.setTimeout(() => {
     if (solveReplayPreviewActive && solveReplayStep >= stepToApply - 1) showSolveReplayPreview(solve, stepToApply);
   }, animationDelay);
-  const currentElapsed = Number.isFinite(current.elapsedMs) ? current.elapsedMs : null;
-  const nextElapsed = Number.isFinite(records[solveReplayStep + 1]?.elapsedMs) ? records[solveReplayStep + 1].elapsedMs : null;
-  const delay = currentElapsed != null && nextElapsed != null
-    ? Math.min(900, Math.max(animationDelay, nextElapsed - currentElapsed))
+  const nextStepIndex = solveReplayStep + 1;
+  const delay = nextStepIndex < records.length
+    ? replayDelayBeforeMove(records, nextStepIndex, {
+      fallbackDelayMs: animationDelay,
+      minimumDelayMs: animationDelay,
+    })
     : animationDelay;
   solveReplayTimer = window.setTimeout(() => advanceSolveReplay(solve, records), delay);
 }
@@ -3524,6 +3717,10 @@ function stopSolveReplay(options = {}) {
   solveReplayTimer = 0;
   solveReplayPlaying = false;
   if (!options.keepStep) solveReplayStep = -1;
+  if (!options.keepStep) {
+    solveReplayFocusedOpKey = '';
+    solveReplayFocusedOpManual = false;
+  }
   if (elements.solveReplayButton) elements.solveReplayButton.textContent = '播放';
   if (!options.keepStep) clearSolveReplayPreview();
   updateSolveReplayHighlight();
@@ -3555,11 +3752,29 @@ function clearSolveReplayPreview() {
 
 function updateSolveReplayHighlight() {
   if (!elements.solveDetailBluetoothMoves) return;
+  const solve = solves.find((item) => item.id === currentDetailSolveId);
+  const opEvents = opDisplayEventsForSolve(solve);
+  const activeOpEvent = opEventForStep(opEvents, solveReplayStep + 1);
+  if (activeOpEvent && (!solveReplayFocusedOpManual || solveReplayPlaying)) {
+    solveReplayFocusedOpKey = opEventKey(activeOpEvent);
+    solveReplayFocusedOpManual = false;
+  }
+  if (solveReplayPlaying && !activeOpEvent) {
+    solveReplayFocusedOpKey = '';
+    solveReplayFocusedOpManual = false;
+  }
   const chips = elements.solveDetailBluetoothMoves.querySelectorAll('.solve-move-chip');
   chips.forEach((chip, index) => {
     const active = index === solveReplayStep;
+    const focused = chip.dataset.opEventKey && chip.dataset.opEventKey === solveReplayFocusedOpKey;
     chip.classList.toggle('active', active);
+    chip.classList.toggle('op-focused', Boolean(focused));
     if (active) chip.scrollIntoView({ block: 'nearest', inline: 'center' });
+  });
+  const cards = elements.solveCfopStages?.querySelectorAll('.op-event-card') || [];
+  cards.forEach((card) => {
+    const focused = card.dataset.opEventKey && card.dataset.opEventKey === solveReplayFocusedOpKey;
+    card.classList.toggle('active', Boolean(focused));
   });
 }
 
@@ -4895,11 +5110,9 @@ function processDecodedGanBluetoothPacket(
 
   const decodedFacelets = typeof decoded.facelets === 'string' ? decoded.facelets : '';
   const physicalStateChanged = Boolean(decodedFacelets && decodedFacelets !== bluetoothPhysicalFacelets);
-  const statePacketSolved = decoded.stateSolved === true
-    || (decoded.stateSolved !== false
-      && Boolean(decodedFacelets)
-      && (physicalStateChanged ? isSolvedFacelets(decodedFacelets) : bluetoothPhysicalSolved));
+  const statePacketSolved = trustedGanStatePacketSolved(decoded, decodedFacelets, physicalStateChanged);
   if (statePacketSolved && decoded.stateSolved !== true) decoded = { ...decoded, stateSolved: true };
+  else if (!statePacketSolved && decoded.stateSolved === true && appState === 'timing') decoded = { ...decoded, stateSolved: false, stateSolvedUntrusted: true };
   const hasMoveCounter = Number.isInteger(decoded.moveCounter);
   const previousMoveCounter = bluetoothGanLastMoveCounter;
   const duplicateMovePacket = ganBluetoothIsDuplicateMovePacket(decoded, previousMoveCounter);
@@ -4936,7 +5149,9 @@ function processDecodedGanBluetoothPacket(
     && wasTimingBeforeMoves
     && !stoppedFromMoves
     && stopTimingFromBluetoothSolved(packetReceivedAt, { byStatePacket: true });
-  const solvedByStatePacket = stoppedFromStatePacket || markGanBluetoothStateSolved(decoded);
+  const solvedByStatePacket = stoppedFromStatePacket || markGanBluetoothStateSolved(decoded, {
+    trusted: statePacketSolved,
+  });
   const updatePacketUi = () => {
     if (decoded.batteryLevel != null) updateBluetoothBattery(decoded.batteryLevel, decoded.protocol || protocol.label);
     if (decoded.gyro) void updateBluetoothGyro(decoded.gyro);
@@ -5264,6 +5479,7 @@ function ganBluetoothPacketLog(hex, decoded, ignoredReason = '') {
   if (decoded.stateSignature) detail.push(`state=${decoded.stateSignature}`);
   if (decoded.stateSolved === true) detail.push('stateSolved=true');
   if (decoded.stateSolved === false) detail.push('stateSolved=false');
+  if (decoded.stateSolvedUntrusted) detail.push('stateSolvedUntrusted=true');
   if (decoded.facelets) detail.push(`facelets=${decoded.facelets}`);
   if (Array.isArray(decoded.decryptedBytes)) detail.push(`decrypted=${bytesToHex(decoded.decryptedBytes)}`);
   if (Array.isArray(decoded.historyMoves) && decoded.historyMoves.length > decoded.moves.length) {
@@ -5308,7 +5524,7 @@ function syncBluetoothSolveCubeFromGanState(decoded, faces = null, facelets = ''
     bluetoothMoveDerivedFacelets = bluetoothSolveFacelets;
     bluetoothMoveDerivedSignature = cubeFaceletSignature(bluetoothMoveDerivedFacelets);
     bluetoothMoveDerivedStateTime = performance.now();
-    bluetoothMoveDerivedSolved = bluetoothMoveDerivedFacelets === solvedFaceletString;
+    bluetoothMoveDerivedSolved = isSolvedFacelets(bluetoothMoveDerivedFacelets);
     return true;
   } catch (error) {
     bluetoothSolveCubeValid = false;
@@ -5323,8 +5539,25 @@ function syncBluetoothSolveCubeFromGanState(decoded, faces = null, facelets = ''
   }
 }
 
+function trustedGanStatePacketSolved(decoded, decodedFacelets = '', physicalStateChanged = false) {
+  if (!decoded) return false;
+  const hasFacelets = Boolean(decodedFacelets);
+  if (hasFacelets) return isSolvedFacelets(decodedFacelets);
+  if (decoded.stateSolved !== true) return false;
+  if (bluetoothMoveDerivedSolved && bluetoothMoveDerivedStateTime >= startedAt) return true;
+  return Boolean(
+    bluetoothPhysicalSolved
+    && bluetoothPhysicalFacelets
+    && bluetoothPhysicalStateReceivedAt >= startedAt
+    && (!physicalStateChanged || isSolvedFacelets(bluetoothPhysicalFacelets))
+  );
+}
+
 function markGanBluetoothStateSolved(decoded, options = {}) {
-  if ((decoded.stateSolved !== true && options.force !== true) || appState !== 'timing') return false;
+  const trusted = options.trusted === true || options.force === true;
+  const decodedSolved = decoded?.stateSolved === true;
+  if (options.force !== true && (!trusted || !decodedSolved)) return false;
+  if (appState !== 'timing') return false;
   bluetoothSolved = true;
   bluetoothSolvedByStatePacket = true;
   if (options.render !== false) scheduleBluetoothMovesRender();
@@ -5713,7 +5946,7 @@ function facesFromFacelets(facelets) {
 }
 
 function isSolvedFacelets(facelets) {
-  return facelets === solvedFaceletString;
+  return cubeIsSolvedFacelets(facelets);
 }
 
 function faceletsFromFaces(faces) {
@@ -6123,8 +6356,9 @@ function addBluetoothMoves(moves, source, protocol = '', deviceName = '') {
   if (parsedMoves.length === 0) return;
   const moveReceivedAt = performance.now();
   const cube3dTurnTargets = bluetoothCube3dMoveTargetsFromCurrentSolve(parsedMoves);
-  const now = new Date();
-  const elapsedMs = appState === 'timing' && startedAt > 0 ? Math.max(0, Math.round(performance.now() - startedAt)) : null;
+  const elapsedMs = appState === 'timing' && startedAt > 0 ? Math.max(0, Math.round(moveReceivedAt - startedAt)) : null;
+  const timestampMs = timerStartedAtMs > 0 && elapsedMs != null ? timerStartedAtMs + elapsedMs : Date.now();
+  const now = new Date(timestampMs);
   const time = now.toLocaleTimeString();
   const isoTime = now.toISOString();
   const records = Array(parsedMoves.length);
@@ -6137,6 +6371,9 @@ function addBluetoothMoves(moves, source, protocol = '', deviceName = '') {
       time,
       isoTime,
       elapsedMs,
+      timestampMs,
+      solveStartedAtMs: timerStartedAtMs || null,
+      solveStartedAtIsoTime: timerStartedAtIsoTime,
     };
   }
   for (let index = records.length - 1; index >= 0; index -= 1) bluetoothMoves.unshift(records[index]);
@@ -6170,7 +6407,7 @@ function initializeBluetoothSolveCube() {
     bluetoothMoveDerivedFacelets = bluetoothSolveFacelets;
     bluetoothMoveDerivedSignature = cubeFaceletSignature(bluetoothMoveDerivedFacelets);
     bluetoothMoveDerivedStateTime = performance.now();
-    bluetoothMoveDerivedSolved = bluetoothMoveDerivedFacelets === solvedFaceletString;
+    bluetoothMoveDerivedSolved = isSolvedFacelets(bluetoothMoveDerivedFacelets);
   } catch (error) {
     addBluetoothLog('警告', '蓝牙复原状态初始化失败', error.message || String(error));
   }
@@ -6184,7 +6421,7 @@ function updateBluetoothSolvedFromMoves(moves) {
       bluetoothMoveDerivedFacelets = bluetoothSolveFacelets;
       bluetoothMoveDerivedSignature = cubeFaceletSignature(bluetoothMoveDerivedFacelets);
       bluetoothMoveDerivedStateTime = performance.now();
-      bluetoothMoveDerivedSolved = bluetoothMoveDerivedFacelets === solvedFaceletString;
+      bluetoothMoveDerivedSolved = isSolvedFacelets(bluetoothMoveDerivedFacelets);
       return bluetoothMoveDerivedSolved;
     } catch (error) {
       bluetoothSolveCubeValid = false;
@@ -6367,6 +6604,9 @@ function bluetoothMoveRecordSequence() {
       time: entry.time || '',
       isoTime: entry.isoTime || '',
       elapsedMs: Number.isFinite(entry.elapsedMs) ? entry.elapsedMs : null,
+      timestampMs: Number.isFinite(entry.timestampMs) ? entry.timestampMs : null,
+      solveStartedAtMs: Number.isFinite(entry.solveStartedAtMs) ? entry.solveStartedAtMs : null,
+      solveStartedAtIsoTime: entry.solveStartedAtIsoTime || '',
     };
   }
   return records;
@@ -6424,7 +6664,7 @@ function isBluetoothSolved() {
     bluetoothMoveDerivedFacelets = facelets;
     bluetoothMoveDerivedSignature = cubeFaceletSignature(facelets);
     bluetoothMoveDerivedStateTime = performance.now();
-    bluetoothMoveDerivedSolved = facelets === solvedFaceletString;
+    bluetoothMoveDerivedSolved = isSolvedFacelets(facelets);
     return bluetoothMoveDerivedSolved;
   } catch (error) {
     bluetoothMoveDerivedFaces = null;
@@ -8197,12 +8437,9 @@ function renderPlainScrambleText(key, text) {
 }
 
 function correctionMoveClass(segment, index) {
-  const kind = correctionSegmentKind(segment?.kind);
   return [
     'scramble-move',
-    'correction',
-    `correction-${kind}`,
-    index === 0 ? 'correction-next' : '',
+    index === 0 ? 'current' : '',
   ].filter(Boolean).join(' ');
 }
 
@@ -9116,7 +9353,7 @@ function cancelScrambleGuideSolverCorrection() {
 function normalizeCorrectionMoves(input) {
   const text = Array.isArray(input) ? input.join(' ') : String(input || '');
   try {
-    return parseScramble(text).map(scrambleMoveNotation);
+    return logicalMoveSequence(parseScramble(text).map(scrambleMoveNotation));
   } catch {
     return [];
   }
@@ -10938,6 +11175,7 @@ function renderStatsDialog() {
   });
   renderStatsDistributionChart(statsSolves, statsData.scope === 'session' ? '当前会话' : statsData.shortLabel);
   renderStatsInsights(statsSolves, summary);
+  renderStatsOpStats(statsSolves);
   renderStatsRecords(statsSolves, { selected: statsData.scope !== 'session' });
   elements.statsSessionOverviewPanel.hidden = statsData.scope !== 'session';
   if (statsData.scope !== 'session') elements.sessionOverviewList.replaceChildren();
@@ -10992,6 +11230,272 @@ function renderStatsInsights(sessionSolves, summary) {
       return item;
     }),
   );
+}
+
+function renderStatsOpStats(sessionSolves) {
+  if (!elements.statsOpPanel || !elements.statsOpList) return;
+  const summary = summarizeOpStats(sessionSolves);
+  const formulaLibrary = buildOpFormulaLibrary(sessionSolves);
+  const formulaRows = opFormulaCaseRows(formulaLibrary, summary);
+  const selectedFormulaCase = selectedOpFormulaCase(formulaRows);
+  elements.statsOpPanel.hidden = false;
+  elements.statsOpMeta.textContent = summary.totalEvents > 0
+    ? `OP ${summary.totalEvents} 次 · OLL ${summary.byKind.oll} · PLL ${summary.byKind.pll} · 公式 ${formulaLibrary.totalFormulaCount} 条 · 用户 ${formulaLibrary.userFormulaCount}`
+    : `PDF 公式库 ${formulaLibrary.pdfFormulaCount} 条 · 等待蓝牙复原数据`;
+  if (elements.statsOpLibraryMeta) {
+    elements.statsOpLibraryMeta.textContent = `状态 ${formulaRows.length} · PDF ${formulaLibrary.pdfFormulaCount} · 用户补充 ${formulaLibrary.userFormulaCount}`;
+  }
+
+  if (summary.cases.length === 0) {
+    elements.statsOpList.replaceChildren(renderStatsOpEmpty('已预填 PDF OLL/PLL 公式；完成蓝牙复原后会补充用户已验证公式。'));
+  } else {
+    elements.statsOpList.replaceChildren(
+      ...summary.cases.map((item) => renderStatsOpCase(item)),
+    );
+  }
+
+  if (elements.statsOpFormulaList) {
+    elements.statsOpFormulaList.replaceChildren(
+      ...formulaRows.map((item) => renderStatsOpFormulaCase(item, selectedFormulaCase?.key || '')),
+    );
+    scrollActiveStatsOpFormulaCaseIntoView(elements.statsOpFormulaList);
+  }
+  if (elements.statsOpFormulaDetail) {
+    elements.statsOpFormulaDetail.replaceChildren(
+      selectedFormulaCase ? renderStatsOpFormulaDetail(selectedFormulaCase, sessionSolves) : renderStatsOpEmpty('暂无公式库数据'),
+    );
+  }
+}
+
+function renderStatsOpCase(item) {
+  const node = document.createElement('div');
+  node.className = 'stats-record-item stats-op-item';
+  const kind = String(item.kind || '').toUpperCase();
+  const label = item.pdfLabel ? `${item.name || item.caseId} · ${item.pdfLabel}` : (item.name || item.caseId);
+  const averageDuration = timeOrDash(item.averageDurationMs);
+  const averageObservation = timeOrDash(item.averageObservationMs);
+  const averageTps = Number.isFinite(item.averageTps) ? `${item.averageTps.toFixed(2)} TPS` : 'TPS -';
+  const averageTurns = Number.isFinite(item.averageTurns) ? `${item.averageTurns.toFixed(1)} 步` : '步数 -';
+  const acceptedFormula = item.mostUsedAcceptedFormula?.algorithm || '';
+  const observedFormula = item.mostUsedFormula?.algorithm || '';
+  const formula = acceptedFormula || observedFormula;
+  const formulaLabel = acceptedFormula
+    ? `常用 ${acceptedFormula}`
+    : (observedFormula ? `未入库常见 ${observedFormula}` : '暂无稳定公式');
+  const diagram = opCaseSvgMarkup(item.kind, item.caseId, {
+    className: 'op-case-diagram op-case-diagram-thumb',
+    idPrefix: `stats-op-item-${item.kind}-${item.caseId}`,
+    title: opCaseVisualTitle(kind, label),
+  });
+  if (diagram) node.classList.add('has-op-diagram');
+  node.innerHTML = `
+    ${diagram ? `<div class="stats-op-item-diagram">${diagram}</div>` : ''}
+    <div class="stats-op-item-body">
+      <span>${escapeHtml(kind)} · ${escapeHtml(label)}</span>
+      <strong>${escapeHtml(averageDuration)} · ${escapeHtml(averageTps)}</strong>
+      <em>${escapeHtml(item.count)} 次 · 观察 ${escapeHtml(averageObservation)} · ${escapeHtml(averageTurns)}</em>
+      <em>${escapeHtml(formula ? formulaLabel : '暂无稳定公式')}</em>
+    </div>
+  `;
+  return node;
+}
+
+function renderStatsOpEmpty(text) {
+  const node = document.createElement('div');
+  node.className = 'stats-record-empty';
+  node.textContent = text;
+  return node;
+}
+
+function opFormulaCaseRows(formulaLibrary, summary) {
+  const statsByCase = new Map((summary.cases || []).map((item) => [`${item.kind}:${item.caseId}`, item]));
+  return (formulaLibrary.cases || []).map((item) => {
+    const key = `${item.kind}:${item.caseId}`;
+    const stats = statsByCase.get(key) || null;
+    return {
+      ...item,
+      key,
+      name: opCaseDisplayName(item.kind, item.caseId),
+      stats,
+      formulas: Array.isArray(item.formulas) ? item.formulas : [],
+    };
+  });
+}
+
+function selectedOpFormulaCase(rows) {
+  const selected = rows.find((item) => item.key === selectedOpFormulaCaseKey)
+    || rows.find((item) => Number(item.stats?.count) > 0)
+    || rows[0]
+    || null;
+  selectedOpFormulaCaseKey = selected?.key || '';
+  if (selectedOpFormulaCaseKey) localStorage.setItem('trainTimer.selectedOpFormulaCaseKey', selectedOpFormulaCaseKey);
+  return selected;
+}
+
+function renderStatsOpFormulaCase(item, activeKey) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = item.key === activeKey ? 'stats-op-formula-case active' : 'stats-op-formula-case';
+  button.dataset.opFormulaCase = item.key;
+  const kind = String(item.kind || '').toUpperCase();
+  const label = item.pdfLabel ? `${item.name} · ${item.pdfLabel}` : item.name;
+  const count = Number(item.stats?.count) || 0;
+  const diagram = opCaseSvgMarkup(item.kind, item.caseId, {
+    className: 'op-case-diagram op-case-diagram-thumb',
+    idPrefix: `stats-op-formula-case-${item.key}`,
+    title: opCaseVisualTitle(kind, label),
+  });
+  if (diagram) button.classList.add('has-op-diagram');
+  button.innerHTML = `
+    ${diagram ? `<div class="stats-op-formula-case-diagram">${diagram}</div>` : ''}
+    <div class="stats-op-formula-case-body">
+      <span>${escapeHtml(kind)}</span>
+      <strong>${escapeHtml(label)}</strong>
+      <em>${escapeHtml(item.pdfFormulaCount)} PDF · ${escapeHtml(item.userFormulaCount)} 用户 · ${escapeHtml(count)} 次</em>
+    </div>
+  `;
+  return button;
+}
+
+function renderStatsOpFormulaDetail(item, sessionSolves = []) {
+  const node = document.createElement('div');
+  node.className = 'stats-op-formula-detail-inner';
+  const stats = item.stats || {};
+  const formulaNodes = item.formulas.map((formula) => renderStatsOpFormulaEntry(formula));
+  const sampleNodes = opCaseSamplesForSolves(sessionSolves, item.kind, item.caseId)
+    .slice(0, 12)
+    .map((sample) => renderStatsOpSampleEntry(sample));
+  const kind = String(item.kind || '').toUpperCase();
+  const label = item.pdfLabel ? `${item.name} · ${item.pdfLabel}` : item.name;
+  const diagram = opCaseSvgMarkup(item.kind, item.caseId, {
+    className: 'op-case-diagram op-case-diagram-large',
+    idPrefix: `stats-op-formula-detail-${item.key}`,
+    title: opCaseVisualTitle(kind, label),
+  });
+  node.innerHTML = `
+    <div class="stats-op-formula-hero">
+      ${diagram ? `<div class="stats-op-formula-hero-diagram">${diagram}</div>` : ''}
+      <div class="stats-op-formula-title">
+        <span>${escapeHtml(kind)}</span>
+        <strong>${escapeHtml(label)}</strong>
+        <em>${escapeHtml(item.caseId)}</em>
+      </div>
+    </div>
+    <div class="stats-op-formula-metrics">
+      <span>次数 <strong>${escapeHtml(Number(stats.count) || 0)}</strong></span>
+      <span>平均 <strong>${escapeHtml(timeOrDash(stats.averageDurationMs))}</strong></span>
+      <span>观察 <strong>${escapeHtml(timeOrDash(stats.averageObservationMs))}</strong></span>
+      <span>TPS <strong>${escapeHtml(Number.isFinite(stats.averageTps) ? stats.averageTps.toFixed(2) : '-')}</strong></span>
+    </div>
+  `;
+  const list = document.createElement('div');
+  list.className = 'stats-op-formula-detail-list';
+  list.replaceChildren(...formulaNodes);
+  node.append(list);
+  const sampleSection = document.createElement('div');
+  sampleSection.className = 'stats-op-samples';
+  sampleSection.innerHTML = `
+    <div class="stats-op-samples-head">
+      <strong>最近复盘样本</strong>
+      <span>${escapeHtml(sampleNodes.length)} 条</span>
+    </div>
+  `;
+  const sampleList = document.createElement('div');
+  sampleList.className = 'stats-op-sample-list';
+  sampleList.replaceChildren(
+    ...(sampleNodes.length > 0 ? sampleNodes : [renderStatsOpEmpty('这个统计范围内还没有该状态的复盘样本')]),
+  );
+  sampleSection.append(sampleList);
+  node.append(sampleSection);
+  return node;
+}
+
+function renderStatsOpFormulaEntry(formula) {
+  const node = document.createElement('div');
+  node.className = `stats-op-formula-entry ${formula.source === 'pdf' ? 'pdf' : 'user'}`;
+  const source = formula.source === 'pdf' ? `PDF p.${formula.page || '-'}` : '用户验证';
+  const usage = Number(formula.userOccurrences) > 0 ? ` · 命中 ${formula.userOccurrences}` : '';
+  const metrics = [
+    Number.isFinite(formula.averageDurationMs) ? `平均 ${formatTime(formula.averageDurationMs)}` : '',
+    Number.isFinite(formula.averageObservationMs) ? `观察 ${formatTime(formula.averageObservationMs)}` : '',
+    Number.isFinite(formula.averageTps) ? `${formula.averageTps.toFixed(2)} TPS` : '',
+  ].filter(Boolean).join(' · ');
+  node.innerHTML = `
+    <span>${escapeHtml(source)}${escapeHtml(usage)} · ${escapeHtml(formula.moveCount)} 步</span>
+    <strong>${escapeHtml(formula.algorithm)}</strong>
+    <em>${escapeHtml(metrics || '暂无用户计时样本')}</em>
+  `;
+  return node;
+}
+
+function renderStatsOpSampleEntry(sample) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = `stats-op-sample-entry ${sample.formulaAccepted ? 'accepted' : 'rejected'}`;
+  button.dataset.detailId = sample.solveId || '';
+  button.dataset.opKind = sample.kind || '';
+  button.dataset.opCase = sample.caseId || '';
+  button.dataset.opStartStep = Number.isFinite(sample.startStep) ? String(sample.startStep) : '';
+  button.dataset.opEndStep = Number.isFinite(sample.endStep) ? String(sample.endStep) : '';
+  const solveTime = Number.isFinite(sample.solveDurationMs) ? formatTime(sample.solveDurationMs) : '-';
+  const dateText = sample.createdAt ? new Date(sample.createdAt).toLocaleString() : '-';
+  const durationText = timeOrDash(sample.durationMs);
+  const observationText = timeOrDash(sample.observationMs);
+  const tpsText = Number.isFinite(sample.tps) ? `${sample.tps.toFixed(2)} TPS` : 'TPS -';
+  const rangeText = Number.isFinite(sample.startStep) && Number.isFinite(sample.endStep)
+    ? (sample.startStep === sample.endStep ? `第 ${sample.startStep} 步` : `第 ${sample.startStep}-${sample.endStep} 步`)
+    : '步骤 -';
+  const formulaStatus = sample.formulaAccepted ? '已入库' : opFormulaReasonText(sample.formulaReason);
+  button.innerHTML = `
+    <span>${escapeHtml(dateText)} · 成绩 ${escapeHtml(solveTime)}</span>
+    <strong>${escapeHtml(durationText)} · 观察 ${escapeHtml(observationText)} · ${escapeHtml(tpsText)}</strong>
+    <em>${escapeHtml(rangeText)} · ${escapeHtml(formulaStatus || '未入库')}</em>
+    <small>${escapeHtml(sample.algorithm || '无公式步骤')}</small>
+  `;
+  return button;
+}
+
+function scrollActiveStatsOpFormulaCaseIntoView(container) {
+  const active = container.querySelector('.stats-op-formula-case.active');
+  if (!active) return;
+  const containerRect = container.getBoundingClientRect();
+  const activeRect = active.getBoundingClientRect();
+  const top = activeRect.top - containerRect.top + container.scrollTop;
+  const bottom = top + activeRect.height;
+  const visibleTop = container.scrollTop;
+  const visibleBottom = visibleTop + container.clientHeight;
+  if (top < visibleTop || bottom > visibleBottom) {
+    container.scrollTop = Math.max(0, top - 6);
+  }
+}
+
+function handleStatsOpFormulaCaseClick(event) {
+  const button = event.target.closest('[data-op-formula-case]');
+  if (!button) return;
+  selectedOpFormulaCaseKey = button.dataset.opFormulaCase || '';
+  if (selectedOpFormulaCaseKey) localStorage.setItem('trainTimer.selectedOpFormulaCaseKey', selectedOpFormulaCaseKey);
+  renderStatsDialog();
+}
+
+function handleStatsOpSampleClick(event) {
+  const button = event.target.closest('[data-detail-id][data-op-kind][data-op-case]');
+  if (!button?.dataset.detailId) return;
+  const solve = solves.find((item) => item.id === button.dataset.detailId);
+  if (!solve) return;
+  if (elements.statsDialog?.open) elements.statsDialog.close();
+  openSolveDialog(solve.id);
+  const opEvent = opDisplayEventsForSolve(solve).find((event) => (
+    event.kind === button.dataset.opKind
+    && event.caseId === button.dataset.opCase
+    && String(event.startStep ?? '') === (button.dataset.opStartStep || '')
+    && String(event.endStep ?? '') === (button.dataset.opEndStep || '')
+  ));
+  if (opEvent) jumpToSolveOpEvent(opEvent);
+}
+
+function opCaseDisplayName(kind, caseId) {
+  const item = algorithmTrainerCases.find((candidate) => candidate.set === kind && candidate.id === caseId);
+  return item?.name || caseId;
 }
 
 function buildStatsInsights(sessionSolves, summary) {
@@ -12146,6 +12650,7 @@ function renderHistoryCfopPanel() {
   elements.historyCfopMeta.textContent = `${source.meta} · ${display.meta}`;
   elements.historyCfopStages.replaceChildren(
     ...display.stages.map((stage) => renderCfopStageCard(stage)),
+    ...display.opEvents.map((event) => renderOpEventCard(event)),
   );
 }
 
@@ -12165,6 +12670,7 @@ function solveCfopRenderSignature(solve) {
   if (!solve) return '';
   const moveLog = Array.isArray(solve.bluetoothMoveLog) ? solve.bluetoothMoveLog : [];
   const stages = Array.isArray(solve.cfopStages) ? solve.cfopStages : [];
+  const opEvents = Array.isArray(solve.opEvents) ? solve.opEvents : [];
   const firstMove = moveLog[0];
   const lastMove = moveLog.at(-1);
   return [
@@ -12183,6 +12689,17 @@ function solveCfopRenderSignature(solve) {
       stage?.completedAt ?? '',
       stage?.turns ?? '',
       stage?.durationMs ?? '',
+      stage?.observationMs ?? '',
+      stage?.completedAtElapsedMs ?? '',
+    ].join(':')).join(','),
+    opEvents.map((event) => [
+      event?.kind || '',
+      event?.caseId || '',
+      event?.startStep ?? '',
+      event?.endStep ?? '',
+      event?.durationMs ?? '',
+      event?.observationMs ?? '',
+      Array.isArray(event?.moves) ? event.moves.join(' ') : '',
     ].join(':')).join(','),
   ].join(';');
 }
@@ -12226,6 +12743,7 @@ function cfopDisplayForSolve(solve, analysis = solveCfopAnalysis(solve)) {
   const storedCompleted = storedCompletedCount > 0;
   const storedCollapsed = isCollapsedCfopTiming(storedStages);
   const stages = storedCompletedCount > analyzedCompletedCount && !storedCollapsed ? storedStages : analysis.stages;
+  const opEvents = opDisplayEventsForSolve(solve);
   const completedCount = stages.filter((stage) => stage.completed).length;
   const hasData = analysis.records.length > 0 || (storedCompleted && !storedCollapsed);
   const moveCount = analysis.records.length || (solve?.bluetoothMoveCount ?? 0);
@@ -12234,9 +12752,11 @@ function cfopDisplayForSolve(solve, analysis = solveCfopAnalysis(solve)) {
   const tps = Number.isFinite(solve?.bluetoothTps) ? `${solve.bluetoothTps.toFixed(2)} TPS` : '';
   return {
     stages,
+    opEvents,
     hasData,
     meta: [
       `${completedCount}/${stages.length} 步`,
+      opEvents.length > 0 ? `OP ${opEvents.length}` : '',
       moveCount > 0 ? `${moveCount} 步` : '',
       tps,
       bottomFace,
@@ -12255,6 +12775,76 @@ function isCollapsedCfopTiming(stages) {
     && completed.slice(1).every((stage) => stage.turns === 0 && (stage.durationMs == null || stage.durationMs === 0));
 }
 
+function opDisplayEventsForSolve(solve) {
+  const stored = normalizeStoredOpEvents(solve?.opEvents);
+  if (stored.length > 0) return stored;
+  try {
+    return normalizeStoredOpEvents(opEventsForSave(solve));
+  } catch {
+    return [];
+  }
+}
+
+function normalizeStoredOpEvents(events) {
+  if (!Array.isArray(events)) return [];
+  return events.map((event) => ({
+    kind: ['oll', 'pll'].includes(event?.kind) ? event.kind : '',
+    caseId: String(event?.caseId || ''),
+    name: String(event?.name || ''),
+    group: String(event?.group || ''),
+    algorithm: String(event?.algorithm || ''),
+    pdfLabel: String(event?.pdfLabel || ''),
+    source: String(event?.source || ''),
+    confidence: String(event?.confidence || ''),
+    matchCount: optionalDisplayNumber(event?.matchCount) ?? 0,
+    startStep: optionalDisplayNumber(event?.startStep),
+    endStep: optionalDisplayNumber(event?.endStep),
+    completedAt: optionalDisplayNumber(event?.completedAt),
+    turns: optionalDisplayNumber(event?.turns) ?? 0,
+    durationMs: optionalDisplayNumber(event?.durationMs),
+    observationMs: optionalDisplayNumber(event?.observationMs),
+    tps: optionalDisplayNumber(event?.tps),
+    moves: Array.isArray(event?.moves) ? event.moves.map((move) => String(move || '').trim()).filter(Boolean) : [],
+    startedAtElapsedMs: optionalDisplayNumber(event?.startedAtElapsedMs),
+    firstMoveElapsedMs: optionalDisplayNumber(event?.firstMoveElapsedMs),
+    completedAtElapsedMs: optionalDisplayNumber(event?.completedAtElapsedMs),
+    startedAtTimestampMs: optionalDisplayNumber(event?.startedAtTimestampMs),
+    firstMoveTimestampMs: optionalDisplayNumber(event?.firstMoveTimestampMs),
+    completedAtTimestampMs: optionalDisplayNumber(event?.completedAtTimestampMs),
+    startedAtIsoTime: String(event?.startedAtIsoTime || ''),
+    firstMoveIsoTime: String(event?.firstMoveIsoTime || ''),
+    completedAtIsoTime: String(event?.completedAtIsoTime || ''),
+    startFacelets: normalizeStoredOpFacelets(event?.startFacelets),
+    signature: String(event?.signature || ''),
+    formulaAccepted: event?.formulaAccepted === true,
+    formulaReason: String(event?.formulaReason || ''),
+    moveTimings: normalizeStoredOpMoveTimings(event?.moveTimings),
+  })).filter((event) => event.kind && event.caseId);
+}
+
+function normalizeStoredOpMoveTimings(moveTimings) {
+  if (!Array.isArray(moveTimings)) return [];
+  return moveTimings.map((entry) => ({
+    step: optionalDisplayNumber(entry?.step),
+    move: String(entry?.move || '').trim(),
+    elapsedMs: optionalDisplayNumber(entry?.elapsedMs),
+    timestampMs: optionalDisplayNumber(entry?.timestampMs),
+    deltaMs: optionalDisplayNumber(entry?.deltaMs),
+    isoTime: String(entry?.isoTime || ''),
+  })).filter((entry) => entry.move);
+}
+
+function normalizeStoredOpFacelets(value) {
+  const facelets = String(value || '').trim().toUpperCase();
+  return /^[URFDLB]{54}$/.test(facelets) ? facelets : '';
+}
+
+function optionalDisplayNumber(value) {
+  if (value == null || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
 function normalizeStoredCfopStages(stages) {
   if (!Array.isArray(stages)) return [];
   return stages.map((stage, index) => ({
@@ -12263,9 +12853,21 @@ function normalizeStoredCfopStages(stages) {
     name: String(stage?.name || cfopStageTemplate()[index]?.name || ''),
     completed: stage?.completed === true,
     completedAt: Number.isFinite(Number(stage?.completedAt)) ? Number(stage.completedAt) : null,
+    startStep: Number.isFinite(Number(stage?.startStep)) ? Number(stage.startStep) : null,
+    endStep: Number.isFinite(Number(stage?.endStep)) ? Number(stage.endStep) : null,
     turns: Number.isFinite(Number(stage?.turns)) ? Number(stage.turns) : 0,
     durationMs: Number.isFinite(Number(stage?.durationMs)) ? Number(stage.durationMs) : null,
     tps: Number.isFinite(Number(stage?.tps)) ? Number(stage.tps) : null,
+    startedAtElapsedMs: Number.isFinite(Number(stage?.startedAtElapsedMs)) ? Number(stage.startedAtElapsedMs) : null,
+    firstMoveElapsedMs: Number.isFinite(Number(stage?.firstMoveElapsedMs)) ? Number(stage.firstMoveElapsedMs) : null,
+    completedAtElapsedMs: Number.isFinite(Number(stage?.completedAtElapsedMs)) ? Number(stage.completedAtElapsedMs) : null,
+    observationMs: Number.isFinite(Number(stage?.observationMs)) ? Number(stage.observationMs) : null,
+    startedAtTimestampMs: Number.isFinite(Number(stage?.startedAtTimestampMs)) ? Number(stage.startedAtTimestampMs) : null,
+    firstMoveTimestampMs: Number.isFinite(Number(stage?.firstMoveTimestampMs)) ? Number(stage.firstMoveTimestampMs) : null,
+    completedAtTimestampMs: Number.isFinite(Number(stage?.completedAtTimestampMs)) ? Number(stage.completedAtTimestampMs) : null,
+    startedAtIsoTime: typeof stage?.startedAtIsoTime === 'string' ? stage.startedAtIsoTime : '',
+    firstMoveIsoTime: typeof stage?.firstMoveIsoTime === 'string' ? stage.firstMoveIsoTime : '',
+    completedAtIsoTime: typeof stage?.completedAtIsoTime === 'string' ? stage.completedAtIsoTime : '',
   }));
 }
 

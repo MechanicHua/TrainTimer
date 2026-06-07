@@ -16,6 +16,25 @@ test('CFOP analysis uses logical half-turn steps for solve records', () => {
   assert.equal(records[0].elapsedMs, 240);
 });
 
+test('CFOP analysis detects a stage restored between repeated physical turns', () => {
+  const analysis = solveCfopAnalysis({
+    scramble: "R'",
+    scramblePuzzle: 'three',
+    bluetoothMoveLog: [
+      { step: 1, move: 'R', elapsedMs: 100 },
+      { step: 2, move: 'R', elapsedMs: 240 },
+    ],
+  });
+  const pll = analysis.stages.find((stage) => stage.label === 'P');
+
+  assert.deepEqual(analysis.records.map((record) => record.move), ['R2']);
+  assert.deepEqual(analysis.detectionRecords.map((record) => record.move), ['R', 'R']);
+  assert.ok(analysis.stages.every((stage) => stage.completed));
+  assert.equal(pll.completedAt, 1);
+  assert.equal(pll.completedAtElapsedMs, 100);
+  assert.equal(analysis.finalSolved, true);
+});
+
 test('state-packet solved fallback completes CFOP when final GAN move is not in the log', () => {
   const stages = cfopStagesForSave({
     scramble: 'R U',
@@ -28,6 +47,48 @@ test('state-packet solved fallback completes CFOP when final GAN move is not in 
   assert.ok(stages.every((stage) => stage.completed));
   assert.equal(pll.completed, true);
   assert.equal(pll.name, 'PLL');
+});
+
+test('CFOP stages save elapsed and absolute timing points', () => {
+  const stages = cfopStagesForSave({
+    scramble: 'R U',
+    scramblePuzzle: 'three',
+    timerStartedAt: '2026-06-02T10:00:00.000Z',
+    timerStartedAtMs: 1780394400000,
+    bluetoothMoveLog: [
+      {
+        move: "U'",
+        elapsedMs: 850,
+        timestampMs: 1780394400850,
+        isoTime: '2026-06-02T10:00:00.850Z',
+        solveStartedAtMs: 1780394400000,
+        solveStartedAtIsoTime: '2026-06-02T10:00:00.000Z',
+      },
+      {
+        move: "R'",
+        elapsedMs: 1200,
+        timestampMs: 1780394401200,
+        isoTime: '2026-06-02T10:00:01.200Z',
+        solveStartedAtMs: 1780394400000,
+        solveStartedAtIsoTime: '2026-06-02T10:00:00.000Z',
+      },
+    ],
+  });
+  const cross = stages[0];
+
+  assert.equal(cross.completed, true);
+  assert.equal(cross.startStep, 1);
+  assert.equal(cross.endStep, 1);
+  assert.equal(cross.startedAtElapsedMs, 0);
+  assert.equal(cross.firstMoveElapsedMs, 850);
+  assert.equal(cross.completedAtElapsedMs, 850);
+  assert.equal(cross.observationMs, 850);
+  assert.equal(cross.startedAtTimestampMs, 1780394400000);
+  assert.equal(cross.firstMoveTimestampMs, 1780394400850);
+  assert.equal(cross.completedAtTimestampMs, 1780394400850);
+  assert.equal(cross.startedAtIsoTime, '2026-06-02T10:00:00.000Z');
+  assert.equal(cross.firstMoveIsoTime, '2026-06-02T10:00:00.850Z');
+  assert.equal(cross.completedAtIsoTime, '2026-06-02T10:00:00.850Z');
 });
 
 test('state-packet solved fallback does not synthesize full CFOP timing without stage evidence', () => {
@@ -76,13 +137,13 @@ test('CFOP analysis prefers staged progress over final-state-only bottom candida
   assert.deepEqual(
     analysis.stages.map((stage) => [stage.label, stage.completedAt, stage.turns]),
     [
-      ['C', 10, 10],
-      ['F1', 18, 8],
-      ['F2', 26, 8],
-      ['F3', 34, 8],
-      ['F4', 42, 8],
-      ['O', 55, 13],
-      ['P', 74, 19],
+      ['C', 14, 14],
+      ['F1', 23, 9],
+      ['F2', 32, 9],
+      ['F3', 41, 9],
+      ['F4', 50, 9],
+      ['O', 64, 14],
+      ['P', 84, 20],
     ],
   );
   assert.ok(analysis.stages.slice(1).every((stage) => stage.durationMs > 0));

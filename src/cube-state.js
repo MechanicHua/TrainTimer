@@ -448,6 +448,14 @@ export function isSolvedFaces(faces) {
   return true;
 }
 
+export function isSolvedFacelets(facelets) {
+  try {
+    return normalizeFaceletString(facelets) === solvedFaceletString;
+  } catch {
+    return false;
+  }
+}
+
 function normalizeFaceletString(facelets) {
   const text = String(facelets || '').trim().toUpperCase();
   if (!/^[URFDLB]{54}$/.test(text)) throw new Error('Invalid 3x3 facelet string');

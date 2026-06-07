@@ -3560,6 +3560,304 @@ dialog[open] {
   line-height: 1.2;
 }
 
+.stats-op-panel .stats-record-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.stats-op-item {
+  min-height: 76px;
+}
+
+.op-case-svg {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+}
+
+.op-case-diagram-thumb {
+  width: 48px;
+  height: 48px;
+}
+
+.op-case-diagram-large {
+  width: min(210px, 100%);
+  min-width: 148px;
+  height: auto;
+}
+
+.op-event-card.has-op-diagram,
+.stats-op-item.has-op-diagram,
+.stats-op-formula-case.has-op-diagram {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.op-event-card.has-op-diagram {
+  gap: 7px;
+}
+
+.stats-op-item.has-op-diagram {
+  gap: 9px;
+  min-height: 94px;
+}
+
+.stats-op-formula-case.has-op-diagram {
+  gap: 8px;
+  min-height: 66px;
+}
+
+.op-event-card-diagram,
+.stats-op-item-diagram,
+.stats-op-formula-case-diagram {
+  display: grid;
+  place-items: center;
+  width: 50px;
+  min-width: 50px;
+}
+
+.op-event-card-body,
+.stats-op-item-body,
+.stats-op-formula-case-body {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.stats-op-library {
+  margin-top: 10px;
+}
+
+.stats-op-library-heading {
+  padding-top: 2px;
+}
+
+.stats-op-library-layout {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.86fr) minmax(0, 1.4fr);
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.stats-op-formula-list {
+  display: grid;
+  align-content: start;
+  max-height: 310px;
+  gap: 6px;
+  overflow: auto;
+  padding-right: 3px;
+}
+
+.stats-op-formula-case {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  min-height: 54px;
+  padding: 7px 9px;
+  border: 1px solid var(--line-soft);
+  border-radius: calc(var(--radius) - 2px);
+  background: rgba(255, 255, 255, 0.035);
+  color: inherit;
+  text-align: left;
+}
+
+.stats-op-formula-case:hover,
+.stats-op-formula-case.active {
+  border-color: rgba(var(--accent-rgb), 0.28);
+  background: var(--accent-soft);
+}
+
+.stats-op-formula-case span,
+.stats-op-formula-case em,
+.stats-op-formula-entry span,
+.stats-op-formula-entry em {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-op-formula-case strong {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--ink-strong);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-op-formula-detail {
+  min-height: 310px;
+  padding: 9px;
+  border: 1px solid var(--line-soft);
+  border-radius: calc(var(--radius) - 2px);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.stats-op-formula-detail-inner {
+  display: grid;
+  gap: 9px;
+}
+
+.stats-op-formula-hero {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.54fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.stats-op-formula-hero-diagram {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+}
+
+.stats-op-formula-title {
+  display: grid;
+  gap: 2px;
+}
+
+.stats-op-formula-title span,
+.stats-op-formula-title em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.stats-op-formula-title strong {
+  color: var(--ink-strong);
+  font-size: 16px;
+}
+
+.stats-op-formula-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.stats-op-formula-metrics span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px 7px;
+  border-radius: calc(var(--radius) - 3px);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.stats-op-formula-metrics strong {
+  overflow: hidden;
+  color: var(--ink-strong);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-op-formula-detail-list {
+  display: grid;
+  gap: 7px;
+}
+
+.stats-op-formula-entry {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--line-soft);
+  border-radius: calc(var(--radius) - 3px);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.stats-op-formula-entry.user {
+  border-color: rgba(var(--accent-rgb), 0.2);
+}
+
+.stats-op-formula-entry strong {
+  overflow-wrap: anywhere;
+  color: var(--ink-strong);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.stats-op-samples {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.stats-op-samples-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--ink-strong);
+  font-size: 13px;
+}
+
+.stats-op-samples-head span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.stats-op-sample-list {
+  display: grid;
+  gap: 7px;
+  max-height: 260px;
+  overflow: auto;
+  padding-right: 3px;
+}
+
+.stats-op-sample-entry {
+  display: grid;
+  justify-items: start;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid var(--line-soft);
+  border-radius: calc(var(--radius) - 3px);
+  background: rgba(255, 255, 255, 0.025);
+  color: inherit;
+  text-align: left;
+}
+
+.stats-op-sample-entry:hover {
+  border-color: rgba(var(--accent-rgb), 0.28);
+  background: var(--accent-soft);
+}
+
+.stats-op-sample-entry.accepted {
+  border-color: rgba(68, 196, 161, 0.24);
+}
+
+.stats-op-sample-entry.rejected {
+  border-color: rgba(255, 176, 88, 0.24);
+}
+
+.stats-op-sample-entry span,
+.stats-op-sample-entry em,
+.stats-op-sample-entry small {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-op-sample-entry strong {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--ink-strong);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .stats-record-empty {
   padding: 10px;
   color: var(--muted);
@@ -3869,6 +4167,19 @@ dialog[open] {
   box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.1);
 }
 
+button.solve-cfop-card {
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.solve-cfop-card:hover,
+button.solve-cfop-card.active {
+  background: rgba(var(--accent-rgb), 0.15);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.22);
+}
+
 .solve-cfop-card.pending {
   background: rgba(142, 142, 147, 0.07);
   box-shadow: inset 0 0 0 1px rgba(142, 142, 147, 0.11);
@@ -3937,6 +4248,36 @@ dialog[open] {
   background: rgba(var(--accent-rgb), 0.14);
   color: var(--accent);
   transform: translateY(-1px);
+}
+
+.solve-move-chip.op-range {
+  box-shadow: inset 0 -2px 0 rgba(var(--accent-rgb), 0.32);
+}
+
+.solve-move-chip.op-pll {
+  box-shadow: inset 0 -2px 0 rgba(255, 214, 102, 0.36);
+}
+
+.solve-move-chip.op-focused {
+  background: rgba(var(--accent-rgb), 0.12);
+}
+
+.solve-move-chip.op-pll.op-focused {
+  background: rgba(255, 214, 102, 0.12);
+}
+
+.solve-move-chip.op-start::after {
+  content: attr(data-op-label);
+  max-width: 72px;
+  overflow: hidden;
+  border-radius: 4px;
+  padding: 1px 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 10px;
+  font-weight: 760;
+  text-overflow: ellipsis;
 }
 
 .solve-detail-grid textarea {
@@ -4311,6 +4652,25 @@ dialog[open] {
 
   .solve-cfop-stages {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stats-op-library-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-op-formula-list {
+    max-height: 240px;
+  }
+
+  .stats-op-formula-hero {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .op-case-diagram-large {
+    width: min(180px, 100%);
+    min-width: 128px;
   }
 
   .stats-detail-grid {

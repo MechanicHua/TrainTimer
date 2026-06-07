@@ -1,4 +1,4 @@
-const faceTurnPattern = /^([UDRLFB])(2|')?$/;
+const faceTurnPattern = /^([UDRLFBMES])(2|')?$/;
 
 export function countMoveSteps(moves) {
   return logicalMoveSequence(moves).length;

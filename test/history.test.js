@@ -320,6 +320,10 @@ test('normalizes manually entered solve metadata', async () => {
       { step: 1, move: 'R', elapsedMs: 120, timestampMs: 1716538518774, solveStartedAtMs: 1716538518654, solveStartedAtIsoTime: '2026-05-24T08:15:18.654Z', source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', time: '12:00:00', isoTime: '2026-05-24T08:15:31.000Z' },
       { step: 2, move: 'U2', elapsedMs: 480, timestampMs: 1716538519134, solveStartedAtMs: 1716538518654, solveStartedAtIsoTime: '2026-05-24T08:15:18.654Z', source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', time: '12:00:01', isoTime: '2026-05-24T08:15:32.000Z' },
     ],
+    bluetoothStateCorrections: [
+      { step: 1.4, facelets: faceletsFromScramble("R'"), solved: false, source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', reason: 'state-sync', stateSignature: 'state-1', moveCounter: 14, elapsedMs: 121.4, timestampMs: 1716538518775, isoTime: '2026-05-24T08:15:31.001Z' },
+      { step: 2, facelets: 'invalid' },
+    ],
     bluetoothMoveCount: 2,
     bluetoothTps: 0.162,
     bluetoothDeviceName: 'Giiker Super Cube',
@@ -349,6 +353,9 @@ test('normalizes manually entered solve metadata', async () => {
     bluetoothMoveLog: [
       { step: 1, move: 'R', source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', time: '12:00:00', isoTime: '2026-05-24T08:15:31.000Z', elapsedMs: 120, timestampMs: 1716538518774, solveStartedAtMs: 1716538518654, solveStartedAtIsoTime: '2026-05-24T08:15:18.654Z' },
       { step: 2, move: 'U2', source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', time: '12:00:01', isoTime: '2026-05-24T08:15:32.000Z', elapsedMs: 480, timestampMs: 1716538519134, solveStartedAtMs: 1716538518654, solveStartedAtIsoTime: '2026-05-24T08:15:18.654Z' },
+    ],
+    bluetoothStateCorrections: [
+      { index: 1, step: 1, facelets: faceletsFromScramble("R'"), solved: false, source: '0xFFF6', protocol: 'gan-v4', deviceName: 'Giiker Super Cube', reason: 'state-sync', stateSignature: 'state-1', moveCounter: 14, elapsedMs: 121, timestampMs: 1716538518775, isoTime: '2026-05-24T08:15:31.001Z' },
     ],
     bluetoothSolvedByStatePacket: false,
     cfopStages: [],

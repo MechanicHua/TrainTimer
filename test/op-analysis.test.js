@@ -70,6 +70,83 @@ test('records PLL event moves and timing from a solve', () => {
   assert.deepEqual(pllEvent.moveTimings.map((entry) => entry.deltaMs), moves.map(() => 100));
 });
 
+test('records PLL event from bluetooth state corrections after move-log drift', () => {
+  const pll = caseById('pll-t');
+  const setup = invertAlgorithm(pll.algorithm);
+  const moves = moveTokens(pll.algorithm);
+  const events = opEventsForSave({
+    scramble: 'U',
+    scramblePuzzle: 'three',
+    timerStartedAtMs: 1000,
+    bluetoothMoveLog: [
+      { move: "U'", elapsedMs: 100, timestampMs: 1100, solveStartedAtMs: 1000 },
+      ...timedMoveLog(moves, 100).map((entry) => ({
+        ...entry,
+        step: entry.step + 1,
+        elapsedMs: entry.elapsedMs + 100,
+        timestampMs: entry.timestampMs + 100,
+      })),
+    ],
+    bluetoothStateCorrections: [
+      { step: 1, facelets: faceletsFromScramble(setup), elapsedMs: 100, timestampMs: 1100 },
+    ],
+  });
+  const pllEvent = events.find((event) => event.kind === 'pll');
+
+  assert.equal(pllEvent.caseId, 'pll-t');
+  assert.equal(pllEvent.startStep, 2);
+  assert.deepEqual(pllEvent.moves, moves);
+  assert.equal(pllEvent.formulaAccepted, true);
+});
+
+test('cached OP event derivation invalidates when bluetooth state corrections change', () => {
+  const pll = caseById('pll-t');
+  const setup = invertAlgorithm(pll.algorithm);
+  const moves = moveTokens(pll.algorithm);
+  const solve = {
+    scramble: 'U',
+    scramblePuzzle: 'three',
+    timerStartedAtMs: 1000,
+    bluetoothMoveLog: [
+      { move: "U'", elapsedMs: 100, timestampMs: 1100, solveStartedAtMs: 1000 },
+      ...timedMoveLog(moves, 100).map((entry) => ({
+        ...entry,
+        step: entry.step + 1,
+        elapsedMs: entry.elapsedMs + 100,
+        timestampMs: entry.timestampMs + 100,
+      })),
+    ],
+  };
+
+  assert.equal(opEventsForSave(solve).some((event) => event.kind === 'pll'), false);
+
+  solve.bluetoothStateCorrections = [
+    { step: 1, facelets: faceletsFromScramble(setup), elapsedMs: 100, timestampMs: 1100 },
+  ];
+  const pllEvent = opEventsForSave(solve).find((event) => event.kind === 'pll');
+
+  assert.equal(pllEvent?.caseId, 'pll-t');
+  assert.equal(pllEvent?.startStep, 2);
+  assert.equal(pllEvent?.formulaAccepted, true);
+});
+
+test('records PLL after normalizing non-D CFOP bottom moves', () => {
+  const moves = moveTokens(`
+    L' B' L L U' F' D F R R F D F' R D R' D' R D R' L D' L' L' D L D' F D' F' D D
+    R' D' R F D' F' D F D' D' F' D F D' F' L D' L' D F' D F D' D F' F B' D' L D B D'
+    B' L' B D' B B L L B' R' B L L B' R B'
+  `);
+  const events = opEventsForSave({
+    scramble: "U2 L2 U F2 L2 F R D' B2 U B2 L2 B2 R' F2 U2 R' F2 R D2",
+    scramblePuzzle: 'three',
+    bluetoothMoveLog: timedMoveLog(moves, 100),
+  });
+  const pllEvent = events.find((event) => event.kind === 'pll');
+
+  assert.equal(pllEvent.caseId, 'pll-aa');
+  assert.equal(pllEvent.formulaAccepted, true);
+});
+
 test('counts leading OP U-layer adjustments as observation before formula execution', () => {
   const pll = caseById('pll-t');
   const setup = invertAlgorithm(pll.algorithm);

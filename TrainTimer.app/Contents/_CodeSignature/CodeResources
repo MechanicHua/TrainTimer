@@ -18,7 +18,7 @@
 		</data>
 		<key>Resources/runtime/public/app.js</key>
 		<data>
-		m30em1oqGb4S2v0X9XNAQt0xonE=
+		ed59WQGXlxS577eLr+T/K+KaAc8=
 		</data>
 		<key>Resources/runtime/public/bluetooth-moves.js</key>
 		<data>
@@ -86,7 +86,7 @@
 		</data>
 		<key>Resources/runtime/public/styles.css</key>
 		<data>
-		RGuWwJ+84YgHedcQBEzEYj4L/Go=
+		s3CyuPFGUqDw3KNL4R+3pdHGDhM=
 		</data>
 		<key>Resources/runtime/public/vendor/three.module.js</key>
 		<data>
@@ -106,7 +106,7 @@
 		</data>
 		<key>Resources/runtime/src/cfop-analysis.js</key>
 		<data>
-		IPIduqSGna/G4L3oKuTG6Hmr/dI=
+		gQpqQbopgTHiC3j8e+rRT+9M4eg=
 		</data>
 		<key>Resources/runtime/src/cli.js</key>
 		<data>
@@ -126,7 +126,7 @@
 		</data>
 		<key>Resources/runtime/src/history.js</key>
 		<data>
-		5/Fy2RnWe8KLHmSLG9+0WolT37w=
+		Y4OvOxnQdq6z1fmUpVqk03gcDfk=
 		</data>
 		<key>Resources/runtime/src/inspection.js</key>
 		<data>
@@ -138,7 +138,7 @@
 		</data>
 		<key>Resources/runtime/src/op-analysis.js</key>
 		<data>
-		n1WuOUqUyTWpcL8AiNYHYIRTXk4=
+		HZn2V8g37vYS4m30id1k5d5Fn10=
 		</data>
 		<key>Resources/runtime/src/op-case-diagrams.js</key>
 		<data>
@@ -178,7 +178,7 @@
 		</data>
 		<key>Resources/runtime/src/server.js</key>
 		<data>
-		Bj5hDe/y8k22MgM69QSdqKucTm8=
+		jv89zTKSx+4OX/n+5/7cXglmdc8=
 		</data>
 		<key>Resources/runtime/src/solve-summary.js</key>
 		<data>
@@ -186,11 +186,11 @@
 		</data>
 		<key>Resources/runtime/src/solves-export.js</key>
 		<data>
-		55UkAjYPkEC8QfDoLOe9+14Ymuw=
+		VBXZU2RhBIGrJ1k2KlfKepffmuU=
 		</data>
 		<key>Resources/runtime/src/solves-import.js</key>
 		<data>
-		+6uQMQs4xL8bKhAJdKoD5urK034=
+		Zj4//3jXa792GW6bQrSGeE1Kk0M=
 		</data>
 		<key>Resources/runtime/src/stats-summary.js</key>
 		<data>
@@ -236,7 +236,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			CQ6FkI1J9XOCjNowGKt8ONd/B7DuG7RyYUZEUGLtPW0=
+			Kqf6MpvrVxtR106dv7DcLcAvAz15Dm+YEXaRGelIjcg=
 			</data>
 		</dict>
 		<key>Resources/runtime/public/bluetooth-moves.js</key>
@@ -355,7 +355,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			24D5nKwnmVdyS5U8Z8TnvPhfYz8CbY0RqedBSvG8KjY=
+			H0x1t6ZFMZH/JbWvQRGK+F+VPns387LcqIT+NxsXsW4=
 			</data>
 		</dict>
 		<key>Resources/runtime/public/vendor/three.module.js</key>
@@ -390,7 +390,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			G/aZRfy3tb5jJnEYMjj9JG0MIkoiEhcjqbQ89u1vERM=
+			JWmxWPXDFwx/w4M/7W4xbFlkceCEZduqvUHj2Ndy2dI=
 			</data>
 		</dict>
 		<key>Resources/runtime/src/cli.js</key>
@@ -425,7 +425,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			d/S+5t5HYGnI/1mkRvVuEfn176Ch8ygm0+6Kswrw2BE=
+			IsmtbvtTYUVmhqPL5gKCMIwOYHVfEftNLBon5uxpQwE=
 			</data>
 		</dict>
 		<key>Resources/runtime/src/inspection.js</key>
@@ -446,7 +446,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			Kp8oTgewVPDoI/CWLW8NGnEdVdHfc//zhZd+q6bFNDs=
+			JjTqX0dk1VrQ6ArX5uvLgO43heAeuwNoltI9q3nVhl4=
 			</data>
 		</dict>
 		<key>Resources/runtime/src/op-case-diagrams.js</key>
@@ -516,7 +516,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			kxbwxezLkBoHkRSaJvpqQ43VVFhmC7Kq/fc7q6P1Kog=
+			MwuilziYNChs+Dioqaok1JqeckXFxIHTTOq+x5lxmhE=
 			</data>
 		</dict>
 		<key>Resources/runtime/src/solve-summary.js</key>
@@ -530,14 +530,14 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			XKPp3dzOJPHwZKpJi/KMiE/kCTmsn+riZtGuXvg1W7M=
+			A4WhnhFg4hEN9yn0QzAXUacWygmDh9/iIjM9RSrmpKY=
 			</data>
 		</dict>
 		<key>Resources/runtime/src/solves-import.js</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			/ZPhDhN9D7d2DR3IE5GO8fd1qtHaypZxKdpGJ47UClQ=
+			WSoN+4JvO/NRUmPqBnEPH4Y6em2M2xXelExxnEKmYf8=
 			</data>
 		</dict>
 		<key>Resources/runtime/src/stats-summary.js</key>

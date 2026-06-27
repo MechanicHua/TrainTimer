@@ -578,16 +578,21 @@ h2 {
 }
 
 .timer-surface {
+  box-sizing: border-box;
   display: flex;
+  width: 100%;
   min-width: 0;
   min-height: 0;
   flex-direction: column;
   justify-content: center;
+  transition: transform 340ms var(--ease);
 }
 
 .timer-display {
   --timer-font-size: clamp(96px, 13.4vw, 190px);
   --timer-scale: 1;
+  max-width: 100%;
+  min-width: 0;
   overflow: hidden;
   color: #f5f5f7;
   font-variant-numeric: tabular-nums;
@@ -787,6 +792,7 @@ body[data-state="timing"] .timer-display {
 
 .preview-panel {
   grid-area: preview;
+  position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) minmax(138px, 0.34fr);
   gap: 12px;
@@ -1218,6 +1224,78 @@ body[data-state="timing"] .timer-display {
 
 .bluetooth-3d-panel[hidden] {
   display: none;
+}
+
+body[data-focus="true"][data-live3d="true"] .bluetooth-3d-panel,
+body[data-focus="true"] .preview-panel:has(.bluetooth-3d-panel:not([hidden])) .bluetooth-3d-panel,
+body[data-focus-transition="leave"] .preview-panel:has(.bluetooth-3d-panel:not([hidden])) .bluetooth-3d-panel {
+  overflow: visible;
+  contain: none;
+  pointer-events: none;
+}
+
+.preview-panel > .section-heading,
+.preview-panel > .bluetooth-feed-panel,
+.bluetooth-3d-head,
+.bluetooth-3d-telemetry {
+  transition: opacity 260ms var(--ease);
+}
+
+body[data-focus="true"][data-live3d="true"] .bluetooth-3d-head,
+body[data-focus="true"][data-live3d="true"] .bluetooth-3d-telemetry,
+body[data-focus="true"] .preview-panel:has(.bluetooth-3d-panel:not([hidden])) .bluetooth-3d-head,
+body[data-focus="true"] .preview-panel:has(.bluetooth-3d-panel:not([hidden])) .bluetooth-3d-telemetry {
+  opacity: 0.045;
+  pointer-events: none;
+}
+
+body[data-focus="true"][data-live3d="true"],
+body[data-focus="true"]:has(.preview-panel .bluetooth-3d-panel:not([hidden])),
+body[data-focus-transition="leave"]:has(.preview-panel .bluetooth-3d-panel:not([hidden])) {
+  --timer-focus-3d-left: clamp(18px, 2vw, 40px);
+  --timer-focus-3d-width: min(clamp(420px, 34vw, 620px), calc(100vw - 32px));
+  --timer-focus-3d-lift: 24px;
+  --timer-focus-number-shift: clamp(120px, 18vw, 230px);
+}
+
+.bluetooth-3d-focus-host {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.bluetooth-3d-focus-host[hidden] {
+  display: none;
+}
+
+body[data-focus="true"][data-live3d="true"] .bluetooth-3d-canvas,
+body[data-focus="true"] .preview-panel:has(.bluetooth-3d-panel:not([hidden])) .bluetooth-3d-canvas,
+body[data-focus-transition="leave"] .preview-panel:has(.bluetooth-3d-panel:not([hidden])) .bluetooth-3d-canvas,
+body[data-focus="true"] .bluetooth-3d-focus-host .bluetooth-3d-canvas,
+body[data-focus-transition="leave"] .bluetooth-3d-focus-host .bluetooth-3d-canvas {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  left: var(--timer-focus-3d-left);
+  width: var(--timer-focus-3d-width);
+  height: min(clamp(420px, 58vh, 660px), calc(100dvh - 126px));
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: auto;
+  transform: translateY(calc(-50% - var(--timer-focus-3d-lift))) translateZ(0);
+  animation: timer-3d-model-in 280ms var(--ease) both;
+}
+
+body[data-focus-transition="enter"] .preview-panel:has(.bluetooth-3d-panel:not([hidden])) .bluetooth-3d-canvas,
+body[data-focus-transition="enter"] .bluetooth-3d-focus-host .bluetooth-3d-canvas {
+  animation: timer-3d-model-in 360ms var(--ease) both;
+}
+
+body[data-focus-transition="leave"] .preview-panel:has(.bluetooth-3d-panel:not([hidden])) .bluetooth-3d-canvas,
+body[data-focus-transition="leave"] .bluetooth-3d-focus-host .bluetooth-3d-canvas {
+  animation: timer-3d-model-out 320ms var(--ease) both;
 }
 
 .bluetooth-3d-head,
@@ -2001,6 +2079,39 @@ body[data-state="timing"] .timer-display {
   text-align: right;
 }
 
+.history-cfop-stages .op-event-card.has-op-diagram {
+  grid-column: 1 / -1;
+  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-areas: "diagram body";
+  align-items: center;
+  min-height: 56px;
+  gap: 7px;
+}
+
+.history-cfop-stages .op-event-card-diagram {
+  grid-area: diagram;
+  width: 44px;
+  min-width: 44px;
+}
+
+.history-cfop-stages .op-event-card-diagram .op-case-diagram-thumb {
+  width: 44px;
+  height: 44px;
+}
+
+.history-cfop-stages .op-event-card-body {
+  grid-area: body;
+  min-width: 0;
+}
+
+.history-cfop-stages .op-event-card-body strong,
+.history-cfop-stages .op-event-card-body span,
+.history-cfop-stages .op-event-card-body em,
+.history-cfop-stages .op-event-card-body small {
+  grid-area: auto;
+  text-align: left;
+}
+
 .history-cfop-empty {
   grid-column: 1 / -1;
   padding: 8px 0 2px;
@@ -2040,16 +2151,43 @@ body[data-state="timing"] .timer-display {
   padding: 0;
 }
 
+body[data-focus="true"] .timer-band,
+body[data-focus-transition="leave"] .timer-band,
+body[data-focus="true"] .timer-layout,
+body[data-focus-transition="leave"] .timer-layout {
+  position: relative;
+  z-index: 5;
+  overflow: visible;
+}
+
+body[data-focus="true"] .timer-surface {
+  transform: translateX(var(--timer-focus-number-shift));
+}
+
+.app-shell > :not(.timer-band),
+.timer-layout > :not(.timer-surface),
+.timer-surface > :not(.timer-display) {
+  transition: opacity 260ms var(--ease), transform 260ms var(--ease);
+}
+
 body[data-focus="true"] .app-shell > :not(.timer-band),
 body[data-focus="true"] .timer-layout > :not(.timer-surface),
 body[data-focus="true"] .timer-surface > :not(.timer-display) {
   animation: none;
   opacity: 0.045;
   pointer-events: none;
-  transition: opacity 260ms var(--ease), transform 260ms var(--ease);
+}
+
+body[data-focus="true"][data-live3d="true"] .preview-panel > .section-heading,
+body[data-focus="true"][data-live3d="true"] .preview-panel > .bluetooth-feed-panel,
+body[data-focus="true"] .preview-panel:has(.bluetooth-3d-panel:not([hidden])) > .section-heading,
+body[data-focus="true"] .preview-panel:has(.bluetooth-3d-panel:not([hidden])) > .bluetooth-feed-panel {
+  opacity: 0.045;
+  pointer-events: none;
 }
 
 body[data-focus="true"] .timer-display {
+  color: #f5f5f7;
   opacity: 1;
   filter: none;
 }
@@ -2074,6 +2212,14 @@ body[data-inspection-enter]:not([data-state="timing"]) .timer-hint {
 
 body[data-state="timing"] .timer-band {
   background: transparent;
+}
+
+@media (max-width: 980px) {
+  body[data-focus="true"][data-live3d="true"],
+  body[data-focus="true"]:has(.preview-panel .bluetooth-3d-panel:not([hidden])),
+  body[data-focus-transition="leave"]:has(.preview-panel .bluetooth-3d-panel:not([hidden])) {
+    --timer-focus-number-shift: 0px;
+  }
 }
 
 .solve-dialog,
@@ -4185,6 +4331,16 @@ button.solve-cfop-card.active {
   box-shadow: inset 0 0 0 1px rgba(142, 142, 147, 0.11);
 }
 
+.solve-cfop-card.op-skip {
+  background: rgba(255, 214, 10, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 214, 10, 0.2);
+}
+
+.solve-cfop-card.op-skip strong,
+.solve-cfop-card.op-skip em {
+  color: #ffd60a;
+}
+
 .solve-cfop-card strong {
   color: var(--accent);
   font-size: 12px;
@@ -4380,6 +4536,28 @@ button.solve-cfop-card.active {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes timer-3d-model-in {
+  from {
+    opacity: 0.42;
+    transform: translateY(calc(-50% - var(--timer-focus-3d-lift, 24px) - 20px)) scale(0.92) translateZ(0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(calc(-50% - var(--timer-focus-3d-lift, 24px))) scale(1) translateZ(0);
+  }
+}
+
+@keyframes timer-3d-model-out {
+  from {
+    opacity: 1;
+    transform: translateY(calc(-50% - var(--timer-focus-3d-lift, 24px))) scale(1) translateZ(0);
+  }
+  to {
+    opacity: 0.54;
+    transform: translateY(calc(-50% - var(--timer-focus-3d-lift, 24px) - 12px)) scale(0.94) translateZ(0);
   }
 }
 

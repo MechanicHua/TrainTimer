@@ -17,6 +17,7 @@ import {
   formatTime,
   getHistoryPath,
   loadHistory,
+  loadHistoryForBootstrap,
   mergeSession,
   moveSolves,
   replaceSolves,
@@ -88,6 +89,10 @@ function scrambleTimeoutMs() {
 
 function scramblePreviewTimeoutMs() {
   return positiveIntegerEnv('TRAIN_TIMER_SCRAMBLE_PREVIEW_TIMEOUT_MS', 5000);
+}
+
+function bootstrapSolveLimit() {
+  return positiveIntegerEnv('TRAIN_TIMER_BOOTSTRAP_SOLVE_LIMIT', 80);
 }
 
 function positiveIntegerEnv(name, fallback) {
@@ -179,15 +184,31 @@ async function handleApi(request, response) {
 
   if (request.method === 'GET' && url.pathname === '/api/bootstrap') {
     const puzzle = url.searchParams.get('puzzle') || undefined;
-    const [history, scramble] = await Promise.all([
-      loadHistory(),
-      generateScramble(puzzle, { timeoutMs: bootstrapScrambleTimeoutMs() }),
-    ]);
+    const history = await loadHistoryForBootstrap(undefined, { limit: bootstrapSolveLimit() });
+    const summarySolves = history.summarySolves || history.solves;
+    if (url.searchParams.get('historyOnly') === '1') {
+      sendJson(response, 200, {
+        scramble: null,
+        solves: bootstrapSolves(history.solves),
+        sessions: history.sessions,
+        summary: summarizeSolves(summarySolves),
+        sessionSummaries: summarizeSolvesBySession(summarySolves),
+        historyPartial: history.historyPartial === true,
+        historyTotal: history.historyTotal ?? history.solves.length,
+        historyPath: getHistoryPath(),
+      });
+      return;
+    }
+
+    const scramble = await generateScramble(puzzle, { timeoutMs: bootstrapScrambleTimeoutMs() });
     sendJson(response, 200, {
       scramble,
-      solves: history.solves,
+      solves: bootstrapSolves(history.solves),
       sessions: history.sessions,
-      summary: summarizeSolves(history.solves),
+      summary: summarizeSolves(summarySolves),
+      sessionSummaries: summarizeSolvesBySession(summarySolves),
+      historyPartial: history.historyPartial === true,
+      historyTotal: history.historyTotal ?? history.solves.length,
       historyPath: getHistoryPath(),
     });
     return;
@@ -277,6 +298,9 @@ async function handleApi(request, response) {
       solves: history.solves,
       sessions: history.sessions,
       summary: summarizeSolves(history.solves),
+      sessionSummaries: summarizeSolvesBySession(history.solves),
+      historyPartial: false,
+      historyTotal: history.solves.length,
       historyPath: getHistoryPath(),
     });
     return;
@@ -439,6 +463,7 @@ async function handleApi(request, response) {
       timerSource: body.timerSource === 'bluetooth' ? 'bluetooth' : 'manual',
       bluetoothMoves: Array.isArray(body.bluetoothMoves) ? body.bluetoothMoves : [],
       bluetoothMoveLog: Array.isArray(body.bluetoothMoveLog) ? body.bluetoothMoveLog : [],
+      bluetoothStateCorrections: Array.isArray(body.bluetoothStateCorrections) ? body.bluetoothStateCorrections : [],
       bluetoothSolvedByStatePacket: body.bluetoothSolvedByStatePacket === true,
       cfopStages: Array.isArray(body.cfopStages) ? body.cfopStages : [],
       opEvents: Array.isArray(body.opEvents) ? body.opEvents : [],
@@ -479,6 +504,7 @@ async function handleApi(request, response) {
     if (Object.hasOwn(body, 'tags')) updates.tags = body.tags;
     if (Object.hasOwn(body, 'bluetoothDeviceName')) updates.bluetoothDeviceName = String(body.bluetoothDeviceName || '');
     if (Object.hasOwn(body, 'bluetoothMoveLog')) updates.bluetoothMoveLog = body.bluetoothMoveLog;
+    if (Object.hasOwn(body, 'bluetoothStateCorrections')) updates.bluetoothStateCorrections = body.bluetoothStateCorrections;
     if (Object.hasOwn(body, 'cfopStages')) updates.cfopStages = body.cfopStages;
     if (Object.hasOwn(body, 'opEvents')) updates.opEvents = body.opEvents;
     if (Object.hasOwn(body, 'bluetoothProtocols')) updates.bluetoothProtocols = body.bluetoothProtocols;
@@ -576,6 +602,27 @@ async function handleApi(request, response) {
   }
 
   sendJson(response, 404, { error: 'Not found' });
+}
+
+function summarizeSolvesBySession(solves) {
+  const bySession = new Map();
+  for (const solve of solves) {
+    const sessionId = typeof solve.sessionId === 'string' && solve.sessionId ? solve.sessionId : 'default';
+    if (!bySession.has(sessionId)) bySession.set(sessionId, []);
+    bySession.get(sessionId).push(solve);
+  }
+
+  const summaries = {};
+  for (const [sessionId, sessionSolves] of bySession) summaries[sessionId] = summarizeSolves(sessionSolves);
+  if (!summaries.default) summaries.default = summarizeSolves([]);
+  return summaries;
+}
+
+function bootstrapSolves(solves) {
+  return solves.map((solve) => {
+    const { bluetoothMoveLog, ...rest } = solve;
+    return rest;
+  });
 }
 
 async function warmCubeCorrectionSolverOnce() {

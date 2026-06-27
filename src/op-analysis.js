@@ -1,5 +1,5 @@
 import { algorithmTrainerCases } from './algorithm-trainer-cases.js';
-import { solveCfopAnalysis } from './cfop-analysis.js';
+import { solveCfopAnalysis, solveFaceletSnapshotsForAnalysis } from './cfop-analysis.js';
 import { opPdfAlgorithmForCase } from './op-pdf-algorithms.js';
 import {
   applyMoveToFacelets,
@@ -23,7 +23,33 @@ const faceNormals = {
 const oppositeFaces = { U: 'D', D: 'U', R: 'L', L: 'R', F: 'B', B: 'F' };
 const topFace = 'U';
 const sideFaces = ['F', 'R', 'B', 'L'];
+const opBottomFaceOrder = ['D', 'U', 'F', 'B', 'L', 'R'];
 const uRotations = ['', 'U', 'U2', "U'"];
+const axisVectors = {
+  x: [1, 0, 0],
+  y: [0, 1, 0],
+  z: [0, 0, 1],
+};
+const moveOrientationDefinitions = {
+  U: { axis: 'y', layer: 1, turns: -1 },
+  D: { axis: 'y', layer: -1, turns: 1 },
+  R: { axis: 'x', layer: 1, turns: -1 },
+  L: { axis: 'x', layer: -1, turns: 1 },
+  F: { axis: 'z', layer: 1, turns: -1 },
+  B: { axis: 'z', layer: -1, turns: 1 },
+  M: { axis: 'x', layer: 0, turns: 1 },
+  E: { axis: 'y', layer: 0, turns: 1 },
+  S: { axis: 'z', layer: 0, turns: -1 },
+  x: { axis: 'x', layer: 'all', turns: -1 },
+  y: { axis: 'y', layer: 'all', turns: -1 },
+  z: { axis: 'z', layer: 'all', turns: -1 },
+  r: { axis: 'x', layers: [1, 0], turns: -1 },
+  l: { axis: 'x', layers: [-1, 0], turns: 1 },
+  u: { axis: 'y', layers: [1, 0], turns: -1 },
+  d: { axis: 'y', layers: [-1, 0], turns: 1 },
+  f: { axis: 'z', layers: [1, 0], turns: -1 },
+  b: { axis: 'z', layers: [-1, 0], turns: 1 },
+};
 
 let opCaseLibraryCache = null;
 let opCaseIndexCache = null;
@@ -65,11 +91,12 @@ export function recognizeOpCase(facelets, kind) {
   const text = String(facelets || '').trim().toUpperCase();
   if (!/^[URFDLB]{54}$/.test(text)) return null;
   if (!isLastLayerBaseSolved(text)) return null;
-  const signature = kind === 'oll'
-    ? ollSignatureFromFacelets(text)
-    : pllSignatureFromFacelets(text);
-  if (!signature) return null;
+  const signatures = kind === 'oll'
+    ? [ollSignatureFromFacelets(text)].filter(Boolean)
+    : pllRecognitionSignaturesFromFacelets(text);
+  if (signatures.length === 0) return null;
 
+  const signature = signatures.find((candidate) => (opCaseIndex()[kind].get(candidate) || []).length > 0) || signatures[0];
   const matches = opCaseIndex()[kind].get(signature) || [];
   if (matches.length === 0) {
     return {
@@ -116,6 +143,14 @@ export function pllSignatureFromFacelets(facelets) {
   return canonicalSignature(facelets, rawPllSignature);
 }
 
+function pllRecognitionSignaturesFromFacelets(facelets) {
+  const signatures = [
+    canonicalSignature(facelets, rawPllSignature),
+    canonicalSignature(facelets, rawPllSignatureByCenters),
+  ].filter(Boolean);
+  return [...new Set(signatures)];
+}
+
 export function solveOpAnalysis(solve) {
   const analysis = solveCfopAnalysis(solve);
   const records = Array.isArray(analysis.detectionRecords) && analysis.detectionRecords.length > 0
@@ -128,13 +163,23 @@ export function solveOpAnalysis(solve) {
   const stages = Array.isArray(analysis.stages) ? analysis.stages : [];
   const snapshots = opFaceletSnapshotsForSolve(solve, records);
   if (snapshots.length === 0) return { events: [], records: analysis.records, detectionRecords: records };
-  const opSnapshots = normalizeOpSnapshotsForBottomFace(snapshots, analysis.bottomFace, stages);
-  const scannedEvents = scanOpEvents(solve, opSnapshots, records, opScanBoundsFromStages(stages));
-  const stageEvents = [
-    opEventFromStage(stages.find((stage) => stage.key === 'oll' || stage.label === 'O'), 'oll', opSnapshots, records, solve),
-    opEventFromStage(stages.find((stage) => stage.key === 'pll' || stage.label === 'P'), 'pll', opSnapshots, records, solve),
-  ].filter(Boolean);
-  const events = mergeOpEvents(scannedEvents, stageEvents);
+  const primaryBottomFace = analysis.bottomFace || 'D';
+  let events = opEventsForBottomFace(solve, snapshots, records, primaryBottomFace, stages, {
+    includeStageEvents: true,
+  });
+
+  if (opNeedsOrientationFallback(events) && shouldTryOrientationFallback(solve, events, analysis.bottomFace)) {
+    for (const bottomFace of opBottomFaceOrder) {
+      if (bottomFace === primaryBottomFace) continue;
+      const fallbackEvents = opEventsForBottomFace(solve, snapshots, records, bottomFace, [], {
+        forceOrientation: true,
+        includeStageEvents: false,
+      }).filter((event) => event.formulaAccepted === true && opEventStartsAfterPrimaryF2l(event, stages));
+      if (fallbackEvents.length === 0) continue;
+      events = mergeOpEvents(fallbackEvents, events);
+      if (!opNeedsOrientationFallback(events)) break;
+    }
+  }
 
   return { events, records: analysis.records, detectionRecords: records };
 }
@@ -251,7 +296,7 @@ export function evaluateOpFormulaCandidate(options = {}) {
       });
     }
   }
-  if (kind === 'pll' && !isSolvedFacelets(facelets)) {
+  if (kind === 'pll' && !isSolvedFacelets(facelets) && !isSolvedByCenters(facelets)) {
     return rejectedFormula('pll-not-solved', { startRecognition, moves, finalFacelets: facelets });
   }
 
@@ -279,9 +324,22 @@ function opEventsCacheKey(solve) {
     solve?.timerStartedAtMs ?? '',
     solve?.timerStartedAt || '',
     solve?.bluetoothSolvedByStatePacket === true || solve?.finalSolvedByStatePacket === true ? 1 : 0,
+    bluetoothStateCorrectionsCachePart(solve?.bluetoothStateCorrections),
     moveLog.map(opMoveLogCachePart).join(','),
     moves.map((move) => String(move || '')).join(' '),
   ].join('|');
+}
+
+function bluetoothStateCorrectionsCachePart(corrections) {
+  if (!Array.isArray(corrections)) return '';
+  return corrections
+    .map((entry) => [
+      entry?.step ?? '',
+      entry?.facelets || '',
+      entry?.elapsedMs ?? '',
+      entry?.timestampMs ?? '',
+    ].join(':'))
+    .join(',');
 }
 
 function opMoveLogCachePart(entry) {
@@ -406,6 +464,34 @@ function rawPllSignature(facelets) {
   return ring;
 }
 
+function rawPllSignatureByCenters(facelets) {
+  for (let row = 0; row < 3; row += 1) {
+    for (let col = 0; col < 3; col += 1) {
+      if (faceletAt(facelets, topFace, row, col) !== topFace) return '';
+    }
+  }
+
+  const sideColorMap = sideColorToFaceMap(facelets);
+  if (!sideColorMap) return '';
+  let ring = '';
+  for (const face of sideFaces) {
+    for (let col = 0; col < 3; col += 1) {
+      ring += sideColorMap[faceletAt(facelets, face, 0, col)] || '';
+    }
+  }
+  return ring;
+}
+
+function sideColorToFaceMap(facelets) {
+  const map = {};
+  for (const face of sideFaces) {
+    const center = faceletAt(facelets, face, 1, 1);
+    if (!center || map[center]) return null;
+    map[center] = face;
+  }
+  return map;
+}
+
 function faceletAt(facelets, face, row, col) {
   return facelets[faceletOffsets[face] + row * 3 + col];
 }
@@ -430,24 +516,56 @@ function isLastLayerBaseSolved(facelets) {
 }
 
 function opFaceletSnapshotsForSolve(solve, records) {
-  try {
-    let facelets = faceletsFromScramble(solve.scramble);
-    const snapshots = [facelets];
-    for (const record of records) {
-      facelets = applyMoveToFacelets(facelets, record.move);
-      snapshots.push(facelets);
-    }
-    return snapshots;
-  } catch {
-    return [];
-  }
+  return solveFaceletSnapshotsForAnalysis(solve, records).map((snapshot) => snapshot.facelets);
 }
 
-function normalizeOpSnapshotsForBottomFace(snapshots, bottomFace, stages = []) {
+function opEventsForBottomFace(solve, snapshots, records, bottomFace, stages = [], options = {}) {
+  const opSnapshots = normalizeOpSnapshotsForBottomFace(snapshots, bottomFace, stages, options);
+  const opRecords = normalizeOpRecordsForBottomFace(records, bottomFace, stages, options);
+  const scannedEvents = scanOpEvents(solve, opSnapshots, opRecords, opScanBoundsFromStages(stages, snapshots));
+  const stageEvents = options.includeStageEvents === false
+    ? []
+    : [
+      opEventFromStage(stages.find((stage) => stage.key === 'oll' || stage.label === 'O'), 'oll', opSnapshots, opRecords, solve),
+      opEventFromStage(stages.find((stage) => stage.key === 'pll' || stage.label === 'P'), 'pll', opSnapshots, opRecords, solve),
+    ].filter(Boolean);
+  return mergeOpEvents(scannedEvents, stageEvents);
+}
+
+function opNeedsOrientationFallback(events) {
+  const items = Array.isArray(events) ? events : [];
+  return !items.some((event) => event.kind === 'oll' && event.formulaAccepted === true)
+    || !items.some((event) => event.kind === 'pll' && event.formulaAccepted === true);
+}
+
+function opEventStartsAfterPrimaryF2l(event, stages) {
+  const f2lCompletedAt = cfopF2lCompletionStep(stages);
+  if (!Number.isFinite(f2lCompletedAt)) return true;
+  const startStep = Number(event?.startStep);
+  return Number.isFinite(startStep) && startStep > f2lCompletedAt;
+}
+
+function shouldTryOrientationFallback(solve, events, bottomFace) {
+  if (!bottomFace) return true;
+  if (!Array.isArray(events) || events.length === 0) return true;
+  return Array.isArray(solve?.bluetoothStateCorrections) && solve.bluetoothStateCorrections.length > 0;
+}
+
+function normalizeOpSnapshotsForBottomFace(snapshots, bottomFace, stages = [], options = {}) {
   const bottom = String(bottomFace || 'D').toUpperCase();
   if (!oppositeFaces[bottom] || bottom === 'D') return snapshots;
-  if (!shouldNormalizeOpSnapshotsForCfopBottom(stages)) return snapshots;
+  if (options.forceOrientation !== true && !shouldNormalizeOpSnapshotsForCfopBottom(stages)) return snapshots;
   return snapshots.map((facelets) => orientFaceletsForOpBottom(facelets, bottom));
+}
+
+function normalizeOpRecordsForBottomFace(records, bottomFace, stages = [], options = {}) {
+  const bottom = String(bottomFace || 'D').toUpperCase();
+  if (!Array.isArray(records) || !oppositeFaces[bottom] || bottom === 'D') return records;
+  if (options.forceOrientation !== true && !shouldNormalizeOpSnapshotsForCfopBottom(stages)) return records;
+  return records.map((record) => {
+    const move = orientMoveForOpBottom(record?.move, bottom);
+    return move === record?.move ? record : { ...record, move };
+  });
 }
 
 function shouldNormalizeOpSnapshotsForCfopBottom(stages) {
@@ -455,11 +573,11 @@ function shouldNormalizeOpSnapshotsForCfopBottom(stages) {
   const f2lCompletedAt = Math.max(
     ...items
       .filter((stage) => /^F\d+$/.test(String(stage?.label || '')))
-      .map((stage) => Number(stage.completedAt))
+      .map(opStageCompletedAt)
       .filter(Number.isFinite),
   );
-  const ollCompletedAt = Number(items.find((stage) => stage?.key === 'oll' || stage?.label === 'O')?.completedAt);
-  const pllCompletedAt = Number(items.find((stage) => stage?.key === 'pll' || stage?.label === 'P')?.completedAt);
+  const ollCompletedAt = opStageCompletedAt(items.find((stage) => stage?.key === 'oll' || stage?.label === 'O'));
+  const pllCompletedAt = opStageCompletedAt(items.find((stage) => stage?.key === 'pll' || stage?.label === 'P'));
   const opBoundary = Number.isFinite(ollCompletedAt) ? ollCompletedAt : pllCompletedAt;
   return Number.isFinite(f2lCompletedAt) && Number.isFinite(opBoundary) && f2lCompletedAt < opBoundary;
 }
@@ -484,6 +602,78 @@ function orientFaceletsForOpBottom(facelets, bottomFace) {
   }
 
   return output.every(Boolean) ? output.join('') : facelets;
+}
+
+function orientMoveForOpBottom(move, bottomFace) {
+  const [parsedMove] = normalizeFormulaMoves([move]) || [];
+  if (!parsedMove) return move;
+
+  let token;
+  try {
+    [token] = parseScramble(parsedMove);
+  } catch {
+    return move;
+  }
+
+  const definition = moveOrientationDefinitions[token.face];
+  const top = oppositeFaces[bottomFace];
+  const basis = opOrientationBasis(top);
+  if (!definition || !basis) return parsedMove;
+
+  const axis = orientedAxisForMoveDefinition(definition, basis);
+  if (!axis) return parsedMove;
+
+  const targetFace = targetMoveFaceForOrientedDefinition(definition, axis);
+  const targetDefinition = moveOrientationDefinitions[targetFace];
+  if (!targetFace || !targetDefinition) return parsedMove;
+
+  if (token.suffix === '2') return `${targetFace}2`;
+
+  const desiredTurns = (token.suffix === "'" ? -definition.turns : definition.turns) * axis.sign;
+  const suffix = desiredTurns === targetDefinition.turns ? '' : "'";
+  return `${targetFace}${suffix}`;
+}
+
+function orientedAxisForMoveDefinition(definition, basis) {
+  const vector = axisVectors[definition.axis];
+  if (!vector) return null;
+  const oriented = vectorToOpBasis(vector, basis);
+  const entry = Object.entries(axisVectors).find(([, axisVector]) => (
+    oriented.every((value, index) => value === axisVector[index])
+      || oriented.every((value, index) => value === -axisVector[index])
+  ));
+  if (!entry) return null;
+  const [axis, axisVector] = entry;
+  const sign = oriented.every((value, index) => value === axisVector[index]) ? 1 : -1;
+  return { axis, sign };
+}
+
+function targetMoveFaceForOrientedDefinition(definition, orientedAxis) {
+  if (definition.layer === 'all') return orientedAxis.axis;
+
+  if (Array.isArray(definition.layers)) {
+    const layers = definition.layers.map((layer) => layer * orientedAxis.sign);
+    const faceLayer = layers.find((layer) => layer === 1 || layer === -1);
+    const face = faceFromAxisLayer(orientedAxis.axis, faceLayer);
+    return face ? face.toLowerCase() : '';
+  }
+
+  const layer = definition.layer * orientedAxis.sign;
+  if (layer === 0) return sliceMoveForAxis(orientedAxis.axis);
+  return faceFromAxisLayer(orientedAxis.axis, layer);
+}
+
+function faceFromAxisLayer(axis, layer) {
+  const vector = axisVectors[axis];
+  if (!vector || (layer !== 1 && layer !== -1)) return '';
+  return faceFromNormal(vector.map((value) => value * layer));
+}
+
+function sliceMoveForAxis(axis) {
+  if (axis === 'x') return 'M';
+  if (axis === 'y') return 'E';
+  if (axis === 'z') return 'S';
+  return '';
 }
 
 function opOrientationBasis(top) {
@@ -549,47 +739,112 @@ function cross(left, right) {
 
 function scanOpEvents(solve, snapshots, records, bounds = {}) {
   const ollStartAt = Number.isInteger(bounds.ollStartAt) ? Math.max(0, bounds.ollStartAt) : 0;
+  const ollEndAt = Number.isInteger(bounds.ollEndAt) ? Math.max(0, bounds.ollEndAt) : records.length;
   const stagePllStartAt = Number.isInteger(bounds.pllStartAt) ? Math.max(0, bounds.pllStartAt) : 0;
-  const ollEvents = scanOpEventsOfKind('oll', solve, snapshots, records, ollStartAt);
+  const pllEndAt = Number.isInteger(bounds.pllEndAt) ? Math.max(0, bounds.pllEndAt) : records.length;
+  const ollEvents = scanOpEventsOfKind('oll', solve, snapshots, records, ollStartAt, { endAt: ollEndAt });
   const oll = ollEvents.findLast((event) => event.formulaAccepted === true) || ollEvents.at(-1) || null;
   const pllStartFromOllEvent = oll != null;
   const pllStartAt = pllStartFromOllEvent ? Math.max(0, oll.endStep ?? 0) : stagePllStartAt;
-  let pllEvents = scanOpEventsOfKind('pll', solve, snapshots, records, pllStartAt);
+  let pllEvents = scanOpEventsOfKind('pll', solve, snapshots, records, pllStartAt, { endAt: pllEndAt });
   if (pllEvents.length === 0 && pllStartAt > 0 && pllStartFromOllEvent) {
-    pllEvents = scanOpEventsOfKind('pll', solve, snapshots, records, 0);
+    pllEvents = scanOpEventsOfKind('pll', solve, snapshots, records, 0, { endAt: pllEndAt });
   }
   return [...ollEvents, ...pllEvents].filter(Boolean);
 }
 
-function opScanBoundsFromStages(stages) {
+function opScanBoundsFromStages(stages, snapshots = []) {
+  if (hasInitialRawOpState(snapshots)) return {};
   return {
     ollStartAt: cfopF2lCompletionStep(stages),
     pllStartAt: cfopOllCompletionStep(stages),
+    ollEndAt: cfopOllCompletionStep(stages),
+    pllEndAt: cfopPllCompletionStep(stages),
   };
 }
 
+function hasInitialRawOpState(snapshots) {
+  const initialFacelets = Array.isArray(snapshots) ? snapshots[0] : '';
+  if (!initialFacelets) return false;
+  const oll = recognizeOllCase(initialFacelets);
+  if (oll?.confidence === 'unique' && !pllSignatureFromFacelets(initialFacelets)) return true;
+  const pll = recognizePllCase(initialFacelets);
+  return pll?.confidence === 'unique';
+}
+
 function cfopF2lCompletionStep(stages) {
+  const completedPairs = (Array.isArray(stages) ? stages : [])
+    .filter((stage) => stage?.completed && /^F\d+$/.test(String(stage?.label || '')))
+    .map(opStageCompletedAt)
+    .filter(Number.isFinite);
+  if (completedPairs.length >= 4) return Math.max(...completedPairs);
+
   const ollStage = (Array.isArray(stages) ? stages : [])
     .find((stage) => stage?.key === 'oll' || stage?.label === 'O');
-  const startStep = Number(ollStage?.startStep);
+  const startStep = opStageStartStep(ollStage);
   return ollStage?.completed && Number.isInteger(startStep) && startStep > 0 ? startStep - 1 : null;
 }
 
 function cfopOllCompletionStep(stages) {
   const stage = (Array.isArray(stages) ? stages : [])
     .find((item) => item?.key === 'oll' || item?.label === 'O');
-  const completedAt = Number(stage?.completedAt);
-  return stage?.completed && Number.isFinite(completedAt) ? completedAt : null;
+  const startStep = opStageStartStep(stage);
+  const completedAt = opStageCompletedAt(stage);
+  return stage?.completed
+    && Number.isInteger(startStep)
+    && startStep > 0
+    && Number.isFinite(completedAt)
+    && completedAt > 0
+    ? completedAt
+    : null;
 }
 
-function scanOpEventsOfKind(kind, solve, snapshots, records, startAt = 0) {
+function cfopPllCompletionStep(stages) {
+  const stage = (Array.isArray(stages) ? stages : [])
+    .find((item) => item?.key === 'pll' || item?.label === 'P');
+  const startStep = opStageStartStep(stage);
+  const completedAt = opStageCompletedAt(stage);
+  return stage?.completed
+    && Number.isInteger(startStep)
+    && startStep > 0
+    && Number.isFinite(completedAt)
+    && completedAt > 0
+    ? completedAt
+    : null;
+}
+
+function opStageStartStep(stage) {
+  const physicalStartStep = optionalStageStep(stage?.physicalStartStep);
+  if (Number.isInteger(physicalStartStep) && physicalStartStep > 0) return physicalStartStep;
+  return optionalStageStep(stage?.startStep);
+}
+
+function opStageEndStep(stage) {
+  const physicalEndStep = optionalStageStep(stage?.physicalEndStep);
+  if (Number.isInteger(physicalEndStep) && physicalEndStep >= 0) return physicalEndStep;
+  return optionalStageStep(stage?.endStep);
+}
+
+function opStageCompletedAt(stage) {
+  const physicalCompletedAt = optionalStageStep(stage?.physicalCompletedAt);
+  if (Number.isFinite(physicalCompletedAt) && physicalCompletedAt >= 0) return physicalCompletedAt;
+  return optionalStageStep(stage?.completedAt);
+}
+
+function optionalStageStep(value) {
+  if (value == null || value === '') return Number.NaN;
+  return Number(value);
+}
+
+function scanOpEventsOfKind(kind, solve, snapshots, records, startAt = 0, options = {}) {
   const events = [];
   let nextStartAt = Math.max(0, Number(startAt) || 0);
+  const endAt = Number.isInteger(options.endAt) ? Math.max(0, Math.min(records.length, options.endAt)) : records.length;
   let guard = 0;
-  while (nextStartAt < records.length && guard < records.length) {
+  while (nextStartAt < endAt && guard < records.length) {
     guard += 1;
-    const transition = findRejectedOpTransition(kind, snapshots, records, solve, nextStartAt);
-    const accepted = findAcceptedOpEvent(kind, snapshots, records, solve, nextStartAt);
+    const transition = findRejectedOpTransition(kind, snapshots, records, solve, nextStartAt, { endAt });
+    const accepted = findAcceptedOpEvent(kind, snapshots, records, solve, nextStartAt, { endAt });
     const compositeTransition = findCompositeOpTransitionForAccepted(kind, snapshots, records, solve, accepted);
     const next = chooseNextOpEvent(transition || compositeTransition, accepted);
     if (!next) break;
@@ -616,9 +871,10 @@ function chooseNextOpEvent(transition, accepted) {
   return accepted;
 }
 
-function findAcceptedOpEvent(kind, snapshots, records, solve, startAt = 0) {
+function findAcceptedOpEvent(kind, snapshots, records, solve, startAt = 0, options = {}) {
   const maxMoves = kind === 'oll' ? 24 : 30;
-  const lastStartIndex = Math.max(0, records.length - 1);
+  const scanEndAt = Number.isInteger(options.endAt) ? Math.max(0, Math.min(records.length, options.endAt)) : records.length;
+  const lastStartIndex = Math.max(0, scanEndAt - 1);
   const firstStartIndex = Math.max(0, Math.min(startAt, lastStartIndex));
 
   for (let startIndex = firstStartIndex; startIndex <= lastStartIndex; startIndex += 1) {
@@ -627,7 +883,7 @@ function findAcceptedOpEvent(kind, snapshots, records, solve, startAt = 0) {
     if (!recognition || recognition.confidence !== 'unique') continue;
     if (kind === 'oll' && pllSignatureFromFacelets(startFacelets)) continue;
 
-    const maxEndIndex = Math.min(records.length, startIndex + maxMoves);
+    const maxEndIndex = Math.min(scanEndAt, startIndex + maxMoves);
     for (let endIndex = startIndex + 1; endIndex <= maxEndIndex; endIndex += 1) {
       if (!opEventCompletionReached(kind, snapshots[endIndex], endIndex, records.length, solve)) continue;
       const formulaStartIndex = opFormulaStartIndex(records, startIndex, endIndex);
@@ -667,9 +923,10 @@ function findAcceptedOpEvent(kind, snapshots, records, solve, startAt = 0) {
   return null;
 }
 
-function findRejectedOpTransition(kind, snapshots, records, solve, startAt = 0) {
+function findRejectedOpTransition(kind, snapshots, records, solve, startAt = 0, options = {}) {
   const maxMoves = kind === 'oll' ? 24 : 30;
-  const lastStartIndex = Math.max(0, records.length - 1);
+  const scanEndAt = Number.isInteger(options.endAt) ? Math.max(0, Math.min(records.length, options.endAt)) : records.length;
+  const lastStartIndex = Math.max(0, scanEndAt - 1);
   const firstStartIndex = Math.max(0, Math.min(startAt, lastStartIndex));
 
   for (let startIndex = firstStartIndex; startIndex <= lastStartIndex; startIndex += 1) {
@@ -678,7 +935,7 @@ function findRejectedOpTransition(kind, snapshots, records, solve, startAt = 0) 
     if (!recognition || recognition.confidence !== 'unique') continue;
     if (kind === 'oll' && pllSignatureFromFacelets(startFacelets)) continue;
 
-    const maxEndIndex = Math.min(records.length - 1, startIndex + maxMoves);
+    const maxEndIndex = Math.min(scanEndAt - 1, startIndex + maxMoves);
     for (let endIndex = startIndex + 1; endIndex <= maxEndIndex; endIndex += 1) {
       const pauseMs = pauseAfterStep(records, endIndex);
       if (pauseMs == null || pauseMs < 1200) continue;
@@ -773,7 +1030,7 @@ function findCompositeOpTransitionForAccepted(kind, snapshots, records, solve, a
 function opEventCompletionReached(kind, facelets, endIndex, recordCount, solve) {
   if (!facelets) return false;
   if (kind === 'oll') return Boolean(pllSignatureFromFacelets(facelets));
-  if (isSolvedFacelets(facelets)) return true;
+  if (isSolvedFacelets(facelets) || isSolvedByCenters(facelets)) return true;
   return solveFinalSolvedByStatePacket(solve) && endIndex === recordCount;
 }
 
@@ -811,28 +1068,39 @@ function eventRangesOverlap(left, right) {
 }
 
 function opEventFromStage(stage, kind, snapshots, records, solve = null) {
-  if (!stage?.completed || !Number.isInteger(stage.startStep) || !Number.isInteger(stage.endStep)) return null;
-  const observationStartIndex = stage.startStep - 1;
-  const formulaStartIndex = opFormulaStartIndex(records, observationStartIndex, stage.endStep);
-  if (formulaStartIndex >= stage.endStep) return null;
+  const stageStartStep = opStageStartStep(stage);
+  const stageEndStep = opStageEndStep(stage);
+  const stageCompletedAt = opStageCompletedAt(stage);
+  if (!stage?.completed || !Number.isInteger(stageStartStep) || !Number.isInteger(stageEndStep)) return null;
+  const observationStartIndex = stageStartStep - 1;
+  const formulaStartIndex = opFormulaStartIndex(records, observationStartIndex, stageEndStep);
+  if (formulaStartIndex >= stageEndStep) return null;
   const facelets = snapshots[formulaStartIndex];
   if (!facelets) return null;
 
-  const recognition = kind === 'oll' ? recognizeOllCase(facelets) : recognizePllCase(facelets);
-  if (!recognition || recognition.confidence === 'none') return null;
   const moves = records
-    .slice(formulaStartIndex, stage.endStep)
+    .slice(formulaStartIndex, stageEndStep)
     .map((record) => record.move)
     .filter(Boolean);
+  const stateRecognition = kind === 'oll' ? recognizeOllCase(facelets) : recognizePllCase(facelets);
+  const formulaRecognition = (!stateRecognition || stateRecognition.confidence === 'none')
+    ? recognizeOpCaseFromFormula(kind, moves)
+    : null;
+  const recognition = stateRecognition && stateRecognition.confidence !== 'none'
+    ? stateRecognition
+    : formulaRecognition;
+  if (!recognition || recognition.confidence === 'none') return null;
   const moveTimings = moveTimingsForRange(records, formulaStartIndex, stage.endStep, stage.startedAtElapsedMs);
-  const validation = evaluateOpFormulaCandidate({
-    kind,
-    caseId: recognition.caseId,
-    startFacelets: facelets,
-    moves,
-    maxMoves: kind === 'oll' ? 24 : 30,
-    moveTimings,
-  });
+  const validation = formulaRecognition
+    ? { accepted: true, reason: 'formula-match' }
+    : evaluateOpFormulaCandidate({
+      kind,
+      caseId: recognition.caseId,
+      startFacelets: facelets,
+      moves,
+      maxMoves: kind === 'oll' ? 24 : 30,
+      moveTimings,
+    });
   const firstMoveElapsedMs = elapsedAtSolveStep(records, formulaStartIndex + 1);
   const observationMs = Number.isFinite(stage.startedAtElapsedMs) && Number.isFinite(firstMoveElapsedMs)
     ? Math.max(0, firstMoveElapsedMs - stage.startedAtElapsedMs)
@@ -850,8 +1118,8 @@ function opEventFromStage(stage, kind, snapshots, records, solve = null) {
     matchCount: recognition.matchCount,
     signature: recognition.signature,
     startStep: formulaStartIndex + 1,
-    endStep: stage.endStep,
-    completedAt: stage.completedAt,
+    endStep: stageEndStep,
+    completedAt: stageCompletedAt,
     turns: moves.length,
     durationMs: stage.durationMs,
     observationMs,
@@ -871,6 +1139,42 @@ function opEventFromStage(stage, kind, snapshots, records, solve = null) {
     formulaReason: validation.reason || 'stage-fallback',
     moveTimings,
   };
+}
+
+function recognizeOpCaseFromFormula(kind, moves) {
+  const observedMoves = normalizeFormulaMoves(moves);
+  if (!Array.isArray(observedMoves) || observedMoves.length === 0) return null;
+  const observedCandidates = [
+    observedMoves,
+    ...outerAufStrippedMoveCandidates(observedMoves),
+  ];
+  for (const item of opCaseLibrary()) {
+    if (item.kind !== kind) continue;
+    const caseMoves = normalizeFormulaMoves(item.algorithm);
+    if (!Array.isArray(caseMoves) || caseMoves.length === 0) continue;
+    if (!observedCandidates.some((candidate) => movesEqual(candidate, caseMoves))) continue;
+    return {
+      kind,
+      signature: `formula:${item.id}`,
+      caseId: item.id,
+      name: item.name,
+      group: item.group,
+      algorithm: item.algorithm,
+      pdfLabel: item.pdfLabel || '',
+      source: item.source || '',
+      matchCount: 1,
+      confidence: 'formula',
+      matches: [{
+        caseId: item.id,
+        name: item.name,
+        group: item.group,
+        algorithm: item.algorithm,
+        pdfLabel: item.pdfLabel || '',
+        source: item.source || '',
+      }],
+    };
+  }
+  return null;
 }
 
 function opEventFromRange({
@@ -1038,7 +1342,7 @@ function movesEqual(left, right) {
 }
 
 function isValidPllCompletionState(facelets) {
-  if (isSolvedFacelets(facelets)) return true;
+  if (isSolvedFacelets(facelets) || isSolvedByCenters(facelets)) return true;
   const pll = recognizePllCase(facelets);
   if (pll?.confidence === 'unique') return true;
   return uRotations.some((rotation) => {
@@ -1049,4 +1353,18 @@ function isValidPllCompletionState(facelets) {
       return false;
     }
   });
+}
+
+function isSolvedByCenters(facelets) {
+  const text = String(facelets || '').trim().toUpperCase();
+  if (!/^[URFDLB]{54}$/.test(text)) return false;
+  for (const face of faceNames) {
+    const center = faceletAt(text, face, 1, 1);
+    for (let row = 0; row < 3; row += 1) {
+      for (let col = 0; col < 3; col += 1) {
+        if (faceletAt(text, face, row, col) !== center) return false;
+      }
+    }
+  }
+  return true;
 }

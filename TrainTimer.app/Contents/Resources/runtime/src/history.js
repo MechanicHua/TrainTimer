@@ -21,6 +21,16 @@ export async function loadHistory(historyPath = getHistoryPath()) {
   }
 }
 
+export async function loadHistoryForBootstrap(historyPath = getHistoryPath(), options = {}) {
+  try {
+    const raw = await readFile(historyPath, 'utf8');
+    return normalizeHistoryForBootstrap(JSON.parse(raw), options);
+  } catch (error) {
+    if (error.code === 'ENOENT') return normalizeHistoryForBootstrap({}, options);
+    throw error;
+  }
+}
+
 export async function loadSolves(historyPath = getHistoryPath()) {
   return (await loadHistory(historyPath)).solves;
 }
@@ -203,6 +213,7 @@ export function normalizeSolve(solve) {
   const effectiveDuration = effectiveDurationMs == null ? 'DNF' : formatTime(effectiveDurationMs);
   const bluetoothMoves = normalizeBluetoothMoves(solve.bluetoothMoves);
   const bluetoothMoveLog = normalizeBluetoothMoveLog(solve.bluetoothMoveLog, bluetoothMoves);
+  const bluetoothStateCorrections = normalizeBluetoothStateCorrections(solve.bluetoothStateCorrections);
   const importedBluetoothMoveCount = Number(solve.bluetoothMoveCount);
   const bluetoothMoveCount = bluetoothMoves.length > 0
     ? countMoveSteps(bluetoothMoves)
@@ -241,6 +252,7 @@ export function normalizeSolve(solve) {
     timerSource: solve.timerSource === 'bluetooth' ? 'bluetooth' : 'manual',
     bluetoothMoves,
     bluetoothMoveLog,
+    bluetoothStateCorrections,
     bluetoothSolvedByStatePacket: solve.bluetoothSolvedByStatePacket === true,
     cfopStages,
     opEvents,
@@ -327,6 +339,37 @@ function normalizeBluetoothMoveLogEntry(entry, index) {
   };
 }
 
+function normalizeBluetoothStateCorrections(corrections) {
+  if (!Array.isArray(corrections)) return [];
+  return corrections
+    .map(normalizeBluetoothStateCorrection)
+    .filter(Boolean)
+    .map((entry, index) => ({ ...entry, index: index + 1 }));
+}
+
+function normalizeBluetoothStateCorrection(entry) {
+  const facelets = normalizeFacelets(entry?.facelets);
+  if (!facelets) return null;
+  const step = Number(entry?.step);
+  const elapsedMs = Number(entry?.elapsedMs);
+  const timestampMs = Number(entry?.timestampMs);
+  const moveCounter = Number(entry?.moveCounter);
+  return {
+    step: Number.isFinite(step) ? Math.max(0, Math.round(step)) : 0,
+    facelets,
+    solved: entry?.solved === true,
+    source: typeof entry?.source === 'string' ? entry.source : '',
+    protocol: typeof entry?.protocol === 'string' ? entry.protocol : '',
+    deviceName: typeof entry?.deviceName === 'string' ? entry.deviceName : '',
+    reason: typeof entry?.reason === 'string' ? entry.reason : '',
+    stateSignature: typeof entry?.stateSignature === 'string' ? entry.stateSignature : '',
+    moveCounter: Number.isFinite(moveCounter) ? Math.max(0, Math.round(moveCounter)) : null,
+    elapsedMs: Number.isFinite(elapsedMs) ? Math.max(0, Math.round(elapsedMs)) : null,
+    timestampMs: Number.isFinite(timestampMs) ? Math.max(0, Math.round(timestampMs)) : null,
+    isoTime: typeof entry?.isoTime === 'string' ? entry.isoTime : '',
+  };
+}
+
 function normalizeCfopStages(stages) {
   if (!Array.isArray(stages)) return [];
   return stages.map((stage) => {
@@ -336,6 +379,10 @@ function normalizeCfopStages(stages) {
     const completedAt = Number(stage?.completedAt);
     const startStep = Number(stage?.startStep);
     const endStep = Number(stage?.endStep);
+    const physicalCompletedAt = Number(stage?.physicalCompletedAt);
+    const physicalStartStep = Number(stage?.physicalStartStep);
+    const physicalEndStep = Number(stage?.physicalEndStep);
+    const physicalTurns = Number(stage?.physicalTurns);
     const startedAtElapsedMs = Number(stage?.startedAtElapsedMs);
     const firstMoveElapsedMs = Number(stage?.firstMoveElapsedMs);
     const completedAtElapsedMs = Number(stage?.completedAtElapsedMs);
@@ -352,6 +399,10 @@ function normalizeCfopStages(stages) {
       startStep: Number.isFinite(startStep) ? Math.max(0, Math.round(startStep)) : null,
       endStep: Number.isFinite(endStep) ? Math.max(0, Math.round(endStep)) : null,
       turns: Number.isFinite(turns) ? Math.max(0, Math.round(turns)) : 0,
+      physicalCompletedAt: Number.isFinite(physicalCompletedAt) ? Math.max(0, Math.round(physicalCompletedAt)) : null,
+      physicalStartStep: Number.isFinite(physicalStartStep) ? Math.max(0, Math.round(physicalStartStep)) : null,
+      physicalEndStep: Number.isFinite(physicalEndStep) ? Math.max(0, Math.round(physicalEndStep)) : null,
+      physicalTurns: Number.isFinite(physicalTurns) ? Math.max(0, Math.round(physicalTurns)) : null,
       durationMs: Number.isFinite(durationMs) ? Math.max(0, Math.round(durationMs)) : null,
       tps: Number.isFinite(tps) ? Math.max(0, tps) : null,
       startedAtElapsedMs: Number.isFinite(startedAtElapsedMs) ? Math.max(0, Math.round(startedAtElapsedMs)) : null,
@@ -615,6 +666,65 @@ export function normalizeHistory(history) {
     version: 2,
     sessions: [...sessionMap.values()],
     solves,
+  };
+}
+
+export function normalizeHistoryForBootstrap(history, options = {}) {
+  const rawSolves = Array.isArray(history.solves) ? history.solves : [];
+  const limit = Math.max(0, Math.round(Number(options.limit) || 0));
+  const recentRawSolves = limit > 0 ? rawSolves.slice(-limit) : rawSolves;
+  const usedSummarySolveIds = new Set();
+  const usedRecentSolveIds = new Set();
+  const summarySolves = rawSolves
+    .map(stripHeavySolveForBootstrap)
+    .map((solve) => dedupeSolveId(normalizeSolve(solve), usedSummarySolveIds));
+  const solves = recentRawSolves
+    .map(stripHeavySolveForBootstrap)
+    .map((solve) => dedupeSolveId(normalizeSolve(solve), usedRecentSolveIds));
+  const sessionMap = new Map();
+  sessionMap.set(defaultSession.id, defaultSession);
+
+  for (const session of Array.isArray(history.sessions) ? history.sessions : []) {
+    const normalized = normalizeSession(session);
+    sessionMap.set(normalized.id, normalized);
+  }
+
+  for (const solve of summarySolves) {
+    if (!sessionMap.has(solve.sessionId)) {
+      sessionMap.set(solve.sessionId, normalizeSession({ id: solve.sessionId, name: solve.sessionId }));
+    }
+  }
+
+  return {
+    version: 2,
+    sessions: [...sessionMap.values()],
+    solves,
+    summarySolves,
+    historyPartial: solves.length < summarySolves.length,
+    historyTotal: summarySolves.length,
+  };
+}
+
+function stripHeavySolveForBootstrap(solve = {}) {
+  const {
+    bluetoothMoveLog,
+    bluetoothMoves,
+    bluetoothStateCorrections,
+    bluetoothMoveCount,
+    ...rest
+  } = solve || {};
+  const importedBluetoothMoveCount = Number(bluetoothMoveCount);
+  const normalizedBluetoothMoves = Number.isFinite(importedBluetoothMoveCount)
+    ? []
+    : normalizeBluetoothMoves(bluetoothMoves);
+  const lightweightBluetoothMoveCount = Number.isFinite(importedBluetoothMoveCount)
+    ? Math.max(0, Math.round(importedBluetoothMoveCount))
+    : countMoveSteps(normalizedBluetoothMoves);
+
+  return {
+    ...rest,
+    bluetoothMoves: [],
+    bluetoothMoveCount: lightweightBluetoothMoveCount,
   };
 }
 

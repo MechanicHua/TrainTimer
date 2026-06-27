@@ -209,6 +209,7 @@ function parseCsvImport(text, options = {}) {
     assignOptionalString(solve, 'timerFinishedAt', value('timerFinishedAt'));
     assignOptionalNumber(solve, 'timerFinishedAtMs', value('timerFinishedAtMs'));
     assignOptionalArray(solve, 'bluetoothMoveLog', value('bluetoothMoveLog'), index + 2);
+    assignOptionalArray(solve, 'bluetoothStateCorrections', value('bluetoothStateCorrections'), index + 2);
     assignOptionalArray(solve, 'cfopStages', value('cfopStages'), index + 2);
     assignOptionalArray(solve, 'opEvents', value('opEvents'), index + 2);
     return solve;

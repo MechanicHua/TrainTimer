@@ -1,4 +1,11 @@
-import { applyMove, createSolvedCube, facesFromCube, isSolvedFaces, parseMoveToken, parseScramble } from './cube-state.js';
+import {
+  applyMoveToFacelets,
+  createSolvedCube,
+  facesFromFacelets,
+  faceletsFromScramble,
+  isSolvedFaces,
+  parseMoveToken,
+} from './cube-state.js';
 import { logicalMoveRecords } from './move-metrics.js';
 
 const cubeFaceNormals = {
@@ -57,6 +64,7 @@ function physicalMoveRecord(record) {
 export function solveCfopAnalysis(solve) {
   const records = solveMoveRecords(solve);
   const detectionRecords = solvePhysicalMoveRecords(solve);
+  const physicalStepToLogicalStep = logicalStepMapForPhysicalRecords(detectionRecords);
   const stageTemplate = cfopStageTemplate();
   const finalSolvedByStatePacket = solveFinalSolvedByStatePacket(solve);
   if (!solve?.scramble || (detectionRecords.length === 0 && !finalSolvedByStatePacket) || (solve.scramblePuzzle || 'three') !== 'three') {
@@ -82,6 +90,7 @@ export function solveCfopAnalysis(solve) {
     pll: null,
     confidence: '',
     crossSolvedPairCount: 0,
+    simultaneousCrossPairCount: 0,
   };
   const cfopDefinition = best?.definition || null;
 
@@ -101,15 +110,25 @@ export function solveCfopAnalysis(solve) {
   }));
 
   const boundaries = [
-    { key: 'cross', label: 'C', name: cfopCrossStageName(completions.crossSolvedPairCount), completedAt: completions.cross },
+    {
+      key: 'cross',
+      label: 'C',
+      name: cfopCrossStageName(completions.crossSolvedPairCount, completions.cross, completions.simultaneousCrossPairCount),
+      completedAt: completions.cross,
+    },
     ...pairStages,
     { key: 'oll', label: 'O', name: 'OLL', completedAt: completions.oll },
     { key: 'pll', label: 'P', name: 'PLL', completedAt: completions.pll },
   ];
-  let previousStep = 0;
+  let previousBoundary = { physicalStep: 0, logicalStep: 0 };
   const stages = boundaries.map((boundary) => {
-    const stage = cfopStageFromBoundary(boundary, detectionRecords, previousStep, solve);
-    if (boundary.completedAt != null) previousStep = Math.max(previousStep, boundary.completedAt);
+    const stage = cfopStageFromBoundary(boundary, detectionRecords, previousBoundary, solve, physicalStepToLogicalStep);
+    if (boundary.completedAt != null) {
+      previousBoundary = {
+        physicalStep: stage.physicalEndStep ?? previousBoundary.physicalStep,
+        logicalStep: stage.endStep ?? previousBoundary.logicalStep,
+      };
+    }
     return stage;
   });
 
@@ -143,6 +162,10 @@ export function cfopStagesForSave(solve) {
     startStep: stage.startStep ?? null,
     endStep: stage.endStep ?? null,
     turns: stage.turns,
+    physicalCompletedAt: stage.physicalCompletedAt ?? null,
+    physicalStartStep: stage.physicalStartStep ?? null,
+    physicalEndStep: stage.physicalEndStep ?? null,
+    physicalTurns: stage.physicalTurns ?? null,
     durationMs: Number.isFinite(stage.durationMs) ? Math.round(stage.durationMs) : null,
     tps: Number.isFinite(stage.tps) ? stage.tps : null,
     startedAtElapsedMs: Number.isFinite(stage.startedAtElapsedMs) ? Math.round(stage.startedAtElapsedMs) : null,
@@ -156,6 +179,42 @@ export function cfopStagesForSave(solve) {
     firstMoveIsoTime: stage.firstMoveIsoTime || '',
     completedAtIsoTime: stage.completedAtIsoTime || '',
   }));
+}
+
+function logicalStepMapForPhysicalRecords(records) {
+  const stepMap = new Map([[0, 0]]);
+  const logicalRecords = [];
+  for (let index = 0; index < records.length; index += 1) {
+    const physicalStep = index + 1;
+    const move = parseMoveToken(records[index]?.move);
+    const previous = logicalRecords.at(-1);
+    if (canMergePhysicalMoveIntoLogicalHalfTurn(previous, move)) {
+      previous.move = `${move.face}2`;
+      previous.suffix = '2';
+      previous.rawPhysicalSteps.push(physicalStep);
+      stepMap.set(physicalStep, previous.logicalStep);
+      continue;
+    }
+    const logicalStep = logicalRecords.length + 1;
+    logicalRecords.push({
+      logicalStep,
+      face: move.face,
+      suffix: move.suffix || '',
+      move: `${move.face}${move.suffix || ''}`,
+      rawPhysicalSteps: [physicalStep],
+    });
+    stepMap.set(physicalStep, logicalStep);
+  }
+  return stepMap;
+}
+
+function canMergePhysicalMoveIntoLogicalHalfTurn(previous, move) {
+  return previous
+    && move
+    && previous.face === move.face
+    && previous.suffix !== '2'
+    && move.suffix !== '2'
+    && previous.suffix === (move.suffix || '');
 }
 
 function createCfopDefinitions() {
@@ -224,19 +283,64 @@ function cfopFaceGridPosition(face, [x, y, z]) {
   throw new Error(`Unsupported face: ${face}`);
 }
 
-function cfopSnapshotsForSolve(solve, records) {
+export function solveFaceletSnapshotsForAnalysis(solve, records = solvePhysicalMoveRecords(solve)) {
   try {
-    const cube = createSolvedCube();
-    for (const move of parseScramble(solve.scramble)) applyMove(cube, move);
-    const snapshots = [{ step: 0, faces: facesFromCube(cube) }];
+    const correctionByStep = stateCorrectionsByStep(solve?.bluetoothStateCorrections, records.length);
+    let facelets = faceletsFromScramble(solve.scramble);
+    const initialCorrection = correctionByStep.get(0);
+    if (initialCorrection) facelets = initialCorrection.facelets;
+    const snapshots = [{ step: 0, facelets, correction: initialCorrection || null }];
     for (let index = 0; index < records.length; index += 1) {
-      applyMove(cube, parseMoveToken(records[index].move));
-      snapshots.push({ step: index + 1, faces: facesFromCube(cube) });
+      facelets = applyMoveToFacelets(facelets, records[index].move);
+      const step = index + 1;
+      const correction = correctionByStep.get(step);
+      if (correction) facelets = correction.facelets;
+      snapshots.push({ step, facelets, correction: correction || null });
     }
     return snapshots;
   } catch {
     return [];
   }
+}
+
+function cfopSnapshotsForSolve(solve, records) {
+  try {
+    const faceletSnapshots = solveFaceletSnapshotsForAnalysis(solve, records);
+    return faceletSnapshots.map((snapshot) => ({
+      step: snapshot.step,
+      faces: facesFromFacelets(snapshot.facelets),
+      correction: snapshot.correction || null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function stateCorrectionsByStep(corrections, maxStep) {
+  const byStep = new Map();
+  if (!Array.isArray(corrections)) return byStep;
+  for (const correction of corrections) {
+    const normalized = normalizeAnalysisStateCorrection(correction, maxStep);
+    if (normalized) byStep.set(normalized.step, normalized);
+  }
+  return byStep;
+}
+
+function normalizeAnalysisStateCorrection(correction, maxStep) {
+  const step = Number(correction?.step);
+  if (!Number.isInteger(step) || step < 0 || step > maxStep) return null;
+  const facelets = String(correction?.facelets || '').trim().toUpperCase();
+  if (!/^[URFDLB]{54}$/.test(facelets)) return null;
+  try {
+    facesFromFacelets(facelets);
+  } catch {
+    return null;
+  }
+  return {
+    ...correction,
+    step,
+    facelets,
+  };
 }
 
 function analyzeCfopDefinition(definition, snapshots, order, finalSolvedByStatePacket = false) {
@@ -251,6 +355,7 @@ function analyzeCfopDefinition(definition, snapshots, order, finalSolvedByStateP
     pll: null,
     crossStableSnapshots: 0,
     crossSolvedPairCount: 0,
+    simultaneousCrossPairCount: 0,
     order,
   };
 
@@ -283,6 +388,7 @@ function analyzeCfopDefinition(definition, snapshots, order, finalSolvedByStateP
     completions.pll = Math.max(completions.oll, lastStep);
   }
   completions.crossSolvedPairCount = cfopCrossSolvedPairCount(completions, definition);
+  completions.simultaneousCrossPairCount = cfopSimultaneousCrossPairCount(completions, definition);
   completions.score = cfopCandidateScore(completions, lastStep);
   completions.confidence = cfopCandidateConfidence(completions);
   return completions;
@@ -293,17 +399,25 @@ function cfopCrossSolvedPairCount(completions, definition) {
   return definition.pairSlots.filter((slot) => isFaceletSetSolved(completions.crossSnapshotFaces, slot.cells)).length;
 }
 
-function cfopCrossStageName(pairCount) {
+function cfopSimultaneousCrossPairCount(completions, definition) {
+  if (completions.cross == null) return 0;
+  return definition.pairSlots.filter((slot) => completions.pairs.get(slot.key) === completions.cross).length;
+}
+
+function cfopCrossStageName(pairCount, crossStep = null, simultaneousPairCount = pairCount) {
   if (!Number.isInteger(pairCount) || pairCount <= 0) return 'Cross';
+  if (pairCount >= 2 && simultaneousPairCount >= 2 && Number.isFinite(crossStep) && crossStep > 20) return 'Cross';
   return `${'x'.repeat(pairCount)}cross`;
 }
 
 function cfopCandidateScore(candidate, lastStep) {
   const progression = cfopCandidateProgression(candidate, lastStep);
+  const simultaneousPairPenalty = Math.max(0, (candidate.simultaneousCrossPairCount || 0) - 1)
+    * Math.min(1800, Math.max(0, candidate.cross || 0) * 45);
   let score = 0;
   if (candidate.cross != null) score += 1000 + Math.max(0, lastStep - candidate.cross);
   score += candidate.pairs.size * 520;
-  score += candidate.crossSolvedPairCount * 140;
+  score += candidate.crossSolvedPairCount * 60;
   if (candidate.f2l != null) score += 4200 + Math.max(0, lastStep - candidate.f2l) * 4;
   if (candidate.oll != null) score += 2600 + Math.max(0, lastStep - candidate.oll) * 2;
   if (candidate.pll != null) score += 2200;
@@ -312,6 +426,7 @@ function cfopCandidateScore(candidate, lastStep) {
   score += progression.distinctBoundaryCount * 90;
   score += Math.min(800, progression.phaseSpan * 8);
   score -= progression.finalCollapsedBoundaryCount * 260;
+  score -= simultaneousPairPenalty;
   return score;
 }
 
@@ -361,14 +476,19 @@ function cfopCandidateConfidence(candidate) {
   return '';
 }
 
-function cfopStageFromBoundary(boundary, records, previousStep, solve = null) {
+function cfopStageFromBoundary(boundary, records, previousBoundary, solve = null, physicalStepToLogicalStep = new Map([[0, 0]])) {
+  const previousPhysicalStep = Math.max(0, Number(previousBoundary?.physicalStep) || 0);
+  const previousLogicalStep = Math.max(0, Number(previousBoundary?.logicalStep) || 0);
   const completed = boundary.completedAt != null;
-  const endStep = completed ? Math.max(previousStep, boundary.completedAt) : previousStep;
-  const turns = completed ? Math.max(0, endStep - previousStep) : 0;
-  const startElapsed = elapsedAtSolveStep(records, previousStep);
-  const endElapsed = elapsedAtSolveStep(records, endStep);
-  const firstMoveStep = completed && turns > 0 ? previousStep + 1 : null;
-  const firstMoveElapsed = firstMoveStep == null ? null : elapsedAtSolveStep(records, firstMoveStep);
+  const physicalCompletedAt = completed ? Math.max(0, Math.round(Number(boundary.completedAt))) : null;
+  const physicalEndStep = completed ? Math.max(previousPhysicalStep, physicalCompletedAt) : previousPhysicalStep;
+  const endStep = completed ? logicalStepForPhysicalStep(physicalStepToLogicalStep, physicalEndStep) : previousLogicalStep;
+  const turns = completed ? Math.max(0, endStep - previousLogicalStep) : 0;
+  const physicalTurns = completed ? Math.max(0, physicalEndStep - previousPhysicalStep) : 0;
+  const physicalStartStep = completed && physicalTurns > 0 ? previousPhysicalStep + 1 : null;
+  const startElapsed = elapsedAtSolveStep(records, previousPhysicalStep);
+  const endElapsed = elapsedAtSolveStep(records, physicalEndStep);
+  const firstMoveElapsed = physicalStartStep == null ? null : elapsedAtSolveStep(records, physicalStartStep);
   const durationMs = completed && Number.isFinite(startElapsed) && Number.isFinite(endElapsed)
     ? Math.max(0, endElapsed - startElapsed)
     : null;
@@ -381,23 +501,37 @@ function cfopStageFromBoundary(boundary, records, previousStep, solve = null) {
     label: boundary.label,
     name: boundary.name,
     completed,
-    completedAt: boundary.completedAt,
-    startStep: completed && turns > 0 ? previousStep + 1 : null,
+    completedAt: completed ? endStep : null,
+    startStep: completed && turns > 0 ? previousLogicalStep + 1 : null,
     endStep: completed ? endStep : null,
     turns,
+    physicalCompletedAt,
+    physicalStartStep,
+    physicalEndStep: completed ? physicalEndStep : null,
+    physicalTurns,
     durationMs,
     tps,
     startedAtElapsedMs: completed ? startElapsed : null,
     firstMoveElapsedMs: firstMoveElapsed,
     completedAtElapsedMs: completed ? endElapsed : null,
     observationMs,
-    startedAtTimestampMs: completed ? timestampAtSolveStep(records, previousStep, solve) : null,
-    firstMoveTimestampMs: firstMoveStep == null ? null : timestampAtSolveStep(records, firstMoveStep, solve),
-    completedAtTimestampMs: completed ? timestampAtSolveStep(records, endStep, solve) : null,
-    startedAtIsoTime: completed ? isoTimeAtSolveStep(records, previousStep, solve) : '',
-    firstMoveIsoTime: firstMoveStep == null ? '' : isoTimeAtSolveStep(records, firstMoveStep, solve),
-    completedAtIsoTime: completed ? isoTimeAtSolveStep(records, endStep, solve) : '',
+    startedAtTimestampMs: completed ? timestampAtSolveStep(records, previousPhysicalStep, solve) : null,
+    firstMoveTimestampMs: physicalStartStep == null ? null : timestampAtSolveStep(records, physicalStartStep, solve),
+    completedAtTimestampMs: completed ? timestampAtSolveStep(records, physicalEndStep, solve) : null,
+    startedAtIsoTime: completed ? isoTimeAtSolveStep(records, previousPhysicalStep, solve) : '',
+    firstMoveIsoTime: physicalStartStep == null ? '' : isoTimeAtSolveStep(records, physicalStartStep, solve),
+    completedAtIsoTime: completed ? isoTimeAtSolveStep(records, physicalEndStep, solve) : '',
   };
+}
+
+function logicalStepForPhysicalStep(stepMap, physicalStep) {
+  if (stepMap.has(physicalStep)) return stepMap.get(physicalStep);
+  let step = physicalStep;
+  while (step > 0) {
+    step -= 1;
+    if (stepMap.has(step)) return stepMap.get(step);
+  }
+  return 0;
 }
 
 function elapsedAtSolveStep(records, step) {

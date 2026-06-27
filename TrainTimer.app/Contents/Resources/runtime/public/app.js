@@ -634,6 +634,14 @@ let appState = 'loading';
 let scramble = null;
 let solves = [];
 let sessions = [];
+let fullHistoryLoaded = false;
+let fullHistoryRequestId = 0;
+let scrambleLoadRequestId = 0;
+let scrambleLoadPromise = null;
+let nextSolvePromise = null;
+let historyPartial = false;
+let historyTotal = 0;
+let bootstrapSessionSummaries = null;
 let inspectionEnabled = localStorage.getItem('trainTimer.inspection') === '1';
 let hideTimerWhileSolving = localStorage.getItem('trainTimer.hideTimerWhileSolving') === '1';
 let timerFreezeMs = normalizeTimerFreezeMs(localStorage.getItem('trainTimer.timerFreezeMs'));
@@ -733,6 +741,7 @@ let bluetoothReconnectDevices = [];
 let bluetoothSubscriptions = [];
 let bluetoothLog = [];
 let bluetoothMoves = [];
+let bluetoothStateCorrections = [];
 let bluetoothSolved = false;
 let bluetoothSolvedByStatePacket = false;
 let bluetoothSolveFacelets = '';
@@ -906,9 +915,14 @@ let cube3dAnimationTimer = 0;
 let cube3dTelemetryFrame = 0;
 let cube3dTelemetryTimer = 0;
 let cube3dTelemetryLastRenderAt = 0;
+let timerFocusTransitionTimer = 0;
+let timerDisplayLayoutTimer = 0;
 let timerDisplayFitKey = '';
 let timerDisplayMeasureKey = '';
 let timerDisplayTextKey = '';
+const bluetooth3dCanvasHomeParent = elements.bluetooth3dCanvas?.parentElement || null;
+const bluetooth3dCanvasHomeNextSibling = elements.bluetooth3dCanvas?.nextSibling || null;
+let bluetooth3dFocusHost = null;
 let performanceCounters = createPerformanceCounters();
 
 applyAccentTheme();
@@ -1334,6 +1348,7 @@ window.__trainTimerDebug = {
       appState,
       bluetoothMoveCount: bluetoothMoveStepCount(),
       bluetoothMoves: bluetoothMoveSequence(),
+      bluetoothStateCorrections: bluetoothStateCorrectionSequence(),
       bluetoothMetadata: bluetoothSolveMetadata(),
       bluetoothGyro,
       bluetooth3dPreviewEnabled,
@@ -1692,28 +1707,67 @@ await bootstrap();
 
 async function bootstrap() {
   try {
-    const data = await getJson(`/api/bootstrap?${new URLSearchParams({ puzzle: scramblePuzzle }).toString()}`);
-    scramble = data.scramble;
-    solves = data.solves;
-    sessions = data.sessions;
+    const data = await getJson(`/api/bootstrap?${new URLSearchParams({ puzzle: scramblePuzzle, historyOnly: '1' }).toString()}`);
+    scramble = data.scramble || null;
+    solves = Array.isArray(data.solves) ? data.solves : [];
+    sessions = Array.isArray(data.sessions) ? data.sessions : [];
+    historyPartial = data.historyPartial === true;
+    historyTotal = Number.isFinite(Number(data.historyTotal)) ? Math.max(0, Math.round(Number(data.historyTotal))) : solves.length;
+    bootstrapSessionSummaries = data.sessionSummaries && typeof data.sessionSummaries === 'object'
+      ? data.sessionSummaries
+      : null;
     if (!sessions.some((session) => session.id === currentSessionId)) currentSessionId = 'default';
     applyCurrentSessionPuzzle(scramble?.puzzle || scramblePuzzle);
-    if ((scramble?.puzzle || 'three') !== scramblePuzzle) {
-      const nextScramble = await postJson('/api/scramble', { puzzle: scramblePuzzle });
-      scramble = nextScramble.scramble;
-    }
     resetScrambleGuide();
     elements.historyPath.textContent = data.historyPath;
-    appState = 'ready';
+    appState = scramble?.scramble ? 'ready' : 'loading';
     render();
     setBluetoothConnectedState(false);
-    await refreshBluetoothReconnectDevices();
-    void autoReconnectBluetoothCube();
+    void loadScramble({ force: true, markReady: true });
+    scheduleFullHistoryLoad();
+    void refreshBluetoothReconnectDevices().then(() => autoReconnectBluetoothCube());
   } catch (error) {
     appState = 'error';
     elements.statusText.textContent = '无法连接本地服务';
     elements.statusText.classList.add('error');
     elements.timerHint.textContent = error.message;
+  }
+}
+
+function scheduleFullHistoryLoad() {
+  const loadHistory = () => {
+    void loadFullHistoryInBackground();
+  };
+  if ('requestIdleCallback' in window) {
+    window.setTimeout(() => {
+      window.requestIdleCallback(loadHistory, { timeout: 3200 });
+    }, 1200);
+    return;
+  }
+  window.setTimeout(loadHistory, 1800);
+}
+
+async function loadFullHistoryInBackground() {
+  const requestId = fullHistoryRequestId + 1;
+  fullHistoryRequestId = requestId;
+  const solveCountAtStart = solves.length;
+  try {
+    const data = await getJson('/api/solves');
+    if (requestId !== fullHistoryRequestId) return;
+    const nextSolves = Array.isArray(data.solves) ? data.solves : solves;
+    if (solves.length > solveCountAtStart && solves.length > nextSolves.length) return;
+    solves = nextSolves;
+    sessions = Array.isArray(data.sessions) ? data.sessions : sessions;
+    historyPartial = false;
+    historyTotal = solves.length;
+    bootstrapSessionSummaries = data.sessionSummaries && typeof data.sessionSummaries === 'object'
+      ? data.sessionSummaries
+      : null;
+    fullHistoryLoaded = true;
+    if (data.historyPath) elements.historyPath.textContent = data.historyPath;
+    render();
+  } catch (error) {
+    console.warn('完整历史后台加载失败', error);
   }
 }
 
@@ -2284,11 +2338,13 @@ async function finishTiming(options = {}) {
   const bluetoothMetadata = bluetoothSolveMetadata();
   const bluetoothMovesForSave = bluetoothMoveSequence();
   const bluetoothMoveLogForSave = bluetoothMoveRecordSequence();
+  const bluetoothStateCorrectionsForSave = bluetoothStateCorrectionSequence();
   const cfopStages = cfopStagesForSave({
     scramble: scramble.scramble,
     scramblePuzzle: scramble.puzzle || scramblePuzzle,
     bluetoothMoves: bluetoothMovesForSave,
     bluetoothMoveLog: bluetoothMoveLogForSave,
+    bluetoothStateCorrections: bluetoothStateCorrectionsForSave,
     bluetoothSolvedByStatePacket,
   });
   const opEvents = opEventsForSave({
@@ -2298,6 +2354,7 @@ async function finishTiming(options = {}) {
     timerStartedAtMs,
     bluetoothMoves: bluetoothMovesForSave,
     bluetoothMoveLog: bluetoothMoveLogForSave,
+    bluetoothStateCorrections: bluetoothStateCorrectionsForSave,
     bluetoothSolvedByStatePacket,
   });
 
@@ -2317,6 +2374,7 @@ async function finishTiming(options = {}) {
     timerSource: finishSource,
     bluetoothMoves: bluetoothMovesForSave,
     bluetoothMoveLog: bluetoothMoveLogForSave,
+    bluetoothStateCorrections: bluetoothStateCorrectionsForSave,
     bluetoothSolvedByStatePacket,
     cfopStages,
     opEvents,
@@ -2465,6 +2523,16 @@ function launchPbConfetti() {
 }
 
 async function nextSolve() {
+  if (nextSolvePromise) return nextSolvePromise;
+  nextSolvePromise = runNextSolve();
+  try {
+    return await nextSolvePromise;
+  } finally {
+    nextSolvePromise = null;
+  }
+}
+
+async function runNextSolve() {
   clearBluetoothNextSolveGestureCandidate();
   if (scrambleLocked && scramble?.scramble) {
     resetBluetoothSolveTracking();
@@ -2578,11 +2646,24 @@ async function loadScramble(options = {}) {
     render();
     return;
   }
+  if (scrambleLoadPromise && !options.force) return scrambleLoadPromise;
+  const requestId = scrambleLoadRequestId + 1;
+  scrambleLoadRequestId = requestId;
+  scrambleLoadPromise = runLoadScramble(options, requestId);
+  try {
+    return await scrambleLoadPromise;
+  } finally {
+    if (scrambleLoadPromise && requestId === scrambleLoadRequestId) scrambleLoadPromise = null;
+  }
+}
+
+async function runLoadScramble(options = {}, requestId = scrambleLoadRequestId) {
   applyCurrentSessionPuzzle();
   clearBluetoothNextSolveGestureCandidate();
   elements.scrambleButton.disabled = true;
   try {
     const data = await postJson('/api/scramble', { puzzle: scramblePuzzle });
+    if (requestId !== scrambleLoadRequestId) return;
     scramble = data.scramble;
     scramblePuzzle = scramble.puzzle || sessionPuzzleForId(currentSessionId, scramblePuzzle);
     localStorage.setItem('trainTimer.scramblePuzzle', scramblePuzzle);
@@ -2593,9 +2674,21 @@ async function loadScramble(options = {}) {
     resetBluetoothSolveTracking();
     resetScrambleGuide();
     syncCurrentScrambleGuideState();
+    if (options.markReady && appState === 'loading') appState = 'ready';
     render();
+  } catch (error) {
+    if (options.markReady && appState === 'loading') {
+      appState = 'error';
+      elements.statusText.textContent = '打乱加载失败';
+      elements.statusText.classList.add('error');
+      elements.timerHint.textContent = error.message;
+    } else {
+      throw error;
+    }
   } finally {
-    elements.scrambleButton.disabled = scrambleLocked || ['timing', 'inspection', 'hold', 'saving'].includes(appState);
+    if (requestId === scrambleLoadRequestId) {
+      elements.scrambleButton.disabled = scrambleLocked || ['timing', 'inspection', 'hold', 'saving'].includes(appState);
+    }
   }
 }
 
@@ -2655,12 +2748,13 @@ async function updateLatestSolvePenalty(penalty) {
 async function deleteSolve(id) {
   const solve = solves.find((item) => item.id === id);
   if (!solve || !confirmSolveDeletion(`删除成绩 ${displaySolveTime(solve)}？`)) return;
+  const deletionContext = solveDeletionContext([solve]);
   const data = await requestJson(`/api/solves/${encodeURIComponent(id)}`, { method: 'DELETE' });
   stageDeletedSolves([solve]);
   solves = data.solves;
   selectedSolveIds.delete(id);
   if (currentDetailSolveId === id) elements.solveDialog.close();
-  render();
+  await renderAfterSolveDeletion(deletionContext);
 }
 
 async function deleteCurrentDetailSolve() {
@@ -2671,13 +2765,13 @@ async function deleteCurrentDetailSolve() {
 async function deleteLatestSolve() {
   const solve = latestSessionSolve();
   if (!solve || !confirmSolveDeletion(`删除上一把 ${displaySolveTime(solve)}？`)) return;
+  const deletionContext = solveDeletionContext([solve]);
   const data = await requestJson(`/api/solves/${encodeURIComponent(solve.id)}`, { method: 'DELETE' });
   stageDeletedSolves([solve]);
   solves = data.solves;
   selectedSolveIds.delete(solve.id);
   if (currentDetailSolveId === solve.id) elements.solveDialog.close();
-  if (appState === 'done') appState = 'ready';
-  render();
+  await renderAfterSolveDeletion(deletionContext);
 }
 
 async function deleteSelectedSolves() {
@@ -2685,12 +2779,13 @@ async function deleteSelectedSolves() {
   if (ids.length === 0) return;
   if (!confirmSolveDeletion(`删除选中的 ${ids.length} 条成绩？`)) return;
   const deleted = solves.filter((solve) => selectedSolveIds.has(solve.id));
+  const deletionContext = solveDeletionContext(deleted);
   const data = await postJson('/api/solves/delete', { ids });
   stageDeletedSolves(deleted);
   solves = data.solves;
   selectedSolveIds.clear();
   if (ids.includes(currentDetailSolveId)) elements.solveDialog.close();
-  render();
+  await renderAfterSolveDeletion(deletionContext);
 }
 
 function openMarkPenaltyDialog() {
@@ -2857,12 +2952,61 @@ async function clearAllSolves() {
   const ids = filteredSolves().map((solve) => solve.id);
   if (ids.length === 0 || !confirmSolveDeletion('清空当前会话的所有成绩？清空后可用撤销删除恢复本次操作。')) return;
   const deleted = solves.filter((solve) => ids.includes(solve.id));
+  const deletionContext = solveDeletionContext(deleted);
   const data = await postJson('/api/solves/delete', { ids });
   stageDeletedSolves(deleted);
   solves = data.solves;
   selectedSolveIds.clear();
   if (ids.includes(currentDetailSolveId)) elements.solveDialog.close();
-  render();
+  await renderAfterSolveDeletion(deletionContext);
+}
+
+function solveDeletionContext(deletedSolves) {
+  return {
+    appState,
+    latestSolveId: latestSessionSolve()?.id || '',
+    deletedIds: new Set((Array.isArray(deletedSolves) ? deletedSolves : [])
+      .map((solve) => solve?.id)
+      .filter(Boolean)),
+  };
+}
+
+function shouldPrepareNextSolveAfterDeletion(context) {
+  return context?.appState === 'done'
+    && Boolean(context.latestSolveId)
+    && context.deletedIds instanceof Set
+    && context.deletedIds.has(context.latestSolveId);
+}
+
+async function renderAfterSolveDeletion(context) {
+  if (!shouldPrepareNextSolveAfterDeletion(context)) {
+    render();
+    return;
+  }
+  await prepareNextSolveAfterDeletedLatest();
+}
+
+async function prepareNextSolveAfterDeletedLatest() {
+  resetBluetoothNextSolveGesture();
+  resetBluetoothSolveTracking();
+  resetScrambleGuide();
+  activePenalty = 'ok';
+  clearInspectionEntryAnimation();
+  inspectionStartedAt = 0;
+  activeInspectionUsed = false;
+  inspectionBluetoothStartBlockedUntil = 0;
+  appState = 'ready';
+  syncCurrentScrambleGuideState();
+  if (scrambleLocked) {
+    render();
+    return;
+  }
+  try {
+    await loadScramble({ force: true });
+  } catch (error) {
+    addBluetoothLog('错误', '删除后加载新打乱失败', error.message || String(error));
+    render();
+  }
 }
 
 function confirmSolveDeletion(message) {
@@ -3488,17 +3632,26 @@ function renderSolveSolutionPanel(solve) {
 
 function renderCfopStageCard(stage) {
   const card = document.createElement('div');
-  card.className = `solve-cfop-card ${stage.completed ? 'completed' : 'pending'}`;
-  const timeText = Number.isFinite(stage.durationMs) ? formatTime(stage.durationMs) : '--';
-  const tpsText = Number.isFinite(stage.tps) ? `${stage.tps.toFixed(2)} TPS` : 'TPS --';
+  const skipKind = cfopOpSkipKind(stage);
+  card.className = `solve-cfop-card ${stage.completed ? 'completed' : 'pending'}${skipKind ? ' op-skip' : ''}`;
+  const timeText = skipKind ? '跳过' : (Number.isFinite(stage.durationMs) ? formatTime(stage.durationMs) : '--');
+  const nameText = skipKind === 'oll' ? '跳 O' : (skipKind === 'pll' ? '跳 P' : stage.name);
+  const tpsText = skipKind ? `${skipKind.toUpperCase()} Skip` : (Number.isFinite(stage.tps) ? `${stage.tps.toFixed(2)} TPS` : 'TPS --');
   const observationText = Number.isFinite(stage.observationMs) ? ` · 观察 ${formatTime(stage.observationMs)}` : '';
   card.innerHTML = `
     <strong>${escapeHtml(stage.label)}</strong>
-    <span>${escapeHtml(stage.name)}</span>
+    <span>${escapeHtml(nameText)}</span>
     <em>${stage.completed ? escapeHtml(timeText) : '未完成'}</em>
     <small>${stage.turns} 步 · ${escapeHtml(tpsText)}${escapeHtml(observationText)}</small>
   `;
   return card;
+}
+
+function cfopOpSkipKind(stage) {
+  if (!stage?.completed || Number(stage.turns) !== 0) return '';
+  if (stage.key === 'oll' || stage.label === 'O') return 'oll';
+  if (stage.key === 'pll' || stage.label === 'P') return 'pll';
+  return '';
 }
 
 function opEventKey(event) {
@@ -5118,6 +5271,7 @@ function processDecodedGanBluetoothPacket(
   const duplicateMovePacket = ganBluetoothIsDuplicateMovePacket(decoded, previousMoveCounter);
   const parsedMoves = duplicateMovePacket ? emptyBluetoothMoves : ganBluetoothMovesFromDecoded(decoded, previousMoveCounter);
   const hasParsedMoves = parsedMoves.length > 0;
+  maybeRecordGanStateCorrectionForPacket(decoded, decodedFacelets, parsedMoves, statePacketSolved);
   bluetoothGanLastMoveCounter = ganBluetoothNextMoveCounter(previousMoveCounter, decoded, parsedMoves);
   if (hasMoveCounter && decoded.mode === 'state') bluetoothGanLastStateCounter = decoded.moveCounter;
   if (shouldSkipUnchangedGanStatePacket(
@@ -5516,9 +5670,17 @@ function syncBluetoothSolveCubeFromGanState(decoded, faces = null, facelets = ''
   }
 
   try {
-    bluetoothSolveFacelets = /^[URFDLB]{54}$/.test(syncedFacelets)
+    const previousFacelets = bluetoothSolveFacelets;
+    const nextFacelets = /^[URFDLB]{54}$/.test(syncedFacelets)
       ? syncedFacelets
       : faceletsFromFaces(faces);
+    recordBluetoothStateCorrection(decoded, nextFacelets, {
+      previousFacelets,
+      reason: decoded?.stateSolved === true ? 'state-solved-sync' : 'state-sync',
+    });
+    bluetoothSolveFacelets = /^[URFDLB]{54}$/.test(syncedFacelets)
+      ? syncedFacelets
+      : nextFacelets;
     bluetoothSolveCubeValid = true;
     bluetoothMoveDerivedFaces = faces || null;
     bluetoothMoveDerivedFacelets = bluetoothSolveFacelets;
@@ -5536,6 +5698,28 @@ function syncBluetoothSolveCubeFromGanState(decoded, faces = null, facelets = ''
     bluetoothMoveDerivedSolved = false;
     addBluetoothLog('警告', 'GAN 状态校准失败，继续使用转动包判定', error.message || String(error));
     return false;
+  }
+}
+
+function maybeRecordGanStateCorrectionForPacket(decoded, facelets = '', parsedMoves = emptyBluetoothMoves, statePacketSolved = false) {
+  const text = String(facelets || '').trim().toUpperCase();
+  if (appState !== 'timing' || !/^[URFDLB]{54}$/.test(text)) return false;
+  const predictedFacelets = predictedBluetoothSolveFaceletsAfterMoves(parsedMoves);
+  return recordBluetoothStateCorrection(decoded, text, {
+    previousFacelets: predictedFacelets,
+    step: bluetoothMoveSequence().length + parsedMoves.length,
+    reason: statePacketSolved ? 'state-solved-sync' : 'state-sync',
+  });
+}
+
+function predictedBluetoothSolveFaceletsAfterMoves(moves = emptyBluetoothMoves) {
+  const startFacelets = String(bluetoothSolveFacelets || '');
+  if (!/^[URFDLB]{54}$/.test(startFacelets)) return startFacelets;
+  if (!Array.isArray(moves) || moves.length === 0) return startFacelets;
+  try {
+    return applyMovesToFacelets(startFacelets, moves);
+  } catch {
+    return startFacelets;
   }
 }
 
@@ -6262,6 +6446,7 @@ function updateBluetoothLogDialogNode(row, state) {
 function clearBluetoothLog() {
   bluetoothLog = [];
   bluetoothMoves = [];
+  bluetoothStateCorrections = [];
   bumpBluetoothMovesVersion();
   bluetoothSolved = false;
   bluetoothSolvedByStatePacket = false;
@@ -6377,7 +6562,6 @@ function addBluetoothMoves(moves, source, protocol = '', deviceName = '') {
     };
   }
   for (let index = records.length - 1; index >= 0; index -= 1) bluetoothMoves.unshift(records[index]);
-  if (bluetoothMoves.length > 160) bluetoothMoves.length = 160;
   bumpBluetoothMovesVersion();
   bluetoothSolved = updateBluetoothSolvedFromMoves(parsedMoves);
   bluetoothSolvedByStatePacket = false;
@@ -6612,6 +6796,56 @@ function bluetoothMoveRecordSequence() {
   return records;
 }
 
+function bluetoothStateCorrectionSequence() {
+  return bluetoothStateCorrections.map((entry, index) => ({
+    index: index + 1,
+    step: entry.step,
+    facelets: entry.facelets,
+    solved: entry.solved === true,
+    source: entry.source || '',
+    protocol: entry.protocol || '',
+    deviceName: entry.deviceName || '',
+    reason: entry.reason || '',
+    stateSignature: entry.stateSignature || '',
+    moveCounter: Number.isInteger(entry.moveCounter) ? entry.moveCounter : null,
+    elapsedMs: Number.isFinite(entry.elapsedMs) ? entry.elapsedMs : null,
+    timestampMs: Number.isFinite(entry.timestampMs) ? entry.timestampMs : null,
+    isoTime: entry.isoTime || '',
+  }));
+}
+
+function recordBluetoothStateCorrection(decoded, facelets, options = {}) {
+  const text = String(facelets || '').trim().toUpperCase();
+  if (appState !== 'timing' || !/^[URFDLB]{54}$/.test(text)) return false;
+  const previousFacelets = String(options.previousFacelets || '');
+  if (previousFacelets === text) return false;
+
+  const requestedStep = Number(options.step);
+  const step = Number.isInteger(requestedStep)
+    ? Math.max(0, requestedStep)
+    : bluetoothMoveSequence().length;
+  const elapsedMs = startedAt > 0 ? Math.max(0, Math.round(performance.now() - startedAt)) : null;
+  const timestampMs = timerStartedAtMs > 0 && elapsedMs != null ? timerStartedAtMs + elapsedMs : Date.now();
+  const previous = bluetoothStateCorrections.at(-1);
+  if (previous?.step === step && previous.facelets === text) return false;
+
+  bluetoothStateCorrections.push({
+    step,
+    facelets: text,
+    solved: isSolvedFacelets(text),
+    source: options.source || 'GAN 状态包',
+    protocol: decoded?.protocol || options.protocol || '',
+    deviceName: bluetoothDevice?.name || '',
+    reason: options.reason || 'state-sync',
+    stateSignature: decoded?.stateSignature || cubeFaceletSignature(text),
+    moveCounter: Number.isInteger(decoded?.moveCounter) ? decoded.moveCounter : null,
+    elapsedMs,
+    timestampMs,
+    isoTime: new Date(timestampMs).toISOString(),
+  });
+  return true;
+}
+
 function bluetoothSolveMetadata() {
   const protocols = [];
   const sources = [];
@@ -6640,6 +6874,7 @@ function rememberUniqueEntryText(output, seen, value) {
 
 function resetBluetoothSolveTracking() {
   bluetoothMoves = [];
+  bluetoothStateCorrections = [];
   bumpBluetoothMovesVersion();
   bluetoothSolved = false;
   bluetoothSolvedByStatePacket = false;
@@ -7145,6 +7380,16 @@ function resizeBluetoothCube3d() {
     cube3d.camera.updateProjectionMatrix();
     markBluetoothCube3dDirty();
   }
+}
+
+function scheduleBluetoothCube3dLayoutResize() {
+  if (!elements.bluetooth3dPanel || elements.bluetooth3dPanel.hidden) return;
+  const refresh = () => {
+    resizeBluetoothCube3d();
+    renderBluetoothCube3dCurrent();
+  };
+  requestAnimationFrame(refresh);
+  window.setTimeout(refresh, 320);
 }
 
 function handleBluetoothCube3dPointerDown(event) {
@@ -7990,9 +8235,39 @@ function renderOpenDialogs() {
   renderMergeSessionDialog();
 }
 
+function ensureBluetooth3dFocusHost() {
+  if (bluetooth3dFocusHost) return bluetooth3dFocusHost;
+  bluetooth3dFocusHost = document.createElement('div');
+  bluetooth3dFocusHost.className = 'bluetooth-3d-focus-host';
+  bluetooth3dFocusHost.hidden = true;
+  document.body.appendChild(bluetooth3dFocusHost);
+  return bluetooth3dFocusHost;
+}
+
+function syncBluetooth3dFocusHost(active = timerFocusActive() && bluetooth3dUiActive()) {
+  const canvas = elements.bluetooth3dCanvas;
+  if (!canvas || !bluetooth3dCanvasHomeParent) return;
+  const keepForLeave = !active && document.body.dataset.focusTransition === 'leave' && bluetooth3dUiActive();
+  if (active || keepForLeave) {
+    const host = ensureBluetooth3dFocusHost();
+    if (canvas.parentElement !== host) host.appendChild(canvas);
+    host.hidden = false;
+    return;
+  }
+
+  if (canvas.parentElement !== bluetooth3dCanvasHomeParent) {
+    const nextSibling = bluetooth3dCanvasHomeNextSibling?.parentNode === bluetooth3dCanvasHomeParent
+      ? bluetooth3dCanvasHomeNextSibling
+      : null;
+    bluetooth3dCanvasHomeParent.insertBefore(canvas, nextSibling);
+  }
+  if (bluetooth3dFocusHost) bluetooth3dFocusHost.hidden = true;
+}
+
 function renderPreviewMode() {
   const replayMode = solveReplayPreviewActive && solveReplayFacelets;
   const liveMode = replayMode || bluetoothLivePreviewMode();
+  setDatasetValue(document.body, 'live3d', liveMode ? 'true' : 'false');
   const titleText = replayMode ? '复原回放' : (liveMode ? '蓝牙魔方状态' : '打乱结果预览');
   const metaText = replayMode
     ? '完整解法播放'
@@ -8010,6 +8285,7 @@ function renderPreviewMode() {
     previewModeRenderKey = renderKey;
     elements.cubeNet.hidden = liveMode;
     elements.bluetooth3dPanel.hidden = !liveMode;
+    if (liveMode) scheduleBluetoothCube3dLayoutResize();
     setElementText(elements.previewTitle, titleText);
     setElementText(elements.previewMeta, metaText);
     if (!liveMode) {
@@ -8018,6 +8294,7 @@ function renderPreviewMode() {
       cancelBluetooth3dMovePulse();
     }
   }
+  syncBluetooth3dFocusHost(liveMode && timerFocusActive() && bluetooth3dUiActive());
 
   if (liveMode) {
     renderBluetooth3dMoveIndicator({ pulse: false });
@@ -8027,12 +8304,14 @@ function renderPreviewMode() {
         if (!ready) return;
         resizeBluetoothCube3d();
         renderBluetoothCube3dCurrent();
+        scheduleBluetoothCube3dLayoutResize();
       });
       return;
     }
     if (modeChanged) markBluetoothCube3dDirty();
     resizeBluetoothCube3d();
     renderBluetoothCube3dCurrent();
+    if (modeChanged) scheduleBluetoothCube3dLayoutResize();
   }
 }
 
@@ -8084,6 +8363,15 @@ function invalidateTimerDisplayFit() {
   timerDisplayMeasureKey = '';
   timerDisplayTextKey = '';
   setTimerDisplayText(elements.timerDisplay.textContent);
+}
+
+function scheduleTimerDisplayFitInvalidation() {
+  invalidateTimerDisplayFit();
+  window.clearTimeout(timerDisplayLayoutTimer);
+  timerDisplayLayoutTimer = window.setTimeout(() => {
+    timerDisplayLayoutTimer = 0;
+    invalidateTimerDisplayFit();
+  }, 380);
 }
 
 function timingDisplayText(elapsedMs) {
@@ -8192,12 +8480,22 @@ function renderTimer() {
   incrementPerformanceCounter('renderTimerCalls');
   setDatasetValue(document.body, 'state', appState);
   setDatasetValue(document.body, 'holdReady', appState === 'hold' && holdConfirmed ? 'true' : 'false');
+  const previousFocusActive = document.body.dataset.focus === 'true';
   const focusActive = timerFocusActive();
   if (!focusActive && document.body.dataset.inspectionEnter) clearInspectionEntryAnimation();
-  setDatasetValue(document.body, 'focus', focusActive ? 'true' : 'false');
+  setTimerFocusDataset(focusActive);
+  syncBluetooth3dFocusHost(focusActive && bluetooth3dUiActive());
+  if (previousFocusActive !== focusActive) {
+    scheduleTimerDisplayFitInvalidation();
+    if (bluetooth3dUiActive()) scheduleBluetoothCube3dLayoutResize();
+  }
   elements.inspectionToggle.disabled = appState === 'timing' || appState === 'inspection' || appState === 'hold';
 
-  if (appState === 'ready') {
+  if (appState === 'loading') {
+    setElementText(elements.statusText, '加载中');
+    setTimerDisplayText('0.000');
+    setElementText(elements.timerHint, '正在生成打乱');
+  } else if (appState === 'ready') {
     setElementText(elements.statusText, '准备');
     setTimerDisplayText('0.000');
     setElementText(
@@ -8261,6 +8559,24 @@ function setElementText(element, text) {
 function setDatasetValue(element, key, value) {
   const nextValue = String(value ?? '');
   if (element?.dataset?.[key] !== nextValue) element.dataset[key] = nextValue;
+}
+
+function setTimerFocusDataset(focusActive) {
+  const nextValue = focusActive ? 'true' : 'false';
+  if (document.body.dataset.focus === nextValue) return false;
+  window.clearTimeout(timerFocusTransitionTimer);
+  const transition = focusActive ? 'enter' : 'leave';
+  document.body.dataset.focusTransition = transition;
+  setDatasetValue(document.body, 'focus', nextValue);
+  timerFocusTransitionTimer = window.setTimeout(() => {
+    if (document.body.dataset.focusTransition === transition) delete document.body.dataset.focusTransition;
+    timerFocusTransitionTimer = 0;
+    if (transition === 'leave') {
+      syncBluetooth3dFocusHost(timerFocusActive() && bluetooth3dUiActive());
+      if (bluetooth3dUiActive()) scheduleBluetoothCube3dLayoutResize();
+    }
+  }, 360);
+  return true;
 }
 
 function timerFocusActive() {
@@ -8351,7 +8667,7 @@ function renderScrambleText(correctionSnapshot = null) {
 
   if (scrambleGuideErrorIndex != null) {
     const correction = correctionSnapshot || scrambleGuideCorrectionSnapshot();
-    const correctionSegments = correction.segments || normalizeCorrectionSegments(correction.moves || []);
+    const correctionSegments = normalizeCorrectionSegments(correction.moves || [], correction.segments);
     if (correctionSegments.length === 0) {
       const message = correction.atTarget
         ? '当前状态已到达目标打乱'
@@ -8412,10 +8728,13 @@ function renderScrambleText(correctionSnapshot = null) {
   }
   const guideKey = [
     'guide',
+    bluetoothScrambleGuideActive() ? 1 : 0,
     scrambleGuideCompleted ? 1 : 0,
     scrambleGuideCorrectPrefix,
     scrambleGuidePartialIndex ?? '-',
     scrambleGuideErrorIndex ?? '-',
+    scrambleGuideErrorMove || '',
+    scrambleGuideAwaitingSyncedState ? 1 : 0,
     appState,
   ].join('|');
   if (guideKey === scrambleTextRenderKey) return;
@@ -8437,8 +8756,11 @@ function renderPlainScrambleText(key, text) {
 }
 
 function correctionMoveClass(segment, index) {
+  const kind = correctionSegmentKind(segment?.kind);
   return [
     'scramble-move',
+    'correction',
+    `correction-${kind}`,
     index === 0 ? 'current' : '',
   ].filter(Boolean).join(' ');
 }
@@ -8932,7 +9254,7 @@ function scrambleGuideCorrectionRouteMoves(facelets) {
 
 function scrambleGuideCorrectionRouteSegments(facelets, moves = []) {
   const route = scrambleGuideCorrectionRouteEntry(facelets);
-  if (route?.segments) return route.segments;
+  if (route?.segments) return normalizeCorrectionSegments([], route.segments);
   return normalizeCorrectionSegments(moves);
 }
 
@@ -8950,11 +9272,32 @@ function normalizeCorrectionSegments(moves, segments = null, fallbackKind = 'sol
       kind: correctionSegmentKind(segment?.kind || fallbackKind),
     });
   }
-  return normalized;
+  return mergeCorrectionSegments(normalized);
 }
 
 function correctionSegmentKind(kind) {
   return ['undo', 'resume', 'solver'].includes(kind) ? kind : 'solver';
+}
+
+function mergeCorrectionSegments(segments) {
+  const output = [];
+  for (const segment of segments) {
+    const previous = output.at(-1);
+    const mergedMove = previous?.kind === segment.kind
+      ? mergedCorrectionMove(previous.move, segment.move)
+      : '';
+    if (mergedMove) {
+      previous.move = mergedMove;
+    } else {
+      output.push({ ...segment });
+    }
+  }
+  return output;
+}
+
+function mergedCorrectionMove(left, right) {
+  const merged = logicalMoveSequence([left, right]);
+  return merged.length === 1 && /2$/.test(merged[0]) ? merged[0] : '';
 }
 
 function correctionMovesFromSegments(segments) {
@@ -9903,19 +10246,37 @@ function renderStats() {
   const sessionSolves = filteredSolves();
   const signature = sessionMetricsSignature(sessionSolves);
   const goal = sessionTargetCountForId(currentSessionId);
+  const partialSummary = historyPartial ? bootstrapSessionSummaries?.[currentSessionId] : null;
+  const partialSummaryKey = partialSummary ? [
+    partialSummary.count,
+    partialSummary.dnfCount,
+    partialSummary.latest,
+    partialSummary.best,
+    partialSummary.average,
+    partialSummary.mo3,
+    partialSummary.ao5,
+    partialSummary.ao12,
+    partialSummary.bestMo3,
+    partialSummary.bestAo5,
+    partialSummary.bestAo12,
+  ].join(':') : '';
   const renderKey = [
     currentSessionId,
     signature,
     goal ?? '',
+    historyPartial ? 'partial' : 'full',
+    historyTotal,
+    partialSummaryKey,
   ].join('|');
   if (renderKey === statsOverviewRenderKey) return;
   statsOverviewRenderKey = renderKey;
 
-  const sessionSummary = summarizeSolves(sessionSolves);
-  const dnfCount = sessionSolves.filter((solve) => solve.penalty === 'dnf').length;
-  const successCount = sessionSolves.length - dnfCount;
-  elements.countStat.textContent = `${successCount}/${sessionSolves.length}`;
-  renderSessionGoalProgress(successCount, sessionSolves.length, goal);
+  const sessionSummary = partialSummary || summarizeSolves(sessionSolves);
+  const totalCount = sessionSummary.count ?? sessionSolves.length;
+  const dnfCount = sessionSummary.dnfCount ?? sessionSolves.filter((solve) => solve.penalty === 'dnf').length;
+  const successCount = Math.max(0, totalCount - dnfCount);
+  elements.countStat.textContent = `${successCount}/${totalCount}`;
+  renderSessionGoalProgress(successCount, totalCount, goal);
   elements.bestStat.textContent = sessionSummary.best == null ? '-' : formatTime(sessionSummary.best);
   elements.averageStat.textContent = sessionSummary.average == null ? '-' : formatTime(sessionSummary.average);
   elements.mo3Stat.textContent = sessionSummary.mo3 == null ? '-' : formatTime(sessionSummary.mo3);
@@ -9925,7 +10286,7 @@ function renderStats() {
   elements.bestAo5Stat.textContent = sessionSummary.bestAo5 == null ? '-' : formatTime(sessionSummary.bestAo5);
   elements.bestAo12Stat.textContent = sessionSummary.bestAo12 == null ? '-' : formatTime(sessionSummary.bestAo12);
   elements.latestStat.textContent = sessionSummary.latest == null ? '-' : formatTime(sessionSummary.latest);
-  elements.statsDetailButton.disabled = sessionSummary.count === 0;
+  elements.statsDetailButton.disabled = totalCount === 0;
 }
 
 function renderSessionGoalProgress(successCount, totalCount, goal = sessionTargetCountForId(currentSessionId)) {
@@ -12648,10 +13009,24 @@ function renderHistoryCfopPanel() {
   }
 
   elements.historyCfopMeta.textContent = `${source.meta} · ${display.meta}`;
+  const historyStages = compactCfopStagesForOpEvents(display.stages, display.opEvents);
   elements.historyCfopStages.replaceChildren(
-    ...display.stages.map((stage) => renderCfopStageCard(stage)),
+    ...historyStages.map((stage) => renderCfopStageCard(stage)),
     ...display.opEvents.map((event) => renderOpEventCard(event)),
   );
+}
+
+function compactCfopStagesForOpEvents(stages, opEvents) {
+  const recognizedKinds = new Set((Array.isArray(opEvents) ? opEvents : [])
+    .map((event) => event?.kind)
+    .filter((kind) => kind === 'oll' || kind === 'pll'));
+  if (recognizedKinds.size === 0) return stages;
+  return (Array.isArray(stages) ? stages : []).filter((stage) => {
+    if (cfopOpSkipKind(stage)) return true;
+    if ((stage?.key === 'oll' || stage?.label === 'O') && recognizedKinds.has('oll')) return false;
+    if ((stage?.key === 'pll' || stage?.label === 'P') && recognizedKinds.has('pll')) return false;
+    return true;
+  });
 }
 
 function historyCfopSourceRenderKey(source) {
@@ -12669,6 +13044,7 @@ function historyCfopSourceRenderKey(source) {
 function solveCfopRenderSignature(solve) {
   if (!solve) return '';
   const moveLog = Array.isArray(solve.bluetoothMoveLog) ? solve.bluetoothMoveLog : [];
+  const stateCorrections = Array.isArray(solve.bluetoothStateCorrections) ? solve.bluetoothStateCorrections : [];
   const stages = Array.isArray(solve.cfopStages) ? solve.cfopStages : [];
   const opEvents = Array.isArray(solve.opEvents) ? solve.opEvents : [];
   const firstMove = moveLog[0];
@@ -12683,6 +13059,7 @@ function solveCfopRenderSignature(solve) {
     moveLog.length,
     firstMove ? `${firstMove.move || ''}:${firstMove.elapsedMs ?? ''}` : '',
     lastMove ? `${lastMove.move || ''}:${lastMove.elapsedMs ?? ''}` : '',
+    stateCorrections.map((entry) => `${entry?.step ?? ''}:${entry?.facelets || ''}`).join(','),
     stages.map((stage) => [
       stage?.key || '',
       stage?.completed ? 1 : 0,
@@ -12749,6 +13126,7 @@ function cfopDisplayForSolve(solve, analysis = solveCfopAnalysis(solve)) {
   const moveCount = analysis.records.length || (solve?.bluetoothMoveCount ?? 0);
   const bottomFace = analysis.bottomFace ? `底面 ${analysis.bottomFace}` : '';
   const confidence = analysis.confidence ? `判断 ${analysis.confidence}` : '';
+  const skipText = cfopOpSkipMetaText(stages);
   const tps = Number.isFinite(solve?.bluetoothTps) ? `${solve.bluetoothTps.toFixed(2)} TPS` : '';
   return {
     stages,
@@ -12757,12 +13135,25 @@ function cfopDisplayForSolve(solve, analysis = solveCfopAnalysis(solve)) {
     meta: [
       `${completedCount}/${stages.length} 步`,
       opEvents.length > 0 ? `OP ${opEvents.length}` : '',
+      skipText,
       moveCount > 0 ? `${moveCount} 步` : '',
       tps,
       bottomFace,
       confidence,
     ].filter(Boolean).join(' · '),
   };
+}
+
+function cfopOpSkipMetaText(stages) {
+  const labels = (Array.isArray(stages) ? stages : [])
+    .map((stage) => {
+      const kind = cfopOpSkipKind(stage);
+      if (kind === 'oll') return 'O';
+      if (kind === 'pll') return 'P';
+      return '';
+    })
+    .filter(Boolean);
+  return labels.length > 0 ? `跳 ${labels.join('/')}` : '';
 }
 
 function isCollapsedCfopTiming(stages) {

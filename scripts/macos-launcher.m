@@ -367,6 +367,13 @@ static BOOL TrainTimerPidIsRunning(pid_t pid) {
   return pid > 0 && kill(pid, 0) == 0;
 }
 
+static BOOL TrainTimerPidHasExited(pid_t pid) {
+  if (pid <= 0) return YES;
+  int status = 0;
+  pid_t result = waitpid(pid, &status, WNOHANG);
+  return result == pid;
+}
+
 static void TrainTimerTerminatePid(pid_t pid, NSTimeInterval graceSeconds) {
   if (!TrainTimerPidIsRunning(pid)) return;
   kill(pid, SIGTERM);
@@ -416,11 +423,45 @@ static NSInteger TrainTimerFirstAvailablePort(NSString *host, NSInteger basePort
   return 0;
 }
 
+static NSURL *TrainTimerChromeApplicationURL(void) {
+  return [[NSWorkspace sharedWorkspace] URLForApplicationWithBundleIdentifier:@"com.google.Chrome"];
+}
+
 static BOOL TrainTimerOpenURLPreferChrome(NSURL *url) {
   if (!url) return NO;
-  int chromeStatus = TrainTimerRunCommandStatus(@"/usr/bin/open", @[@"-b", @"com.google.Chrome", url.absoluteString], 3.0);
-  if (chromeStatus == 0) return YES;
+  NSURL *chromeURL = TrainTimerChromeApplicationURL();
+  if (chromeURL) {
+    if (@available(macOS 10.15, *)) {
+      NSWorkspaceOpenConfiguration *configuration = [NSWorkspaceOpenConfiguration configuration];
+      configuration.activates = YES;
+      [[NSWorkspace sharedWorkspace] openURLs:@[url]
+                         withApplicationAtURL:chromeURL
+                                configuration:configuration
+                            completionHandler:^(NSRunningApplication *app, NSError *error) {
+        if (error) {
+          TrainTimerAppendLog([NSString stringWithFormat:@"Chrome open failed: %@", error.localizedDescription]);
+        }
+      }];
+      return YES;
+    }
+  }
   return [[NSWorkspace sharedWorkspace] openURL:url];
+}
+
+static void TrainTimerPrewarmChrome(void) {
+  NSURL *chromeURL = TrainTimerChromeApplicationURL();
+  if (!chromeURL) return;
+  if (@available(macOS 10.15, *)) {
+    NSWorkspaceOpenConfiguration *configuration = [NSWorkspaceOpenConfiguration configuration];
+    configuration.activates = NO;
+    [[NSWorkspace sharedWorkspace] openApplicationAtURL:chromeURL
+                                         configuration:configuration
+                                     completionHandler:^(NSRunningApplication *app, NSError *error) {
+      if (error) {
+        TrainTimerAppendLog([NSString stringWithFormat:@"Chrome prewarm failed: %@", error.localizedDescription]);
+      }
+    }];
+  }
 }
 
 static NSString *TrainTimerLaunchAgentLabel(void) {
@@ -620,7 +661,13 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
 
 - (void)applicationWillTerminate:(NSNotification *)notification {
   if (self.running) {
-    TrainTimerAppendLog(@"Window is closing; stopping LaunchAgent");
+    TrainTimerAppendLog(@"Window is closing; stopping TrainTimer service");
+    if (self.serverPid > 0) {
+      TrainTimerTerminatePid(self.serverPid, 1.5);
+      self.serverPid = 0;
+    }
+    NSInteger basePort = TrainTimerPortInteger(self.basePort, 3211);
+    TrainTimerTerminateHealthyProjectServers(self.host, basePort, TrainTimerManagedPortEnd(basePort));
     TrainTimerStopLaunchAgent(YES);
   }
 }
@@ -788,9 +835,10 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
   NSInteger basePort = TrainTimerPortInteger(self.basePort, 3211);
   NSInteger endPort = TrainTimerManagedPortEnd(basePort);
   NSString *healthyURL = TrainTimerFindHealthyServiceURL(self.host, basePort, endPort);
-  if (self.running && healthyURL.length > 0) {
+  if (healthyURL.length > 0) {
     self.currentURL = healthyURL;
     self.port = [NSString stringWithFormat:@"%ld", (long)TrainTimerURLPort(healthyURL, basePort)];
+    [self showRunning];
     [self openWeb:nil];
     return;
   }
@@ -799,7 +847,8 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
     return;
   }
 
-  [self setBusyMessage:@"正在启动服务并打开浏览器。"];
+  TrainTimerPrewarmChrome();
+  [self setBusyMessage:@"正在启动服务；Chrome 已提前准备，服务就绪后会打开网页。"];
   NSString *nodePath = self.nodePath;
   NSString *projectRoot = self.projectRoot;
   NSString *host = self.host;
@@ -809,7 +858,6 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
     NSInteger startPort = TrainTimerPortInteger(basePortText, 3211);
     NSInteger stopPort = TrainTimerManagedPortEnd(startPort);
     TrainTimerAppendLog([NSString stringWithFormat:@"Preparing managed ports %ld-%ld", (long)startPort, (long)stopPort]);
-    TrainTimerStopLaunchAgent(YES);
     NSUInteger stopped = TrainTimerTerminateHealthyProjectServers(host, startPort, stopPort);
     NSInteger selectedPort = TrainTimerFirstAvailablePort(host, startPort, stopPort);
     if (selectedPort <= 0) {
@@ -832,12 +880,15 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
       return;
     }
 
-    TrainTimerAppendLog([NSString stringWithFormat:@"Starting LaunchAgent with %@ from %@ on %@; stopped %lu old service(s)",
+    TrainTimerAppendLog([NSString stringWithFormat:@"Starting direct service with %@ from %@ on %@; stopped %lu old service(s)",
                                                    nodePath,
                                                    runtimeRoot,
                                                    currentURL,
                                                    (unsigned long)stopped]);
-    if (!TrainTimerStartLaunchAgent(nodePath, runtimeRoot, host, port)) {
+    pid_t spawnedPid = 0;
+    NSString *spawnError = nil;
+    if (TrainTimerSpawnServer(nodePath, runtimeRoot, host, port, &spawnedPid, &spawnError) != 0) {
+      TrainTimerAppendLog([NSString stringWithFormat:@"Direct service spawn failed: %@", spawnError ?: @"unknown"]);
       dispatch_async(dispatch_get_main_queue(), ^{
         [self showStoppedWithMessage:@"启动失败。请查看日志。"];
       });
@@ -849,6 +900,10 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
     for (NSUInteger attempt = 0; attempt < 120; attempt++) {
       if (TrainTimerHealthCheck(currentURL)) {
         healthy = YES;
+        break;
+      }
+      if (attempt > 1 && TrainTimerPidHasExited(spawnedPid)) {
+        TrainTimerAppendLog([NSString stringWithFormat:@"Direct service exited before healthy: pid=%d", spawnedPid]);
         break;
       }
       if (attempt % 8 == 0) {
@@ -866,11 +921,12 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
       if (healthy) {
         self.currentURL = actualURL;
         self.port = [NSString stringWithFormat:@"%ld", (long)TrainTimerURLPort(actualURL, selectedPort)];
+        self.serverPid = spawnedPid;
         [self showRunning];
         [self openWeb:nil];
       } else {
-        TrainTimerAppendLog(@"LaunchAgent service did not become healthy");
-        TrainTimerStopLaunchAgent(YES);
+        TrainTimerAppendLog(@"Direct service did not become healthy");
+        TrainTimerTerminatePid(spawnedPid, 1.0);
         [self showStoppedWithMessage:@"启动失败或超时。请查看日志。"];
       }
     });
@@ -894,14 +950,17 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
   [self setBusyMessage:@"正在停止服务。"];
   NSString *host = self.host;
   NSString *basePortText = self.basePort;
+  pid_t serverPid = self.serverPid;
   dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-    TrainTimerAppendLog(@"Stopping LaunchAgent service");
+    TrainTimerAppendLog(@"Stopping TrainTimer service");
+    if (serverPid > 0) TrainTimerTerminatePid(serverPid, 1.5);
     TrainTimerStopLaunchAgent(YES);
     NSInteger startPort = TrainTimerPortInteger(basePortText, 3211);
     NSInteger stopPort = TrainTimerManagedPortEnd(startPort);
     NSUInteger stopped = TrainTimerTerminateHealthyProjectServers(host, startPort, stopPort);
 
     dispatch_async(dispatch_get_main_queue(), ^{
+      self.serverPid = 0;
       [self showStoppedWithMessage:[NSString stringWithFormat:@"本地网页服务已停止；已清理 %lu 个项目端口服务。", (unsigned long)stopped]];
     });
   });
@@ -918,14 +977,17 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
   [self setBusyMessage:@"正在重启服务。"];
   NSString *host = self.host;
   NSString *basePortText = self.basePort;
+  pid_t serverPid = self.serverPid;
   dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-    TrainTimerAppendLog(@"Restarting LaunchAgent service");
+    TrainTimerAppendLog(@"Restarting TrainTimer service");
+    if (serverPid > 0) TrainTimerTerminatePid(serverPid, 1.5);
     TrainTimerStopLaunchAgent(YES);
     NSInteger startPort = TrainTimerPortInteger(basePortText, 3211);
     NSInteger stopPort = TrainTimerManagedPortEnd(startPort);
     TrainTimerTerminateHealthyProjectServers(host, startPort, stopPort);
 
     dispatch_async(dispatch_get_main_queue(), ^{
+      self.serverPid = 0;
       [self startService:nil];
     });
   });

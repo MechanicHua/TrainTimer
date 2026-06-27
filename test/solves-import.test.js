@@ -99,6 +99,9 @@ test('round-trips TrainTimer CSV timing, CFOP, and OP metadata', () => {
       { step: 2, move: 'U', elapsedMs: 900, timestampMs: 1780451999400, solveStartedAtMs: 1780451998500 },
       { step: 3, move: "R'", elapsedMs: 1500, timestampMs: 1780452000000, solveStartedAtMs: 1780451998500 },
     ],
+    bluetoothStateCorrections: [
+      { step: 2, facelets: 'UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB', elapsedMs: 900 },
+    ],
     bluetoothMoveCount: 3,
     bluetoothTps: 2,
     bluetoothDeviceName: 'GAN',
@@ -125,6 +128,7 @@ test('round-trips TrainTimer CSV timing, CFOP, and OP metadata', () => {
   assert.equal(parsed.solves[0].timerFinishedAt, solve.timerFinishedAt);
   assert.equal(parsed.solves[0].timerFinishedAtMs, solve.timerFinishedAtMs);
   assert.deepEqual(parsed.solves[0].bluetoothMoveLog, solve.bluetoothMoveLog);
+  assert.deepEqual(parsed.solves[0].bluetoothStateCorrections, solve.bluetoothStateCorrections);
   assert.deepEqual(parsed.solves[0].cfopStages, solve.cfopStages);
   assert.deepEqual(parsed.solves[0].opEvents, solve.opEvents);
 });

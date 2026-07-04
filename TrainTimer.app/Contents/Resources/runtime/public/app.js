@@ -591,7 +591,6 @@ const elements = {
   solveDetailComment: document.querySelector('#solveDetailComment'),
   solveDetailTagsInput: document.querySelector('#solveDetailTagsInput'),
   solveDetailBluetoothStats: document.querySelector('#solveDetailBluetoothStats'),
-  solveDetailBluetoothMoves: document.querySelector('#solveDetailBluetoothMoves'),
   solveSolutionPanel: document.querySelector('#solveSolutionPanel'),
   solveBluetoothReplayMeta: document.querySelector('#solveBluetoothReplayMeta'),
   solveReplayButton: document.querySelector('#solveReplayButton'),
@@ -3566,15 +3565,14 @@ function renderSolveDialog() {
   const solveNumber = solveIndex + 1;
   elements.solveDetailTitle.textContent = `成绩 ${displaySolveTime(solve)}`;
   const timerSource = solve.timerSource === 'bluetooth' ? '蓝牙停表' : '手动停表';
-  const bluetoothMoves = Array.isArray(solve.bluetoothMoves) ? solve.bluetoothMoves : [];
-  const bluetoothMoveCount = solve.bluetoothMoveCount ?? (Array.isArray(solve.bluetoothMoves) ? countMoveSteps(solve.bluetoothMoves) : 0);
-  const bluetoothTps = Number.isFinite(solve.bluetoothTps) ? `${solve.bluetoothTps.toFixed(3)} TPS` : 'TPS -';
-  const bluetoothDevice = solve.bluetoothDeviceName || '';
-  const bluetoothProtocols = formatList(solve.bluetoothProtocols);
-  const bluetoothSources = formatList(solve.bluetoothSources);
-  const bluetoothDetail = [bluetoothDevice, bluetoothProtocols].filter(Boolean).join(' · ');
   const positionText = solveIndex >= 0 ? `第 ${solveNumber} / ${sessionSolves.length} 条` : '未知位置';
-  elements.solveDetailMeta.textContent = `${sessionNameForSolve(solve)} · ${positionText} · ${new Date(solve.createdAt).toLocaleString()} · ${timerSource} · ${puzzleLabel(solve.scramblePuzzle || 'three')} · ${solve.inspectionEnabled ? '开启观察' : '无观察'} · ${bluetoothMoveCount} 步 · ${bluetoothTps}${bluetoothDetail ? ` · ${bluetoothDetail}` : ''} · ${solve.scrambleSource || 'unknown'}`;
+  elements.solveDetailMeta.textContent = [
+    sessionNameForSolve(solve),
+    positionText,
+    new Date(solve.createdAt).toLocaleString(),
+    timerSource,
+    puzzleLabel(solve.scramblePuzzle || 'three'),
+  ].filter(Boolean).join(' · ');
   elements.prevSolveButton.disabled = solveIndex <= 0;
   elements.nextSolveDetailButton.disabled = solveIndex < 0 || solveIndex >= sessionSolves.length - 1;
   elements.solveDetailTimeInput.value = solve.duration || formatTime(solve.durationMs);
@@ -3593,14 +3591,13 @@ function renderSolveSolutionPanel(solve) {
   const displayedStages = cfopDisplay.hasData ? cfopDisplay.stages : analysis.stages;
   const records = analysis.records;
   const hasMoves = records.length > 0;
-  elements.solveSolutionPanel.hidden = !hasMoves;
+  elements.solveSolutionPanel.hidden = !cfopDisplay.hasData && !hasMoves;
   elements.solveReplayButton.disabled = !hasMoves;
   elements.solveReplayButton.textContent = solveReplayPlaying ? '暂停' : '播放';
-  if (!hasMoves) {
+  if (!cfopDisplay.hasData && !hasMoves) {
     stopSolveReplay();
-    elements.solveDetailBluetoothStats.textContent = '完整解法';
+    elements.solveDetailBluetoothStats.textContent = '复原分析';
     elements.solveBluetoothReplayMeta.textContent = '-';
-    elements.solveDetailBluetoothMoves.replaceChildren();
     elements.solveCfopStages.replaceChildren();
     return;
   }
@@ -3609,8 +3606,8 @@ function renderSolveSolutionPanel(solve) {
     ? '已复原'
     : '未复原';
   const sourceText = solve.bluetoothDeviceName || (solve.timerSource === 'bluetooth' ? '蓝牙魔方' : '');
-  const cfopText = analysis.bottomFace ? `CFOP 底面 ${analysis.bottomFace}${analysis.confidence ? ` · 判断${analysis.confidence}` : ''}` : '';
-  elements.solveDetailBluetoothStats.textContent = '完整解法';
+  const cfopText = analysis.bottomFace ? `CFOP 底面 ${analysis.bottomFace}${analysis.confidence ? ` · 判断 ${analysis.confidence}` : ''}` : '';
+  elements.solveDetailBluetoothStats.textContent = '复原分析';
   elements.solveBluetoothReplayMeta.textContent = [
     `${records.length} 步`,
     Number.isFinite(solve.bluetoothTps) ? `${solve.bluetoothTps.toFixed(3)} TPS` : '',
@@ -3620,12 +3617,10 @@ function renderSolveSolutionPanel(solve) {
   ].filter(Boolean).join(' · ');
 
   const opEvents = opDisplayEventsForSolve(solve);
+  const summaryStages = compactCfopStagesForOpEvents(displayedStages, opEvents);
   elements.solveCfopStages.replaceChildren(
-    ...displayedStages.map((stage) => renderCfopStageCard(stage)),
-    ...opEvents.map((event) => renderOpEventCard(event)),
-  );
-  elements.solveDetailBluetoothMoves.replaceChildren(
-    ...records.map((record, index) => renderSolveMoveChip(record, index, opEvents)),
+    ...summaryStages.map((stage) => renderCfopStageCard(stage)),
+    ...orderedOpEventsForDisplay(opEvents).map((event) => renderOpEventCard(event)),
   );
   updateSolveReplayHighlight();
 }
@@ -3634,6 +3629,9 @@ function renderCfopStageCard(stage) {
   const card = document.createElement('div');
   const skipKind = cfopOpSkipKind(stage);
   card.className = `solve-cfop-card ${stage.completed ? 'completed' : 'pending'}${skipKind ? ' op-skip' : ''}`;
+  card.dataset.stageKey = String(stage.key || '');
+  card.dataset.stageLabel = String(stage.label || '');
+  card.dataset.stageGroup = cfopStageGroup(stage);
   const timeText = skipKind ? '跳过' : (Number.isFinite(stage.durationMs) ? formatTime(stage.durationMs) : '--');
   const nameText = skipKind === 'oll' ? '跳 O' : (skipKind === 'pll' ? '跳 P' : stage.name);
   const tpsText = skipKind ? `${skipKind.toUpperCase()} Skip` : (Number.isFinite(stage.tps) ? `${stage.tps.toFixed(2)} TPS` : 'TPS --');
@@ -3645,6 +3643,16 @@ function renderCfopStageCard(stage) {
     <small>${stage.turns} 步 · ${escapeHtml(tpsText)}${escapeHtml(observationText)}</small>
   `;
   return card;
+}
+
+function cfopStageGroup(stage) {
+  const key = String(stage?.key || '').toLowerCase();
+  const label = String(stage?.label || '').toUpperCase();
+  if (key === 'cross' || label === 'C') return 'cross';
+  if (key.startsWith('f2l') || /^F[1-4]$/.test(label)) return 'f2l';
+  if (key === 'oll' || label === 'O') return 'oll';
+  if (key === 'pll' || label === 'P') return 'pll';
+  return 'other';
 }
 
 function cfopOpSkipKind(stage) {
@@ -3673,12 +3681,6 @@ function opEventForStep(opEvents, stepNumber) {
   }) || null;
 }
 
-function opMoveChipLabel(event) {
-  const kind = String(event?.kind || '').toUpperCase();
-  const label = event?.pdfLabel || event?.name || event?.caseId || '';
-  return [kind, label].filter(Boolean).join(' ');
-}
-
 function opEventRangeText(event) {
   const start = Number(event?.startStep);
   const end = Number(event?.endStep);
@@ -3693,6 +3695,7 @@ function renderOpEventCard(event) {
   card.dataset.opEventKey = opEventKey(event);
   card.dataset.opStartStep = String(event.startStep || '');
   card.dataset.opEndStep = String(event.endStep || '');
+  card.dataset.opKind = String(event.kind || '').toLowerCase();
   const kind = String(event.kind || '').toUpperCase();
   const label = event.pdfLabel ? `${event.name || event.caseId} · ${event.pdfLabel}` : (event.name || event.caseId);
   const timeText = Number.isFinite(event.durationMs) ? formatTime(event.durationMs) : '--';
@@ -3759,41 +3762,6 @@ function opCaseVisualTitle(kind, label) {
   const text = String(label || '').trim();
   if (!normalizedKind || !text) return text || normalizedKind;
   return text.toUpperCase().startsWith(`${normalizedKind} `) ? text : `${normalizedKind} ${text}`;
-}
-
-function renderSolveMoveChip(record, index, opEvents = []) {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'solve-move-chip';
-  button.dataset.replayStep = String(index);
-  const stepNumber = index + 1;
-  const opEvent = opEventForStep(opEvents, stepNumber);
-  if (opEvent) {
-    const kind = String(opEvent.kind || '').toLowerCase();
-    button.classList.add('op-range', `op-${kind}`);
-    button.dataset.opEventKey = opEventKey(opEvent);
-    button.dataset.opKind = kind;
-    button.dataset.opCase = opEvent.caseId || '';
-    if (stepNumber === Number(opEvent.startStep)) {
-      button.dataset.opLabel = opMoveChipLabel(opEvent);
-      button.classList.add('op-start');
-    }
-    if (stepNumber === Number(opEvent.endStep)) button.classList.add('op-end');
-  }
-  const elapsed = Number.isFinite(record.elapsedMs) ? formatTime(record.elapsedMs) : '--';
-  const opText = opEvent ? `${opMoveChipLabel(opEvent)} · ${opEventRangeText(opEvent)}` : '';
-  button.title = [`第 ${stepNumber} 步`, record.move, elapsed, opText].filter(Boolean).join(' · ');
-  button.innerHTML = `<span>${stepNumber}</span><strong>${escapeHtml(record.move)}</strong>`;
-  button.addEventListener('click', () => {
-    const solve = solves.find((item) => item.id === currentDetailSolveId);
-    stopSolveReplay({ keepStep: true });
-    solveReplayStep = index;
-    solveReplayFocusedOpKey = opEvent ? opEventKey(opEvent) : '';
-    solveReplayFocusedOpManual = false;
-    showSolveReplayPreview(solve, index + 1);
-    updateSolveReplayHighlight();
-  });
-  return button;
 }
 
 function jumpToSolveOpEvent(event) {
@@ -3904,7 +3872,6 @@ function clearSolveReplayPreview() {
 }
 
 function updateSolveReplayHighlight() {
-  if (!elements.solveDetailBluetoothMoves) return;
   const solve = solves.find((item) => item.id === currentDetailSolveId);
   const opEvents = opDisplayEventsForSolve(solve);
   const activeOpEvent = opEventForStep(opEvents, solveReplayStep + 1);
@@ -3916,14 +3883,6 @@ function updateSolveReplayHighlight() {
     solveReplayFocusedOpKey = '';
     solveReplayFocusedOpManual = false;
   }
-  const chips = elements.solveDetailBluetoothMoves.querySelectorAll('.solve-move-chip');
-  chips.forEach((chip, index) => {
-    const active = index === solveReplayStep;
-    const focused = chip.dataset.opEventKey && chip.dataset.opEventKey === solveReplayFocusedOpKey;
-    chip.classList.toggle('active', active);
-    chip.classList.toggle('op-focused', Boolean(focused));
-    if (active) chip.scrollIntoView({ block: 'nearest', inline: 'center' });
-  });
   const cards = elements.solveCfopStages?.querySelectorAll('.op-event-card') || [];
   cards.forEach((card) => {
     const focused = card.dataset.opEventKey && card.dataset.opEventKey === solveReplayFocusedOpKey;
@@ -13012,8 +12971,18 @@ function renderHistoryCfopPanel() {
   const historyStages = compactCfopStagesForOpEvents(display.stages, display.opEvents);
   elements.historyCfopStages.replaceChildren(
     ...historyStages.map((stage) => renderCfopStageCard(stage)),
-    ...display.opEvents.map((event) => renderOpEventCard(event)),
+    ...orderedOpEventsForDisplay(display.opEvents).map((event) => renderOpEventCard(event)),
   );
+}
+
+function orderedOpEventsForDisplay(opEvents) {
+  const kindOrder = new Map([['oll', 0], ['pll', 1]]);
+  return (Array.isArray(opEvents) ? opEvents : []).slice().sort((left, right) => {
+    const leftKind = kindOrder.get(String(left?.kind || '').toLowerCase()) ?? 2;
+    const rightKind = kindOrder.get(String(right?.kind || '').toLowerCase()) ?? 2;
+    if (leftKind !== rightKind) return leftKind - rightKind;
+    return (Number(left?.startStep) || 0) - (Number(right?.startStep) || 0);
+  });
 }
 
 function compactCfopStagesForOpEvents(stages, opEvents) {

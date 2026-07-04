@@ -182,6 +182,20 @@ test('state-packet solved fallback does not synthesize full CFOP timing without 
   assert.equal(stages[0].durationMs, null);
 });
 
+test('state-packet solved fallback recovers long move-log drift at the final snapshot', () => {
+  const moves = Array.from({ length: 40 }, (_, index) => (index % 2 === 0 ? 'U' : "U'"));
+  const stages = cfopStagesForSave({
+    scramble: 'R U F',
+    scramblePuzzle: 'three',
+    bluetoothMoveLog: moves.map((move, index) => ({ move, elapsedMs: (index + 1) * 100 })),
+    bluetoothSolvedByStatePacket: true,
+  });
+
+  assert.ok(stages.every((stage) => stage.completed));
+  assert.equal(stages.find((stage) => stage.label === 'O').completed, true);
+  assert.equal(stages.find((stage) => stage.label === 'P').completed, true);
+});
+
 test('cross stage is named for solved F2L pairs present at cross completion', () => {
   const analysis = solveCfopAnalysis({
     scramble: 'U',

@@ -39,6 +39,13 @@ test('recognizes OLL and PLL cases from case facelets independent of AUF', () =>
   assert.equal(recognizePllCase(faceletsFromScramble(`${pllSetup} D`)), null);
 });
 
+test('recognizes PLL cases from top-layer permutation when sticker signature is noncanonical', () => {
+  assert.equal(recognizePllCase(pllFaceletsFromTopRing('BBLFFFRRBLLR')).caseId, 'pll-ja');
+  assert.equal(recognizePllCase(pllFaceletsFromTopRing('BFFRRLFLBLBR')).caseId, 'pll-v');
+  assert.equal(recognizePllCase(pllFaceletsFromTopRing('BFBLRFRLLFBR')).caseId, 'pll-gb');
+  assert.equal(recognizePllCase(pllFaceletsFromTopRing('BRLFBBLLFRFR')).caseId, 'pll-ab');
+});
+
 test('records PLL event moves and timing from a solve', () => {
   const pll = caseById('pll-t');
   const setup = invertAlgorithm(pll.algorithm);
@@ -145,6 +152,23 @@ test('records PLL after normalizing non-D CFOP bottom moves', () => {
 
   assert.equal(pllEvent.caseId, 'pll-aa');
   assert.equal(pllEvent.formulaAccepted, true);
+});
+
+test('records PLL after OLL skip shares the F2L completion boundary', () => {
+  const moves = moveTokens(`
+    L' B' U' R' U' F U B' U R' U' D' D D F D' F' D' B D' D' B' D R D' R' D' D' B D' B' D' D'
+    F' D F D D' D D B D' B' D B D' B' D D B D' B' D D' D D L L D' L D' L D L' D L L D U' L D' L' U
+  `);
+  const events = opEventsForSave({
+    scramble: "U' L2 F2 B D2 R2 L' B R D2 L2 B' D2 L2 F R2 U2 F U'",
+    scramblePuzzle: 'three',
+    bluetoothMoveLog: timedMoveLog(moves, 100),
+  });
+  const pllEvent = events.find((event) => event.kind === 'pll');
+
+  assert.equal(events.some((event) => event.kind === 'oll'), false);
+  assert.equal(pllEvent?.caseId, 'pll-gc');
+  assert.equal(pllEvent?.formulaAccepted, true);
 });
 
 test('counts leading OP U-layer adjustments as observation before formula execution', () => {
@@ -560,6 +584,19 @@ function caseById(id) {
   const item = algorithmTrainerCases.find((candidate) => candidate.id === id);
   assert.ok(item, `${id} exists`);
   return item;
+}
+
+function pllFaceletsFromTopRing(ring) {
+  const text = String(ring || '').trim().toUpperCase();
+  assert.match(text, /^[RFLB]{12}$/);
+  return [
+    'UUUUUUUUU',
+    text.slice(3, 6), 'RRRRRR',
+    text.slice(0, 3), 'FFFFFF',
+    'DDDDDDDDD',
+    text.slice(9, 12), 'LLLLLL',
+    text.slice(6, 9), 'BBBBBB',
+  ].join('');
 }
 
 function moveTokens(algorithm) {

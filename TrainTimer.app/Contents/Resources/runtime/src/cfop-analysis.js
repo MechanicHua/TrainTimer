@@ -5,6 +5,9 @@ import {
   faceletsFromScramble,
   isSolvedFaces,
   parseMoveToken,
+  relativeFaceletsForScrambleTargetFacelets,
+  shortCorrectionMovesForRelativeFacelets,
+  solvedFaceletString,
 } from './cube-state.js';
 import { logicalMoveRecords } from './move-metrics.js';
 
@@ -286,6 +289,7 @@ function cfopFaceGridPosition(face, [x, y, z]) {
 export function solveFaceletSnapshotsForAnalysis(solve, records = solvePhysicalMoveRecords(solve)) {
   try {
     const correctionByStep = stateCorrectionsByStep(solve?.bluetoothStateCorrections, records.length);
+    const finalSolvedByStatePacket = solveFinalSolvedByStatePacket(solve);
     let facelets = faceletsFromScramble(solve.scramble);
     const initialCorrection = correctionByStep.get(0);
     if (initialCorrection) facelets = initialCorrection.facelets;
@@ -294,12 +298,34 @@ export function solveFaceletSnapshotsForAnalysis(solve, records = solvePhysicalM
       facelets = applyMoveToFacelets(facelets, records[index].move);
       const step = index + 1;
       const correction = correctionByStep.get(step);
-      if (correction) facelets = correction.facelets;
-      snapshots.push({ step, facelets, correction: correction || null });
+      const finalSolvedCorrection = !correction
+        && finalSolvedByStatePacket
+        && step === records.length
+        && shouldApplyFinalSolvedStateCorrection(facelets, records.length)
+        ? { step, facelets: solvedFaceletString, source: 'final-solved-state-packet' }
+        : null;
+      const appliedCorrection = correction || finalSolvedCorrection;
+      if (appliedCorrection) facelets = appliedCorrection.facelets;
+      snapshots.push({ step, facelets, correction: appliedCorrection || null });
     }
     return snapshots;
   } catch {
     return [];
+  }
+}
+
+function shouldApplyFinalSolvedStateCorrection(facelets, recordCount) {
+  if (recordCount >= 40) return true;
+  try {
+    const relative = relativeFaceletsForScrambleTargetFacelets(solvedFaceletString, facelets);
+    const correction = shortCorrectionMovesForRelativeFacelets(relative, {
+      maxDepth: 2,
+      maxNodes: 50000,
+      maxMs: 12,
+    });
+    return Array.isArray(correction);
+  } catch {
+    return false;
   }
 }
 

@@ -25,6 +25,19 @@ const topFace = 'U';
 const sideFaces = ['F', 'R', 'B', 'L'];
 const opBottomFaceOrder = ['D', 'U', 'F', 'B', 'L', 'R'];
 const uRotations = ['', 'U', 'U2', "U'"];
+const yRotations = ['', 'y', 'y2', "y'"];
+const pllCornerStickerPositions = [
+  [['F', 0, 2], ['R', 0, 0]],
+  [['R', 0, 2], ['B', 0, 0]],
+  [['B', 0, 2], ['L', 0, 0]],
+  [['L', 0, 2], ['F', 0, 0]],
+];
+const pllCornerPieceKeys = [
+  ['F', 'R'],
+  ['R', 'B'],
+  ['B', 'L'],
+  ['L', 'F'],
+].map((faces) => faces.slice().sort().join(''));
 const axisVectors = {
   x: [1, 0, 0],
   y: [0, 1, 0],
@@ -53,6 +66,7 @@ const moveOrientationDefinitions = {
 
 let opCaseLibraryCache = null;
 let opCaseIndexCache = null;
+let pllPermutationCaseIndexCache = null;
 const opEventsForSaveCache = new WeakMap();
 
 export function opCaseLibrary() {
@@ -99,6 +113,8 @@ export function recognizeOpCase(facelets, kind) {
   const signature = signatures.find((candidate) => (opCaseIndex()[kind].get(candidate) || []).length > 0) || signatures[0];
   const matches = opCaseIndex()[kind].get(signature) || [];
   if (matches.length === 0) {
+    const permutationMatch = kind === 'pll' ? recognizePllCaseByPermutation(text) : null;
+    if (permutationMatch) return permutationMatch;
     return {
       kind,
       signature,
@@ -133,6 +149,126 @@ export function recognizeOpCase(facelets, kind) {
       source: item.source || '',
     })),
   };
+}
+
+function recognizePllCaseByPermutation(facelets) {
+  const signature = pllPermutationSignatureFromFacelets(facelets);
+  if (!signature) return null;
+
+  const matches = pllPermutationCaseIndex().get(signature) || [];
+  if (matches.length === 0) return null;
+
+  const [best] = matches;
+  return {
+    kind: 'pll',
+    signature: `perm:${signature}`,
+    caseId: best.id,
+    name: best.name,
+    group: best.group,
+    algorithm: best.algorithm,
+    pdfLabel: best.pdfLabel || '',
+    source: best.source || '',
+    matchCount: matches.length,
+    confidence: matches.length === 1 ? 'unique' : 'ambiguous',
+    matches: matches.map((item) => ({
+      caseId: item.id,
+      name: item.name,
+      group: item.group,
+      algorithm: item.algorithm,
+      pdfLabel: item.pdfLabel || '',
+      source: item.source || '',
+    })),
+  };
+}
+
+function pllPermutationCaseIndex() {
+  if (!pllPermutationCaseIndexCache) {
+    const index = new Map();
+    for (const item of opCaseLibrary()) {
+      if (item.kind !== 'pll') continue;
+      const algorithms = [...new Set([item.trainerAlgorithm, item.algorithm].filter(Boolean))];
+      for (const algorithm of algorithms) {
+        let signature = '';
+        try {
+          signature = pllPermutationSignatureFromFacelets(faceletsFromScramble(invertAlgorithm(algorithm)));
+        } catch {
+          signature = '';
+        }
+        if (!signature) continue;
+        const bucket = index.get(signature) || [];
+        if (!bucket.some((candidate) => candidate.id === item.id)) bucket.push(item);
+        index.set(signature, bucket);
+      }
+    }
+    pllPermutationCaseIndexCache = index;
+  }
+  return pllPermutationCaseIndexCache;
+}
+
+function pllPermutationSignatureFromFacelets(facelets) {
+  const text = String(facelets || '').trim().toUpperCase();
+  if (!/^[URFDLB]{54}$/.test(text)) return '';
+
+  const signatures = [];
+  for (const yRotation of yRotations) {
+    let yFacelets;
+    try {
+      yFacelets = yRotation ? applyMovesToFacelets(text, yRotation) : text;
+    } catch {
+      continue;
+    }
+    for (const uRotation of uRotations) {
+      try {
+        const rotated = uRotation ? applyMovesToFacelets(yFacelets, uRotation) : yFacelets;
+        const signature = rawPllPermutationSignature(rotated);
+        if (signature) signatures.push(signature);
+      } catch {
+        // Ignore invalid orientation probes and keep checking the remaining rotations.
+      }
+    }
+  }
+
+  return signatures.sort()[0] || '';
+}
+
+function rawPllPermutationSignature(facelets) {
+  for (let row = 0; row < 3; row += 1) {
+    for (let col = 0; col < 3; col += 1) {
+      if (faceletAt(facelets, topFace, row, col) !== topFace) return '';
+    }
+  }
+
+  const sideColorMap = sideColorToFaceMap(facelets);
+  if (!sideColorMap) return '';
+
+  const edgePermutation = [];
+  for (const face of sideFaces) {
+    const pieceFace = sideColorMap[faceletAt(facelets, face, 0, 1)];
+    const pieceIndex = sideFaces.indexOf(pieceFace);
+    if (pieceIndex < 0) return '';
+    edgePermutation.push(pieceIndex);
+  }
+
+  const cornerPermutation = [];
+  for (const positions of pllCornerStickerPositions) {
+    const pieceKey = positions
+      .map(([face, row, col]) => sideColorMap[faceletAt(facelets, face, row, col)])
+      .sort()
+      .join('');
+    const pieceIndex = pllCornerPieceKeys.indexOf(pieceKey);
+    if (pieceIndex < 0) return '';
+    cornerPermutation.push(pieceIndex);
+  }
+
+  if (new Set(edgePermutation).size !== 4 || new Set(cornerPermutation).size !== 4) return '';
+  if (
+    edgePermutation.every((pieceIndex, slotIndex) => pieceIndex === slotIndex)
+    && cornerPermutation.every((pieceIndex, slotIndex) => pieceIndex === slotIndex)
+  ) {
+    return '';
+  }
+
+  return `e${edgePermutation.join('')}c${cornerPermutation.join('')}`;
 }
 
 export function ollSignatureFromFacelets(facelets) {
@@ -520,8 +656,11 @@ function opFaceletSnapshotsForSolve(solve, records) {
 }
 
 function opEventsForBottomFace(solve, snapshots, records, bottomFace, stages = [], options = {}) {
-  const opSnapshots = normalizeOpSnapshotsForBottomFace(snapshots, bottomFace, stages, options);
-  const opRecords = normalizeOpRecordsForBottomFace(records, bottomFace, stages, options);
+  const normalizeOptions = options.forceOrientation === true || !hasInitialRawOpState(snapshots)
+    ? options
+    : { ...options, preserveRawOrientation: true };
+  const opSnapshots = normalizeOpSnapshotsForBottomFace(snapshots, bottomFace, stages, normalizeOptions);
+  const opRecords = normalizeOpRecordsForBottomFace(records, bottomFace, stages, normalizeOptions);
   const scannedEvents = scanOpEvents(solve, opSnapshots, opRecords, opScanBoundsFromStages(stages, snapshots));
   const stageEvents = options.includeStageEvents === false
     ? []
@@ -553,6 +692,7 @@ function shouldTryOrientationFallback(solve, events, bottomFace) {
 
 function normalizeOpSnapshotsForBottomFace(snapshots, bottomFace, stages = [], options = {}) {
   const bottom = String(bottomFace || 'D').toUpperCase();
+  if (options.preserveRawOrientation === true) return snapshots;
   if (!oppositeFaces[bottom] || bottom === 'D') return snapshots;
   if (options.forceOrientation !== true && !shouldNormalizeOpSnapshotsForCfopBottom(stages)) return snapshots;
   return snapshots.map((facelets) => orientFaceletsForOpBottom(facelets, bottom));
@@ -560,6 +700,7 @@ function normalizeOpSnapshotsForBottomFace(snapshots, bottomFace, stages = [], o
 
 function normalizeOpRecordsForBottomFace(records, bottomFace, stages = [], options = {}) {
   const bottom = String(bottomFace || 'D').toUpperCase();
+  if (options.preserveRawOrientation === true) return records;
   if (!Array.isArray(records) || !oppositeFaces[bottom] || bottom === 'D') return records;
   if (options.forceOrientation !== true && !shouldNormalizeOpSnapshotsForCfopBottom(stages)) return records;
   return records.map((record) => {
@@ -579,7 +720,11 @@ function shouldNormalizeOpSnapshotsForCfopBottom(stages) {
   const ollCompletedAt = opStageCompletedAt(items.find((stage) => stage?.key === 'oll' || stage?.label === 'O'));
   const pllCompletedAt = opStageCompletedAt(items.find((stage) => stage?.key === 'pll' || stage?.label === 'P'));
   const opBoundary = Number.isFinite(ollCompletedAt) ? ollCompletedAt : pllCompletedAt;
-  return Number.isFinite(f2lCompletedAt) && Number.isFinite(opBoundary) && f2lCompletedAt < opBoundary;
+  if (!Number.isFinite(f2lCompletedAt) || !Number.isFinite(opBoundary)) return false;
+  if (f2lCompletedAt < opBoundary) return true;
+  if (f2lCompletedAt !== opBoundary) return false;
+  const ollStage = items.find((stage) => stage?.key === 'oll' || stage?.label === 'O');
+  return Number(ollStage?.turns) === 0 || Number(ollStage?.physicalTurns) === 0;
 }
 
 function orientFaceletsForOpBottom(facelets, bottomFace) {

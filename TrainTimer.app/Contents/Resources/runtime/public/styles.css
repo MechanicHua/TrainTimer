@@ -1254,8 +1254,10 @@ body[data-focus="true"]:has(.preview-panel .bluetooth-3d-panel:not([hidden])),
 body[data-focus-transition="leave"]:has(.preview-panel .bluetooth-3d-panel:not([hidden])) {
   --timer-focus-3d-left: clamp(18px, 2vw, 40px);
   --timer-focus-3d-width: min(clamp(420px, 34vw, 620px), calc(100vw - 32px));
+  --timer-focus-3d-height: min(clamp(420px, 58vh, 660px), calc(100dvh - 126px));
   --timer-focus-3d-lift: 24px;
   --timer-focus-number-shift: clamp(120px, 18vw, 230px);
+  --timer-focus-number-lower: 0px;
 }
 
 .bluetooth-3d-focus-host {
@@ -1279,7 +1281,7 @@ body[data-focus-transition="leave"] .bluetooth-3d-focus-host .bluetooth-3d-canva
   top: 50%;
   left: var(--timer-focus-3d-left);
   width: var(--timer-focus-3d-width);
-  height: min(clamp(420px, 58vh, 660px), calc(100dvh - 126px));
+  height: var(--timer-focus-3d-height);
   border-radius: 0;
   background: transparent;
   box-shadow: none;
@@ -2167,7 +2169,7 @@ body[data-focus-transition="leave"] .timer-layout {
 }
 
 body[data-focus="true"] .timer-surface {
-  transform: translateX(var(--timer-focus-number-shift));
+  transform: translate(var(--timer-focus-number-shift), var(--timer-focus-number-lower));
 }
 
 .app-shell > :not(.timer-band),
@@ -2221,10 +2223,38 @@ body[data-state="timing"] .timer-band {
 }
 
 @media (max-width: 980px) {
+  body[data-focus="true"],
+  body[data-focus-transition="leave"] {
+    overflow-x: clip;
+  }
+
   body[data-focus="true"][data-live3d="true"],
   body[data-focus="true"]:has(.preview-panel .bluetooth-3d-panel:not([hidden])),
   body[data-focus-transition="leave"]:has(.preview-panel .bluetooth-3d-panel:not([hidden])) {
-    --timer-focus-number-shift: 0px;
+    --timer-focus-3d-width: clamp(300px, 42vw, 380px);
+    --timer-focus-3d-height: min(clamp(340px, 50vh, 500px), calc(100dvh - 100px));
+    --timer-focus-number-shift: clamp(110px, 18vw, 150px);
+    --timer-focus-number-lower: max(0px, calc(50dvh + 23.2vw - 438px));
+  }
+}
+
+@media (max-width: 720px) {
+  body[data-focus="true"][data-live3d="true"],
+  body[data-focus="true"]:has(.preview-panel .bluetooth-3d-panel:not([hidden])),
+  body[data-focus-transition="leave"]:has(.preview-panel .bluetooth-3d-panel:not([hidden])) {
+    --timer-focus-3d-left: 12px;
+    --timer-focus-3d-width: clamp(180px, 44vw, 300px);
+    --timer-focus-3d-height: min(clamp(260px, 44vh, 380px), calc(100dvh - 88px));
+    --timer-focus-number-shift: clamp(76px, 20vw, 110px);
+  }
+}
+
+@media (max-width: 480px) {
+  body[data-focus="true"][data-live3d="true"],
+  body[data-focus="true"]:has(.preview-panel .bluetooth-3d-panel:not([hidden])),
+  body[data-focus-transition="leave"]:has(.preview-panel .bluetooth-3d-panel:not([hidden])) {
+    --timer-focus-3d-left: 8px;
+    --timer-focus-3d-width: clamp(136px, 36vw, 165px);
   }
 }
 

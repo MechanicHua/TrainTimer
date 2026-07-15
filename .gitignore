@@ -7,6 +7,9 @@ coverage/
 
 .playwright-cli/
 output/
+dist/
+windows/**/bin/
+windows/**/obj/
 
 *.log
 gemini-code-*.html

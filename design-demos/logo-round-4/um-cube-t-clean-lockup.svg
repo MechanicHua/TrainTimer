@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1600"
+     height="420"
+     viewBox="0 0 1600 420"
+     role="img"
+     aria-labelledby="title desc"
+     shape-rendering="geometricPrecision">
+  <title id="title">TrainTimer clean aligned U/M cube T horizontal lockup</title>
+  <desc id="desc">The minimal aligned cube T mark paired with the TrainTimer name.</desc>
+
+  <defs>
+    <linearGradient id="plate" x1="128" y1="80" x2="900" y2="944" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#27333C"/>
+      <stop offset="0.5" stop-color="#151C22"/>
+      <stop offset="1" stop-color="#090D11"/>
+    </linearGradient>
+    <linearGradient id="uLayer" x1="228" y1="228" x2="796" y2="404" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F7F9F9"/>
+      <stop offset="1" stop-color="#D9E1E3"/>
+    </linearGradient>
+    <linearGradient id="mLayer" x1="424" y1="424" x2="600" y2="796" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#DFE6E7"/>
+      <stop offset="1" stop-color="#B8C5C9"/>
+    </linearGradient>
+    <rect id="cubie" width="176" height="176" rx="32"/>
+  </defs>
+
+  <g id="mark" transform="translate(16 26) scale(.36)">
+    <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#plate)"/>
+    <rect x="49" y="49" width="926" height="926" rx="208"
+          fill="none" stroke="#DDE8EC" stroke-opacity="0.11" stroke-width="4"/>
+    <rect x="188" y="188" width="648" height="648" rx="112" fill="#0B1116"/>
+
+    <g fill="#2A3740" stroke="#92A5AF" stroke-opacity="0.12" stroke-width="3">
+      <use href="#cubie" x="228" y="424"/>
+      <use href="#cubie" x="620" y="424"/>
+      <use href="#cubie" x="228" y="620"/>
+      <use href="#cubie" x="620" y="620"/>
+    </g>
+    <g fill="url(#uLayer)" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="3">
+      <use href="#cubie" x="228" y="228"/>
+      <use href="#cubie" x="424" y="228"/>
+      <use href="#cubie" x="620" y="228"/>
+    </g>
+    <g fill="url(#mLayer)" stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="3">
+      <use href="#cubie" x="424" y="424"/>
+      <use href="#cubie" x="424" y="620"/>
+    </g>
+    <rect x="472" y="410" width="80" height="8" rx="4" fill="#4C9FF0"/>
+  </g>
+
+  <text x="430" y="263"
+        fill="#17232B"
+        font-family="Avenir Next, SF Pro Display, Helvetica Neue, sans-serif"
+        font-size="150"
+        font-weight="650"
+        letter-spacing="-5">TrainTimer</text>
+</svg>

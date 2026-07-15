@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1024"
+     height="1024"
+     viewBox="0 0 1024 1024"
+     role="img"
+     aria-labelledby="title desc"
+     shape-rendering="geometricPrecision">
+  <title id="title">TrainTimer U/M Cube T — Liquid Glass v3</title>
+  <desc id="desc">The original aligned three-by-three cube T icon, rebuilt with restrained translucent glass surfaces on its original dark plate.</desc>
+
+  <defs>
+    <!-- The original icon's neutral dark carrier. No illustrated backdrop. -->
+    <linearGradient id="plate" x1="128" y1="80" x2="900" y2="944" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#293640"/>
+      <stop offset="0.48" stop-color="#172027"/>
+      <stop offset="1" stop-color="#0A0F13"/>
+    </linearGradient>
+    <linearGradient id="tray" x1="214" y1="194" x2="812" y2="830" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#121B22"/>
+      <stop offset="0.55" stop-color="#090F14"/>
+      <stop offset="1" stop-color="#060A0E"/>
+    </linearGradient>
+
+    <!-- U and M keep the original hierarchy, but become translucent material. -->
+    <linearGradient id="uGlass" x1="228" y1="218" x2="760" y2="414" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FAFEFF" stop-opacity="0.60"/>
+      <stop offset="0.42" stop-color="#DDEEF3" stop-opacity="0.39"/>
+      <stop offset="1" stop-color="#8AA6B2" stop-opacity="0.18"/>
+    </linearGradient>
+    <linearGradient id="mGlass" x1="408" y1="422" x2="616" y2="804" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#EDF8FA" stop-opacity="0.42"/>
+      <stop offset="0.56" stop-color="#BCD2D9" stop-opacity="0.27"/>
+      <stop offset="1" stop-color="#78929E" stop-opacity="0.16"/>
+    </linearGradient>
+
+    <!-- Edge light changes with surface direction instead of a drawn-on white outline. -->
+    <linearGradient id="uEdge" x1="242" y1="228" x2="380" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.66"/>
+      <stop offset="0.38" stop-color="#EAF7FA" stop-opacity="0.21"/>
+      <stop offset="0.72" stop-color="#88A6B2" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#22313A" stop-opacity="0.30"/>
+    </linearGradient>
+    <linearGradient id="mEdge" x1="438" y1="424" x2="590" y2="796" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F7FCFD" stop-opacity="0.44"/>
+      <stop offset="0.46" stop-color="#D7E9ED" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#203039" stop-opacity="0.34"/>
+    </linearGradient>
+    <linearGradient id="refractionBand" x1="380" y1="800" x2="760" y2="210" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#67B9DE" stop-opacity="0"/>
+      <stop offset="0.42" stop-color="#D9F5FF" stop-opacity="0.20"/>
+      <stop offset="0.58" stop-color="#FFFFFF" stop-opacity="0.31"/>
+      <stop offset="0.72" stop-color="#9DDDF3" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#67B9DE" stop-opacity="0"/>
+    </linearGradient>
+
+    <filter id="plateShadow" x="-18%" y="-16%" width="136%" height="150%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="#010305" flood-opacity="0.52"/>
+    </filter>
+    <filter id="tileShadow" x="-30%" y="-30%" width="160%" height="175%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000307" flood-opacity="0.42"/>
+    </filter>
+
+    <radialGradient id="sharedReflection" cx="0" cy="0" r="1" gradientTransform="translate(324 214) rotate(20) scale(430 210)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="0.42" stop-color="#E9F8FC" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#A9D7E8" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="reflectionBlur" x="-15%" y="-35%" width="130%" height="170%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <filter id="refractionBlur" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="12"/>
+    </filter>
+
+    <filter id="markerGlow" x="-90%" y="-500%" width="280%" height="1100%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+
+    <rect id="cubie" width="176" height="176" rx="32"/>
+    <clipPath id="uClip">
+      <use href="#cubie" x="228" y="228"/>
+      <use href="#cubie" x="424" y="228"/>
+      <use href="#cubie" x="620" y="228"/>
+    </clipPath>
+    <clipPath id="mClip">
+      <use href="#cubie" x="424" y="424"/>
+      <use href="#cubie" x="424" y="620"/>
+    </clipPath>
+    <clipPath id="tClip">
+      <use href="#cubie" x="228" y="228"/>
+      <use href="#cubie" x="424" y="228"/>
+      <use href="#cubie" x="620" y="228"/>
+      <use href="#cubie" x="424" y="424"/>
+      <use href="#cubie" x="424" y="620"/>
+    </clipPath>
+  </defs>
+
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#plate)"/>
+  <rect x="49" y="49" width="926" height="926" rx="208"
+        fill="none" stroke="#DDE8EC" stroke-opacity="0.10" stroke-width="4"/>
+
+  <g id="cube" filter="url(#plateShadow)">
+    <rect x="188" y="188" width="648" height="648" rx="112" fill="url(#tray)"/>
+    <rect x="198" y="198" width="628" height="628" rx="102"
+          fill="none" stroke="#A8BCC5" stroke-opacity="0.12" stroke-width="3"/>
+
+    <!-- Original matte inactive cubies: only the T receives Liquid Glass material. -->
+    <g filter="url(#tileShadow)">
+      <g fill="#2A3740" stroke="#92A5AF" stroke-opacity="0.12" stroke-width="3">
+        <use href="#cubie" x="228" y="424"/>
+        <use href="#cubie" x="620" y="424"/>
+        <use href="#cubie" x="228" y="620"/>
+        <use href="#cubie" x="620" y="620"/>
+      </g>
+    </g>
+
+    <!-- Original U layer geometry, now one coherent glass material. -->
+    <g filter="url(#tileShadow)" fill="url(#uGlass)" stroke="url(#uEdge)" stroke-width="2">
+      <use href="#cubie" x="228" y="228"/>
+      <use href="#cubie" x="424" y="228"/>
+      <use href="#cubie" x="620" y="228"/>
+    </g>
+    <ellipse cx="360" cy="218" rx="390" ry="128" fill="url(#sharedReflection)"
+             clip-path="url(#uClip)" filter="url(#reflectionBlur)"/>
+
+    <!-- Original M slice geometry; slightly denser glass preserves the T hierarchy. -->
+    <g filter="url(#tileShadow)" fill="url(#mGlass)" stroke="url(#mEdge)" stroke-width="2">
+      <use href="#cubie" x="424" y="424"/>
+      <use href="#cubie" x="424" y="620"/>
+    </g>
+    <ellipse cx="444" cy="438" rx="190" ry="290" fill="url(#sharedReflection)"
+             clip-path="url(#mClip)" filter="url(#reflectionBlur)" opacity="0.62"/>
+    <!-- One continuous reflected band crosses the whole T, so the lighting feels coherent. -->
+    <path d="M352 858 C398 708 508 538 742 182"
+          fill="none" stroke="url(#refractionBand)" stroke-width="76" stroke-linecap="round"
+          clip-path="url(#tClip)" filter="url(#refractionBlur)"/>
+    <path d="M366 850 C418 696 520 536 748 190"
+          fill="none" stroke="#E8FAFF" stroke-opacity="0.08" stroke-width="8" stroke-linecap="round"
+          clip-path="url(#tClip)"/>
+
+    <!-- The existing U/M movement marker is retained exactly, with only a soft optical bloom. -->
+    <rect x="464" y="406" width="96" height="16" rx="8" fill="#57ACF7" opacity="0.24" filter="url(#markerGlow)"/>
+    <rect x="472" y="410" width="80" height="8" rx="4" fill="#55A9F5"/>
+    <rect x="480" y="411" width="50" height="2" rx="1" fill="#D9F4FF" opacity="0.62"/>
+  </g>
+</svg>

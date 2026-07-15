@@ -16,6 +16,7 @@ const mirroredPublicFiles = [
 
 const mirroredSourceModules = [
   'bluetooth-moves.js',
+  'bluetooth-state-log.js',
   'cfop-analysis.js',
   'cube-state.js',
   'history.js',
@@ -58,6 +59,7 @@ test('packaged runtime exposes OP browser modules through the server allow-list'
   const appSource = await readFile(join(appRuntimeRoot, 'public', 'app.js'), 'utf8');
   const requiredModules = [
     'op-analysis.js',
+    'bluetooth-state-log.js',
     'op-case-diagrams.js',
     'op-case-svg.js',
     'op-formula-library.js',

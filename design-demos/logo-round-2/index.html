@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TrainTimer Logo Exploration · Round 2</title>
+  <link rel="icon" href="concept-b-um-turn-t.svg" type="image/svg+xml" />
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #ecece8;
+      --ink: #171819;
+      --muted: #6e7175;
+      --line: rgba(23, 24, 25, .14);
+      --panel: #f8f8f5;
+      --dark: #111419;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+
+    body {
+      background:
+        radial-gradient(circle at 54% -20%, rgba(255,255,255,.92), transparent 46%),
+        var(--paper);
+      color: var(--ink);
+      font-family: "Avenir Next", "SF Pro Text", "PingFang SC", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page {
+      width: min(1520px, calc(100% - 64px));
+      margin: 0 auto;
+      padding: 52px 0 68px;
+    }
+
+    .masthead {
+      display: grid;
+      grid-template-columns: 1fr minmax(360px, 540px);
+      gap: 48px;
+      align-items: end;
+      padding-bottom: 28px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: #777b7e;
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(38px, 4.25vw, 62px);
+      font-weight: 640;
+      letter-spacing: -.058em;
+      line-height: 1.02;
+      text-wrap: balance;
+    }
+
+    .intro {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.75;
+      text-wrap: pretty;
+    }
+
+    .routes {
+      display: grid;
+      gap: 26px;
+      margin-top: 34px;
+    }
+
+    .route {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.62);
+      overflow: hidden;
+      box-shadow: 0 1px 0 rgba(255,255,255,.9) inset;
+    }
+
+    .route-head {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 16px;
+      align-items: baseline;
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .number, .mode {
+      color: #85898c;
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .route h2 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 650;
+      letter-spacing: -.035em;
+    }
+
+    .route-content {
+      display: grid;
+      min-height: 510px;
+    }
+
+    .route-a .route-content { grid-template-columns: minmax(0, 1.65fr) minmax(380px, .85fr); }
+    .route-b .route-content { grid-template-columns: minmax(380px, .82fr) minmax(0, 1.68fr); }
+
+    .hero {
+      display: grid;
+      place-items: center;
+      position: relative;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .hero-light {
+      background:
+        linear-gradient(rgba(20,22,25,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(20,22,25,.035) 1px, transparent 1px),
+        #f1f2f3;
+      background-size: 32px 32px;
+    }
+
+    .hero-dark {
+      background:
+        radial-gradient(circle at 50% 42%, rgba(74,86,102,.20), transparent 46%),
+        var(--dark);
+    }
+
+    .wordmark-main {
+      width: min(84%, 850px);
+      height: auto;
+    }
+
+    .icon-main {
+      width: min(68%, 330px);
+      aspect-ratio: 1;
+      border-radius: 22%;
+      filter: drop-shadow(0 22px 28px rgba(0,0,0,.2));
+    }
+
+    .detail {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 22px;
+      padding: 30px;
+      background: var(--panel);
+      border-left: 1px solid var(--line);
+    }
+
+    .route-b .detail {
+      border-right: 1px solid var(--line);
+      border-left: 0;
+    }
+
+    .lockup-preview {
+      min-height: 122px;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .lockup-preview img {
+      width: min(100%, 560px);
+      max-height: 104px;
+    }
+
+    .subhead {
+      margin: 0 0 10px;
+      color: #7d8184;
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    .scale-test {
+      display: flex;
+      align-items: flex-end;
+      gap: 18px;
+      min-height: 96px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      background: linear-gradient(120deg, #fff, #eef0f2);
+    }
+
+    .size {
+      display: grid;
+      justify-items: center;
+      gap: 7px;
+      color: #878b8e;
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 9px;
+    }
+
+    .size img { display: block; border-radius: 22%; }
+    .s96 img { width: 72px; height: 72px; }
+    .s64 img { width: 52px; height: 52px; }
+    .s32 img { width: 32px; height: 32px; }
+    .s16 img { width: 16px; height: 16px; }
+
+    .mono {
+      margin-left: auto;
+      padding-left: 18px;
+      border-left: 1px solid var(--line);
+    }
+
+    .mono img {
+      width: 58px;
+      height: 58px;
+      filter: grayscale(1) contrast(1.18);
+    }
+
+    .notes {
+      display: grid;
+      grid-template-columns: 68px 1fr;
+      gap: 8px 12px;
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .notes dt { color: #888c8f; }
+    .notes dd { margin: 0; color: #4f5356; }
+
+    .dark-wordmark {
+      width: min(78%, 760px);
+      filter: grayscale(1) brightness(0) invert(1);
+      opacity: .93;
+    }
+
+    .hero-pair {
+      display: grid;
+      grid-template-rows: 1fr .62fr;
+    }
+
+    .hero-pair > .hero + .hero { border-top: 1px solid rgba(255,255,255,.11); }
+
+    .caption {
+      position: absolute;
+      left: 18px;
+      bottom: 15px;
+      color: rgba(103,108,112,.78);
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 9px;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+
+    .hero-dark .caption { color: rgba(255,255,255,.42); }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      color: #7d8184;
+      font-size: 11px;
+    }
+
+    @media (max-width: 1040px) {
+      .masthead { grid-template-columns: 1fr; gap: 20px; }
+      .route-a .route-content,
+      .route-b .route-content { grid-template-columns: 1fr; }
+      .detail, .route-b .detail { border: 0; border-top: 1px solid var(--line); }
+      .route-b .hero { order: -1; min-height: 440px; }
+      .route-content { min-height: 0; }
+      .hero-pair { min-height: 520px; }
+    }
+
+    @media (max-width: 620px) {
+      .page { width: min(100% - 28px, 560px); padding-top: 32px; }
+      h1 { font-size: 36px; }
+      .route-head { grid-template-columns: auto 1fr; }
+      .mode { display: none; }
+      .detail { padding: 22px 18px; }
+      .hero-pair { min-height: 430px; }
+      .route-b .hero { min-height: 360px; }
+      .scale-test { gap: 12px; }
+      footer { display: block; }
+    }
+  </style>
+</head>
+<body>
+  <!--
+    Round 2: two user-directed concepts. The first is judged as a wordmark,
+    the second as an app-icon symbol. Formal assets remain unchanged until a
+    direction is approved.
+  -->
+  <main class="page">
+    <header class="masthead">
+      <div>
+        <p class="eyebrow">TrainTimer · Logo exploration 02</p>
+        <h1>回到名称，回到转层动作</h1>
+      </div>
+      <p class="intro">第一案让 TrainTimer 名称本身承担品牌识别；第二案只用魔方 U 顶层与 M 中层的相对转位形成 T。两案不继承第一轮图形。</p>
+    </header>
+
+    <section class="routes" aria-label="TrainTimer round two logo concepts">
+      <article class="route route-a">
+        <header class="route-head">
+          <span class="number">01</span>
+          <h2>Name Primary · 名称主体</h2>
+          <span class="mode">Wordmark first</span>
+        </header>
+        <div class="route-content">
+          <div class="hero-pair">
+            <div class="hero hero-light">
+              <img class="wordmark-main" src="concept-a-name-wordmark.svg" alt="TrainTimer 名称主体字标" />
+              <span class="caption">Primary wordmark · light</span>
+            </div>
+            <div class="hero hero-dark">
+              <img class="dark-wordmark" src="concept-a-name-wordmark.svg" alt="TrainTimer 字标单色反白测试" />
+              <span class="caption">Monochrome reversal</span>
+            </div>
+          </div>
+          <aside class="detail">
+            <div>
+              <p class="subhead">Derived app mark</p>
+              <div class="lockup-preview"><img src="concept-a-name-mark.svg" alt="由字标派生的 TrainTimer App 标志" /></div>
+            </div>
+            <div>
+              <p class="subhead">Scale & grayscale stress test</p>
+              <div class="scale-test">
+                <span class="size s96"><img src="concept-a-name-mark.svg" alt="72px" />72</span>
+                <span class="size s64"><img src="concept-a-name-mark.svg" alt="52px" />52</span>
+                <span class="size s32"><img src="concept-a-name-mark.svg" alt="32px" />32</span>
+                <span class="size s16"><img src="concept-a-name-mark.svg" alt="16px" />16</span>
+                <span class="size mono"><img src="concept-a-name-mark.svg" alt="灰度测试" />mono</span>
+              </div>
+            </div>
+            <dl class="notes">
+              <dt>核心</dt><dd>完整名称、双 T 呼应、计时切分</dd>
+              <dt>判断重点</dt><dd>名称是否本身就有记忆点，而非依赖旁边图标</dd>
+              <dt>派生逻辑</dt><dd>App 标志必须使用同一组定制 T 与切分信号</dd>
+            </dl>
+          </aside>
+        </div>
+      </article>
+
+      <article class="route route-b">
+        <header class="route-head">
+          <span class="number">02</span>
+          <h2>U/M Turn T · 转层 T</h2>
+          <span class="mode">Motion first</span>
+        </header>
+        <div class="route-content">
+          <aside class="detail">
+            <div>
+              <p class="subhead">Name lockup</p>
+              <div class="lockup-preview"><img src="concept-b-um-lockup.svg" alt="U/M 转层 T 与 TrainTimer 名称组合" /></div>
+            </div>
+            <div>
+              <p class="subhead">Scale & grayscale stress test</p>
+              <div class="scale-test">
+                <span class="size s96"><img src="concept-b-um-turn-t.svg" alt="72px" />72</span>
+                <span class="size s64"><img src="concept-b-um-turn-t.svg" alt="52px" />52</span>
+                <span class="size s32"><img src="concept-b-um-turn-t.svg" alt="32px" />32</span>
+                <span class="size s16"><img src="concept-b-um-turn-t.svg" alt="16px" />16</span>
+                <span class="size mono"><img src="concept-b-um-turn-t.svg" alt="灰度测试" />mono</span>
+              </div>
+            </div>
+            <dl class="notes">
+              <dt>核心</dt><dd>U 顶层横排、M 中层纵列、共同形成 T</dd>
+              <dt>判断重点</dt><dd>先读成 T，再看出两层正在转位</dd>
+              <dt>需避免</dt><dd>普通像素字、俄罗斯方块、箭头或完整魔方</dd>
+            </dl>
+          </aside>
+          <div class="hero hero-dark">
+            <img class="icon-main" src="concept-b-um-turn-t.svg" alt="U/M 转层形成的 T App 图标" />
+            <span class="caption">Primary app icon concept</span>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <footer>
+      <span>Round 2 · User-directed concepts.</span>
+      <span>正式 App、网页与 Bundle 资产尚未替换。</span>
+    </footer>
+  </main>
+</body>
+</html>

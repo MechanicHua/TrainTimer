@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cfopStagesForSave, solveCfopAnalysis, solveMoveRecords } from '../src/cfop-analysis.js';
-import { faceletsFromScramble } from '../src/cube-state.js';
+import {
+  cfopStagesForSave,
+  solveCfopAnalysis,
+  solveFaceletStateTimelineForAnalysis,
+  solveMoveRecords,
+} from '../src/cfop-analysis.js';
+import { applyMoveToFacelets, faceletsFromScramble } from '../src/cube-state.js';
 
 test('CFOP analysis uses logical half-turn steps for solve records', () => {
   const records = solveMoveRecords({
@@ -36,17 +41,20 @@ test('CFOP analysis detects a stage restored between repeated physical turns', (
   assert.equal(analysis.finalSolved, true);
 });
 
-test('state-packet solved fallback completes CFOP when final GAN move is not in the log', () => {
-  const stages = cfopStagesForSave({
-    scramble: 'R U',
+test('state-packet solved evidence does not synthesize missing CFOP stages without facelets', () => {
+  const solve = {
+    scramble: 'R U F',
     scramblePuzzle: 'three',
     bluetoothMoves: ["U'"],
     bluetoothSolvedByStatePacket: true,
-  });
+  };
+  const analysis = solveCfopAnalysis(solve);
+  const stages = cfopStagesForSave(solve);
   const pll = stages.find((stage) => stage.label === 'P');
 
-  assert.ok(stages.every((stage) => stage.completed));
-  assert.equal(pll.completed, true);
+  assert.equal(analysis.finalSolved, true);
+  assert.equal(stages.every((stage) => stage.completed), false);
+  assert.equal(pll.completed, false);
   assert.equal(pll.name, 'PLL');
 });
 
@@ -60,6 +68,25 @@ test('CFOP replay uses saved bluetooth state corrections to recover from move-lo
     ],
     bluetoothStateCorrections: [
       { step: 1, facelets: faceletsFromScramble("R'"), elapsedMs: 100 },
+    ],
+  };
+  const analysis = solveCfopAnalysis(solve);
+
+  assert.equal(analysis.finalSolved, true);
+  assert.ok(analysis.stages.every((stage) => stage.completed));
+  assert.equal(analysis.stages.at(-1).completedAt, 2);
+});
+
+test('CFOP replay uses saved bluetooth state log to recover from move-log drift', () => {
+  const solve = {
+    scramble: 'U',
+    scramblePuzzle: 'three',
+    bluetoothMoveLog: [
+      { move: "U'", elapsedMs: 100 },
+      { move: 'R', elapsedMs: 240 },
+    ],
+    bluetoothStateLog: [
+      { step: 1, facelets: faceletsFromScramble("R'"), elapsedMs: 100, raw: 'state-1' },
     ],
   };
   const analysis = solveCfopAnalysis(solve);
@@ -182,18 +209,35 @@ test('state-packet solved fallback does not synthesize full CFOP timing without 
   assert.equal(stages[0].durationMs, null);
 });
 
-test('state-packet solved fallback recovers long move-log drift at the final snapshot', () => {
+test('state-packet solved evidence does not turn long move-log drift into O/P skips', () => {
   const moves = Array.from({ length: 40 }, (_, index) => (index % 2 === 0 ? 'U' : "U'"));
-  const stages = cfopStagesForSave({
+  const solve = {
     scramble: 'R U F',
     scramblePuzzle: 'three',
     bluetoothMoveLog: moves.map((move, index) => ({ move, elapsedMs: (index + 1) * 100 })),
     bluetoothSolvedByStatePacket: true,
+  };
+  const analysis = solveCfopAnalysis(solve);
+  const stages = cfopStagesForSave(solve);
+
+  assert.equal(analysis.finalSolved, true);
+  assert.equal(stages.find((stage) => stage.label === 'O').completed, false);
+  assert.equal(stages.find((stage) => stage.label === 'P').completed, false);
+});
+
+test('bluetooth timer-source confirms final solved without synthesizing O/P skips', () => {
+  const moves = Array.from({ length: 40 }, (_, index) => (index % 2 === 0 ? 'U' : "U'"));
+  const analysis = solveCfopAnalysis({
+    scramble: 'R U F',
+    scramblePuzzle: 'three',
+    bluetoothMoveLog: moves.map((move, index) => ({ move, elapsedMs: (index + 1) * 100 })),
+    timerSource: 'bluetooth',
+    bluetoothSolvedByStatePacket: false,
   });
 
-  assert.ok(stages.every((stage) => stage.completed));
-  assert.equal(stages.find((stage) => stage.label === 'O').completed, true);
-  assert.equal(stages.find((stage) => stage.label === 'P').completed, true);
+  assert.equal(analysis.finalSolved, true);
+  assert.equal(analysis.stages.find((stage) => stage.label === 'O').completed, false);
+  assert.equal(analysis.stages.find((stage) => stage.label === 'P').completed, false);
 });
 
 test('cross stage is named for solved F2L pairs present at cross completion', () => {
@@ -205,6 +249,10 @@ test('cross stage is named for solved F2L pairs present at cross completion', ()
 
   assert.equal(analysis.stages[0].name, 'xxxxcross');
   assert.equal(analysis.stages[0].completed, true);
+  const pll = analysis.stages.find((stage) => stage.label === 'P');
+  assert.equal(pll.skipped, true);
+  assert.equal(pll.skipAdjustment, "U'");
+  assert.equal(pll.turns, 1);
 });
 
 test('late collapsed multiple-pair cross candidates are named conservatively', () => {
@@ -228,17 +276,9 @@ test('late collapsed multiple-pair cross candidates are named conservatively', (
 });
 
 test('CFOP analysis prefers staged progress over final-state-only bottom candidates', () => {
-  const moves = [
-    'B', 'L', 'F', 'R', 'D', 'D', "D'", "D'", "D'", 'B', 'B', "D'",
-    'F', 'F', 'D', 'L', 'D', 'D', "L'", "D'", 'L', 'D', "L'", "D'",
-    'F', 'D', 'D', "F'", 'D', 'F', "D'", "F'", 'D', 'D', "B'", 'D',
-    'B', "D'", "B'", "D'", 'B', "D'", "D'", 'B', "D'", "B'", 'D', 'B',
-    'D', "B'", 'D', "D'", "D'", "D'", 'F', 'L', "B'", "L'", "F'", 'B',
-    'D', 'B', "D'", "B'", 'D', 'D', "D'", 'L', 'B', "D'", "B'", "D'",
-    'B', 'D', "B'", "L'", 'B', 'D', "B'", "D'", "B'", 'L', 'B', "L'",
-  ];
+  const { scramble, moves } = stagedProgressFixture();
   const analysis = solveCfopAnalysis({
-    scramble: "F R' U2 B U2 F2 D2 B U2 L2 B D2 R F' D' B F' L' D'",
+    scramble,
     scramblePuzzle: 'three',
     bluetoothMoveLog: moves.map((move, index) => ({ move, elapsedMs: (index + 1) * 100 })),
   });
@@ -270,3 +310,59 @@ test('CFOP analysis prefers staged progress over final-state-only bottom candida
   );
   assert.ok(analysis.stages.slice(1).every((stage) => stage.durationMs > 0));
 });
+
+test('state timeline preserves staged CFOP progress when several state packets share one move step', () => {
+  const { scramble, moves } = stagedProgressFixture();
+  const physicalBoundaries = [14, 23, 32, 41, 50, 64, 84];
+  let facelets = faceletsFromScramble(scramble);
+  let moveIndex = 0;
+  const bluetoothStateLog = physicalBoundaries.map((endStep, index) => {
+    while (moveIndex < endStep) {
+      facelets = applyMoveToFacelets(facelets, moves[moveIndex]);
+      moveIndex += 1;
+    }
+    return {
+      step: 0,
+      facelets,
+      elapsedMs: endStep * 100,
+      timestampMs: 1000 + endStep * 100,
+      raw: `state-${index + 1}`,
+    };
+  });
+  const solve = {
+    scramble,
+    scramblePuzzle: 'three',
+    timerSource: 'bluetooth',
+    bluetoothSolvedByStatePacket: true,
+    bluetoothStateLog,
+  };
+  const timeline = solveFaceletStateTimelineForAnalysis(solve);
+  const analysis = solveCfopAnalysis(solve);
+
+  assert.deepEqual(timeline.map((snapshot) => snapshot.sequence), [0, 1, 2, 3, 4, 5, 6, 7]);
+  assert.deepEqual(timeline.map((snapshot) => snapshot.step), Array(8).fill(0));
+  assert.equal(analysis.bottomFace, 'U');
+  assert.equal(analysis.stages[0].name, 'Cross');
+  assert.deepEqual(
+    analysis.stages.map((stage) => stage.completedAtElapsedMs),
+    physicalBoundaries.map((step) => step * 100),
+  );
+  assert.ok(analysis.stages.every((stage) => stage.completed && stage.turns === 0));
+  assert.ok(analysis.stages.every((stage) => stage.unobservedTurns === true));
+  assert.ok(analysis.stages.every((stage) => stage.completionSource === 'state'));
+});
+
+function stagedProgressFixture() {
+  return {
+    scramble: "F R' U2 B U2 F2 D2 B U2 L2 B D2 R F' D' B F' L' D'",
+    moves: [
+      'B', 'L', 'F', 'R', 'D', 'D', "D'", "D'", "D'", 'B', 'B', "D'",
+      'F', 'F', 'D', 'L', 'D', 'D', "L'", "D'", 'L', 'D', "L'", "D'",
+      'F', 'D', 'D', "F'", 'D', 'F', "D'", "F'", 'D', 'D', "B'", 'D',
+      'B', "D'", "B'", "D'", 'B', "D'", "D'", 'B', "D'", "B'", 'D', 'B',
+      'D', "B'", 'D', "D'", "D'", "D'", 'F', 'L', "B'", "L'", "F'", 'B',
+      'D', 'B', "D'", "B'", 'D', 'D', "D'", 'L', 'B', "D'", "B'", "D'",
+      'B', 'D', "B'", "L'", 'B', 'D', "B'", "D'", "B'", 'L', 'B', "L'",
+    ],
+  };
+}

@@ -8,6 +8,20 @@ macOS 双击启动：
 
 直接双击项目根目录里的 `TrainTimer.app`。它会打开一个常驻主窗口，并在本地服务未运行时自动启动服务和打开浏览器。之后可以在同一个窗口里打开网页、停止、重启或刷新状态；关闭窗口会停止本地服务。启动、停止和错误日志保存在 `~/.train-timer/launcher.log`。
 
+重新生成 macOS 图标：
+
+```bash
+./scripts/build-macos-icon.sh
+```
+
+Windows 图形启动器：
+
+```powershell
+.\scripts\build-windows-launcher.ps1
+```
+
+构建后解压 `dist\TrainTimer-Windows-win-x64.zip`，双击 `TrainTimer.exe`。Windows 启动器沿用 macOS 版的服务状态、停止、重启、日志与自动打开 Chrome 行为，并使用 Windows 11 Mica、系统圆角和深浅色模式。详细说明见 `windows\README-Windows.md`。
+
 网页界面：
 
 ```bash

@@ -60,6 +60,15 @@ const solves = [
     bluetoothStateCorrections: [
       { step: 2, facelets: 'UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB', elapsedMs: 700 },
     ],
+    bluetoothStateLog: [
+      {
+        step: 2,
+        facelets: 'UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB',
+        raw: 'aa bb',
+        stateSignature: 'solved-state',
+        elapsedMs: 700,
+      },
+    ],
     bluetoothMoveCount: 3,
     bluetoothTps: 0.25,
     bluetoothDeviceName: 'GoCube',
@@ -96,11 +105,12 @@ test('builds listed exports in provided order', () => {
 
 test('exports CSV with stable columns and quoting', () => {
   const csv = solvesToCsv([solves[1]], sessions);
-  assert.equal(csv.split('\n')[0], 'id,sessionId,sessionName,createdAt,durationMs,duration,penalty,effectiveDurationMs,effectiveDuration,scramble,scrambleSource,scramblePuzzle,inspectionEnabled,timerSource,timerStartedAt,timerStartedAtMs,timerFinishedAt,timerFinishedAtMs,bluetoothMoves,bluetoothMoveLog,bluetoothStateCorrections,bluetoothMoveCount,bluetoothTps,bluetoothDeviceName,bluetoothProtocols,bluetoothSources,cfopStages,opEvents,tags,comment');
+  assert.equal(csv.split('\n')[0], 'id,sessionId,sessionName,createdAt,durationMs,duration,penalty,effectiveDurationMs,effectiveDuration,scramble,scrambleSource,scramblePuzzle,inspectionEnabled,timerSource,timerStartedAt,timerStartedAtMs,timerFinishedAt,timerFinishedAtMs,bluetoothMoves,bluetoothMoveLog,bluetoothStateCorrections,bluetoothStateLog,bluetoothMoveCount,bluetoothTps,bluetoothDeviceName,bluetoothProtocols,bluetoothSources,cfopStages,opEvents,tags,comment');
   assert.match(csv, /"F, R"/);
   assert.match(csv, /test,four,true,bluetooth,2026-05-23T10:00:58\.000Z,1779530458000,2026-05-23T10:01:10\.000Z,1779530470000,R U2 F',/);
   assert.match(csv, /""timestampMs"":1779530458300/);
   assert.match(csv, /""facelets"":""UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB""/);
+  assert.match(csv, /""raw"":""aa bb""/);
   assert.match(csv, /""key"":""oll""/);
   assert.match(csv, /""kind"":""pll""/);
   assert.match(csv, /,3,0.25,GoCube,gocube-move,0x0003/);

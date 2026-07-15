@@ -1,0 +1,1230 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TrainTimer · 智能训练中控</title>
+    <!--
+      Huashu-design assumptions:
+      - This is a standalone design prototype. It is intentionally not wired into public/index.html.
+      - Static sample numbers are used only to show layout density for solve review, Bluetooth state,
+        scramble correction, CFOP timing, TPS and training queue.
+      - The design extends the current TrainTimer vocabulary: neutral dark surface, cyan/green accent,
+        compact controls, 8px radius, timer-first information hierarchy.
+      - No server calls, local storage writes, or production project files are touched.
+    -->
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0b0d;
+        --bg-2: #111113;
+        --surface: rgba(31, 31, 36, 0.72);
+        --surface-solid: #202026;
+        --surface-soft: rgba(255, 255, 255, 0.055);
+        --ink: #f5f5f7;
+        --ink-strong: #ffffff;
+        --muted: #8e8e93;
+        --muted-strong: #c7c7cc;
+        --line: rgba(255, 255, 255, 0.15);
+        --line-soft: rgba(255, 255, 255, 0.09);
+        --accent: #18d6df;
+        --accent-dark: #00adb5;
+        --mint: #8dffbe;
+        --success: #00e676;
+        --warning: #ff9f0a;
+        --danger: #ff453a;
+        --blue: #0a84ff;
+        --radius: 8px;
+        --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+      }
+
+      body {
+        min-height: 100dvh;
+        overflow: hidden;
+        background:
+          linear-gradient(180deg, #151518 0%, #0f0f12 52%, #08080a 100%),
+          var(--bg);
+        color: var(--ink);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+          "Microsoft YaHei", "Segoe UI", sans-serif;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+        background-size: 72px 72px;
+        mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 70%);
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      button {
+        min-height: 34px;
+        border: 0;
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.075);
+        color: var(--ink);
+        cursor: pointer;
+        padding: 0 12px;
+        transition:
+          transform 160ms var(--ease),
+          background 160ms var(--ease),
+          color 160ms var(--ease),
+          border-color 160ms var(--ease);
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      button:focus-visible {
+        outline: 3px solid rgba(24, 214, 223, 0.28);
+        outline-offset: 2px;
+      }
+
+      .page-shell {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        min-height: 100dvh;
+        gap: 14px;
+        padding: 18px;
+      }
+
+      .topbar {
+        display: grid;
+        grid-template-columns: minmax(230px, 300px) minmax(0, 1fr) auto;
+        gap: 14px;
+        align-items: center;
+      }
+
+      .brand-lockup {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .brand-lockup img {
+        display: block;
+        width: min(190px, 100%);
+        height: auto;
+      }
+
+      .page-title {
+        min-width: 0;
+      }
+
+      .page-title h1 {
+        margin: 0;
+        color: var(--ink-strong);
+        font-family:
+          "Avenir Next Condensed", "DIN Alternate", "SF Pro Display",
+          "PingFang SC", sans-serif;
+        font-size: clamp(25px, 2.7vw, 42px);
+        font-weight: 800;
+        letter-spacing: 0;
+        line-height: 0.95;
+        text-wrap: pretty;
+      }
+
+      .page-title p {
+        margin: 7px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 650;
+      }
+
+      .connection-strip {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .status-pill,
+      .mode-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 34px;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.055);
+        padding: 0 11px;
+        color: var(--muted-strong);
+        font-size: 12px;
+        font-weight: 760;
+        white-space: nowrap;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--success);
+        box-shadow: 0 0 0 4px rgba(0, 230, 118, 0.12);
+      }
+
+      .status-dot.warn {
+        background: var(--warning);
+        box-shadow: 0 0 0 4px rgba(255, 159, 10, 0.14);
+      }
+
+      .mode-tabs {
+        display: inline-flex;
+        gap: 4px;
+        padding: 4px;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius);
+        background: rgba(8, 8, 10, 0.46);
+      }
+
+      .mode-tab {
+        border-color: transparent;
+        background: transparent;
+      }
+
+      .mode-tab.active {
+        background: rgba(24, 214, 223, 0.14);
+        color: #eaffff;
+      }
+
+      .workspace-grid {
+        display: grid;
+        grid-template-columns: minmax(270px, 0.88fr) minmax(520px, 1.55fr) minmax(330px, 1fr);
+        gap: 14px;
+        min-height: 0;
+      }
+
+      .column {
+        display: grid;
+        min-height: 0;
+        gap: 14px;
+      }
+
+      .column.left {
+        grid-template-rows: minmax(380px, 1.2fr) minmax(220px, 0.72fr);
+      }
+
+      .column.center {
+        grid-template-rows: minmax(265px, 0.82fr) minmax(350px, 1.18fr);
+      }
+
+      .column.right {
+        grid-template-rows: minmax(350px, 1fr) minmax(250px, 0.74fr);
+      }
+
+      .panel {
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02)),
+          var(--surface);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+      }
+
+      .panel-inner {
+        display: flex;
+        height: 100%;
+        min-height: 0;
+        flex-direction: column;
+        padding: 14px;
+      }
+
+      .panel-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .panel-head h2,
+      .panel-head h3 {
+        margin: 0;
+        color: var(--ink-strong);
+        font-size: 15px;
+        font-weight: 820;
+        letter-spacing: 0;
+      }
+
+      .panel-head p {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 650;
+      }
+
+      .metric-chip {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 4px;
+        border: 1px solid rgba(24, 214, 223, 0.24);
+        border-radius: var(--radius);
+        background: rgba(24, 214, 223, 0.08);
+        padding: 7px 9px;
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 820;
+        white-space: nowrap;
+      }
+
+      .metric-chip strong {
+        color: var(--ink-strong);
+        font-size: 18px;
+        font-weight: 860;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .progress-line {
+        position: relative;
+        height: 8px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .progress-line span {
+        display: block;
+        width: var(--value);
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--accent), var(--mint));
+      }
+
+      .scramble-text {
+        display: block;
+        margin: 12px 0 10px;
+        color: var(--ink-strong);
+        font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+        font-size: clamp(14px, 1.15vw, 17px);
+        font-weight: 680;
+        line-height: 1.86;
+        word-spacing: 0.18em;
+      }
+
+      .move {
+        display: inline-block;
+        margin: 0 0.14em 0.24em 0;
+        border-radius: 6px;
+        padding: 0 0.22em;
+      }
+
+      .move.done {
+        background: rgba(0, 230, 118, 0.1);
+        color: var(--mint);
+      }
+
+      .move.current {
+        background: rgba(24, 214, 223, 0.09);
+        color: #ecfeff;
+        box-shadow: inset 0 -2px 0 rgba(24, 214, 223, 0.72);
+      }
+
+      .move.error {
+        background: rgba(255, 69, 58, 0.18);
+        color: #ffb4ad;
+      }
+
+      .move.next {
+        color: var(--muted-strong);
+      }
+
+      .correction-strip {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 12px;
+        border: 1px solid rgba(255, 159, 10, 0.22);
+        border-radius: var(--radius);
+        background: rgba(255, 159, 10, 0.07);
+        padding: 10px;
+      }
+
+      .correction-strip strong {
+        color: #ffd28a;
+        font-size: 12px;
+        font-weight: 850;
+      }
+
+      .correction-strip span {
+        overflow: hidden;
+        color: var(--ink);
+        font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+        font-size: 12px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .cube-area {
+        display: grid;
+        grid-template-columns: minmax(130px, 1fr) minmax(0, 1fr);
+        gap: 12px;
+        min-height: 0;
+        margin-top: auto;
+      }
+
+      .cube-map {
+        display: grid;
+        align-self: center;
+        width: 100%;
+        max-width: 210px;
+        aspect-ratio: 4 / 3;
+        grid-template-columns: repeat(12, 1fr);
+        grid-template-rows: repeat(9, 1fr);
+        gap: 3px;
+      }
+
+      .facelet {
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: inset 0 0 0 1px rgba(8, 8, 10, 0.38);
+      }
+
+      .w { background: #f5f5f7; }
+      .y { background: #facc15; }
+      .r { background: #dc2626; }
+      .o { background: #f97316; }
+      .g { background: #16a34a; }
+      .b { background: #2563eb; }
+
+      .sync-list {
+        display: grid;
+        align-content: center;
+        gap: 9px;
+      }
+
+      .sync-row,
+      .feed-row,
+      .drill-row,
+      .history-row {
+        display: grid;
+        min-height: 38px;
+        align-items: center;
+        border-top: 1px solid var(--line-soft);
+        color: var(--muted-strong);
+        font-size: 12px;
+      }
+
+      .sync-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+        border: 0;
+      }
+
+      .sync-row strong {
+        color: var(--ink);
+        font-size: 13px;
+      }
+
+      .sync-row span:last-child {
+        font-variant-numeric: tabular-nums;
+      }
+
+      .feed-list {
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .feed-row {
+        grid-template-columns: 54px 58px minmax(0, 1fr) 58px;
+        gap: 8px;
+      }
+
+      .feed-row strong {
+        color: var(--accent);
+        font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+        font-size: 13px;
+      }
+
+      .feed-row span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .timer-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 18px;
+        align-items: end;
+        margin-top: auto;
+      }
+
+      .timer-value {
+        margin: 0;
+        color: var(--ink-strong);
+        font-family: "Avenir Next Condensed", "DIN Alternate", "SF Pro Display", sans-serif;
+        font-size: clamp(76px, 9vw, 132px);
+        font-weight: 900;
+        letter-spacing: 0;
+        line-height: 0.82;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .timer-sub {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .compact-stat {
+        display: grid;
+        min-width: 82px;
+        gap: 2px;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius);
+        background: rgba(8, 8, 10, 0.28);
+        padding: 10px;
+      }
+
+      .compact-stat span {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 730;
+      }
+
+      .compact-stat strong {
+        color: var(--ink-strong);
+        font-size: 19px;
+        font-weight: 860;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .hero-actions {
+        display: grid;
+        gap: 8px;
+        width: 154px;
+      }
+
+      .primary-action {
+        min-height: 42px;
+        background: linear-gradient(135deg, var(--accent), var(--mint));
+        color: #030305;
+        font-weight: 880;
+      }
+
+      .secondary-action {
+        border: 1px solid var(--line-soft);
+        background: rgba(255, 255, 255, 0.055);
+        color: var(--muted-strong);
+      }
+
+      .stage-detail {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 16px;
+      }
+
+      .stage-tile {
+        min-width: 0;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius);
+        background: rgba(8, 8, 10, 0.28);
+        padding: 10px;
+        text-align: left;
+      }
+
+      .stage-tile.active {
+        border-color: rgba(24, 214, 223, 0.48);
+        background: rgba(24, 214, 223, 0.08);
+      }
+
+      .stage-tile span {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 760;
+      }
+
+      .stage-tile strong {
+        display: block;
+        margin-top: 3px;
+        color: var(--ink-strong);
+        font-size: 19px;
+        font-weight: 860;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .stage-tile em {
+        display: block;
+        overflow: hidden;
+        margin-top: 4px;
+        color: var(--muted-strong);
+        font-size: 11px;
+        font-style: normal;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .analysis-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(210px, 0.62fr);
+        gap: 12px;
+        min-height: 0;
+      }
+
+      .chart-panel,
+      .case-panel {
+        min-height: 0;
+        overflow: hidden;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius);
+        background: rgba(8, 8, 10, 0.24);
+        padding: 12px;
+      }
+
+      .chart-title,
+      .case-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 780;
+      }
+
+      .bars {
+        display: grid;
+        height: 150px;
+        grid-template-columns: repeat(18, 1fr);
+        align-items: end;
+        gap: 5px;
+      }
+
+      .bar {
+        min-height: 12px;
+        border-radius: 5px 5px 2px 2px;
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .bar.fast {
+        background: linear-gradient(180deg, var(--mint), rgba(141, 255, 190, 0.28));
+      }
+
+      .bar.mid {
+        background: linear-gradient(180deg, var(--accent), rgba(24, 214, 223, 0.22));
+      }
+
+      .bar.slow {
+        background: linear-gradient(180deg, var(--warning), rgba(255, 159, 10, 0.2));
+      }
+
+      .move-tape {
+        margin-top: 13px;
+        overflow: hidden;
+        color: var(--muted-strong);
+        font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.7;
+        text-overflow: ellipsis;
+      }
+
+      .case-score {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 10px;
+        align-items: center;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      .case-badge {
+        display: grid;
+        width: 58px;
+        height: 58px;
+        place-items: center;
+        border-radius: var(--radius);
+        background: rgba(24, 214, 223, 0.12);
+        color: var(--accent);
+        font-size: 20px;
+        font-weight: 900;
+      }
+
+      .case-score h3 {
+        margin: 0;
+        color: var(--ink-strong);
+        font-size: 17px;
+      }
+
+      .case-score p {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .case-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .case-list div {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        color: var(--muted-strong);
+        font-size: 12px;
+      }
+
+      .case-list strong {
+        color: var(--ink);
+      }
+
+      .training-focus {
+        display: grid;
+        gap: 11px;
+      }
+
+      .focus-card {
+        display: grid;
+        gap: 10px;
+        border: 1px solid rgba(141, 255, 190, 0.22);
+        border-radius: var(--radius);
+        background: rgba(141, 255, 190, 0.055);
+        padding: 12px;
+      }
+
+      .focus-card h3 {
+        margin: 0;
+        color: var(--ink-strong);
+        font-size: 18px;
+      }
+
+      .focus-card p {
+        margin: 0;
+        color: var(--muted-strong);
+        font-size: 13px;
+        line-height: 1.52;
+      }
+
+      .drill-list {
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .drill-row {
+        grid-template-columns: 32px minmax(0, 1fr) auto;
+        gap: 8px;
+      }
+
+      .drill-index {
+        display: grid;
+        width: 24px;
+        height: 24px;
+        place-items: center;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--muted-strong);
+        font-size: 11px;
+        font-weight: 850;
+      }
+
+      .drill-row strong {
+        display: block;
+        overflow: hidden;
+        color: var(--ink);
+        font-size: 13px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .drill-row span:last-child {
+        color: var(--accent);
+        font-weight: 820;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .trend-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .mini-trend {
+        display: grid;
+        gap: 2px;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius);
+        padding: 9px;
+      }
+
+      .mini-trend span {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 760;
+      }
+
+      .mini-trend strong {
+        color: var(--ink-strong);
+        font-size: 16px;
+        font-weight: 860;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .history-list {
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .history-row {
+        grid-template-columns: 40px minmax(0, 1fr) 54px 58px;
+        gap: 8px;
+      }
+
+      .history-row strong {
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .toast {
+        position: fixed;
+        right: 18px;
+        bottom: 18px;
+        z-index: 3;
+        max-width: min(360px, calc(100vw - 36px));
+        border: 1px solid rgba(24, 214, 223, 0.22);
+        border-radius: var(--radius);
+        background: rgba(16, 16, 19, 0.94);
+        color: var(--ink);
+        padding: 12px 14px;
+        font-size: 13px;
+        opacity: 0;
+        transform: translateY(10px);
+        transition:
+          opacity 180ms var(--ease),
+          transform 180ms var(--ease);
+        pointer-events: none;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @media (max-width: 1180px) {
+        body {
+          overflow: auto;
+        }
+
+        .topbar,
+        .workspace-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .connection-strip {
+          justify-content: flex-start;
+          flex-wrap: wrap;
+        }
+
+        .column,
+        .column.left,
+        .column.center,
+        .column.right {
+          grid-template-rows: none;
+        }
+
+        .panel {
+          min-height: 300px;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .page-shell {
+          padding: 12px;
+        }
+
+        .analysis-grid,
+        .cube-area,
+        .timer-hero,
+        .stage-detail {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-actions {
+          width: auto;
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .timer-value {
+          font-size: clamp(64px, 21vw, 96px);
+        }
+
+        .trend-stats {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <div class="brand-lockup">
+          <img src="../public/logo.svg" alt="TrainTimer" />
+        </div>
+        <div class="page-title">
+          <h1>智能训练中控</h1>
+          <p>上一把复盘、打乱校验、弱项训练排在同一张工作台。</p>
+        </div>
+        <div class="connection-strip" aria-label="连接状态">
+          <span class="status-pill"><i class="status-dot"></i>GAN 魔方已连接</span>
+          <span class="status-pill"><i class="status-dot warn"></i>打乱修正待确认</span>
+          <div class="mode-tabs" aria-label="页面模式">
+            <button class="mode-tab active" type="button" data-mode="review">复盘</button>
+            <button class="mode-tab" type="button" data-mode="scramble">打乱</button>
+            <button class="mode-tab" type="button" data-mode="plan">计划</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="workspace-grid">
+        <section class="column left" aria-label="蓝牙和打乱校验">
+          <article class="panel">
+            <div class="panel-inner">
+              <div class="panel-head">
+                <div>
+                  <h2>蓝牙打乱校验</h2>
+                  <p>目标状态和实体魔方实时对齐</p>
+                </div>
+                <span class="metric-chip"><strong>14</strong>/22</span>
+              </div>
+              <div class="progress-line" aria-hidden="true" style="--value: 64%">
+                <span></span>
+              </div>
+              <div class="scramble-text" aria-label="打乱公式">
+                <span class="move done">R</span>
+                <span class="move done">U</span>
+                <span class="move done">R2</span>
+                <span class="move done">F</span>
+                <span class="move done">B2</span>
+                <span class="move done">L</span>
+                <span class="move done">D2</span>
+                <span class="move done">R2</span>
+                <span class="move done">U2</span>
+                <span class="move done">F2</span>
+                <span class="move done">D'</span>
+                <span class="move done">L2</span>
+                <span class="move done">B</span>
+                <span class="move error">U</span>
+                <span class="move current">R'</span>
+                <span class="move next">F2</span>
+                <span class="move next">D</span>
+                <span class="move next">B'</span>
+              </div>
+              <div class="correction-strip">
+                <strong>修正路线</strong>
+                <span>U' · R' · F2 · 继续第 15 步</span>
+              </div>
+              <div class="cube-area">
+                <div id="cubeNetDemo" class="cube-map" aria-label="魔方展开状态"></div>
+                <div class="sync-list">
+                  <div class="sync-row">
+                    <strong>状态同步</strong>
+                    <span>98%</span>
+                  </div>
+                  <div class="sync-row">
+                    <strong>最近通知</strong>
+                    <span>36 ms</span>
+                  </div>
+                  <div class="sync-row">
+                    <strong>解算缓存</strong>
+                    <span>命中</span>
+                  </div>
+                  <div class="sync-row">
+                    <strong>电量</strong>
+                    <span>82%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-inner">
+              <div class="panel-head">
+                <div>
+                  <h2>实时转动</h2>
+                  <p>计时前只校验，计时中进入复盘</p>
+                </div>
+                <span class="metric-chip"><strong>5.72</strong>TPS</span>
+              </div>
+              <div class="feed-list">
+                <div class="feed-row"><span>10:42.318</span><strong>U</strong><span>GAN Gen4 notify</span><span>偏差</span></div>
+                <div class="feed-row"><span>10:42.279</span><strong>B</strong><span>状态包同步</span><span>路径</span></div>
+                <div class="feed-row"><span>10:42.236</span><strong>L2</strong><span>双拨完成</span><span>路径</span></div>
+                <div class="feed-row"><span>10:42.184</span><strong>D'</strong><span>实体状态匹配</span><span>路径</span></div>
+                <div class="feed-row"><span>10:42.129</span><strong>F2</strong><span>双拨完成</span><span>路径</span></div>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="column center" aria-label="复盘核心">
+          <article class="panel">
+            <div class="panel-inner">
+              <div class="panel-head">
+                <div>
+                  <h2>上一把复盘</h2>
+                  <p>3x3 · 当前会话 · 蓝牙停表</p>
+                </div>
+                <span class="metric-chip"><strong>PB</strong>ao12</span>
+              </div>
+              <div class="timer-hero">
+                <div>
+                  <p class="timer-value">10.847</p>
+                  <div class="timer-sub">
+                    <div class="compact-stat"><span>转动</span><strong>62</strong></div>
+                    <div class="compact-stat"><span>TPS</span><strong>5.72</strong></div>
+                    <div class="compact-stat"><span>ao5</span><strong>11.42</strong></div>
+                    <div class="compact-stat"><span>观察</span><strong>7.8</strong></div>
+                  </div>
+                </div>
+                <div class="hero-actions">
+                  <button class="primary-action" type="button" data-toast="下一把训练已排到打乱校验页。">
+                    下一把
+                  </button>
+                  <button class="secondary-action" type="button" data-toast="本把复盘摘要已准备复制。">
+                    复制摘要
+                  </button>
+                </div>
+              </div>
+              <div class="stage-detail" aria-label="CFOP 分段">
+                <button class="stage-tile active" type="button" data-stage="Cross · 7 步 · 首转 0.31s">
+                  <span>Cross</span><strong>1.54</strong><em>7 步 · 4.55 TPS</em>
+                </button>
+                <button class="stage-tile" type="button" data-stage="F2L · 31 步 · 第三槽回看过长">
+                  <span>F2L</span><strong>5.81</strong><em>31 步 · 5.34 TPS</em>
+                </button>
+                <button class="stage-tile" type="button" data-stage="OLL · 10 步 · 识别稳定">
+                  <span>OLL</span><strong>1.42</strong><em>10 步 · 7.04 TPS</em>
+                </button>
+                <button class="stage-tile" type="button" data-stage="PLL · 14 步 · U perm 可提速">
+                  <span>PLL</span><strong>2.08</strong><em>14 步 · 6.73 TPS</em>
+                </button>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-inner">
+              <div class="panel-head">
+                <div>
+                  <h2 id="stageInsightTitle">F2L · 第三槽回看过长</h2>
+                  <p id="stageInsightMeta">建议把下一轮锁定为 F2L 入口识别，单把目标 5.4 秒内。</p>
+                </div>
+                <span class="metric-chip"><strong>-0.38</strong>s</span>
+              </div>
+              <div class="analysis-grid">
+                <div class="chart-panel">
+                  <div class="chart-title">
+                    <span>逐步 TPS 节奏</span>
+                    <span>慢段自动标亮</span>
+                  </div>
+                  <div class="bars" aria-label="逐步 TPS 柱状图">
+                    <i class="bar fast" style="height: 78%"></i>
+                    <i class="bar mid" style="height: 62%"></i>
+                    <i class="bar mid" style="height: 66%"></i>
+                    <i class="bar slow" style="height: 38%"></i>
+                    <i class="bar slow" style="height: 34%"></i>
+                    <i class="bar mid" style="height: 58%"></i>
+                    <i class="bar fast" style="height: 81%"></i>
+                    <i class="bar fast" style="height: 88%"></i>
+                    <i class="bar mid" style="height: 64%"></i>
+                    <i class="bar slow" style="height: 41%"></i>
+                    <i class="bar mid" style="height: 67%"></i>
+                    <i class="bar fast" style="height: 91%"></i>
+                    <i class="bar fast" style="height: 86%"></i>
+                    <i class="bar mid" style="height: 60%"></i>
+                    <i class="bar fast" style="height: 76%"></i>
+                    <i class="bar mid" style="height: 65%"></i>
+                    <i class="bar slow" style="height: 36%"></i>
+                    <i class="bar fast" style="height: 82%"></i>
+                  </div>
+                  <div class="move-tape">
+                    U R U' R' · y U' L' U L · R U R' · F R U R' U' F' · U R U' R' U' F' U F
+                  </div>
+                </div>
+                <aside class="case-panel">
+                  <div class="case-title">
+                    <span>识别结果</span>
+                    <span>高置信</span>
+                  </div>
+                  <div class="case-score">
+                    <div class="case-badge">Ua</div>
+                    <div>
+                      <h3>PLL U perm</h3>
+                      <p>完成 2.08 秒，转体前停顿 0.24 秒。</p>
+                    </div>
+                  </div>
+                  <div class="case-list">
+                    <div><span>OLL case</span><strong>27</strong></div>
+                    <div><span>底面判断</span><strong>D 面</strong></div>
+                    <div><span>复原校验</span><strong>状态包停表</strong></div>
+                    <div><span>异常动作</span><strong>无</strong></div>
+                  </div>
+                </aside>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="column right" aria-label="训练计划和趋势">
+          <article class="panel">
+            <div class="panel-inner">
+              <div class="panel-head">
+                <div>
+                  <h2>下一步训练</h2>
+                  <p>根据最近 50 把和本把转动生成</p>
+                </div>
+                <span class="metric-chip"><strong>18</strong>min</span>
+              </div>
+              <div class="training-focus">
+                <div class="focus-card">
+                  <h3>F2L 入口识别优先</h3>
+                  <p>第三槽和第四槽平均停顿高于会话中位数。下一组用锁定打乱做 8 把，目标是把慢段压到 0.42 秒内。</p>
+                </div>
+                <div class="drill-list">
+                  <div class="drill-row"><span class="drill-index">1</span><div><strong>F2L 入门 · 右前槽</strong><span>反向打乱自动套用</span></div><span>8 把</span></div>
+                  <div class="drill-row"><span class="drill-index">2</span><div><strong>PLL · U perm 识别</strong><span>保留本把 PLL 起始状态</span></div><span>6 把</span></div>
+                  <div class="drill-row"><span class="drill-index">3</span><div><strong>OLL 27 · 零 AUF</strong><span>只统计首转时间</span></div><span>4 把</span></div>
+                  <div class="drill-row"><span class="drill-index">4</span><div><strong>自由复原</strong><span>回到当前会话 ao12</span></div><span>12 把</span></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-inner">
+              <div class="panel-head">
+                <div>
+                  <h2>会话趋势</h2>
+                  <p>只显示能指导下一把的指标</p>
+                </div>
+              </div>
+              <div class="trend-stats">
+                <div class="mini-trend"><span>ao12</span><strong>11.68</strong></div>
+                <div class="mini-trend"><span>ao50</span><strong>12.03</strong></div>
+                <div class="mini-trend"><span>最佳</span><strong>9.94</strong></div>
+              </div>
+              <div class="history-list">
+                <div class="history-row"><span>#128</span><strong>10.847</strong><span>62</span><span>5.72</span></div>
+                <div class="history-row"><span>#127</span><strong>11.203</strong><span>66</span><span>5.89</span></div>
+                <div class="history-row"><span>#126</span><strong>DNF</strong><span>58</span><span>4.91</span></div>
+                <div class="history-row"><span>#125</span><strong>10.992</strong><span>61</span><span>5.55</span></div>
+                <div class="history-row"><span>#124</span><strong>12.141</strong><span>69</span><span>5.68</span></div>
+              </div>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      const cubeColors = {
+        U: ["w", "w", "r", "w", "w", "b", "g", "w", "w"],
+        L: ["o", "g", "o", "o", "o", "y", "o", "r", "o"],
+        F: ["g", "g", "w", "y", "g", "g", "g", "b", "g"],
+        R: ["r", "r", "b", "w", "r", "r", "y", "r", "r"],
+        B: ["b", "y", "b", "b", "b", "o", "b", "b", "w"],
+        D: ["y", "y", "g", "r", "y", "y", "y", "o", "y"],
+      };
+
+      const faceOffsets = {
+        U: [3, 0],
+        L: [0, 3],
+        F: [3, 3],
+        R: [6, 3],
+        B: [9, 3],
+        D: [3, 6],
+      };
+
+      const cube = document.querySelector("#cubeNetDemo");
+      Object.entries(cubeColors).forEach(([face, colors]) => {
+        const [x, y] = faceOffsets[face];
+        colors.forEach((color, index) => {
+          const node = document.createElement("i");
+          node.className = `facelet ${color}`;
+          node.style.gridColumn = `${x + (index % 3) + 1}`;
+          node.style.gridRow = `${y + Math.floor(index / 3) + 1}`;
+          cube.appendChild(node);
+        });
+      });
+
+      const toast = document.querySelector("#toast");
+      let toastTimer = 0;
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add("show");
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(() => toast.classList.remove("show"), 1800);
+      }
+
+      document.querySelectorAll("[data-toast]").forEach((button) => {
+        button.addEventListener("click", () => showToast(button.dataset.toast));
+      });
+
+      document.querySelectorAll(".stage-tile").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll(".stage-tile").forEach((item) => item.classList.remove("active"));
+          button.classList.add("active");
+          const [title, meta] = button.dataset.stage.split(" · ", 2);
+          document.querySelector("#stageInsightTitle").textContent = button.dataset.stage;
+          document.querySelector("#stageInsightMeta").textContent =
+            `${title} 已设为当前观察对象，下一轮训练计划会优先使用这一段。`;
+        });
+      });
+
+      const modeCopy = {
+        review: ["智能训练中控", "上一把复盘、打乱校验、弱项训练排在同一张工作台。"],
+        scramble: ["打乱校验台", "先把实体魔方拉回目标状态，再进入观察和计时。"],
+        plan: ["训练计划台", "把慢段、公式复习和自由复原拆成下一组可执行训练。"],
+      };
+
+      document.querySelectorAll(".mode-tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          document.querySelectorAll(".mode-tab").forEach((item) => item.classList.remove("active"));
+          tab.classList.add("active");
+          const [title, subtitle] = modeCopy[tab.dataset.mode];
+          document.querySelector(".page-title h1").textContent = title;
+          document.querySelector(".page-title p").textContent = subtitle;
+        });
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc" shape-rendering="geometricPrecision">
+  <title id="title">TrainTimer Precision Line app icon</title>
+  <desc id="desc">A titanium line-art three-by-three cube with a stronger outlined U and M forming a T.</desc>
+  <defs>
+    <linearGradient id="plate" x1="96" y1="70" x2="924" y2="950" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F8FAFB"/>
+      <stop offset="0.58" stop-color="#E7ECEF"/>
+      <stop offset="1" stop-color="#CBD4D9"/>
+    </linearGradient>
+    <filter id="plateShadow" x="-12%" y="-12%" width="124%" height="136%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="22" stdDeviation="26" flood-color="#111A20" flood-opacity="0.22"/>
+    </filter>
+    <rect id="cubie" width="176" height="176" rx="32"/>
+  </defs>
+
+  <g filter="url(#plateShadow)">
+    <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#plate)"/>
+    <rect x="49" y="49" width="926" height="926" rx="208" fill="none" stroke="#FFFFFF" stroke-opacity="0.9" stroke-width="4"/>
+  </g>
+
+  <rect x="188" y="188" width="648" height="648" rx="112" fill="#F5F8F9" fill-opacity="0.58" stroke="#18252D" stroke-opacity="0.13" stroke-width="4"/>
+
+  <g fill="none" stroke="#42535D" stroke-opacity="0.28" stroke-width="10">
+    <use href="#cubie" x="228" y="424"/>
+    <use href="#cubie" x="620" y="424"/>
+    <use href="#cubie" x="228" y="620"/>
+    <use href="#cubie" x="620" y="620"/>
+  </g>
+
+  <g fill="#FFFFFF" fill-opacity="0.42" stroke="#17242C" stroke-width="18">
+    <use href="#cubie" x="228" y="228"/>
+    <use href="#cubie" x="424" y="228"/>
+    <use href="#cubie" x="620" y="228"/>
+    <use href="#cubie" x="424" y="424"/>
+    <use href="#cubie" x="424" y="620"/>
+  </g>
+
+  <rect x="472" y="410" width="80" height="10" rx="5" fill="#367FC8"/>
+</svg>

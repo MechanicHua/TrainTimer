@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TrainTimer Logo Materials · Round 5</title>
+  <link rel="icon" href="competition-flat.svg" type="image/svg+xml" />
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #eeefec;
+      --panel: #f8f8f5;
+      --ink: #15191b;
+      --muted: #71777b;
+      --line: rgba(21, 25, 27, .15);
+      --blue: #3d8edc;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+
+    body {
+      background:
+        radial-gradient(circle at 50% -18%, rgba(255,255,255,.95), transparent 46%),
+        var(--paper);
+      color: var(--ink);
+      font-family: "Avenir Next", "SF Pro Text", "PingFang SC", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page {
+      width: min(1540px, calc(100% - 64px));
+      margin: 0 auto;
+      padding: 52px 0 62px;
+    }
+
+    .eyebrow, .label, .meta, .scale-value, .source-note {
+      font-family: "SF Mono", Menlo, monospace;
+      text-transform: uppercase;
+    }
+
+    .masthead {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 410px;
+      gap: 54px;
+      align-items: end;
+      padding-bottom: 28px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: #777d81;
+      font-size: 11px;
+      font-weight: 650;
+      letter-spacing: .15em;
+    }
+
+    h1 {
+      max-width: 850px;
+      margin: 0;
+      font-size: clamp(40px, 4.5vw, 68px);
+      font-weight: 640;
+      letter-spacing: -.06em;
+      line-height: 1.01;
+      text-wrap: balance;
+    }
+
+    .baseline {
+      display: grid;
+      grid-template-columns: 74px 1fr;
+      gap: 16px;
+      align-items: center;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.5);
+    }
+
+    .baseline img { width: 74px; height: 74px; }
+    .baseline strong { display: block; margin-bottom: 5px; font-size: 14px; }
+    .baseline p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 30px;
+    }
+
+    .card {
+      min-width: 0;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      overflow: hidden;
+    }
+
+    .card-head {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 13px;
+      padding: 18px 20px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .number {
+      color: #93989b;
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 11px;
+      padding-top: 4px;
+    }
+
+    .card h2 {
+      margin: 0 0 4px;
+      font-size: 22px;
+      font-weight: 640;
+      letter-spacing: -.035em;
+    }
+
+    .card-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .stage {
+      position: relative;
+      min-height: 382px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background: linear-gradient(90deg, #eef1f3 0 50%, #11161b 50% 100%);
+    }
+
+    .stage::after {
+      position: absolute;
+      inset: 0 auto 0 50%;
+      width: 1px;
+      background: rgba(255,255,255,.28);
+      content: "";
+    }
+
+    .stage a { position: relative; z-index: 1; display: block; line-height: 0; }
+    .stage img {
+      width: min(70%, 304px);
+      height: auto;
+      filter: drop-shadow(0 22px 26px rgba(0,0,0,.2));
+      transition: transform .22s ease;
+    }
+
+    .stage a:hover img { transform: scale(1.025); }
+
+    .stage-label {
+      position: absolute;
+      left: 14px;
+      bottom: 12px;
+      z-index: 2;
+      color: rgba(92,99,104,.76);
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 8px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .details { padding: 18px 20px 20px; }
+
+    .label {
+      margin: 0 0 9px;
+      color: #808589;
+      font-size: 9px;
+      font-weight: 650;
+      letter-spacing: .13em;
+    }
+
+    .scale-row {
+      min-height: 94px;
+      display: flex;
+      gap: 16px;
+      align-items: flex-end;
+      padding: 13px 14px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .scale {
+      display: grid;
+      justify-items: center;
+      gap: 5px;
+    }
+
+    .scale img { display: block; }
+    .scale-value { color: #94999c; font-size: 8px; }
+    .s76 img { width: 66px; height: 66px; }
+    .s56 img { width: 50px; height: 50px; }
+    .s32 img { width: 32px; height: 32px; }
+    .s16 img { width: 16px; height: 16px; }
+
+    .verdict {
+      min-height: 82px;
+      margin-top: 14px;
+      padding-top: 13px;
+      border-top: 1px solid var(--line);
+    }
+
+    .verdict strong { display: block; margin-bottom: 5px; font-size: 12px; }
+    .verdict p { margin: 0; color: #5e6468; font-size: 11px; line-height: 1.65; text-wrap: pretty; }
+    .blue { color: var(--blue); }
+
+    .layers {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .layer {
+      min-width: 0;
+      padding: 7px;
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(45deg, #e3e6e8 25%, transparent 25%),
+        linear-gradient(-45deg, #e3e6e8 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #e3e6e8 75%),
+        linear-gradient(-45deg, transparent 75%, #e3e6e8 75%), #f8f9f9;
+      background-size: 10px 10px;
+      background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+    }
+
+    .layer img { display: block; width: 100%; }
+
+    .context {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(410px, .65fr);
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .dock-section, .rules {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.58);
+    }
+
+    .context-head {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .context-head p { margin: 0; }
+
+    .dock-field {
+      min-height: 194px;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 50% 0, rgba(112,176,218,.24), transparent 38%),
+        linear-gradient(135deg, #dce2e5, #b8c2c8 46%, #65737c 100%);
+    }
+
+    .dock {
+      display: flex;
+      gap: 22px;
+      align-items: flex-end;
+      padding: 14px 19px 12px;
+      border: 1px solid rgba(255,255,255,.62);
+      border-radius: 23px;
+      background: rgba(244,248,250,.48);
+      box-shadow: 0 18px 38px rgba(24,34,40,.2), inset 0 1px rgba(255,255,255,.58);
+      backdrop-filter: blur(24px) saturate(130%);
+    }
+
+    .dock-item { display: grid; justify-items: center; gap: 7px; }
+    .dock-item img { width: 70px; height: 70px; filter: drop-shadow(0 8px 9px rgba(0,0,0,.2)); }
+    .dock-item span { color: rgba(20,29,34,.72); font-size: 9px; }
+
+    .rules-body {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .rule {
+      min-height: 152px;
+      padding: 16px 14px;
+      border-right: 1px solid var(--line);
+    }
+
+    .rule:last-child { border-right: 0; }
+    .rule strong { display: block; margin: 8px 0 6px; font-size: 18px; letter-spacing: -.035em; }
+    .rule p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.55; }
+    .meta { color: #899095; font-size: 8px; letter-spacing: .1em; }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      margin-top: 22px;
+      padding-top: 17px;
+      border-top: 1px solid var(--line);
+      color: #7d8386;
+      font-size: 10px;
+    }
+
+    footer a { color: inherit; }
+
+    @media (max-width: 1120px) {
+      .masthead { grid-template-columns: 1fr; gap: 22px; }
+      .baseline { max-width: 460px; }
+      .cards { grid-template-columns: 1fr; }
+      .card { display: grid; grid-template-columns: minmax(330px, .9fr) 1.1fr; }
+      .card-head { grid-column: 1 / -1; }
+      .details { align-self: center; }
+      .context { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 700px) {
+      .page { width: min(100% - 28px, 560px); padding-top: 32px; }
+      h1 { font-size: 39px; }
+      .card { display: block; }
+      .stage { min-height: 360px; }
+      .scale-row { gap: 12px; }
+      .rules-body { grid-template-columns: 1fr; }
+      .rule { min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); }
+      .rule:last-child { border-bottom: 0; }
+      .dock { gap: 12px; }
+      .dock-item img { width: 56px; height: 56px; }
+      footer { display: block; line-height: 1.7; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="masthead">
+      <div>
+        <p class="eyebrow">TrainTimer · Material exploration 05</p>
+        <h1>同一个 T，三种材质语言</h1>
+      </div>
+      <div class="baseline">
+        <img src="../../assets/TrainTimerIcon.svg" alt="当前已安装的 TrainTimer 图标" />
+        <div>
+          <strong>当前正式版本 · 保留不动</strong>
+          <p>本轮只做可见的设计变体。选定后，再替换 App Bundle。</p>
+        </div>
+      </div>
+    </header>
+
+    <section class="cards" aria-label="TrainTimer logo variants">
+      <article class="card">
+        <header class="card-head">
+          <span class="number">01</span>
+          <div>
+            <h2>Precision Line</h2>
+            <p>线条型 · 校准仪器与工程图语言</p>
+          </div>
+        </header>
+        <div class="stage">
+          <a href="precision-line.svg" aria-label="打开线条版 SVG"><img src="precision-line.svg" alt="TrainTimer 线条型 Logo" /></a>
+          <span class="stage-label">Light / dark context</span>
+        </div>
+        <div class="details">
+          <p class="label">Scale stress test</p>
+          <div class="scale-row">
+            <span class="scale s76"><img src="precision-line.svg" alt="线条版 76px" /><span class="scale-value">76</span></span>
+            <span class="scale s56"><img src="precision-line.svg" alt="线条版 56px" /><span class="scale-value">56</span></span>
+            <span class="scale s32"><img src="precision-line.svg" alt="线条版 32px" /><span class="scale-value">32</span></span>
+            <span class="scale s16"><img src="precision-line.svg" alt="线条版 16px" /><span class="scale-value">16</span></span>
+          </div>
+          <div class="verdict">
+            <strong>气质：精密、克制、偏工具</strong>
+            <p>优点是轻、专业、和深色启动器形成反差；代价是 16 px 下非活动块最先变弱。</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <header class="card-head">
+          <span class="number">02</span>
+          <div>
+            <h2>Competition Flat</h2>
+            <p>扁平型 · 最直接的竞速识别</p>
+          </div>
+        </header>
+        <div class="stage">
+          <a href="competition-flat.svg" aria-label="打开扁平版 SVG"><img src="competition-flat.svg" alt="TrainTimer 扁平型 Logo" /></a>
+          <span class="stage-label">Light / dark context</span>
+        </div>
+        <div class="details">
+          <p class="label">Scale stress test</p>
+          <div class="scale-row">
+            <span class="scale s76"><img src="competition-flat.svg" alt="扁平版 76px" /><span class="scale-value">76</span></span>
+            <span class="scale s56"><img src="competition-flat.svg" alt="扁平版 56px" /><span class="scale-value">56</span></span>
+            <span class="scale s32"><img src="competition-flat.svg" alt="扁平版 32px" /><span class="scale-value">32</span></span>
+            <span class="scale s16"><img src="competition-flat.svg" alt="扁平版 16px" /><span class="scale-value">16</span></span>
+          </div>
+          <div class="verdict">
+            <strong>气质：直接、稳定、竞赛导向</strong>
+            <p>没有渐变、阴影或高光，三版里小尺寸识别最稳，也最容易跨平台和印刷复现。</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <header class="card-head">
+          <span class="number">03</span>
+          <div>
+            <h2>Liquid Glass · Native</h2>
+            <p>Apple Icon Composer 原生材质 · 保留原始魔方几何</p>
+          </div>
+        </header>
+        <div class="stage">
+          <a href="liquid-layers-v4/TrainTimer-Liquid-Glass-v4-native-clear.png" aria-label="打开 Apple Icon Composer 原生 Liquid Glass 导出"><img src="liquid-layers-v4/TrainTimer-Liquid-Glass-v4-native-clear.png" alt="TrainTimer Apple Icon Composer 原生 Liquid Glass Logo" /></a>
+          <span class="stage-label">Native Icon Composer export · 1024 px</span>
+        </div>
+        <div class="details">
+          <p class="label">Scale stress test</p>
+          <div class="scale-row">
+            <span class="scale s76"><img src="liquid-layers-v4/TrainTimer-Liquid-Glass-v4-native-clear.png" alt="原生玻璃版 76px" /><span class="scale-value">76</span></span>
+            <span class="scale s56"><img src="liquid-layers-v4/TrainTimer-Liquid-Glass-v4-native-clear.png" alt="原生玻璃版 56px" /><span class="scale-value">56</span></span>
+            <span class="scale s32"><img src="liquid-layers-v4/TrainTimer-Liquid-Glass-v4-native-clear.png" alt="原生玻璃版 32px" /><span class="scale-value">32</span></span>
+            <span class="scale s16"><img src="liquid-layers-v4/TrainTimer-Liquid-Glass-v4-native-clear.png" alt="原生玻璃版 16px" /><span class="scale-value">16</span></span>
+          </div>
+          <div class="layers" aria-label="Liquid Glass import layers">
+            <span class="layer"><img src="liquid-layers-v4/01-base-structure.svg" alt="背景、托盘与非活动块层" /></span>
+            <span class="layer"><img src="liquid-layers-v4/02-u-layer.svg" alt="U 层" /></span>
+            <span class="layer"><img src="liquid-layers-v4/03-m-layer.svg" alt="M 层" /></span>
+            <span class="layer"><img src="liquid-layers-v4/04-movement-marker.svg" alt="转动标记层" /></span>
+          </div>
+          <div class="verdict">
+            <strong>气质：克制、清晰、具有系统级动态高光</strong>
+            <p>U、M 两层由 Icon Composer 生成折射与高光；源图保持平面，没有烘焙反射、模糊或阴影。</p>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="context" aria-label="System context and Apple icon rules">
+      <div class="dock-section">
+        <header class="context-head"><p class="label">Finder / Dock context · 70 px</p></header>
+        <div class="dock-field">
+          <div class="dock">
+            <span class="dock-item"><img src="precision-line.svg" alt="线条版 Dock 图标" /><span>Line</span></span>
+            <span class="dock-item"><img src="competition-flat.svg" alt="扁平版 Dock 图标" /><span>Flat</span></span>
+            <span class="dock-item"><img src="liquid-layers-v4/TrainTimer-Liquid-Glass-v4-native-clear.png" alt="原生玻璃版 Dock 图标" /><span>Native</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="rules">
+        <header class="context-head"><p class="label">Apple-aligned handoff</p></header>
+        <div class="rules-body">
+          <div class="rule"><span class="meta">Canvas</span><strong>1024</strong><p>统一方形画布；系统负责最终遮罩。</p></div>
+          <div class="rule"><span class="meta">Source</span><strong>Flat SVG</strong><p>边缘清晰，材质效果不烘焙进导入层。</p></div>
+          <div class="rule"><span class="meta">Modes</span><strong>3+</strong><p>Default、Dark、Mono，再派生 clear 与 tinted。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <span>Round 5 · Current production icon remains installed.</span>
+      <span>规范依据：<a href="https://developer.apple.com/design/human-interface-guidelines/app-icons">Apple HIG · App icons</a> / <a href="https://developer.apple.com/icon-composer/">Icon Composer</a></span>
+    </footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" shape-rendering="geometricPrecision">
+  <title>TrainTimer M layer</title>
+  <desc>Flat opaque source artwork for Icon Composer Liquid Glass.</desc>
+  <g fill="#DFE6E7" fill-opacity="0.56">
+    <rect x="424" y="424" width="176" height="176" rx="32"/>
+    <rect x="424" y="620" width="176" height="176" rx="32"/>
+  </g>
+</svg>

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   applyMovesToFacelets,
   applyMove,
+  correctionMovesReachFacelets,
   correctionMovesFromFacesToScrambleTarget,
   correctionMovesToScrambleTarget,
   cubeFromFacelets,
@@ -21,6 +22,7 @@ import {
   parseScramble,
   relativeFaceletsForScrambleTarget,
   relativeFaceletsForScrambleTargetFacelets,
+  scrambleBacktrackCorrectionPlan,
   shortCorrectionMovesForRelativeFacelets,
   solvedFaceletString,
   warmShortCorrectionSearch,
@@ -148,6 +150,47 @@ test('finds a short correction from current scramble state to target state', () 
 
 test('returns no correction when current scramble state already matches target', () => {
   assert.deepEqual(correctionMovesToScrambleTarget("R U R' U'", "R U R' U'"), []);
+});
+
+test('builds a direct backtrack only from the original scramble route', () => {
+  const target = "D R' D' L' B' U B R' F2 R2 U2 R' U2 L' U B2 R D2";
+  const baseFacelets = faceletsFromScramble('D');
+  const currentFacelets = applyMovesToFacelets(baseFacelets, "B'");
+  const targetFacelets = faceletsFromScramble(target);
+  const resumeMoves = parseScramble("R' D' L' B' U B R' F2 R2 U2 R' U2 L' U B2 R D2")
+    .map((move) => `${move.face}${move.suffix}`);
+  const plan = scrambleBacktrackCorrectionPlan({
+    baseFacelets,
+    currentFacelets,
+    targetFacelets,
+    wrongMoves: ["B'"],
+    resumeMoves,
+    maxWrongMoves: 4,
+    maxMoves: 25,
+  });
+
+  assert.deepEqual(plan?.undoMoves, ['B']);
+  assert.deepEqual(plan?.resumeMoves, resumeMoves);
+  assert.equal(correctionMovesReachFacelets(currentFacelets, targetFacelets, plan?.moves), true);
+  assert.equal(
+    scrambleBacktrackCorrectionPlan({
+      baseFacelets,
+      currentFacelets,
+      targetFacelets,
+      wrongMoves: ["B'"],
+      resumeMoves,
+      fromCorrectionRoute: true,
+    }),
+    null,
+  );
+});
+
+test('rejects correction formulas that do not reach the requested target', () => {
+  const currentFacelets = faceletsFromScramble('R U');
+  const targetFacelets = faceletsFromScramble("R U F'");
+
+  assert.equal(correctionMovesReachFacelets(currentFacelets, targetFacelets, ["F'"]), true);
+  assert.equal(correctionMovesReachFacelets(currentFacelets, targetFacelets, ['F']), false);
 });
 
 test('finds a correction from synced cube faces to a scramble target', () => {

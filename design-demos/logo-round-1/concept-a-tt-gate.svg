@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="1024"
+  height="1024"
+  viewBox="0 0 1024 1024"
+  role="img"
+  aria-labelledby="title description"
+  shape-rendering="geometricPrecision"
+>
+  <title id="title">TrainTimer TT Gate logo concept</title>
+  <desc id="description">
+    A front-facing titanium timing gate on a graphite app-icon plate. Its shared rail and twin posts imply the TrainTimer double T, while a central calibration notch and an interrupted racing-orange beam mark the split.
+  </desc>
+
+  <defs>
+    <linearGradient id="graphite" x1="126" y1="92" x2="900" y2="944" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#30333A"/>
+      <stop offset="0.42" stop-color="#191B20"/>
+      <stop offset="1" stop-color="#090A0D"/>
+    </linearGradient>
+    <radialGradient id="graphiteLight" cx="0" cy="0" r="1" gradientTransform="translate(300 202) rotate(45) scale(590 470)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.11"/>
+      <stop offset="0.58" stop-color="#FFFFFF" stop-opacity="0.025"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="rim" x1="160" y1="110" x2="858" y2="918" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.28"/>
+      <stop offset="0.48" stop-color="#FFFFFF" stop-opacity="0.055"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.14"/>
+    </linearGradient>
+    <linearGradient id="titanium" x1="512" y1="214" x2="512" y2="812" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F5F7F8"/>
+      <stop offset="0.24" stop-color="#CDD2D6"/>
+      <stop offset="0.54" stop-color="#858C94"/>
+      <stop offset="0.76" stop-color="#BFC4C8"/>
+      <stop offset="1" stop-color="#6D747C"/>
+    </linearGradient>
+    <linearGradient id="orange" x1="190" y1="502" x2="834" y2="554" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFB13B"/>
+      <stop offset="0.5" stop-color="#FF741F"/>
+      <stop offset="1" stop-color="#EC4B12"/>
+    </linearGradient>
+    <filter id="gateShadow" x="-18%" y="-16%" width="136%" height="150%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="17" flood-color="#000000" flood-opacity="0.38"/>
+    </filter>
+    <filter id="signalShadow" x="-12%" y="-70%" width="124%" height="240%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#FF5A12" flood-opacity="0.24"/>
+    </filter>
+  </defs>
+
+  <!-- Plane 1: restrained graphite instrument plate. -->
+  <g id="background-plate">
+    <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#graphite)"/>
+    <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#graphiteLight)"/>
+    <rect x="48" y="48" width="928" height="928" rx="208" fill="none" stroke="url(#rim)" stroke-width="3"/>
+  </g>
+
+  <!-- Plane 2: one calibrated gate body, not two side-by-side letterforms. -->
+  <g id="tt-gate" fill="url(#titanium)" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="3" stroke-linejoin="round" filter="url(#gateShadow)">
+    <path d="M216 230H474L512 326L550 230H808C833 230 848 245 848 270V350C848 375 833 390 808 390H728V716L696 794H624L592 716V390H432V716L400 794H328L296 716V390H216C191 390 176 375 176 350V270C176 245 191 230 216 230Z"/>
+  </g>
+
+  <!-- Plane 3: one signal beam measures both posts and breaks exactly at the split axis. -->
+  <g id="split-beam" fill="url(#orange)" filter="url(#signalShadow)">
+    <path d="M214 502H478L500 528L478 554H214C198 554 188 544 188 528C188 512 198 502 214 502Z"/>
+    <path d="M810 502H546L524 528L546 554H810C826 554 836 544 836 528C836 512 826 502 810 502Z"/>
+  </g>
+</svg>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" shape-rendering="geometricPrecision">
+  <title>TrainTimer background and base structure</title>
+  <desc>Full-bleed opaque background and flat cube structure for Icon Composer. The system mask and all material effects are intentionally omitted.</desc>
+  <defs>
+    <linearGradient id="background" x1="128" y1="80" x2="900" y2="944" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#27333C"/>
+      <stop offset="0.5" stop-color="#151C22"/>
+      <stop offset="1" stop-color="#090D11"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#background)"/>
+  <rect x="188" y="188" width="648" height="648" rx="112" fill="#0B1116"/>
+  <g fill="#2A3740">
+    <rect x="228" y="424" width="176" height="176" rx="32"/>
+    <rect x="620" y="424" width="176" height="176" rx="32"/>
+    <rect x="228" y="620" width="176" height="176" rx="32"/>
+    <rect x="620" y="620" width="176" height="176" rx="32"/>
+  </g>
+</svg>

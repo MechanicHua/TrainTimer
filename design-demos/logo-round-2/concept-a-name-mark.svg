@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="1024"
+  height="1024"
+  viewBox="0 0 1024 1024"
+  role="img"
+  aria-labelledby="title description"
+  shape-rendering="geometricPrecision"
+>
+  <title id="title">TrainTimer Name Primary compact mark concept</title>
+  <desc id="description">
+    A compact custom T and orange split datum derived directly from the TrainTimer wordmark.
+  </desc>
+
+  <defs>
+    <path
+      id="custom-t"
+      d="M16 0H174C184 0 190 6 190 16V28C190 38 184 44 174 44H118V202L110 210H72V44H16C6 44 0 38 0 28V16C0 6 6 0 16 0Z"
+    />
+  </defs>
+
+  <!-- A neutral App Icon plate; the identity itself remains flat and monochrome-ready. -->
+  <rect id="icon-plate" x="32" y="32" width="960" height="960" rx="220" fill="#171A1F"/>
+
+  <g id="name-initial" fill="#F4F6F7">
+    <use href="#custom-t" transform="translate(176 197) scale(3)"/>
+  </g>
+
+  <rect id="split-datum" x="794" y="450" width="48" height="124" rx="24" fill="#FF5A1F"/>
+</svg>

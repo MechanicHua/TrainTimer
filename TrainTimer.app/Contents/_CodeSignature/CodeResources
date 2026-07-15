@@ -4,6 +4,10 @@
 <dict>
 	<key>files</key>
 	<dict>
+		<key>Resources/TrainTimerIcon.icns</key>
+		<data>
+		I1dEhP3qSc9lodpNxj+m3T/qxnk=
+		</data>
 		<key>Resources/runtime/node_modules/three/build/three.module.js</key>
 		<data>
 		BY2lDv7N/gnINualQ5Dmi3Uxeu4=
@@ -18,7 +22,7 @@
 		</data>
 		<key>Resources/runtime/public/app.js</key>
 		<data>
-		ed59WQGXlxS577eLr+T/K+KaAc8=
+		2mOOmdnIKXuRxJntKNcrlAYoYWw=
 		</data>
 		<key>Resources/runtime/public/bluetooth-moves.js</key>
 		<data>
@@ -28,9 +32,9 @@
 		<data>
 		8q11Nr9ZkuOkgADwpZhdmaZV+p8=
 		</data>
-		<key>Resources/runtime/public/favicon.svg</key>
+		<key>Resources/runtime/public/favicon.png</key>
 		<data>
-		j6HHbmebi1axJ3wS8vmFZNLWJ5E=
+		lQe9gsJg+rK8GP3MkVbBcKurxgo=
 		</data>
 		<key>Resources/runtime/public/gan-bluetooth-fast.js</key>
 		<data>
@@ -50,19 +54,11 @@
 		</data>
 		<key>Resources/runtime/public/index.html</key>
 		<data>
-		I+H83DX7InUfJdhJ3eV8el0oKNY=
+		CmIMeRmvK00GG87uwNEJ/egyLXg=
 		</data>
 		<key>Resources/runtime/public/inspection.js</key>
 		<data>
 		wK/Btb4KljBcvlwVJaU+LP9v5gQ=
-		</data>
-		<key>Resources/runtime/public/logo-mark.svg</key>
-		<data>
-		qi1wf6MlPgZcBOyH6O3/NTi7kdg=
-		</data>
-		<key>Resources/runtime/public/logo.svg</key>
-		<data>
-		sJCCTtH9QuJiOqfxvvnwDodVCf4=
 		</data>
 		<key>Resources/runtime/public/rolling-averages.js</key>
 		<data>
@@ -86,7 +82,7 @@
 		</data>
 		<key>Resources/runtime/public/styles.css</key>
 		<data>
-		s3CyuPFGUqDw3KNL4R+3pdHGDhM=
+		gSHQXF2h8mop+jedx4QSEHpo6CQ=
 		</data>
 		<key>Resources/runtime/public/vendor/three.module.js</key>
 		<data>
@@ -104,9 +100,13 @@
 		<data>
 		3X9yYcVdODWYQmdb2Gi+ETVqwrQ=
 		</data>
+		<key>Resources/runtime/src/bluetooth-state-log.js</key>
+		<data>
+		H+zx+TmdOGtRe5K/RXx2n23/2vQ=
+		</data>
 		<key>Resources/runtime/src/cfop-analysis.js</key>
 		<data>
-		gQpqQbopgTHiC3j8e+rRT+9M4eg=
+		Og+SprypmrBBkvTMmIXYr4IzQXs=
 		</data>
 		<key>Resources/runtime/src/cli.js</key>
 		<data>
@@ -118,7 +118,7 @@
 		</data>
 		<key>Resources/runtime/src/cube-state.js</key>
 		<data>
-		2GbEOHFPpH00EDEs/YvYB94wq9U=
+		J4b7nCg+jnc6TQuBeu0cIYbOx2s=
 		</data>
 		<key>Resources/runtime/src/gan-bluetooth.js</key>
 		<data>
@@ -126,7 +126,7 @@
 		</data>
 		<key>Resources/runtime/src/history.js</key>
 		<data>
-		Y4OvOxnQdq6z1fmUpVqk03gcDfk=
+		34SX1rVQDKD8u/3U0ghX6wvQpOo=
 		</data>
 		<key>Resources/runtime/src/inspection.js</key>
 		<data>
@@ -138,7 +138,7 @@
 		</data>
 		<key>Resources/runtime/src/op-analysis.js</key>
 		<data>
-		HZn2V8g37vYS4m30id1k5d5Fn10=
+		MiALYdMc3ZlcRbLHoOoLK2o7zSw=
 		</data>
 		<key>Resources/runtime/src/op-case-diagrams.js</key>
 		<data>
@@ -178,7 +178,7 @@
 		</data>
 		<key>Resources/runtime/src/server.js</key>
 		<data>
-		jv89zTKSx+4OX/n+5/7cXglmdc8=
+		KD4WpYHNG0/d+jd6v8WJHqi2jUE=
 		</data>
 		<key>Resources/runtime/src/solve-summary.js</key>
 		<data>
@@ -186,11 +186,11 @@
 		</data>
 		<key>Resources/runtime/src/solves-export.js</key>
 		<data>
-		VBXZU2RhBIGrJ1k2KlfKepffmuU=
+		KLA95lfUVotXUX5mMzzgqC0fJfw=
 		</data>
 		<key>Resources/runtime/src/solves-import.js</key>
 		<data>
-		Zj4//3jXa792GW6bQrSGeE1Kk0M=
+		f+CjMXdBDykfULPLp//f82m+bQo=
 		</data>
 		<key>Resources/runtime/src/stats-summary.js</key>
 		<data>
@@ -211,6 +211,13 @@
 	</dict>
 	<key>files2</key>
 	<dict>
+		<key>Resources/TrainTimerIcon.icns</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			CzOuS3nJrp+h6tDawTBxIOFwoZuXPSZSKWxkfW+1aIE=
+			</data>
+		</dict>
 		<key>Resources/runtime/node_modules/three/build/three.module.js</key>
 		<dict>
 			<key>hash2</key>
@@ -236,7 +243,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			Kqf6MpvrVxtR106dv7DcLcAvAz15Dm+YEXaRGelIjcg=
+			+X0N+uuTrPug1HDxGYYSbaQHctOh6O6Hjc7GujG5L8c=
 			</data>
 		</dict>
 		<key>Resources/runtime/public/bluetooth-moves.js</key>
@@ -253,11 +260,11 @@
 			gSyTzTrPZSq9F+h5bJo4E31k60jG+CUQg1mnxkGd1kk=
 			</data>
 		</dict>
-		<key>Resources/runtime/public/favicon.svg</key>
+		<key>Resources/runtime/public/favicon.png</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			zYKOVNkxjIqyhUzZr5tRN+gf6DtIXpCBUxyEQ74NYvE=
+			i9PbNp8ltcAQymhCi9i6RUr5fagmZdYx73FwF08alGo=
 			</data>
 		</dict>
 		<key>Resources/runtime/public/gan-bluetooth-fast.js</key>
@@ -292,7 +299,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			5fqUdDj7PEEHXdgbGvYDE3PMQw76o9Dnc02xPqtG3K8=
+			m2B0RpUVBCRC5J9OqQwcchshnCTFonS8l9l3uihPmBk=
 			</data>
 		</dict>
 		<key>Resources/runtime/public/inspection.js</key>
@@ -300,20 +307,6 @@
 			<key>hash2</key>
 			<data>
 			QrS6GV2F1LyTxDknpsvwtCVOKyf4jsucnRo5F+bxEDc=
-			</data>
-		</dict>
-		<key>Resources/runtime/public/logo-mark.svg</key>
-		<dict>
-			<key>hash2</key>
-			<data>
-			LG05hnIRd2poLFPhJxmn27hZKo5rQuzIHKsfqa1qzMQ=
-			</data>
-		</dict>
-		<key>Resources/runtime/public/logo.svg</key>
-		<dict>
-			<key>hash2</key>
-			<data>
-			lJKv6cQ5PtRbR86CSPCCR1+YswLRPRgQc7NUuXxog3Y=
 			</data>
 		</dict>
 		<key>Resources/runtime/public/rolling-averages.js</key>
@@ -355,7 +348,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			H0x1t6ZFMZH/JbWvQRGK+F+VPns387LcqIT+NxsXsW4=
+			FfZlDRFnN9n/XGPq5zcql27OkQtDQ2mvGSMDnhD4jo0=
 			</data>
 		</dict>
 		<key>Resources/runtime/public/vendor/three.module.js</key>
@@ -386,11 +379,18 @@
 			cLFC+rTlURuVzYkWo7T8zTCIg7g/06jmV2bWXcI2OP4=
 			</data>
 		</dict>
+		<key>Resources/runtime/src/bluetooth-state-log.js</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			u90GtZ3AIuhUFYXB102SOAQ+ejlBjb/0jeAc8tD+jRo=
+			</data>
+		</dict>
 		<key>Resources/runtime/src/cfop-analysis.js</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			JWmxWPXDFwx/w4M/7W4xbFlkceCEZduqvUHj2Ndy2dI=
+			aYdPCZJOUt3/n15SNazg5W5vdkZF87WDkkE3P9Z8H48=
 			</data>
 		</dict>
 		<key>Resources/runtime/src/cli.js</key>
@@ -411,7 +411,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			QnGLwHvijVnmACxRMwfCn/LGfVgvFY4JnbozxfZRsFY=
+			+I7XmzLddU0B2MupIElhFEpADY9KgjUcv5Cs5EtJ7cQ=
 			</data>
 		</dict>
 		<key>Resources/runtime/src/gan-bluetooth.js</key>
@@ -425,7 +425,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			IsmtbvtTYUVmhqPL5gKCMIwOYHVfEftNLBon5uxpQwE=
+			LJ+Qbfz/MLhzGv1DBtmZ2d4MRHZloBHHQR9JAbNF+sM=
 			</data>
 		</dict>
 		<key>Resources/runtime/src/inspection.js</key>
@@ -446,7 +446,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			JjTqX0dk1VrQ6ArX5uvLgO43heAeuwNoltI9q3nVhl4=
+			zPcL1FeABYe5xoFqzr2pbQuRvj3kl39fN8ILBgIJb8k=
 			</data>
 		</dict>
 		<key>Resources/runtime/src/op-case-diagrams.js</key>
@@ -516,7 +516,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			MwuilziYNChs+Dioqaok1JqeckXFxIHTTOq+x5lxmhE=
+			x4ujakwS4aBNJ5zFa7HDxn0wdC5RSbBjcDgOG5Bf/Ik=
 			</data>
 		</dict>
 		<key>Resources/runtime/src/solve-summary.js</key>
@@ -530,14 +530,14 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			A4WhnhFg4hEN9yn0QzAXUacWygmDh9/iIjM9RSrmpKY=
+			FizEIQdyx0in+8LsZdGAN0dQrgdFxpf/1auxYMX0O2U=
 			</data>
 		</dict>
 		<key>Resources/runtime/src/solves-import.js</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			WSoN+4JvO/NRUmPqBnEPH4Y6em2M2xXelExxnEKmYf8=
+			9xGd97xA11BLp8xIX7JoSk/bNlFq2EYCGerrEgkiaJ4=
 			</data>
 		</dict>
 		<key>Resources/runtime/src/stats-summary.js</key>

@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TrainTimer · Quiet Studio v3</title>
+    <!--
+      Huashu-design v3 assumptions:
+      - Standalone visual prototype only; no production files are imported except the existing logo mark.
+      - The requested direction is simpler and more elegant: quiet background, restrained typography,
+        no glow, no heavy display font, no sci-fi stage, no decorative grid.
+      - Static sample values only describe layout and hierarchy; no API or storage is touched.
+      - Design system: light graphite paper, hairline separators, one cyan-green accent, system UI text,
+        tabular numeric timer.
+    -->
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f7f7f4;
+        --surface: #fffefa;
+        --surface-soft: #efefea;
+        --ink: #20211f;
+        --muted: #74756f;
+        --muted-2: #a2a39e;
+        --line: rgba(32, 33, 31, 0.1);
+        --line-strong: rgba(32, 33, 31, 0.16);
+        --accent: #087a7a;
+        --accent-soft: rgba(8, 122, 122, 0.09);
+        --mint: #2f9f75;
+        --orange: #c26c19;
+        --danger: #b74338;
+        --radius: 8px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+      }
+
+      body {
+        min-height: 100dvh;
+        overflow: hidden;
+        background: var(--paper);
+        color: var(--ink);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .studio {
+        display: grid;
+        grid-template-rows: 74px minmax(0, 1fr);
+        height: 100dvh;
+        padding: 22px;
+        gap: 18px;
+      }
+
+      .topbar {
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 24px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .brand img {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+      }
+
+      .brand strong {
+        display: block;
+        color: var(--ink);
+        font-size: 17px;
+        font-weight: 760;
+        letter-spacing: 0;
+      }
+
+      .brand span {
+        display: block;
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 560;
+      }
+
+      .session {
+        min-width: 0;
+      }
+
+      .session h1 {
+        margin: 0;
+        color: var(--ink);
+        font-size: clamp(24px, 2.7vw, 36px);
+        font-weight: 560;
+        letter-spacing: 0;
+        line-height: 1.08;
+      }
+
+      .session p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 520;
+      }
+
+      .status {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.62);
+        padding: 0 10px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      .pill.ok {
+        color: var(--accent);
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr) 306px;
+        gap: 18px;
+        min-height: 0;
+      }
+
+      .side,
+      .main {
+        min-width: 0;
+        min-height: 0;
+      }
+
+      .side {
+        display: flex;
+        flex-direction: column;
+        border-top: 1px solid var(--line-strong);
+      }
+
+      .main {
+        display: grid;
+        grid-template-rows: minmax(0, 1fr) 112px;
+        gap: 18px;
+      }
+
+      .timer-panel {
+        display: grid;
+        min-height: 0;
+        align-content: center;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--surface);
+        padding: clamp(28px, 5vw, 58px);
+        box-shadow: 0 1px 2px rgba(32, 33, 31, 0.03);
+      }
+
+      .timer-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 28px;
+      }
+
+      .timer-meta span {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 540;
+      }
+
+      .timer-meta strong {
+        color: var(--accent);
+        font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+        font-size: 12px;
+        font-weight: 620;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .time {
+        margin: 0;
+        color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+        font-size: clamp(104px, 14.4vw, 204px);
+        font-weight: 540;
+        letter-spacing: -0.025em;
+        line-height: 0.92;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .time small {
+        color: var(--muted-2);
+        font-size: 0.5em;
+        font-weight: 430;
+      }
+
+      .scramble {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        margin-top: 30px;
+        border-top: 1px solid var(--line);
+        padding-top: 18px;
+        color: var(--muted);
+        font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+        font-size: clamp(13px, 1.25vw, 17px);
+        font-weight: 520;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+
+      .scramble span {
+        color: var(--accent);
+      }
+
+      .scramble em {
+        color: var(--orange);
+        font-style: normal;
+      }
+
+      .bottom {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 18px;
+        align-items: stretch;
+      }
+
+      .move-strip,
+      .actions {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.62);
+      }
+
+      .move-strip {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        padding: 14px;
+        overflow: hidden;
+      }
+
+      .turn {
+        display: inline-grid;
+        place-items: center;
+        width: 38px;
+        height: 38px;
+        flex: 0 0 auto;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        color: var(--ink);
+        background: var(--surface);
+        font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+        font-size: 12px;
+        font-weight: 620;
+      }
+
+      .turn.good {
+        border-color: rgba(8, 127, 131, 0.22);
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+
+      .turn.pause {
+        border-color: rgba(194, 108, 25, 0.28);
+        background: rgba(194, 108, 25, 0.08);
+        color: var(--orange);
+      }
+
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px;
+      }
+
+      .button {
+        min-height: 40px;
+        border: 1px solid transparent;
+        border-radius: var(--radius);
+        padding: 0 14px;
+        color: var(--ink);
+        background: transparent;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 620;
+      }
+
+      .button.primary {
+        background: var(--ink);
+        color: var(--surface);
+      }
+
+      .button.secondary {
+        border-color: var(--line);
+      }
+
+      .section {
+        padding: 16px 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .section:last-child {
+        border-bottom: 0;
+      }
+
+      .section h2 {
+        margin: 0;
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 720;
+      }
+
+      .section p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.48;
+      }
+
+      .cube-net {
+        display: grid;
+        width: 184px;
+        max-width: 100%;
+        aspect-ratio: 4 / 3;
+        grid-template-columns: repeat(12, 1fr);
+        grid-template-rows: repeat(9, 1fr);
+        gap: 3px;
+        margin: 16px auto 4px;
+      }
+
+      .facelet {
+        border-radius: 3px;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+      }
+
+      .w { background: #ffffff; }
+      .y { background: #e4bc28; }
+      .r { background: #c74137; }
+      .o { background: #d9822b; }
+      .g { background: #3f9b69; }
+      .b { background: #386fc6; }
+
+      .kv {
+        display: grid;
+        gap: 9px;
+        margin-top: 12px;
+      }
+
+      .kv div {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: baseline;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .kv strong {
+        color: var(--ink);
+        font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+        font-size: 13px;
+        font-weight: 620;
+      }
+
+      .stages {
+        display: grid;
+        gap: 12px;
+        margin-top: 14px;
+      }
+
+      .stage-row {
+        display: grid;
+        grid-template-columns: 44px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .stage-row strong {
+        color: var(--ink);
+        font-weight: 650;
+      }
+
+      .stage-row i {
+        display: block;
+        height: 5px;
+        border-radius: 999px;
+        background: #e0e2de;
+        overflow: hidden;
+      }
+
+      .stage-row i::before {
+        content: "";
+        display: block;
+        width: var(--w);
+        height: 100%;
+        border-radius: inherit;
+        background: var(--accent);
+      }
+
+      .stage-row.warn i::before {
+        background: var(--orange);
+      }
+
+      .plan {
+        display: grid;
+        gap: 12px;
+        margin-top: 14px;
+      }
+
+      .plan button {
+        display: grid;
+        grid-template-columns: 26px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px;
+        min-height: 44px;
+        border: 0;
+        border-top: 1px solid var(--line);
+        background: transparent;
+        padding: 0;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .plan button:first-child {
+        border-top: 0;
+      }
+
+      .plan span:first-child {
+        display: inline-grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--surface-soft);
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .plan strong {
+        overflow: hidden;
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 650;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .plan em {
+        color: var(--accent);
+        font-size: 12px;
+        font-style: normal;
+        font-weight: 650;
+      }
+
+      .note {
+        margin-top: 14px;
+        border-left: 2px solid var(--accent);
+        padding: 2px 0 2px 12px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.52;
+      }
+
+      .toast {
+        position: fixed;
+        right: 22px;
+        bottom: 22px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--surface);
+        padding: 12px 14px;
+        color: var(--ink);
+        font-size: 13px;
+        opacity: 0;
+        transform: translateY(8px);
+        transition: opacity 160ms ease, transform 160ms ease;
+        pointer-events: none;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @media (max-width: 1120px) {
+        body {
+          overflow: auto;
+        }
+
+        .studio {
+          height: auto;
+          min-height: 100dvh;
+        }
+
+        .topbar,
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .status {
+          justify-content: flex-start;
+          flex-wrap: wrap;
+        }
+
+        .main {
+          grid-template-rows: auto auto;
+        }
+      }
+
+      @media (max-width: 680px) {
+        .studio {
+          padding: 14px;
+        }
+
+        .bottom {
+          grid-template-columns: 1fr;
+        }
+
+        .actions {
+          justify-content: stretch;
+        }
+
+        .button {
+          flex: 1;
+        }
+
+        .time {
+          font-size: clamp(76px, 23vw, 132px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="studio">
+      <header class="topbar">
+        <div class="brand">
+          <img src="../public/logo-mark.svg" alt="TrainTimer" />
+          <div>
+            <strong>TrainTimer</strong>
+            <span>Quiet Studio</span>
+          </div>
+        </div>
+        <section class="session">
+          <h1>下一把之前，只保留必要信息。</h1>
+          <p>计时、实体状态、训练建议在同一张安静面板里，不再把复盘做成海报。</p>
+        </section>
+        <div class="status" aria-label="连接状态">
+          <span class="pill ok">GAN Gen4 · 82%</span>
+          <span class="pill">3x3 主会话</span>
+          <span class="pill">F2L 专项</span>
+        </div>
+      </header>
+
+      <section class="layout">
+        <aside class="side" aria-label="状态">
+          <section class="section">
+            <h2>实体状态</h2>
+            <p>打乱目标和真实魔方已同步，偏差只显示一步修正。</p>
+            <div id="cubeNet" class="cube-net" aria-label="魔方展开图"></div>
+            <div class="kv">
+              <div><span>路径进度</span><strong>14 / 22</strong></div>
+              <div><span>最近通知</span><strong>36 ms</strong></div>
+              <div><span>修正</span><strong>U' R'</strong></div>
+            </div>
+          </section>
+          <section class="section">
+            <h2>CFOP</h2>
+            <p>只标出真正拖慢当前会话的段落。</p>
+            <div class="stages">
+              <div class="stage-row"><strong>Cross</strong><i style="--w: 38%"></i><span>1.54</span></div>
+              <div class="stage-row warn"><strong>F2L</strong><i style="--w: 86%"></i><span>5.81</span></div>
+              <div class="stage-row"><strong>OLL</strong><i style="--w: 42%"></i><span>1.42</span></div>
+              <div class="stage-row"><strong>PLL</strong><i style="--w: 58%"></i><span>2.08</span></div>
+            </div>
+          </section>
+        </aside>
+
+        <section class="main" aria-label="计时">
+          <article class="timer-panel">
+            <div class="timer-meta">
+              <span>上一把 · 蓝牙停表</span>
+              <strong>ready</strong>
+            </div>
+            <p class="time">10<small>.</small>847</p>
+            <div class="scramble" aria-label="当前打乱">
+              <span>R U R2 F B2 L D2 R2 U2 F2</span>&nbsp;<em>U?</em>&nbsp;R' F2 D B' L2
+            </div>
+          </article>
+          <section class="bottom">
+            <div class="move-strip" aria-label="最近转动">
+              <span class="turn good">R</span>
+              <span class="turn good">U</span>
+              <span class="turn">R'</span>
+              <span class="turn pause">U'</span>
+              <span class="turn pause">y</span>
+              <span class="turn">L'</span>
+              <span class="turn good">U</span>
+              <span class="turn good">L</span>
+              <span class="turn">R</span>
+              <span class="turn pause">U?</span>
+              <span class="turn">R'</span>
+              <span class="turn good">F2</span>
+            </div>
+            <div class="actions">
+              <button class="button secondary" type="button" data-toast="复盘摘要已放入草稿。">复制摘要</button>
+              <button class="button primary" type="button" data-toast="已锁定 F2L 专项。">锁定专项</button>
+            </div>
+          </section>
+        </section>
+
+        <aside class="side" aria-label="计划">
+          <section class="section">
+            <h2>下一步</h2>
+            <p>第三槽回看过长。接下来 8 把只练 F2L 入口识别，目标把慢段从 0.62s 压到 0.42s。</p>
+            <div class="note">一个训练页面不需要显得聪明，它需要让下一步足够明确。</div>
+          </section>
+          <section class="section">
+            <h2>专项队列</h2>
+            <div class="plan">
+              <button type="button" data-toast="已选择 F2L 右前槽入口。"><span>1</span><strong>F2L 右前槽入口</strong><em>8 把</em></button>
+              <button type="button" data-toast="已选择 PLL U perm 识别。"><span>2</span><strong>PLL U perm 识别</strong><em>6 把</em></button>
+              <button type="button" data-toast="已选择 OLL 27 零 AUF。"><span>3</span><strong>OLL 27 零 AUF</strong><em>4 把</em></button>
+              <button type="button" data-toast="已选择自由复原回测。"><span>4</span><strong>自由复原回测</strong><em>12 把</em></button>
+            </div>
+          </section>
+          <section class="section">
+            <h2>会话</h2>
+            <div class="kv">
+              <div><span>ao12</span><strong>11.68</strong></div>
+              <div><span>ao50</span><strong>12.03</strong></div>
+              <div><span>最佳单次</span><strong>9.94</strong></div>
+              <div><span>训练块</span><strong>18 min</strong></div>
+            </div>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      const cubeColors = {
+        U: ["w", "w", "r", "w", "w", "b", "g", "w", "w"],
+        L: ["o", "g", "o", "o", "o", "y", "o", "r", "o"],
+        F: ["g", "g", "w", "y", "g", "g", "g", "b", "g"],
+        R: ["r", "r", "b", "w", "r", "r", "y", "r", "r"],
+        B: ["b", "y", "b", "b", "b", "o", "b", "b", "w"],
+        D: ["y", "y", "g", "r", "y", "y", "y", "o", "y"],
+      };
+
+      const offsets = { U: [3, 0], L: [0, 3], F: [3, 3], R: [6, 3], B: [9, 3], D: [3, 6] };
+      const cube = document.querySelector("#cubeNet");
+      Object.entries(cubeColors).forEach(([face, colors]) => {
+        const [x, y] = offsets[face];
+        colors.forEach((color, index) => {
+          const tile = document.createElement("i");
+          tile.className = `facelet ${color}`;
+          tile.style.gridColumn = `${x + (index % 3) + 1}`;
+          tile.style.gridRow = `${y + Math.floor(index / 3) + 1}`;
+          cube.appendChild(tile);
+        });
+      });
+
+      const toast = document.querySelector("#toast");
+      let timer = 0;
+      document.querySelectorAll("[data-toast]").forEach((button) => {
+        button.addEventListener("click", () => {
+          toast.textContent = button.dataset.toast;
+          toast.classList.add("show");
+          window.clearTimeout(timer);
+          timer = window.setTimeout(() => toast.classList.remove("show"), 1500);
+        });
+      });
+    </script>
+  </body>
+</html>

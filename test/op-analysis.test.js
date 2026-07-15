@@ -106,6 +106,70 @@ test('records PLL event from bluetooth state corrections after move-log drift', 
   assert.equal(pllEvent.formulaAccepted, true);
 });
 
+test('records PLL event from bluetooth state log after move-log drift', () => {
+  const pll = caseById('pll-t');
+  const setup = invertAlgorithm(pll.algorithm);
+  const moves = moveTokens(pll.algorithm);
+  const events = opEventsForSave({
+    scramble: 'U',
+    scramblePuzzle: 'three',
+    timerStartedAtMs: 1000,
+    bluetoothMoveLog: [
+      { move: "U'", elapsedMs: 100, timestampMs: 1100, solveStartedAtMs: 1000 },
+      ...timedMoveLog(moves, 100).map((entry) => ({
+        ...entry,
+        step: entry.step + 1,
+        elapsedMs: entry.elapsedMs + 100,
+        timestampMs: entry.timestampMs + 100,
+      })),
+    ],
+    bluetoothStateLog: [
+      { step: 1, facelets: faceletsFromScramble(setup), elapsedMs: 100, timestampMs: 1100, raw: 'state-1' },
+    ],
+  });
+  const pllEvent = events.find((event) => event.kind === 'pll');
+
+  assert.equal(pllEvent.caseId, 'pll-t');
+  assert.equal(pllEvent.startStep, 2);
+  assert.deepEqual(pllEvent.moves, moves);
+  assert.equal(pllEvent.formulaAccepted, true);
+});
+
+test('recovers a PLL event when state packets advance but no move packet was recorded', () => {
+  const pll = caseById('pll-t');
+  const setup = invertAlgorithm(pll.algorithm);
+  const events = opEventsForSave({
+    scramble: 'U',
+    scramblePuzzle: 'three',
+    timerSource: 'bluetooth',
+    bluetoothSolvedByStatePacket: true,
+    bluetoothStateLog: [
+      {
+        step: 0,
+        facelets: faceletsFromScramble(setup),
+        elapsedMs: 100,
+        timestampMs: 1100,
+        raw: 'pll-state',
+      },
+      {
+        step: 0,
+        facelets: faceletsFromScramble(''),
+        elapsedMs: 1200,
+        timestampMs: 2200,
+        raw: 'solved-state',
+      },
+    ],
+  });
+  const pllEvent = events.find((event) => event.kind === 'pll');
+
+  assert.equal(pllEvent?.caseId, 'pll-t');
+  assert.equal(pllEvent?.turns, 0);
+  assert.equal(pllEvent?.durationMs, 1100);
+  assert.equal(pllEvent?.formulaAccepted, false);
+  assert.equal(pllEvent?.formulaReason, 'state-log-recovery');
+  assert.equal(pllEvent?.recoveredFromStateLog, true);
+});
+
 test('cached OP event derivation invalidates when bluetooth state corrections change', () => {
   const pll = caseById('pll-t');
   const setup = invertAlgorithm(pll.algorithm);
@@ -129,6 +193,37 @@ test('cached OP event derivation invalidates when bluetooth state corrections ch
 
   solve.bluetoothStateCorrections = [
     { step: 1, facelets: faceletsFromScramble(setup), elapsedMs: 100, timestampMs: 1100 },
+  ];
+  const pllEvent = opEventsForSave(solve).find((event) => event.kind === 'pll');
+
+  assert.equal(pllEvent?.caseId, 'pll-t');
+  assert.equal(pllEvent?.startStep, 2);
+  assert.equal(pllEvent?.formulaAccepted, true);
+});
+
+test('cached OP event derivation invalidates when bluetooth state log changes', () => {
+  const pll = caseById('pll-t');
+  const setup = invertAlgorithm(pll.algorithm);
+  const moves = moveTokens(pll.algorithm);
+  const solve = {
+    scramble: 'U',
+    scramblePuzzle: 'three',
+    timerStartedAtMs: 1000,
+    bluetoothMoveLog: [
+      { move: "U'", elapsedMs: 100, timestampMs: 1100, solveStartedAtMs: 1000 },
+      ...timedMoveLog(moves, 100).map((entry) => ({
+        ...entry,
+        step: entry.step + 1,
+        elapsedMs: entry.elapsedMs + 100,
+        timestampMs: entry.timestampMs + 100,
+      })),
+    ],
+  };
+
+  assert.equal(opEventsForSave(solve).some((event) => event.kind === 'pll'), false);
+
+  solve.bluetoothStateLog = [
+    { step: 1, facelets: faceletsFromScramble(setup), elapsedMs: 100, timestampMs: 1100, raw: 'state-1' },
   ];
   const pllEvent = opEventsForSave(solve).find((event) => event.kind === 'pll');
 

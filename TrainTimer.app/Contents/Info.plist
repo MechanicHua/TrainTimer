@@ -9,6 +9,8 @@
   <string>TrainTimer</string>
   <key>CFBundleExecutable</key>
   <string>TrainTimer</string>
+  <key>CFBundleIconFile</key>
+  <string>TrainTimerIcon</string>
   <key>CFBundleIdentifier</key>
   <string>local.traintimer.launcher</string>
   <key>CFBundleName</key>

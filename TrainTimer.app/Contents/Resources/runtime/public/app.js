@@ -1,9 +1,10 @@
-import { applyMoveToFacelets, applyMovesToFacelets, cubeFaceletSignature, cubeStateFromScramble, faceletsFromScramble, facesFromFacelets as cubeFacesFromFacelets, isSolvedFaces, isSolvedFacelets as cubeIsSolvedFacelets, parseMoveToken, parseScramble, relativeFaceletsForScrambleTargetFacelets, shortCorrectionMovesForRelativeFacelets, solvedFaceletString, warmShortCorrectionSearch } from './cube-state.js?v=20260602-facelet-engine';
+import { applyMoveToFacelets, applyMovesToFacelets, correctionMovesReachFacelets, cubeFaceletSignature, cubeStateFromScramble, faceletsFromScramble, facesFromFacelets as cubeFacesFromFacelets, isSolvedFaces, isSolvedFacelets as cubeIsSolvedFacelets, parseMoveToken, parseScramble, relativeFaceletsForScrambleTargetFacelets, scrambleBacktrackCorrectionPlan, shortCorrectionMovesForRelativeFacelets, solvedFaceletString, warmShortCorrectionSearch } from './cube-state.js?v=20260714-correction-route';
 import { algorithmTrainerBuiltInCasesForSet, algorithmTrainerCaseBelongsToSet, algorithmTrainerCases, algorithmTrainerSetMembers } from './algorithm-trainer-cases.js?v=20260528-gan-latency';
 import { algorithmTrainerAlgorithmIsValid, algorithmTrainerAlgorithmStepCount, algorithmTrainerSetupText, cleanAlgorithmTrainerAlgorithm } from './algorithm-trainer-utils.js?v=20260528-gan-latency';
 import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from './bluetooth-moves.js?v=20260528-gan-latency';
-import { cfopStagesForSave, cfopStageTemplate, solveCfopAnalysis, solveMoveRecords } from './cfop-analysis.js?v=20260601-correction-perf';
-import { opEventsForSave } from './op-analysis.js?v=20260603-op-analysis';
+import { bluetoothStateLogPostSolveCaptureMs, bluetoothStateLogRevision, shouldCaptureBluetoothStateLogPacket } from './bluetooth-state-log.js?v=20260714-state-log-final';
+import { cfopAnalysisVersion, cfopStagesForSave, cfopStageTemplate, solveCfopAnalysis, solveMoveRecords } from './cfop-analysis.js?v=20260714-analysis-v5';
+import { opAnalysisVersion, opEventsForSave } from './op-analysis.js?v=20260714-analysis-v5';
 import { opCaseSvgMarkup } from './op-case-svg.js?v=20260603-op-poster-diagrams';
 import { buildOpFormulaLibrary } from './op-formula-library.js?v=20260603-op-formula-library';
 import { opCaseSamplesForSolves, summarizeOpStats } from './op-stats.js?v=20260603-op-stats';
@@ -89,6 +90,7 @@ const scrambleGuideLocalCorrectionWarmupMaxMs = 90;
 const scrambleGuideLocalCorrectionWarmupDelayMs = 300;
 const scrambleGuideLocalCorrectionWarmupTimeoutMs = 1500;
 const scrambleGuideBacktrackCorrectionMaxWrongMoves = 4;
+const scrambleGuideBacktrackCorrectionMaxMoves = 25;
 const cube3dTurnDurationMs = 72;
 const cube3dDoubleTurnDurationMs = 96;
 const cube3dTurnQueueLimit = 3;
@@ -718,6 +720,7 @@ let solveReplayFacelets = '';
 let solveReplayPreviewLabel = '';
 let solveReplayFocusedOpKey = '';
 let solveReplayFocusedOpManual = false;
+let solveReplayClosingDialogForPlayback = false;
 let statsScope = 'session';
 let statsTrendChartRenderState = null;
 let statsTrendChartHoverIndex = -1;
@@ -741,6 +744,8 @@ let bluetoothSubscriptions = [];
 let bluetoothLog = [];
 let bluetoothMoves = [];
 let bluetoothStateCorrections = [];
+let bluetoothStateLog = [];
+let bluetoothPostSolveStateLogCapture = null;
 let bluetoothSolved = false;
 let bluetoothSolvedByStatePacket = false;
 let bluetoothSolveFacelets = '';
@@ -1099,8 +1104,10 @@ elements.clearBluetoothLogButton.addEventListener('click', clearBluetoothLog);
 elements.copyBluetoothLogButton.addEventListener('click', copyBluetoothLog);
 elements.exportBluetoothLogButton.addEventListener('click', exportBluetoothLog);
 elements.solveDialog.addEventListener('close', () => {
+  const keepPlayback = solveReplayClosingDialogForPlayback;
+  solveReplayClosingDialogForPlayback = false;
   currentDetailSolveId = null;
-  stopSolveReplay();
+  if (!keepPlayback) stopSolveReplay();
 });
 elements.averageDialog.addEventListener('close', () => {
   currentAverageDetail = null;
@@ -1281,6 +1288,13 @@ window.__trainTimerDebug = {
     addBluetoothMoves(Array.isArray(moves) ? moves : String(moves || '').trim().split(/\s+/).filter(Boolean), 'debug', 'debug', '模拟蓝牙魔方');
     return this.state();
   },
+  applyScrambleGuideMovesForTest(moves) {
+    const parsedMoves = Array.isArray(moves)
+      ? moves.filter(Boolean)
+      : String(moves || '').trim().split(/\s+/).filter(Boolean);
+    const result = applyScrambleGuideMoves(parsedMoves, 'debug', 'debug', '模拟蓝牙魔方');
+    return { result, state: this.state() };
+  },
   setScrambleForTest(text) {
     scramble = { scramble: String(text || ''), source: 'debug', puzzle: 'three' };
     resetBluetoothSolveTracking();
@@ -1348,6 +1362,7 @@ window.__trainTimerDebug = {
       bluetoothMoveCount: bluetoothMoveStepCount(),
       bluetoothMoves: bluetoothMoveSequence(),
       bluetoothStateCorrections: bluetoothStateCorrectionSequence(),
+      bluetoothStateLog: bluetoothStateLogSequence(),
       bluetoothMetadata: bluetoothSolveMetadata(),
       bluetoothGyro,
       bluetooth3dPreviewEnabled,
@@ -2328,6 +2343,9 @@ async function finishTiming(options = {}) {
   const durationMs = Math.max(0, finishedAt - startedAt);
   const timerFinishedAtMs = timerStartedAtMs > 0 ? timerStartedAtMs + Math.round(durationMs) : Date.now();
   const timerFinishedAtIsoTime = new Date(timerFinishedAtMs).toISOString();
+  const stateLogCapture = finishSource === 'bluetooth'
+    ? beginBluetoothPostSolveStateLogCapture(finishedAt)
+    : null;
   appState = 'saving';
   setTimerDisplayText(formatTime(durationMs));
   elements.statusText.textContent = finishSource === 'bluetooth' ? '蓝牙复原' : '保存中';
@@ -2338,12 +2356,16 @@ async function finishTiming(options = {}) {
   const bluetoothMovesForSave = bluetoothMoveSequence();
   const bluetoothMoveLogForSave = bluetoothMoveRecordSequence();
   const bluetoothStateCorrectionsForSave = bluetoothStateCorrectionSequence();
+  const bluetoothStateLogForSave = bluetoothStateLogSequence();
+  markBluetoothStateLogIncludedInInitialSave(stateLogCapture, bluetoothStateLogForSave);
   const cfopStages = cfopStagesForSave({
     scramble: scramble.scramble,
     scramblePuzzle: scramble.puzzle || scramblePuzzle,
+    timerSource: finishSource,
     bluetoothMoves: bluetoothMovesForSave,
     bluetoothMoveLog: bluetoothMoveLogForSave,
     bluetoothStateCorrections: bluetoothStateCorrectionsForSave,
+    bluetoothStateLog: bluetoothStateLogForSave,
     bluetoothSolvedByStatePacket,
   });
   const opEvents = opEventsForSave({
@@ -2351,9 +2373,11 @@ async function finishTiming(options = {}) {
     scramblePuzzle: scramble.puzzle || scramblePuzzle,
     timerStartedAt: timerStartedAtIsoTime,
     timerStartedAtMs,
+    timerSource: finishSource,
     bluetoothMoves: bluetoothMovesForSave,
     bluetoothMoveLog: bluetoothMoveLogForSave,
     bluetoothStateCorrections: bluetoothStateCorrectionsForSave,
+    bluetoothStateLog: bluetoothStateLogForSave,
     bluetoothSolvedByStatePacket,
   });
 
@@ -2374,15 +2398,19 @@ async function finishTiming(options = {}) {
     bluetoothMoves: bluetoothMovesForSave,
     bluetoothMoveLog: bluetoothMoveLogForSave,
     bluetoothStateCorrections: bluetoothStateCorrectionsForSave,
+    bluetoothStateLog: bluetoothStateLogForSave,
     bluetoothSolvedByStatePacket,
     cfopStages,
+    cfopAnalysisVersion,
     opEvents,
+    opAnalysisVersion,
     bluetoothDeviceName: bluetoothMetadata.deviceName,
     bluetoothProtocols: bluetoothMetadata.protocols,
     bluetoothSources: bluetoothMetadata.sources,
   });
 
   solves = data.solves;
+  attachBluetoothStateLogCaptureToSolve(stateLogCapture, data.solve?.id);
   selectedSolveIds.clear();
   finishSource = 'manual';
   appState = 'done';
@@ -3656,7 +3684,8 @@ function cfopStageGroup(stage) {
 }
 
 function cfopOpSkipKind(stage) {
-  if (!stage?.completed || Number(stage.turns) !== 0) return '';
+  if (!stage?.completed || stage.unobservedTurns === true) return '';
+  if (stage.skipped !== true && Number(stage.turns) !== 0) return '';
   if (stage.key === 'oll' || stage.label === 'O') return 'oll';
   if (stage.key === 'pll' || stage.label === 'P') return 'pll';
   return '';
@@ -3752,6 +3781,8 @@ function opFormulaReasonText(reason) {
       return '未入库：状态不唯一';
     case 'stage-fallback':
       return '未入库：阶段回退识别';
+    case 'state-log-recovery':
+      return '状态包补全';
     default:
       return reason ? `未入库：${reason}` : '';
   }
@@ -3798,12 +3829,19 @@ function startSolveReplay() {
   solveReplayStep = solveReplayStep >= 0 && solveReplayStep < records.length ? solveReplayStep : -1;
   elements.solveReplayButton.textContent = '暂停';
   showSolveReplayPreview(solve, Math.max(0, solveReplayStep + 1));
+  closeSolveDialogForReplayPlayback();
   const nextStepIndex = solveReplayStep + 1;
   const delay = replayDelayBeforeMove(records, nextStepIndex, {
     fallbackDelayMs: 120,
     minimumDelayMs: 120,
   });
   solveReplayTimer = window.setTimeout(() => advanceSolveReplay(solve, records), delay);
+}
+
+function closeSolveDialogForReplayPlayback() {
+  if (!elements.solveDialog?.open) return;
+  solveReplayClosingDialogForPlayback = true;
+  elements.solveDialog.close();
 }
 
 function advanceSolveReplay(solve, records) {
@@ -3893,7 +3931,11 @@ function updateSolveReplayHighlight() {
 function solveWithDerivedCfop(solve) {
   if (!solve) return solve;
   const stages = cfopStagesForSave(solve);
-  return { ...solve, cfopStages: stages.length > 0 ? stages : (solve.cfopStages || []) };
+  return {
+    ...solve,
+    cfopStages: stages.length > 0 ? stages : (solve.cfopStages || []),
+    cfopAnalysisVersion,
+  };
 }
 
 function openAverageDialog(solveId, size, kind = 'average') {
@@ -5230,6 +5272,17 @@ function processDecodedGanBluetoothPacket(
   const duplicateMovePacket = ganBluetoothIsDuplicateMovePacket(decoded, previousMoveCounter);
   const parsedMoves = duplicateMovePacket ? emptyBluetoothMoves : ganBluetoothMovesFromDecoded(decoded, previousMoveCounter);
   const hasParsedMoves = parsedMoves.length > 0;
+  recordBluetoothStateLogPacket(decoded, decodedFacelets, {
+    uuid,
+    label,
+    getHex,
+    deviceName,
+    receivedAt: packetReceivedAt,
+    parsedMoves,
+    duplicateMovePacket,
+    statePacketSolved,
+    physicalStateChanged,
+  });
   maybeRecordGanStateCorrectionForPacket(decoded, decodedFacelets, parsedMoves, statePacketSolved);
   bluetoothGanLastMoveCounter = ganBluetoothNextMoveCounter(previousMoveCounter, decoded, parsedMoves);
   if (hasMoveCounter && decoded.mode === 'state') bluetoothGanLastStateCounter = decoded.moveCounter;
@@ -5395,6 +5448,7 @@ function shouldSkipUnchangedGanStatePacket(
 function decodeGanBluetoothPacket(protocol, mac, bytes) {
   const normalizedBytes = bytes instanceof Uint8Array ? bytes : Uint8Array.from(bytes || []);
   const needsGyroPayload = bluetoothGanGyroPayloadNeeded();
+  const captureStateLog = appState === 'timing';
   const debugPayload = elements.bluetoothLogDialog?.open || bluetoothDebugLogging;
   const stateSignatureFastPath = protocol.protocol === 'v4' && !debugPayload;
   const payload = {
@@ -5406,7 +5460,7 @@ function decodeGanBluetoothPacket(protocol, mac, bytes) {
     includeStateSignature: stateSignatureFastPath || debugPayload,
     includeStateDetails: debugPayload,
     includeDecryptedBytes: debugPayload,
-    omitRepeatedStateFacelets: stateSignatureFastPath,
+    omitRepeatedStateFacelets: stateSignatureFastPath && !captureStateLog,
     previousStateSignature: bluetoothGanLastDecodedStateSignature,
     previousStateSolved: bluetoothPhysicalSolved,
   };
@@ -6403,9 +6457,11 @@ function updateBluetoothLogDialogNode(row, state) {
 }
 
 function clearBluetoothLog() {
+  detachBluetoothPostSolveStateLogCapture();
   bluetoothLog = [];
   bluetoothMoves = [];
   bluetoothStateCorrections = [];
+  bluetoothStateLog = [];
   bumpBluetoothMovesVersion();
   bluetoothSolved = false;
   bluetoothSolvedByStatePacket = false;
@@ -6483,6 +6539,8 @@ function bluetoothLogPayload() {
     faceletsTime: bluetoothPhysicalStateTime,
     moveCount: bluetoothMoveStepCount(),
     moves: bluetoothMoves,
+    stateLog: bluetoothStateLogSequence(),
+    stateCorrections: bluetoothStateCorrectionSequence(),
     events: bluetoothLog,
   };
 }
@@ -6773,6 +6831,200 @@ function bluetoothStateCorrectionSequence() {
   }));
 }
 
+function bluetoothStateLogSequence() {
+  return bluetoothStateLog.map((entry, index) => ({
+    index: index + 1,
+    step: Number.isInteger(entry.step) ? entry.step : 0,
+    facelets: entry.facelets || '',
+    solved: entry.solved === true,
+    trustedSolved: entry.trustedSolved === true,
+    stateSolved: entry.stateSolved === true ? true : (entry.stateSolved === false ? false : null),
+    stateSolvedUntrusted: entry.stateSolvedUntrusted === true,
+    source: entry.source || '',
+    protocol: entry.protocol || '',
+    deviceName: entry.deviceName || '',
+    characteristicUuid: entry.characteristicUuid || '',
+    mode: entry.mode || '',
+    stateSignature: entry.stateSignature || '',
+    moveCounter: Number.isInteger(entry.moveCounter) ? entry.moveCounter : null,
+    counterModulo: Number.isInteger(entry.counterModulo) ? entry.counterModulo : null,
+    raw: entry.raw || '',
+    moves: Array.isArray(entry.moves) ? entry.moves.slice() : [],
+    duplicateMovePacket: entry.duplicateMovePacket === true,
+    physicalStateChanged: entry.physicalStateChanged === true,
+    time: entry.time || '',
+    isoTime: entry.isoTime || '',
+    elapsedMs: Number.isFinite(entry.elapsedMs) ? entry.elapsedMs : null,
+    timestampMs: Number.isFinite(entry.timestampMs) ? entry.timestampMs : null,
+    solveStartedAtMs: Number.isFinite(entry.solveStartedAtMs) ? entry.solveStartedAtMs : null,
+    solveStartedAtIsoTime: entry.solveStartedAtIsoTime || '',
+  }));
+}
+
+function beginBluetoothPostSolveStateLogCapture(finishedAt = performance.now()) {
+  if (bluetoothPostSolveStateLogCapture) scheduleBluetoothPostSolveStateLogPersist(bluetoothPostSolveStateLogCapture, 0);
+  const now = performance.now();
+  const capture = {
+    solveId: '',
+    captureUntil: Math.max(now, Number.isFinite(finishedAt) ? finishedAt : now) + bluetoothStateLogPostSolveCaptureMs,
+    snapshot: bluetoothStateLogSequence(),
+    persistedRevision: '',
+    timer: 0,
+    inFlight: false,
+    retries: 0,
+  };
+  bluetoothPostSolveStateLogCapture = capture;
+  return capture;
+}
+
+function detachBluetoothPostSolveStateLogCapture() {
+  const capture = bluetoothPostSolveStateLogCapture;
+  if (!capture) return;
+  capture.captureUntil = Number.NEGATIVE_INFINITY;
+  scheduleBluetoothPostSolveStateLogPersist(capture, 0);
+  bluetoothPostSolveStateLogCapture = null;
+}
+
+function markBluetoothStateLogIncludedInInitialSave(capture, entries) {
+  if (!capture) return;
+  capture.persistedRevision = bluetoothStateLogRevision(entries);
+  capture.snapshot = bluetoothStateLogSequence();
+}
+
+function attachBluetoothStateLogCaptureToSolve(capture, solveId) {
+  if (!capture || !solveId) return;
+  capture.solveId = String(solveId);
+  capture.snapshot = bluetoothStateLogSequence();
+  mergePersistedBluetoothStateLogSolve(capture.solveId, capture.snapshot);
+  scheduleBluetoothPostSolveStateLogPersist(capture, 0);
+}
+
+function updateBluetoothPostSolveStateLogCapture(capture, entry) {
+  if (!capture) return;
+  capture.snapshot = bluetoothStateLogSequence();
+  const solved = entry?.solved === true || entry?.trustedSolved === true;
+  const delay = solved
+    ? 0
+    : Math.max(80, capture.captureUntil - performance.now() + 50);
+  if (solved) capture.captureUntil = Number.NEGATIVE_INFINITY;
+  scheduleBluetoothPostSolveStateLogPersist(capture, delay);
+}
+
+function scheduleBluetoothPostSolveStateLogPersist(capture, delayMs = 80) {
+  if (!capture?.solveId) return;
+  if (bluetoothStateLogRevision(capture.snapshot) === capture.persistedRevision) return;
+  clearTimeout(capture.timer);
+  capture.timer = window.setTimeout(() => {
+    capture.timer = 0;
+    void persistBluetoothPostSolveStateLog(capture);
+  }, Math.max(0, Math.round(delayMs)));
+}
+
+async function persistBluetoothPostSolveStateLog(capture) {
+  if (!capture?.solveId || capture.inFlight) return;
+  const snapshot = capture.snapshot.map((entry) => ({
+    ...entry,
+    moves: Array.isArray(entry.moves) ? entry.moves.slice() : [],
+  }));
+  const revision = bluetoothStateLogRevision(snapshot);
+  if (revision === capture.persistedRevision) return;
+
+  capture.inFlight = true;
+  let retryDelay = null;
+  let terminalFailure = false;
+  try {
+    const solveUrl = `/api/solves/${encodeURIComponent(capture.solveId)}`;
+    let data;
+    try {
+      data = await requestJson(`${solveUrl}/state-log`, {
+        method: 'PATCH',
+        body: { bluetoothStateLog: snapshot },
+      });
+    } catch (error) {
+      if (!/^404\b/.test(error.message || '')) throw error;
+      data = await requestJson(solveUrl, {
+        method: 'PATCH',
+        body: { bluetoothStateLog: snapshot },
+      });
+    }
+    capture.persistedRevision = revision;
+    capture.retries = 0;
+    if (data.solve) mergePersistedBluetoothStateLogSolve(capture.solveId, data.solve.bluetoothStateLog, data.solve);
+  } catch (error) {
+    capture.retries += 1;
+    if (capture.retries <= 2) {
+      retryDelay = capture.retries * 500;
+    } else {
+      terminalFailure = true;
+      addBluetoothLog('警告', '复原收尾状态包保存失败', error.message || String(error));
+    }
+  } finally {
+    capture.inFlight = false;
+    if (retryDelay != null) {
+      scheduleBluetoothPostSolveStateLogPersist(capture, retryDelay);
+    } else if (!terminalFailure && bluetoothStateLogRevision(capture.snapshot) !== capture.persistedRevision) {
+      scheduleBluetoothPostSolveStateLogPersist(capture, 80);
+    }
+  }
+}
+
+function mergePersistedBluetoothStateLogSolve(solveId, stateLog, savedSolve = null) {
+  const normalizedStateLog = Array.isArray(stateLog) ? stateLog : [];
+  solves = solves.map((solve) => {
+    if (solve.id !== solveId) return solve;
+    return savedSolve || { ...solve, bluetoothStateLog: normalizedStateLog };
+  });
+}
+
+function recordBluetoothStateLogPacket(decoded, facelets, options = {}) {
+  if (!decoded) return false;
+  const postSolveCapture = appState === 'timing' ? null : bluetoothPostSolveStateLogCapture;
+  if (!shouldCaptureBluetoothStateLogPacket(appState, performance.now(), postSolveCapture?.captureUntil)) return false;
+  const text = String(facelets || '').trim().toUpperCase();
+  const hasFacelets = /^[URFDLB]{54}$/.test(text);
+  const hasStatePayload = decoded.mode === 'state'
+    || hasFacelets
+    || Boolean(decoded.stateSignature)
+    || decoded.stateSolved === true
+    || decoded.stateSolved === false;
+  if (!hasStatePayload) return false;
+
+  const parsedMoves = Array.isArray(options.parsedMoves) ? options.parsedMoves.filter(Boolean) : [];
+  const receivedAt = Number.isFinite(options.receivedAt) ? options.receivedAt : performance.now();
+  const elapsedMs = startedAt > 0 ? Math.max(0, Math.round(receivedAt - startedAt)) : null;
+  const timestampMs = timerStartedAtMs > 0 && elapsedMs != null ? timerStartedAtMs + elapsedMs : Date.now();
+  const stateSolved = decoded.stateSolved === true ? true : (decoded.stateSolved === false ? false : null);
+  const entry = {
+    step: bluetoothMoveSequence().length + parsedMoves.length,
+    facelets: hasFacelets ? text : '',
+    solved: hasFacelets ? isSolvedFacelets(text) : stateSolved === true,
+    trustedSolved: options.statePacketSolved === true,
+    stateSolved,
+    stateSolvedUntrusted: decoded.stateSolvedUntrusted === true,
+    source: options.label || 'GAN 状态包',
+    protocol: decoded.protocol || options.protocol || '',
+    deviceName: options.deviceName || bluetoothDevice?.name || '',
+    characteristicUuid: options.uuid || '',
+    mode: decoded.mode || '',
+    stateSignature: decoded.stateSignature || (hasFacelets ? cubeFaceletSignature(text) : ''),
+    moveCounter: Number.isInteger(decoded.moveCounter) ? decoded.moveCounter : null,
+    counterModulo: Number.isInteger(decoded.counterModulo) ? decoded.counterModulo : null,
+    raw: typeof options.getHex === 'function' ? options.getHex() : String(options.raw || ''),
+    moves: parsedMoves.slice(),
+    duplicateMovePacket: options.duplicateMovePacket === true,
+    physicalStateChanged: options.physicalStateChanged === true,
+    time: new Date(timestampMs).toLocaleTimeString(),
+    isoTime: new Date(timestampMs).toISOString(),
+    elapsedMs,
+    timestampMs,
+    solveStartedAtMs: timerStartedAtMs || null,
+    solveStartedAtIsoTime: timerStartedAtIsoTime,
+  };
+  bluetoothStateLog.push(entry);
+  if (postSolveCapture) updateBluetoothPostSolveStateLogCapture(postSolveCapture, entry);
+  return true;
+}
+
 function recordBluetoothStateCorrection(decoded, facelets, options = {}) {
   const text = String(facelets || '').trim().toUpperCase();
   if (appState !== 'timing' || !/^[URFDLB]{54}$/.test(text)) return false;
@@ -6832,8 +7084,10 @@ function rememberUniqueEntryText(output, seen, value) {
 }
 
 function resetBluetoothSolveTracking() {
+  detachBluetoothPostSolveStateLogCapture();
   bluetoothMoves = [];
   bluetoothStateCorrections = [];
+  bluetoothStateLog = [];
   bumpBluetoothMovesVersion();
   bluetoothSolved = false;
   bluetoothSolvedByStatePacket = false;
@@ -7019,7 +7273,7 @@ function bluetooth3dPreferredLiveFaces() {
 async function loadThreeModule() {
   if (THREE) return THREE;
   if (!threeModulePromise) {
-    threeModulePromise = import('./vendor/three.module.js')
+    threeModulePromise = import('./vendor/three.module.js?v=0.165.0')
       .then((module) => {
         THREE = module;
         return module;
@@ -9297,10 +9551,10 @@ function correctionRemainingSegmentsAfterAtomic(segments, atomicSegments, nextAt
 }
 
 function rememberScrambleGuideCorrectionRoute(startFacelets, moves, options = {}) {
-  if (!scrambleGuideSupported || !startFacelets || startFacelets === scrambleGuideTargetFacelets) return;
+  if (!scrambleGuideSupported || !startFacelets || startFacelets === scrambleGuideTargetFacelets) return false;
   const normalizedSegments = normalizeCorrectionSegments(moves, options.segments);
   const normalizedMoves = correctionMovesFromSegments(normalizedSegments);
-  if (normalizedMoves.length === 0) return;
+  if (normalizedMoves.length === 0) return false;
 
   try {
     let currentFacelets = startFacelets;
@@ -9320,13 +9574,18 @@ function rememberScrambleGuideCorrectionRoute(startFacelets, moves, options = {}
         sourceFacelets: startFacelets,
       });
     }
-    if (scrambleGuideTargetFacelets && currentFacelets !== scrambleGuideTargetFacelets) return;
+    if (scrambleGuideTargetFacelets && currentFacelets !== scrambleGuideTargetFacelets) {
+      clearScrambleGuideCorrectionRoute();
+      return false;
+    }
     scrambleGuideCorrectionRouteByFacelets = routeByFacelets;
     scrambleGuideCorrectionRouteScrambleKey = scrambleGuideCorrectionScrambleKey();
     scrambleGuideCorrectionRouteSourceFacelets = startFacelets;
     clearScrambleGuideCorrectionSnapshot();
+    return true;
   } catch {
     clearScrambleGuideCorrectionRoute();
+    return false;
   }
 }
 
@@ -9341,46 +9600,36 @@ function scrambleGuideBacktrackCorrection(facelets) {
   const wrongMoves = normalizeCorrectionMoves(scrambleGuideInputMoves.slice(scrambleGuideLastMatchedInputLength));
   if (wrongMoves.length === 0 || wrongMoves.length > scrambleGuideBacktrackCorrectionMaxWrongMoves) return null;
 
-  let baseFacelets = scrambleGuideLastMatchedFacelets;
-  let resumeMoves = [];
+  const baseFacelets = scrambleGuideLastMatchedFacelets;
   const correctionRoute = scrambleGuideCorrectionRouteEntry(baseFacelets);
-  if (correctionRoute) {
-    resumeMoves = correctionRoute.moves || [];
-  } else {
-    const baseRoute = scrambleGuideRouteByFacelets.get(baseFacelets);
-    const baseRouteIndex = Number.isInteger(baseRoute?.routeIndex)
-      ? baseRoute.routeIndex
-      : scrambleGuideRouteIndex;
-    resumeMoves = scrambleGuideRoute
-      .slice(Math.max(0, baseRouteIndex + 1))
-      .map((entry) => entry.token)
-      .filter(Boolean);
-  }
-
-  try {
-    if (applyMovesToFacelets(baseFacelets, wrongMoves) !== facelets) return null;
-  } catch {
-    return null;
-  }
+  const baseRoute = scrambleGuideRouteByFacelets.get(baseFacelets);
+  const baseRouteIndex = Number.isInteger(baseRoute?.routeIndex)
+    ? baseRoute.routeIndex
+    : scrambleGuideRouteIndex;
+  const resumeMoves = scrambleGuideRoute
+    .slice(Math.max(0, baseRouteIndex + 1))
+    .map((entry) => entry.token)
+    .filter(Boolean);
+  const plan = scrambleBacktrackCorrectionPlan({
+    baseFacelets,
+    currentFacelets: facelets,
+    targetFacelets: scrambleGuideTargetFacelets,
+    wrongMoves,
+    resumeMoves,
+    fromCorrectionRoute: Boolean(correctionRoute),
+    maxWrongMoves: scrambleGuideBacktrackCorrectionMaxWrongMoves,
+    maxMoves: scrambleGuideBacktrackCorrectionMaxMoves,
+  });
+  if (!plan) return null;
 
   const segments = [
-    ...invertCorrectionMoves(wrongMoves).map((move) => ({ move, kind: 'undo' })),
-    ...normalizeCorrectionMoves(resumeMoves).map((move) => ({ move, kind: correctionRoute ? 'solver' : 'resume' })),
+    ...plan.undoMoves.map((move) => ({ move, kind: 'undo' })),
+    ...plan.resumeMoves.map((move) => ({ move, kind: 'resume' })),
   ];
   return {
     moves: correctionMovesFromSegments(segments),
     segments,
   };
-}
-
-function invertCorrectionMoves(moves) {
-  return normalizeCorrectionMoves(moves).slice().reverse().map(invertCorrectionMove);
-}
-
-function invertCorrectionMove(move) {
-  const parsed = scrambleGuideParsedMove(move);
-  if (parsed.suffix === '2') return `${parsed.face}2`;
-  return `${parsed.face}${parsed.suffix === "'" ? '' : "'"}`;
 }
 
 function scrambleGuideCorrectionMoves(facelets = scrambleGuideSyncedFacelets(), cacheKey = '') {
@@ -9418,10 +9667,12 @@ function scrambleGuideCorrectionMoves(facelets = scrambleGuideSyncedFacelets(), 
     });
     recordScrambleGuideLocalSolver(performance.now() - localStartedAt, Array.isArray(localMoves));
     if (Array.isArray(localMoves)) {
-      scrambleGuideSolverCacheKey = cacheKey;
-      scrambleGuideSolverCacheMoves = normalizeCorrectionMoves(localMoves);
-      rememberScrambleGuideSolverCache(cacheKey, scrambleGuideSolverCacheMoves, { facelets });
-      return scrambleGuideSolverCacheMoves;
+      const normalizedMoves = normalizeCorrectionMoves(localMoves);
+      if (rememberScrambleGuideSolverCache(cacheKey, normalizedMoves, { facelets })) {
+        scrambleGuideSolverCacheKey = cacheKey;
+        scrambleGuideSolverCacheMoves = normalizedMoves;
+        return scrambleGuideSolverCacheMoves;
+      }
     }
   } else if (relativeFacelets) {
     incrementPerformanceCounter('scrambleGuideLocalSolverSkipped');
@@ -9438,14 +9689,19 @@ function scrambleGuideCachedCorrectionMoves(facelets = scrambleGuideSyncedFacele
   if (routeMoves) return routeMoves;
   const backtrack = scrambleGuideBacktrackCorrection(facelets);
   if (backtrack) {
-    rememberScrambleGuideCorrectionRoute(facelets, backtrack.moves, { segments: backtrack.segments });
-    return backtrack.moves;
+    if (rememberScrambleGuideCorrectionRoute(facelets, backtrack.moves, { segments: backtrack.segments })) {
+      return backtrack.moves;
+    }
   }
   const key = cacheKey || scrambleGuideCorrectionKey(facelets);
   const cachedMoves = scrambleGuideSolverCache.get(key);
   if (cachedMoves) {
-    rememberScrambleGuideCorrectionRoute(facelets, cachedMoves);
-    return cachedMoves;
+    if (rememberScrambleGuideCorrectionRoute(facelets, cachedMoves)) return cachedMoves;
+    scrambleGuideSolverCache.delete(key);
+    if (key === scrambleGuideSolverCacheKey) {
+      scrambleGuideSolverCacheKey = '';
+      scrambleGuideSolverCacheMoves = [];
+    }
   }
   return key === scrambleGuideSolverCacheKey ? scrambleGuideSolverCacheMoves : null;
 }
@@ -9538,10 +9794,13 @@ function startQueuedScrambleGuideSolverCorrection() {
   })
     .then((data) => {
       if (scrambleGuideSolverActiveKey !== cacheKey) return;
+      const moves = normalizeCorrectionMoves(data?.moves || data?.correction || '');
+      if (!rememberScrambleGuideSolverCache(cacheKey, moves, { facelets })) {
+        throw new Error('求解器返回的修正公式未能到达目标状态');
+      }
       recordScrambleGuideSolverWallTime(performance.now() - solverStartedAt, true);
       scrambleGuideSolverCacheKey = cacheKey;
-      scrambleGuideSolverCacheMoves = normalizeCorrectionMoves(data?.moves || data?.correction || '');
-      rememberScrambleGuideSolverCache(cacheKey, scrambleGuideSolverCacheMoves, { facelets });
+      scrambleGuideSolverCacheMoves = moves;
     })
     .catch((error) => {
       if (scrambleGuideSolverActiveKey !== cacheKey) return;
@@ -9618,16 +9877,20 @@ function clearScrambleGuideSolverRetry() {
 }
 
 function rememberScrambleGuideSolverCache(cacheKey, moves, options = {}) {
-  if (!cacheKey) return;
+  if (!cacheKey) return false;
   moves = normalizeCorrectionMoves(moves);
+  if (options.facelets) {
+    if (!correctionMovesReachFacelets(options.facelets, scrambleGuideTargetFacelets, moves)) return false;
+    if (!rememberScrambleGuideCorrectionRoute(options.facelets, moves)) return false;
+  }
   if (scrambleGuideSolverCache.has(cacheKey)) scrambleGuideSolverCache.delete(cacheKey);
   scrambleGuideSolverCache.set(cacheKey, moves);
-  if (options.facelets) rememberScrambleGuideCorrectionRoute(options.facelets, moves);
   if (cacheKey === scrambleGuideSolverRetryKey) clearScrambleGuideSolverRetry();
   clearScrambleGuideCorrectionSnapshot();
   while (scrambleGuideSolverCache.size > scrambleGuideSolverCacheLimit) {
     scrambleGuideSolverCache.delete(scrambleGuideSolverCache.keys().next().value);
   }
+  return true;
 }
 
 function cancelScrambleGuideSolverCorrection() {
@@ -13014,6 +13277,7 @@ function solveCfopRenderSignature(solve) {
   if (!solve) return '';
   const moveLog = Array.isArray(solve.bluetoothMoveLog) ? solve.bluetoothMoveLog : [];
   const stateCorrections = Array.isArray(solve.bluetoothStateCorrections) ? solve.bluetoothStateCorrections : [];
+  const stateLog = Array.isArray(solve.bluetoothStateLog) ? solve.bluetoothStateLog : [];
   const stages = Array.isArray(solve.cfopStages) ? solve.cfopStages : [];
   const opEvents = Array.isArray(solve.opEvents) ? solve.opEvents : [];
   const firstMove = moveLog[0];
@@ -13026,9 +13290,12 @@ function solveCfopRenderSignature(solve) {
     solve.bluetoothMoveCount ?? '',
     solve.bluetoothTps ?? '',
     moveLog.length,
+    solve.cfopAnalysisVersion ?? '',
+    solve.opAnalysisVersion ?? '',
     firstMove ? `${firstMove.move || ''}:${firstMove.elapsedMs ?? ''}` : '',
     lastMove ? `${lastMove.move || ''}:${lastMove.elapsedMs ?? ''}` : '',
     stateCorrections.map((entry) => `${entry?.step ?? ''}:${entry?.facelets || ''}`).join(','),
+    stateLog.map((entry) => `${entry?.step ?? ''}:${entry?.stateSignature || entry?.facelets || ''}`).join(','),
     stages.map((stage) => [
       stage?.key || '',
       stage?.completed ? 1 : 0,
@@ -13088,10 +13355,14 @@ function cfopDisplayForSolve(solve, analysis = solveCfopAnalysis(solve)) {
   const storedCompletedCount = storedStages.filter((stage) => stage.completed).length;
   const storedCompleted = storedCompletedCount > 0;
   const storedCollapsed = isCollapsedCfopTiming(storedStages);
-  const stages = storedCompletedCount > analyzedCompletedCount && !storedCollapsed ? storedStages : analysis.stages;
+  const needsCurrentAnalysis = solveHasRawAnalysisEvidence(solve)
+    && solveStoredAnalysisVersion(solve, 'cfopAnalysisVersion', storedStages) < cfopAnalysisVersion;
+  const stages = !needsCurrentAnalysis && storedCompletedCount > analyzedCompletedCount && !storedCollapsed
+    ? storedStages
+    : analysis.stages;
   const opEvents = opDisplayEventsForSolve(solve);
   const completedCount = stages.filter((stage) => stage.completed).length;
-  const hasData = analysis.records.length > 0 || (storedCompleted && !storedCollapsed);
+  const hasData = solveHasRawAnalysisEvidence(solve) || analysis.records.length > 0 || (storedCompleted && !storedCollapsed);
   const moveCount = analysis.records.length || (solve?.bluetoothMoveCount ?? 0);
   const bottomFace = analysis.bottomFace ? `底面 ${analysis.bottomFace}` : '';
   const confidence = analysis.confidence ? `判断 ${analysis.confidence}` : '';
@@ -13137,12 +13408,33 @@ function isCollapsedCfopTiming(stages) {
 
 function opDisplayEventsForSolve(solve) {
   const stored = normalizeStoredOpEvents(solve?.opEvents);
-  if (stored.length > 0) return stored;
+  const needsCurrentAnalysis = solveHasRawAnalysisEvidence(solve)
+    && solveStoredAnalysisVersion(solve, 'opAnalysisVersion', stored) < opAnalysisVersion;
+  if (stored.length > 0 && !needsCurrentAnalysis) return stored;
   try {
     return normalizeStoredOpEvents(opEventsForSave(solve));
   } catch {
-    return [];
+    return stored;
   }
+}
+
+function solveHasRawAnalysisEvidence(solve) {
+  if (!solve?.scramble || (solve.scramblePuzzle || 'three') !== 'three') return false;
+  return [
+    solve.bluetoothMoveLog,
+    solve.bluetoothMoves,
+    solve.bluetoothStateCorrections,
+    solve.bluetoothStateLog,
+  ].some((entries) => Array.isArray(entries) && entries.length > 0);
+}
+
+function solveStoredAnalysisVersion(solve, field, items = []) {
+  const directVersion = Number(solve?.[field]);
+  const itemVersion = (Array.isArray(items) ? items : []).reduce((highest, item) => {
+    const version = Number(item?.analysisVersion);
+    return Number.isFinite(version) ? Math.max(highest, version) : highest;
+  }, 0);
+  return Number.isFinite(directVersion) ? Math.max(directVersion, itemVersion) : itemVersion;
 }
 
 function normalizeStoredOpEvents(events) {
@@ -13178,6 +13470,8 @@ function normalizeStoredOpEvents(events) {
     signature: String(event?.signature || ''),
     formulaAccepted: event?.formulaAccepted === true,
     formulaReason: String(event?.formulaReason || ''),
+    recoveredFromStateLog: event?.recoveredFromStateLog === true,
+    analysisVersion: optionalDisplayNumber(event?.analysisVersion) ?? 0,
     moveTimings: normalizeStoredOpMoveTimings(event?.moveTimings),
   })).filter((event) => event.kind && event.caseId);
 }
@@ -13216,6 +13510,16 @@ function normalizeStoredCfopStages(stages) {
     startStep: Number.isFinite(Number(stage?.startStep)) ? Number(stage.startStep) : null,
     endStep: Number.isFinite(Number(stage?.endStep)) ? Number(stage.endStep) : null,
     turns: Number.isFinite(Number(stage?.turns)) ? Number(stage.turns) : 0,
+    physicalCompletedAt: Number.isFinite(Number(stage?.physicalCompletedAt)) ? Number(stage.physicalCompletedAt) : null,
+    physicalStartStep: Number.isFinite(Number(stage?.physicalStartStep)) ? Number(stage.physicalStartStep) : null,
+    physicalEndStep: Number.isFinite(Number(stage?.physicalEndStep)) ? Number(stage.physicalEndStep) : null,
+    physicalTurns: Number.isFinite(Number(stage?.physicalTurns)) ? Number(stage.physicalTurns) : null,
+    stateTransitionObserved: stage?.stateTransitionObserved === true,
+    unobservedTurns: stage?.unobservedTurns === true,
+    completionSource: String(stage?.completionSource || ''),
+    skipped: stage?.skipped === true,
+    skipAdjustment: String(stage?.skipAdjustment || ''),
+    analysisVersion: Number.isFinite(Number(stage?.analysisVersion)) ? Number(stage.analysisVersion) : 0,
     durationMs: Number.isFinite(Number(stage?.durationMs)) ? Number(stage.durationMs) : null,
     tps: Number.isFinite(Number(stage?.tps)) ? Number(stage.tps) : null,
     startedAtElapsedMs: Number.isFinite(Number(stage?.startedAtElapsedMs)) ? Number(stage.startedAtElapsedMs) : null,

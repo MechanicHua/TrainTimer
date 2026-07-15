@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" shape-rendering="geometricPrecision">
+  <g fill="#BFD8E3">
+    <rect x="424" y="424" width="176" height="176" rx="44"/>
+    <rect x="424" y="620" width="176" height="176" rx="44"/>
+  </g>
+</svg>

@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc" shape-rendering="geometricPrecision">
+  <title id="title">TrainTimer Liquid Glass v2 static material preview</title>
+  <desc id="desc">A static preview with visible background transmission, optical displacement, translucent volume, and layered edge highlights across a U and M cube T.</desc>
+
+  <defs>
+    <linearGradient id="sceneBase" x1="76" y1="42" x2="940" y2="982" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#216CA1"/>
+      <stop offset="0.34" stop-color="#123D5B"/>
+      <stop offset="0.7" stop-color="#0A2233"/>
+      <stop offset="1" stop-color="#050D14"/>
+    </linearGradient>
+    <radialGradient id="cyanOrb" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(790 240) rotate(132) scale(470)">
+      <stop offset="0" stop-color="#B8EEFF" stop-opacity="0.95"/>
+      <stop offset="0.22" stop-color="#55C7F6" stop-opacity="0.58"/>
+      <stop offset="0.58" stop-color="#1784BD" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#0B2434" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blueOrb" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(204 782) rotate(-32) scale(430)">
+      <stop offset="0" stop-color="#58A8F4" stop-opacity="0.62"/>
+      <stop offset="0.42" stop-color="#266CA8" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#06101A" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="lightRibbon" x1="128" y1="846" x2="856" y2="154" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5BA8EE" stop-opacity="0"/>
+      <stop offset="0.38" stop-color="#62C8F7" stop-opacity="0.12"/>
+      <stop offset="0.54" stop-color="#D6F6FF" stop-opacity="0.55"/>
+      <stop offset="0.68" stop-color="#63BDE9" stop-opacity="0.13"/>
+      <stop offset="1" stop-color="#2F7DBB" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="carrierFill" x1="234" y1="206" x2="810" y2="824" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E8F7FF" stop-opacity="0.14"/>
+      <stop offset="0.48" stop-color="#0A2030" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#02080D" stop-opacity="0.42"/>
+    </linearGradient>
+    <linearGradient id="glassWashU" x1="246" y1="218" x2="782" y2="414" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.3"/>
+      <stop offset="0.38" stop-color="#DDF6FF" stop-opacity="0.13"/>
+      <stop offset="1" stop-color="#8DDCFF" stop-opacity="0.07"/>
+    </linearGradient>
+    <linearGradient id="glassWashM" x1="430" y1="416" x2="592" y2="804" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E8FAFF" stop-opacity="0.21"/>
+      <stop offset="1" stop-color="#70C7EC" stop-opacity="0.09"/>
+    </linearGradient>
+    <linearGradient id="glassRim" x1="238" y1="222" x2="788" y2="792" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.96"/>
+      <stop offset="0.25" stop-color="#E5F8FF" stop-opacity="0.76"/>
+      <stop offset="0.63" stop-color="#92D9F7" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#C5F1FF" stop-opacity="0.68"/>
+    </linearGradient>
+    <linearGradient id="lowerRim" x1="270" y1="254" x2="762" y2="772" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.04"/>
+      <stop offset="0.66" stop-color="#3AA8E5" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#1A75B0" stop-opacity="0.72"/>
+    </linearGradient>
+    <linearGradient id="outerRim" x1="110" y1="72" x2="888" y2="958" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.68"/>
+      <stop offset="0.36" stop-color="#C4ECFF" stop-opacity="0.2"/>
+      <stop offset="0.75" stop-color="#4DA5D6" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#DBF7FF" stop-opacity="0.52"/>
+    </linearGradient>
+
+    <rect id="cubie" width="176" height="176" rx="44"/>
+
+    <clipPath id="plateClip">
+      <rect x="32" y="32" width="960" height="960" rx="224"/>
+    </clipPath>
+    <clipPath id="inactiveClip">
+      <use href="#cubie" x="228" y="424"/>
+      <use href="#cubie" x="620" y="424"/>
+      <use href="#cubie" x="228" y="620"/>
+      <use href="#cubie" x="620" y="620"/>
+    </clipPath>
+    <clipPath id="uClip">
+      <use href="#cubie" x="228" y="228"/>
+      <use href="#cubie" x="424" y="228"/>
+      <use href="#cubie" x="620" y="228"/>
+    </clipPath>
+    <clipPath id="mClip">
+      <use href="#cubie" x="424" y="424"/>
+      <use href="#cubie" x="424" y="620"/>
+    </clipPath>
+
+    <filter id="plateShadow" x="-14%" y="-14%" width="128%" height="142%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="28" stdDeviation="28" flood-color="#02070B" flood-opacity="0.42"/>
+    </filter>
+    <filter id="carrierShadow" x="-18%" y="-18%" width="136%" height="148%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="21" flood-color="#01060A" flood-opacity="0.36"/>
+    </filter>
+    <filter id="inactiveRefract" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.016" numOctaves="1" seed="12" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="7" xChannelSelector="R" yChannelSelector="B"/>
+      <feGaussianBlur stdDeviation="2.2"/>
+      <feColorMatrix type="saturate" values="1.14"/>
+    </filter>
+    <filter id="uRefract" x="-12%" y="-18%" width="124%" height="136%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.009 0.014" numOctaves="1" seed="8" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="19" xChannelSelector="R" yChannelSelector="B"/>
+      <feGaussianBlur stdDeviation="3.6"/>
+      <feColorMatrix type="saturate" values="1.22"/>
+    </filter>
+    <filter id="mRefract" x="-14%" y="-12%" width="128%" height="124%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.011 0.008" numOctaves="1" seed="4" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="B" yChannelSelector="R"/>
+      <feGaussianBlur stdDeviation="3"/>
+      <feColorMatrix type="saturate" values="1.18"/>
+    </filter>
+    <filter id="glassLift" x="-28%" y="-28%" width="156%" height="166%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="15" stdDeviation="12" flood-color="#00101A" flood-opacity="0.44"/>
+    </filter>
+    <filter id="softGlow" x="-120%" y="-240%" width="340%" height="580%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+
+    <g id="wallpaper">
+      <rect width="1024" height="1024" fill="url(#sceneBase)"/>
+      <rect width="1024" height="1024" fill="url(#cyanOrb)"/>
+      <rect width="1024" height="1024" fill="url(#blueOrb)"/>
+      <path d="M58 852C236 750 330 660 442 514C566 352 674 232 952 112L1024 238C782 342 666 448 544 602C416 764 292 868 94 952Z" fill="url(#lightRibbon)"/>
+      <path d="M142 530C292 422 408 430 534 488C666 550 780 564 918 474" fill="none" stroke="#8DDBFA" stroke-opacity="0.18" stroke-width="72" stroke-linecap="round"/>
+      <path d="M118 552C294 442 414 458 534 514C664 576 790 592 934 492" fill="none" stroke="#D6F6FF" stroke-opacity="0.18" stroke-width="12" stroke-linecap="round"/>
+    </g>
+  </defs>
+
+  <g clip-path="url(#plateClip)" filter="url(#plateShadow)">
+    <use href="#wallpaper"/>
+    <path d="M36 250C174 112 336 52 540 52C758 52 896 120 988 246V32H32Z" fill="#FFFFFF" fill-opacity="0.055"/>
+    <path d="M124 930C314 788 570 814 930 610V1024H36Z" fill="#02080D" fill-opacity="0.18"/>
+  </g>
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="none" stroke="url(#outerRim)" stroke-width="5"/>
+  <rect x="48" y="48" width="928" height="928" rx="208" fill="none" stroke="#020B11" stroke-opacity="0.3" stroke-width="2"/>
+
+  <g filter="url(#carrierShadow)">
+    <rect x="188" y="188" width="648" height="648" rx="120" fill="url(#carrierFill)"/>
+    <rect x="188" y="188" width="648" height="648" rx="120" fill="none" stroke="#E2F7FF" stroke-opacity="0.3" stroke-width="3"/>
+    <rect x="199" y="199" width="626" height="626" rx="108" fill="none" stroke="#020A10" stroke-opacity="0.26" stroke-width="3"/>
+  </g>
+
+  <!-- Inactive cube pieces transmit the scene quietly. -->
+  <g clip-path="url(#inactiveClip)">
+    <use href="#wallpaper" transform="translate(-18 -12) scale(1.035)" filter="url(#inactiveRefract)" opacity="0.66"/>
+  </g>
+  <g fill="#071C2B" fill-opacity="0.26" stroke="#C8EDFF" stroke-opacity="0.24" stroke-width="5">
+    <use href="#cubie" x="228" y="424"/>
+    <use href="#cubie" x="620" y="424"/>
+    <use href="#cubie" x="228" y="620"/>
+    <use href="#cubie" x="620" y="620"/>
+  </g>
+  <g fill="none" stroke="#07131C" stroke-opacity="0.42" stroke-width="3">
+    <use href="#cubie" x="234" y="430" width="164" height="164"/>
+    <use href="#cubie" x="626" y="430" width="164" height="164"/>
+    <use href="#cubie" x="234" y="626" width="164" height="164"/>
+    <use href="#cubie" x="626" y="626" width="164" height="164"/>
+  </g>
+
+  <!-- U layer: magnified, displaced scene plus a very light frost wash. -->
+  <g clip-path="url(#uClip)" filter="url(#glassLift)">
+    <use href="#wallpaper" transform="translate(-50 -50) scale(1.098)" filter="url(#uRefract)"/>
+    <rect x="214" y="210" width="596" height="212" fill="#EAF9FF" fill-opacity="0.08"/>
+  </g>
+  <g fill="url(#glassWashU)" stroke="url(#glassRim)" stroke-width="6">
+    <use href="#cubie" x="228" y="228"/>
+    <use href="#cubie" x="424" y="228"/>
+    <use href="#cubie" x="620" y="228"/>
+  </g>
+  <g fill="none" stroke="url(#lowerRim)" stroke-width="4">
+    <use href="#cubie" x="236" y="236" width="160" height="160"/>
+    <use href="#cubie" x="432" y="236" width="160" height="160"/>
+    <use href="#cubie" x="628" y="236" width="160" height="160"/>
+  </g>
+
+  <!-- M layer refracts at a different optical depth. -->
+  <g clip-path="url(#mClip)" filter="url(#glassLift)">
+    <use href="#wallpaper" transform="translate(-34 -30) scale(1.064)" filter="url(#mRefract)"/>
+    <rect x="408" y="410" width="208" height="404" fill="#DFF6FF" fill-opacity="0.07"/>
+  </g>
+  <g fill="url(#glassWashM)" stroke="url(#glassRim)" stroke-width="6">
+    <use href="#cubie" x="424" y="424"/>
+    <use href="#cubie" x="424" y="620"/>
+  </g>
+  <g fill="none" stroke="url(#lowerRim)" stroke-width="4">
+    <use href="#cubie" x="432" y="432" width="160" height="160"/>
+    <use href="#cubie" x="432" y="628" width="160" height="160"/>
+  </g>
+
+  <!-- Directional speculars: short, asymmetric, and separated from the transmitted scene. -->
+  <g fill="none" stroke="#FFFFFF" stroke-opacity="0.66" stroke-width="5" stroke-linecap="round">
+    <path d="M262 253H344C369 253 383 267 383 290"/>
+    <path d="M458 253H540C565 253 579 267 579 290"/>
+    <path d="M654 253H736C761 253 775 267 775 290"/>
+    <path d="M458 449H540C565 449 579 463 579 486"/>
+    <path d="M458 645H540C565 645 579 659 579 682"/>
+  </g>
+  <rect x="458" y="398" width="108" height="26" rx="13" fill="#83DDFF" fill-opacity="0.28" filter="url(#softGlow)"/>
+  <rect x="462" y="402" width="100" height="18" rx="9" fill="#88DEFF" fill-opacity="0.82" stroke="#E6FAFF" stroke-opacity="0.72" stroke-width="2"/>
+</svg>

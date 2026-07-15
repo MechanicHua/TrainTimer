@@ -1,0 +1,43 @@
+{
+  "fill" : {
+    "automatic-gradient" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "glass" : false,
+          "image-name" : "04-movement-marker.svg",
+          "name" : "04-movement-marker"
+        },
+        {
+          "image-name" : "03-m-layer.svg",
+          "name" : "03-m-layer"
+        },
+        {
+          "image-name" : "02-u-layer.svg",
+          "name" : "02-u-layer"
+        },
+        {
+          "glass" : false,
+          "image-name" : "01-base-structure.svg",
+          "name" : "01-base-structure"
+        }
+      ],
+      "shadow" : {
+        "kind" : "none",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

@@ -5,10 +5,8 @@ import {
   faceletsFromScramble,
   isSolvedFaces,
   parseMoveToken,
-  relativeFaceletsForScrambleTargetFacelets,
-  shortCorrectionMovesForRelativeFacelets,
-  solvedFaceletString,
 } from './cube-state.js';
+import { bluetoothStateLogSnapshotCorrections } from './bluetooth-state-log.js';
 import { logicalMoveRecords } from './move-metrics.js';
 
 const cubeFaceNormals = {
@@ -29,6 +27,8 @@ const cfopFallbackPairSlots = Array.from({ length: 4 }, (_, index) => ({
 }));
 const cfopDefinitions = createCfopDefinitions();
 
+export const cfopAnalysisVersion = 4;
+
 export function solveMoveRecords(solve) {
   return logicalMoveRecords(solvePhysicalMoveRecords(solve));
 }
@@ -42,10 +42,10 @@ export function solvePhysicalMoveRecords(solve) {
       ...entry,
       step: Number.isFinite(Number(entry.step)) ? Number(entry.step) : index + 1,
       move: String(entry.move || '').trim(),
-      elapsedMs: Number.isFinite(Number(entry.elapsedMs)) ? Number(entry.elapsedMs) : null,
-      timestampMs: Number.isFinite(Number(entry.timestampMs)) ? Number(entry.timestampMs) : null,
+      elapsedMs: optionalFiniteNumber(entry.elapsedMs),
+      timestampMs: optionalFiniteNumber(entry.timestampMs),
       isoTime: typeof entry.isoTime === 'string' ? entry.isoTime : '',
-      solveStartedAtMs: Number.isFinite(Number(entry.solveStartedAtMs)) ? Number(entry.solveStartedAtMs) : null,
+      solveStartedAtMs: optionalFiniteNumber(entry.solveStartedAtMs),
       solveStartedAtIsoTime: typeof entry.solveStartedAtIsoTime === 'string' ? entry.solveStartedAtIsoTime : '',
     }))
     : moves.map((move, index) => ({ step: index + 1, move, elapsedMs: null }));
@@ -64,13 +64,20 @@ function physicalMoveRecord(record) {
   }
 }
 
+function optionalFiniteNumber(value) {
+  if (value == null || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
 export function solveCfopAnalysis(solve) {
   const records = solveMoveRecords(solve);
   const detectionRecords = solvePhysicalMoveRecords(solve);
   const physicalStepToLogicalStep = logicalStepMapForPhysicalRecords(detectionRecords);
   const stageTemplate = cfopStageTemplate();
+  const finalSolvedEvidence = solveFinalSolvedEvidence(solve);
   const finalSolvedByStatePacket = solveFinalSolvedByStatePacket(solve);
-  if (!solve?.scramble || (detectionRecords.length === 0 && !finalSolvedByStatePacket) || (solve.scramblePuzzle || 'three') !== 'three') {
+  if (!solve?.scramble || (detectionRecords.length === 0 && !finalSolvedEvidence) || (solve.scramblePuzzle || 'three') !== 'three') {
     return { records, detectionRecords, stages: stageTemplate, finalSolved: false };
   }
 
@@ -99,17 +106,26 @@ export function solveCfopAnalysis(solve) {
 
   const pairSlots = cfopDefinition?.pairSlots || cfopFallbackPairSlots;
   const orderedPairs = pairSlots
-    .map((slot) => ({ ...slot, completedAt: completions.pairs.get(slot.key) ?? null }))
+    .map((slot) => ({
+      ...slot,
+      completedAt: completions.pairs.get(slot.key) ?? null,
+      completionSnapshot: completions.pairSnapshots?.get(slot.key) || null,
+    }))
     .sort((left, right) => {
       const leftStep = left.completedAt ?? Number.POSITIVE_INFINITY;
       const rightStep = right.completedAt ?? Number.POSITIVE_INFINITY;
-      return leftStep - rightStep || pairSlots.findIndex((slot) => slot.key === left.key) - pairSlots.findIndex((slot) => slot.key === right.key);
+      const leftSequence = left.completionSnapshot?.sequence ?? Number.POSITIVE_INFINITY;
+      const rightSequence = right.completionSnapshot?.sequence ?? Number.POSITIVE_INFINITY;
+      return leftStep - rightStep
+        || leftSequence - rightSequence
+        || pairSlots.findIndex((slot) => slot.key === left.key) - pairSlots.findIndex((slot) => slot.key === right.key);
     });
   const pairStages = orderedPairs.map((slot, index) => ({
     key: slot.key,
     label: `F${index + 1}`,
     name: slot.name,
     completedAt: slot.completedAt,
+    completionSnapshot: slot.completionSnapshot,
   }));
 
   const boundaries = [
@@ -118,18 +134,30 @@ export function solveCfopAnalysis(solve) {
       label: 'C',
       name: cfopCrossStageName(completions.crossSolvedPairCount, completions.cross, completions.simultaneousCrossPairCount),
       completedAt: completions.cross,
+      completionSnapshot: completions.crossSnapshot || null,
     },
     ...pairStages,
-    { key: 'oll', label: 'O', name: 'OLL', completedAt: completions.oll },
-    { key: 'pll', label: 'P', name: 'PLL', completedAt: completions.pll },
+    { key: 'oll', label: 'O', name: 'OLL', completedAt: completions.oll, completionSnapshot: completions.ollSnapshot || null },
+    {
+      key: 'pll',
+      label: 'P',
+      name: 'PLL',
+      completedAt: completions.pll,
+      completionSnapshot: completions.pllSnapshot || null,
+      skipped: Boolean(completions.pllSkip),
+      skipAdjustment: completions.pllSkip?.adjustment || '',
+    },
   ];
-  let previousBoundary = { physicalStep: 0, logicalStep: 0 };
+  const ollBoundary = boundaries.find((boundary) => boundary.key === 'oll');
+  if (ollBoundary) ollBoundary.skipped = cfopBoundarySnapshotsMatch(completions.f2lSnapshot, completions.ollSnapshot);
+  let previousBoundary = { physicalStep: 0, logicalStep: 0, snapshot: snapshots[0] || null };
   const stages = boundaries.map((boundary) => {
     const stage = cfopStageFromBoundary(boundary, detectionRecords, previousBoundary, solve, physicalStepToLogicalStep);
     if (boundary.completedAt != null) {
       previousBoundary = {
         physicalStep: stage.physicalEndStep ?? previousBoundary.physicalStep,
         logicalStep: stage.endStep ?? previousBoundary.logicalStep,
+        snapshot: boundary.completionSnapshot || previousBoundary.snapshot,
       };
     }
     return stage;
@@ -139,7 +167,7 @@ export function solveCfopAnalysis(solve) {
     records,
     detectionRecords,
     stages,
-    finalSolved: finalSolvedByStatePacket || completions.pll != null,
+    finalSolved: finalSolvedEvidence || completions.pll != null,
     bottomFace: completions.cross != null ? completions.bottomFace : '',
     confidence: completions.confidence,
   };
@@ -169,6 +197,12 @@ export function cfopStagesForSave(solve) {
     physicalStartStep: stage.physicalStartStep ?? null,
     physicalEndStep: stage.physicalEndStep ?? null,
     physicalTurns: stage.physicalTurns ?? null,
+    stateTransitionObserved: stage.stateTransitionObserved === true,
+    unobservedTurns: stage.unobservedTurns === true,
+    completionSource: stage.completionSource || '',
+    skipped: stage.skipped === true,
+    skipAdjustment: stage.skipAdjustment || '',
+    analysisVersion: cfopAnalysisVersion,
     durationMs: Number.isFinite(stage.durationMs) ? Math.round(stage.durationMs) : null,
     tps: Number.isFinite(stage.tps) ? stage.tps : null,
     startedAtElapsedMs: Number.isFinite(stage.startedAtElapsedMs) ? Math.round(stage.startedAtElapsedMs) : null,
@@ -288,8 +322,7 @@ function cfopFaceGridPosition(face, [x, y, z]) {
 
 export function solveFaceletSnapshotsForAnalysis(solve, records = solvePhysicalMoveRecords(solve)) {
   try {
-    const correctionByStep = stateCorrectionsByStep(solve?.bluetoothStateCorrections, records.length);
-    const finalSolvedByStatePacket = solveFinalSolvedByStatePacket(solve);
+    const correctionByStep = stateCorrectionsByStep(analysisStateCorrectionsForSolve(solve), records.length);
     let facelets = faceletsFromScramble(solve.scramble);
     const initialCorrection = correctionByStep.get(0);
     if (initialCorrection) facelets = initialCorrection.facelets;
@@ -298,15 +331,8 @@ export function solveFaceletSnapshotsForAnalysis(solve, records = solvePhysicalM
       facelets = applyMoveToFacelets(facelets, records[index].move);
       const step = index + 1;
       const correction = correctionByStep.get(step);
-      const finalSolvedCorrection = !correction
-        && finalSolvedByStatePacket
-        && step === records.length
-        && shouldApplyFinalSolvedStateCorrection(facelets, records.length)
-        ? { step, facelets: solvedFaceletString, source: 'final-solved-state-packet' }
-        : null;
-      const appliedCorrection = correction || finalSolvedCorrection;
-      if (appliedCorrection) facelets = appliedCorrection.facelets;
-      snapshots.push({ step, facelets, correction: appliedCorrection || null });
+      if (correction) facelets = correction.facelets;
+      snapshots.push({ step, facelets, correction: correction || null });
     }
     return snapshots;
   } catch {
@@ -314,32 +340,116 @@ export function solveFaceletSnapshotsForAnalysis(solve, records = solvePhysicalM
   }
 }
 
-function shouldApplyFinalSolvedStateCorrection(facelets, recordCount) {
-  if (recordCount >= 40) return true;
+export function solveFaceletStateTimelineForAnalysis(solve, records = solvePhysicalMoveRecords(solve)) {
   try {
-    const relative = relativeFaceletsForScrambleTargetFacelets(solvedFaceletString, facelets);
-    const correction = shortCorrectionMovesForRelativeFacelets(relative, {
-      maxDepth: 2,
-      maxNodes: 50000,
-      maxMs: 12,
-    });
-    return Array.isArray(correction);
+    const correctionsByStep = stateCorrectionEventsByStep(analysisStateCorrectionsForSolve(solve), records.length);
+    let facelets = faceletsFromScramble(solve.scramble);
+    const snapshots = [analysisTimelineSnapshot({
+      step: 0,
+      sequence: 0,
+      facelets,
+      source: 'initial',
+      solve,
+      records,
+    })];
+    let sequence = 1;
+
+    for (const correction of correctionsByStep.get(0) || []) {
+      facelets = correction.facelets;
+      snapshots.push(analysisTimelineSnapshot({
+        step: 0,
+        sequence,
+        facelets,
+        correction,
+        source: 'state',
+        solve,
+        records,
+      }));
+      sequence += 1;
+    }
+
+    for (let index = 0; index < records.length; index += 1) {
+      facelets = applyMoveToFacelets(facelets, records[index].move);
+      const step = index + 1;
+      const corrections = correctionsByStep.get(step) || [];
+      if (corrections.length === 0) {
+        snapshots.push(analysisTimelineSnapshot({
+          step,
+          sequence,
+          facelets,
+          record: records[index],
+          source: 'move',
+          solve,
+          records,
+        }));
+        sequence += 1;
+        continue;
+      }
+
+      for (const correction of corrections) {
+        facelets = correction.facelets;
+        snapshots.push(analysisTimelineSnapshot({
+          step,
+          sequence,
+          facelets,
+          correction,
+          record: records[index],
+          source: 'state',
+          solve,
+          records,
+        }));
+        sequence += 1;
+      }
+    }
+    return snapshots;
   } catch {
-    return false;
+    return [];
   }
+}
+
+function analysisTimelineSnapshot(options) {
+  const timing = options.correction || options.record || {};
+  const elapsedMs = optionalFiniteNumber(timing.elapsedMs);
+  const timestampMs = optionalFiniteNumber(timing.timestampMs);
+  const fallbackTimestampMs = options.step === 0 ? solveStartTimestampMs(options.solve, options.records) : null;
+  const resolvedTimestampMs = Number.isFinite(timestampMs) ? timestampMs : fallbackTimestampMs;
+  const fallbackIsoTime = options.step === 0 ? solveStartIsoTime(options.solve, options.records) : '';
+  return {
+    step: options.step,
+    sequence: options.sequence,
+    facelets: options.facelets,
+    correction: options.correction || null,
+    source: options.source,
+    elapsedMs: Number.isFinite(elapsedMs) ? elapsedMs : (options.step === 0 ? 0 : null),
+    timestampMs: Number.isFinite(resolvedTimestampMs) ? resolvedTimestampMs : null,
+    isoTime: typeof timing.isoTime === 'string' && timing.isoTime ? timing.isoTime : fallbackIsoTime,
+  };
 }
 
 function cfopSnapshotsForSolve(solve, records) {
   try {
-    const faceletSnapshots = solveFaceletSnapshotsForAnalysis(solve, records);
+    const faceletSnapshots = solveFaceletStateTimelineForAnalysis(solve, records);
     return faceletSnapshots.map((snapshot) => ({
       step: snapshot.step,
+      sequence: snapshot.sequence,
+      facelets: snapshot.facelets,
       faces: facesFromFacelets(snapshot.facelets),
       correction: snapshot.correction || null,
+      source: snapshot.source || '',
+      elapsedMs: snapshot.elapsedMs,
+      timestampMs: snapshot.timestampMs,
+      isoTime: snapshot.isoTime || '',
     }));
   } catch {
     return [];
   }
+}
+
+function analysisStateCorrectionsForSolve(solve) {
+  return [
+    ...bluetoothStateLogSnapshotCorrections(solve?.bluetoothStateLog),
+    ...(Array.isArray(solve?.bluetoothStateCorrections) ? solve.bluetoothStateCorrections : []),
+  ];
 }
 
 function stateCorrectionsByStep(corrections, maxStep) {
@@ -350,6 +460,51 @@ function stateCorrectionsByStep(corrections, maxStep) {
     if (normalized) byStep.set(normalized.step, normalized);
   }
   return byStep;
+}
+
+function stateCorrectionEventsByStep(corrections, maxStep) {
+  const byStep = new Map();
+  if (!Array.isArray(corrections)) return byStep;
+  const normalized = corrections
+    .map((correction, order) => {
+      const value = normalizeAnalysisStateCorrection(correction, maxStep);
+      return value ? { ...value, order } : null;
+    })
+    .filter(Boolean)
+    .sort(compareStateCorrectionEvents);
+
+  for (const correction of normalized) {
+    const bucket = byStep.get(correction.step) || [];
+    const previous = bucket.at(-1);
+    if (previous?.facelets === correction.facelets) {
+      if (stateCorrectionEventPriority(correction) >= stateCorrectionEventPriority(previous)) {
+        bucket[bucket.length - 1] = correction;
+      }
+    } else {
+      bucket.push(correction);
+    }
+    byStep.set(correction.step, bucket);
+  }
+  return byStep;
+}
+
+function compareStateCorrectionEvents(left, right) {
+  if (left.step !== right.step) return left.step - right.step;
+  const leftTimestamp = optionalFiniteNumber(left.timestampMs);
+  const rightTimestamp = optionalFiniteNumber(right.timestampMs);
+  if (Number.isFinite(leftTimestamp) && Number.isFinite(rightTimestamp) && leftTimestamp !== rightTimestamp) {
+    return leftTimestamp - rightTimestamp;
+  }
+  const leftElapsed = optionalFiniteNumber(left.elapsedMs);
+  const rightElapsed = optionalFiniteNumber(right.elapsedMs);
+  if (Number.isFinite(leftElapsed) && Number.isFinite(rightElapsed) && leftElapsed !== rightElapsed) {
+    return leftElapsed - rightElapsed;
+  }
+  return left.order - right.order;
+}
+
+function stateCorrectionEventPriority(correction) {
+  return correction?.reason === 'state-log' ? 0 : 1;
 }
 
 function normalizeAnalysisStateCorrection(correction, maxStep) {
@@ -375,22 +530,33 @@ function analyzeCfopDefinition(definition, snapshots, order, finalSolvedByStateP
     cross: null,
     bottomFace: definition.bottomFace,
     pairs: new Map(),
+    pairSnapshots: new Map(),
     crossSnapshotFaces: null,
+    crossSnapshot: null,
+    crossXcrossReliable: false,
     f2l: null,
+    f2lSnapshot: null,
     oll: null,
+    ollSnapshot: null,
     pll: null,
+    pllSnapshot: null,
     crossStableSnapshots: 0,
     crossSolvedPairCount: 0,
     simultaneousCrossPairCount: 0,
     order,
   };
 
-  for (const snapshot of snapshots) {
+  for (let snapshotIndex = 0; snapshotIndex < snapshots.length; snapshotIndex += 1) {
+    const snapshot = snapshots[snapshotIndex];
+    const previousSnapshot = snapshots[snapshotIndex - 1] || null;
     const faces = snapshot.faces;
     const crossSolved = isFaceletSetSolved(faces, definition.crossCells);
     if (completions.cross == null && crossSolved) {
       completions.cross = snapshot.step;
       completions.crossSnapshotFaces = faces;
+      completions.crossSnapshot = snapshot;
+      completions.crossXcrossReliable = snapshot.source !== 'state'
+        || Boolean(previousSnapshot && !isFaceletSetSolved(previousSnapshot.faces, definition.crossCells));
     }
     if (completions.cross == null || !crossSolved) continue;
 
@@ -398,26 +564,56 @@ function analyzeCfopDefinition(definition, snapshots, order, finalSolvedByStateP
     for (const slot of definition.pairSlots) {
       if (!completions.pairs.has(slot.key) && isFaceletSetSolved(faces, slot.cells)) {
         completions.pairs.set(slot.key, snapshot.step);
+        completions.pairSnapshots.set(slot.key, snapshot);
       }
     }
-    if (completions.f2l == null && completions.pairs.size === definition.pairSlots.length) completions.f2l = snapshot.step;
+    if (completions.f2l == null && completions.pairs.size === definition.pairSlots.length) {
+      completions.f2l = snapshot.step;
+      completions.f2lSnapshot = snapshot;
+    }
     if (completions.f2l == null) continue;
 
-    if (completions.oll == null && isFaceletSetSolved(faces, definition.ollCells)) completions.oll = snapshot.step;
+    if (completions.oll == null && isFaceletSetSolved(faces, definition.ollCells)) {
+      completions.oll = snapshot.step;
+      completions.ollSnapshot = snapshot;
+    }
     if (completions.oll == null) continue;
 
-    if (completions.pll == null && isSolvedFaces(faces)) completions.pll = snapshot.step;
+    if (completions.pll == null && isSolvedFaces(faces)) {
+      completions.pll = snapshot.step;
+      completions.pllSnapshot = snapshot;
+    }
   }
 
   const lastStep = snapshots[snapshots.length - 1]?.step || 0;
+  const lastSequence = snapshots[snapshots.length - 1]?.sequence ?? lastStep;
   if (finalSolvedByStatePacket && completions.oll != null && completions.pll == null) {
     completions.pll = Math.max(completions.oll, lastStep);
+    completions.pllSnapshot = snapshots.at(-1) || completions.ollSnapshot;
   }
   completions.crossSolvedPairCount = cfopCrossSolvedPairCount(completions, definition);
   completions.simultaneousCrossPairCount = cfopSimultaneousCrossPairCount(completions, definition);
-  completions.score = cfopCandidateScore(completions, lastStep);
+  completions.pllSkip = cfopPllSkipAtOllCompletion(completions.ollSnapshot, definition);
+  completions.score = cfopCandidateScore(completions, lastStep, lastSequence);
   completions.confidence = cfopCandidateConfidence(completions);
   return completions;
+}
+
+function cfopBoundarySnapshotsMatch(left, right) {
+  if (!left || !right) return false;
+  if (Number.isFinite(left.sequence) && Number.isFinite(right.sequence)) return left.sequence === right.sequence;
+  return left.step === right.step && left.facelets === right.facelets;
+}
+
+function cfopPllSkipAtOllCompletion(snapshot, definition) {
+  if (!snapshot?.facelets || !definition?.bottomFace) return null;
+  const topFace = cubeOppositeFaces[definition.bottomFace];
+  for (const suffix of [null, '', '2', "'"]) {
+    const adjustment = suffix == null ? '' : `${topFace}${suffix}`;
+    const facelets = adjustment ? applyMoveToFacelets(snapshot.facelets, adjustment) : snapshot.facelets;
+    if (isSolvedFaces(facesFromFacelets(facelets))) return { adjustment };
+  }
+  return null;
 }
 
 function cfopCrossSolvedPairCount(completions, definition) {
@@ -426,18 +622,18 @@ function cfopCrossSolvedPairCount(completions, definition) {
 }
 
 function cfopSimultaneousCrossPairCount(completions, definition) {
-  if (completions.cross == null) return 0;
-  return definition.pairSlots.filter((slot) => completions.pairs.get(slot.key) === completions.cross).length;
+  if (completions.cross == null || !completions.crossXcrossReliable) return 0;
+  return cfopCrossSolvedPairCount(completions, definition);
 }
 
 function cfopCrossStageName(pairCount, crossStep = null, simultaneousPairCount = pairCount) {
-  if (!Number.isInteger(pairCount) || pairCount <= 0) return 'Cross';
+  if (!Number.isInteger(pairCount) || pairCount <= 0 || simultaneousPairCount < pairCount) return 'Cross';
   if (pairCount >= 2 && simultaneousPairCount >= 2 && Number.isFinite(crossStep) && crossStep > 20) return 'Cross';
   return `${'x'.repeat(pairCount)}cross`;
 }
 
-function cfopCandidateScore(candidate, lastStep) {
-  const progression = cfopCandidateProgression(candidate, lastStep);
+function cfopCandidateScore(candidate, lastStep, lastSequence) {
+  const progression = cfopCandidateProgression(candidate, lastStep, lastSequence);
   const simultaneousPairPenalty = Math.max(0, (candidate.simultaneousCrossPairCount || 0) - 1)
     * Math.min(1800, Math.max(0, candidate.cross || 0) * 45);
   let score = 0;
@@ -456,26 +652,31 @@ function cfopCandidateScore(candidate, lastStep) {
   return score;
 }
 
-function cfopCandidateProgression(candidate, lastStep) {
-  const boundarySteps = [
-    candidate.cross,
-    ...candidate.definition.pairSlots.map((slot) => candidate.pairs.get(slot.key) ?? null),
-    candidate.oll,
-    candidate.pll,
-  ].filter((step) => step != null);
-  const nonFinalBoundaryCount = boundarySteps.filter((step) => step < lastStep).length;
-  const finalCollapsedBoundaryCount = boundarySteps
+function cfopCandidateProgression(candidate, lastStep, lastSequence) {
+  const boundaryPositions = [
+    candidate.crossSnapshot?.sequence ?? candidate.cross,
+    ...candidate.definition.pairSlots.map((slot) => (
+      candidate.pairSnapshots.get(slot.key)?.sequence ?? candidate.pairs.get(slot.key) ?? null
+    )),
+    candidate.ollSnapshot?.sequence ?? candidate.oll,
+    candidate.pllSnapshot?.sequence ?? candidate.pll,
+  ].filter((position) => position != null);
+  const finalPosition = Number.isFinite(lastSequence) ? lastSequence : lastStep;
+  const nonFinalBoundaryCount = boundaryPositions.filter((position) => position < finalPosition).length;
+  const finalCollapsedBoundaryCount = boundaryPositions
     .slice(0, -1)
-    .filter((step) => step === lastStep)
+    .filter((position) => position === finalPosition)
     .length;
-  const phaseSpan = candidate.cross != null && candidate.pll != null
-    ? Math.max(0, candidate.pll - candidate.cross)
+  const crossPosition = candidate.crossSnapshot?.sequence ?? candidate.cross;
+  const pllPosition = candidate.pllSnapshot?.sequence ?? candidate.pll;
+  const phaseSpan = crossPosition != null && pllPosition != null
+    ? Math.max(0, pllPosition - crossPosition)
     : 0;
 
   return {
     nonFinalBoundaryCount,
     finalCollapsedBoundaryCount,
-    distinctBoundaryCount: new Set(boundarySteps).size,
+    distinctBoundaryCount: new Set(boundaryPositions).size,
     phaseSpan,
   };
 }
@@ -512,8 +713,10 @@ function cfopStageFromBoundary(boundary, records, previousBoundary, solve = null
   const turns = completed ? Math.max(0, endStep - previousLogicalStep) : 0;
   const physicalTurns = completed ? Math.max(0, physicalEndStep - previousPhysicalStep) : 0;
   const physicalStartStep = completed && physicalTurns > 0 ? previousPhysicalStep + 1 : null;
-  const startElapsed = elapsedAtSolveStep(records, previousPhysicalStep);
-  const endElapsed = elapsedAtSolveStep(records, physicalEndStep);
+  const startSnapshot = previousBoundary?.snapshot || null;
+  const endSnapshot = boundary.completionSnapshot || null;
+  const startElapsed = timelineElapsedAtBoundary(startSnapshot, records, previousPhysicalStep);
+  const endElapsed = timelineElapsedAtBoundary(endSnapshot, records, physicalEndStep);
   const firstMoveElapsed = physicalStartStep == null ? null : elapsedAtSolveStep(records, physicalStartStep);
   const durationMs = completed && Number.isFinite(startElapsed) && Number.isFinite(endElapsed)
     ? Math.max(0, endElapsed - startElapsed)
@@ -522,6 +725,12 @@ function cfopStageFromBoundary(boundary, records, previousBoundary, solve = null
     ? Math.max(0, firstMoveElapsed - startElapsed)
     : null;
   const tps = durationMs > 0 ? Math.round((turns / (durationMs / 1000)) * 100) / 100 : null;
+  const stateTransitionObserved = completed && Boolean(
+    startSnapshot?.facelets
+    && endSnapshot?.facelets
+    && startSnapshot.facelets !== endSnapshot.facelets
+  );
+  const unobservedTurns = stateTransitionObserved && physicalTurns === 0;
   return {
     key: boundary.key,
     label: boundary.label,
@@ -535,19 +744,39 @@ function cfopStageFromBoundary(boundary, records, previousBoundary, solve = null
     physicalStartStep,
     physicalEndStep: completed ? physicalEndStep : null,
     physicalTurns,
+    stateTransitionObserved,
+    unobservedTurns,
+    completionSource: endSnapshot?.source || '',
+    skipped: boundary.skipped === true && !unobservedTurns,
+    skipAdjustment: boundary.skipAdjustment || '',
     durationMs,
     tps,
     startedAtElapsedMs: completed ? startElapsed : null,
     firstMoveElapsedMs: firstMoveElapsed,
     completedAtElapsedMs: completed ? endElapsed : null,
     observationMs,
-    startedAtTimestampMs: completed ? timestampAtSolveStep(records, previousPhysicalStep, solve) : null,
+    startedAtTimestampMs: completed ? timelineTimestampAtBoundary(startSnapshot, records, previousPhysicalStep, solve) : null,
     firstMoveTimestampMs: physicalStartStep == null ? null : timestampAtSolveStep(records, physicalStartStep, solve),
-    completedAtTimestampMs: completed ? timestampAtSolveStep(records, physicalEndStep, solve) : null,
-    startedAtIsoTime: completed ? isoTimeAtSolveStep(records, previousPhysicalStep, solve) : '',
+    completedAtTimestampMs: completed ? timelineTimestampAtBoundary(endSnapshot, records, physicalEndStep, solve) : null,
+    startedAtIsoTime: completed ? timelineIsoTimeAtBoundary(startSnapshot, records, previousPhysicalStep, solve) : '',
     firstMoveIsoTime: physicalStartStep == null ? '' : isoTimeAtSolveStep(records, physicalStartStep, solve),
-    completedAtIsoTime: completed ? isoTimeAtSolveStep(records, physicalEndStep, solve) : '',
+    completedAtIsoTime: completed ? timelineIsoTimeAtBoundary(endSnapshot, records, physicalEndStep, solve) : '',
   };
+}
+
+function timelineElapsedAtBoundary(snapshot, records, step) {
+  const elapsedMs = optionalFiniteNumber(snapshot?.elapsedMs);
+  return Number.isFinite(elapsedMs) ? elapsedMs : elapsedAtSolveStep(records, step);
+}
+
+function timelineTimestampAtBoundary(snapshot, records, step, solve) {
+  const timestampMs = optionalFiniteNumber(snapshot?.timestampMs);
+  return Number.isFinite(timestampMs) ? timestampMs : timestampAtSolveStep(records, step, solve);
+}
+
+function timelineIsoTimeAtBoundary(snapshot, records, step, solve) {
+  if (typeof snapshot?.isoTime === 'string' && snapshot.isoTime) return snapshot.isoTime;
+  return isoTimeAtSolveStep(records, step, solve);
 }
 
 function logicalStepForPhysicalStep(stepMap, physicalStep) {
@@ -579,9 +808,9 @@ function isoTimeAtSolveStep(records, step, solve = null) {
 }
 
 function solveStartTimestampMs(solve, records) {
-  const explicit = Number(solve?.timerStartedAtMs ?? solve?.solveStartedAtMs);
+  const explicit = optionalFiniteNumber(solve?.timerStartedAtMs ?? solve?.solveStartedAtMs);
   if (Number.isFinite(explicit)) return explicit;
-  const firstRecordStart = Number(records[0]?.solveStartedAtMs);
+  const firstRecordStart = optionalFiniteNumber(records[0]?.solveStartedAtMs);
   if (Number.isFinite(firstRecordStart)) return firstRecordStart;
   const startedAt = new Date(solve?.timerStartedAt || records[0]?.solveStartedAtIsoTime || '').getTime();
   return Number.isFinite(startedAt) ? startedAt : null;
@@ -600,4 +829,8 @@ function isFaceletSetSolved(faces, cells) {
 
 function solveFinalSolvedByStatePacket(solve) {
   return solve?.bluetoothSolvedByStatePacket === true || solve?.finalSolvedByStatePacket === true;
+}
+
+function solveFinalSolvedEvidence(solve) {
+  return solveFinalSolvedByStatePacket(solve) || solve?.timerSource === 'bluetooth';
 }

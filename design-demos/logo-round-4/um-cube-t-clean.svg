@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1024"
+     height="1024"
+     viewBox="0 0 1024 1024"
+     role="img"
+     aria-labelledby="title desc"
+     shape-rendering="geometricPrecision">
+  <title id="title">TrainTimer clean aligned U/M cube T icon</title>
+  <desc id="desc">A minimal aligned three-by-three cube grid. The light top row represents the U layer and the light center column represents the M slice, together forming a precise T. Four dark cubies complete the cube silhouette.</desc>
+
+  <defs>
+    <linearGradient id="plate" x1="128" y1="80" x2="900" y2="944" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#27333C"/>
+      <stop offset="0.5" stop-color="#151C22"/>
+      <stop offset="1" stop-color="#090D11"/>
+    </linearGradient>
+    <linearGradient id="uLayer" x1="228" y1="228" x2="796" y2="404" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F7F9F9"/>
+      <stop offset="1" stop-color="#D9E1E3"/>
+    </linearGradient>
+    <linearGradient id="mLayer" x1="424" y1="424" x2="600" y2="796" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#DFE6E7"/>
+      <stop offset="1" stop-color="#B8C5C9"/>
+    </linearGradient>
+    <filter id="softShadow" x="-16%" y="-16%" width="132%" height="142%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#020507" flood-opacity="0.48"/>
+    </filter>
+    <rect id="cubie" width="176" height="176" rx="32"/>
+  </defs>
+
+  <!-- One quiet system plate. -->
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#plate)"/>
+  <rect x="49" y="49" width="926" height="926" rx="208"
+        fill="none" stroke="#DDE8EC" stroke-opacity="0.11" stroke-width="4"/>
+
+  <!-- One square cube carrier; no ghost slots, motion trails, or nested decorative frames. -->
+  <g id="cube" filter="url(#softShadow)">
+    <rect x="188" y="188" width="648" height="648" rx="112" fill="#0B1116"/>
+    <rect x="198" y="198" width="628" height="628" rx="102"
+          fill="none" stroke="#91A5AF" stroke-opacity="0.12" stroke-width="3"/>
+
+    <!-- Four aligned inactive cubies complete the 3×3 cube silhouette. -->
+    <g fill="#2A3740" stroke="#92A5AF" stroke-opacity="0.12" stroke-width="3">
+      <use href="#cubie" x="228" y="424"/>
+      <use href="#cubie" x="620" y="424"/>
+      <use href="#cubie" x="228" y="620"/>
+      <use href="#cubie" x="620" y="620"/>
+    </g>
+
+    <!-- U: one perfectly aligned top row. -->
+    <g fill="url(#uLayer)" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="3">
+      <use href="#cubie" x="228" y="228"/>
+      <use href="#cubie" x="424" y="228"/>
+      <use href="#cubie" x="620" y="228"/>
+    </g>
+
+    <!-- M: one perfectly aligned center column beneath the U-owned intersection. -->
+    <g fill="url(#mLayer)" stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="3">
+      <use href="#cubie" x="424" y="424"/>
+      <use href="#cubie" x="424" y="620"/>
+    </g>
+
+    <!-- A single registration dash is the only motion cue. -->
+    <rect x="472" y="410" width="80" height="8" rx="4" fill="#4C9FF0"/>
+  </g>
+</svg>

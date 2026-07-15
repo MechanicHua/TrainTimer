@@ -351,6 +351,43 @@ export function warmShortCorrectionSearch(options = {}) {
   return true;
 }
 
+export function correctionMovesReachFacelets(currentFacelets, targetFacelets, moves) {
+  try {
+    return applyMovesToFacelets(currentFacelets, moves) === normalizeFaceletString(targetFacelets);
+  } catch {
+    return false;
+  }
+}
+
+export function scrambleBacktrackCorrectionPlan(options = {}) {
+  if (options.fromCorrectionRoute === true) return null;
+
+  try {
+    const baseFacelets = normalizeFaceletString(options.baseFacelets);
+    const currentFacelets = normalizeFaceletString(options.currentFacelets);
+    const targetFacelets = normalizeFaceletString(options.targetFacelets);
+    const wrongMoves = simplifyMoveTokens(normalizeMoveTokens(options.wrongMoves));
+    const resumeMoves = simplifyMoveTokens(normalizeMoveTokens(options.resumeMoves));
+    const maxWrongMoves = clampInteger(options.maxWrongMoves, 0, 30, 4);
+    const maxMoves = clampInteger(options.maxMoves, 1, 30, 25);
+    if (wrongMoves.length === 0 || wrongMoves.length > maxWrongMoves) return null;
+    if (applyMovesToFacelets(baseFacelets, wrongMoves) !== currentFacelets) return null;
+
+    const undoMoves = inverseMoveTokens(wrongMoves);
+    const moves = [...undoMoves, ...resumeMoves];
+    if (moves.length === 0 || moves.length > maxMoves) return null;
+    if (!correctionMovesReachFacelets(currentFacelets, targetFacelets, moves)) return null;
+
+    return {
+      moves,
+      undoMoves,
+      resumeMoves,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function correctionMovesToScrambleTarget(targetMoves, inputMoves, options = {}) {
   const targetTokens = normalizeMoveTokens(targetMoves);
   const inputTokens = normalizeMoveTokens(inputMoves);

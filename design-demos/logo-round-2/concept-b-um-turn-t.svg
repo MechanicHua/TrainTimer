@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1024"
+     height="1024"
+     viewBox="0 0 1024 1024"
+     role="img"
+     aria-labelledby="um-turn-title um-turn-desc">
+  <title id="um-turn-title">TrainTimer Turn T app icon concept</title>
+  <desc id="um-turn-desc">A block-built T formed by a front-facing cube's shifted top row and downward-shifted center slice. Pale ceramic active blocks reveal slim cobalt registration tracks over a deep graphite macOS icon base; inactive cube blocks are omitted.</desc>
+
+  <defs>
+    <linearGradient id="appBase" x1="134" y1="82" x2="896" y2="946" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#26323B"/>
+      <stop offset="0.48" stop-color="#111920"/>
+      <stop offset="1" stop-color="#05090D"/>
+    </linearGradient>
+    <radialGradient id="appSheen" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"
+                    gradientTransform="translate(314 188) rotate(45) scale(702)">
+      <stop offset="0" stop-color="#F5FBFD" stop-opacity="0.13"/>
+      <stop offset="0.48" stop-color="#B7C8D0" stop-opacity="0.025"/>
+      <stop offset="1" stop-color="#0A1015" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="topCeramic" x1="220" y1="208" x2="830" y2="392" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F5F8F8"/>
+      <stop offset="0.5" stop-color="#DCE4E6"/>
+      <stop offset="1" stop-color="#B9C5C9"/>
+    </linearGradient>
+    <linearGradient id="stemCeramic" x1="420" y1="424" x2="624" y2="872" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E1E7E8"/>
+      <stop offset="0.56" stop-color="#C2CDD0"/>
+      <stop offset="1" stop-color="#96A5AA"/>
+    </linearGradient>
+    <linearGradient id="turnSignal" x1="174" y1="210" x2="620" y2="678" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8CC8FF"/>
+      <stop offset="1" stop-color="#3B8FEA"/>
+    </linearGradient>
+
+    <filter id="appShadow" x="-12%" y="-12%" width="124%" height="132%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="25" flood-color="#010305" flood-opacity="0.7"/>
+    </filter>
+    <filter id="blockShadow" x="-28%" y="-28%" width="156%" height="170%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="17" stdDeviation="15" flood-color="#020609" flood-opacity="0.58"/>
+    </filter>
+    <filter id="signalSoftness" x="-80%" y="-80%" width="260%" height="260%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur"/>
+      <feColorMatrix in="blur" type="matrix"
+                     values="1 0 0 0 0
+                             0 1 0 0 0
+                             0 0 1 0 0
+                             0 0 0 0.32 0" result="softGlow"/>
+      <feMerge>
+        <feMergeNode in="softGlow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <rect id="topBand" width="660" height="204" rx="44"/>
+    <path id="middleColumn" d="M0 0H204V408Q204 448 164 448H40Q0 448 0 408Z"/>
+  </defs>
+
+  <!-- Matte system base. -->
+  <g id="base-layer" filter="url(#appShadow)">
+    <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#appBase)"/>
+    <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#appSheen)"/>
+    <rect x="49" y="49" width="926" height="926" rx="208"
+          fill="none" stroke="#E7F2F5" stroke-opacity="0.1" stroke-width="4"/>
+  </g>
+
+  <!-- The original slots remain as two continuous layer rails; all inactive cube blocks are omitted. -->
+  <g id="registration-layer" fill="#B9C5CA" fill-opacity="0.075"
+     stroke="#E4ECEE" stroke-opacity="0.09" stroke-width="4">
+    <!-- Top-layer slot before its fractional horizontal turn. -->
+    <use href="#topBand" x="172" y="208"/>
+    <!-- Middle-slice slot before its fractional vertical turn. -->
+    <use href="#middleColumn" x="420" y="404"/>
+  </g>
+
+  <!-- One cobalt signal color marks the two exposed registration tracks, without arrows. -->
+  <g id="signal-layer" fill="url(#turnSignal)" filter="url(#signalSoftness)">
+    <rect x="178" y="250" width="10" height="120" rx="5"/>
+    <rect x="462" y="414" width="120" height="10" rx="5"/>
+  </g>
+
+  <!-- The middle slice moves down a fractional grid step as one column, behind the top layer. -->
+  <g id="middle-slice" fill="url(#stemCeramic)" filter="url(#blockShadow)">
+    <use href="#middleColumn" x="420" y="424"/>
+  </g>
+  <g fill="none" stroke="#FFFFFF" stroke-opacity="0.2" stroke-width="4">
+    <use href="#middleColumn" x="420" y="424"/>
+    <!-- The single seam records the two-unit middle slice without splitting it into blocks. -->
+    <path d="M448 648H596" stroke="#718087" stroke-opacity="0.5" stroke-width="5" stroke-linecap="round"/>
+  </g>
+
+  <!-- The complete top row moves horizontally as one three-unit band and occludes the column joint. -->
+  <g id="top-layer" fill="url(#topCeramic)" filter="url(#blockShadow)">
+    <use href="#topBand" x="192" y="208"/>
+  </g>
+  <g fill="none" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="4">
+    <use href="#topBand" x="192" y="208"/>
+    <!-- Two restrained seams define three top-layer units while preserving one continuous band. -->
+    <path d="M412 236V384M632 236V384"
+          stroke="#75848A" stroke-opacity="0.5" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

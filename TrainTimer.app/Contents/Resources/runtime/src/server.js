@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createServer } from 'node:http';
 import { rmSync } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { dirname, extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
@@ -32,7 +32,7 @@ import { createExportPayload, safeExportFilename, scopedExportHistory, solvesToC
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const publicRoot = join(projectRoot, 'public');
 const srcRoot = join(projectRoot, 'src');
-const publicSrcModules = new Set(['algorithm-trainer-cases.js', 'algorithm-trainer-utils.js', 'bluetooth-moves.js', 'cfop-analysis.js', 'cube-state.js', 'inspection.js', 'move-metrics.js', 'op-analysis.js', 'op-case-diagrams.js', 'op-case-svg.js', 'op-formula-library.js', 'op-pdf-algorithms.js', 'op-poster-diagram-shapes.js', 'op-stats.js', 'replay-timing.js', 'rolling-averages.js', 'solve-summary.js', 'solves-export.js', 'solves-import.js', 'stats-summary.js']);
+const publicSrcModules = new Set(['algorithm-trainer-cases.js', 'algorithm-trainer-utils.js', 'bluetooth-moves.js', 'bluetooth-state-log.js', 'cfop-analysis.js', 'cube-state.js', 'inspection.js', 'move-metrics.js', 'op-analysis.js', 'op-case-diagrams.js', 'op-case-svg.js', 'op-formula-library.js', 'op-pdf-algorithms.js', 'op-poster-diagram-shapes.js', 'op-stats.js', 'replay-timing.js', 'rolling-averages.js', 'solve-summary.js', 'solves-export.js', 'solves-import.js', 'stats-summary.js']);
 const requestedPort = Number(process.env.PORT || 3211);
 const host = process.env.HOST || '127.0.0.1';
 let currentPort = requestedPort;
@@ -72,12 +72,30 @@ const corsHeaders = {
 };
 const staticHeaders = {
   ...corsHeaders,
-  'Cache-Control': 'no-store, max-age=0',
-  Pragma: 'no-cache',
-  Expires: '0',
 };
 
 let cubeCorrectionWarmupPromise = null;
+let startupBootstrapHistory = null;
+let startupScramble = null;
+let startupReady = false;
+const startupBootstrapPromise = loadHistoryForBootstrap(undefined, { limit: bootstrapSolveLimit() })
+  .then((history) => {
+    startupBootstrapHistory = history;
+  })
+  .catch((error) => {
+    console.warn('Startup history preload failed', error);
+  });
+const startupScramblePromise = generateScramble('three', { timeoutMs: bootstrapScrambleTimeoutMs() })
+  .then((scramble) => {
+    startupScramble = scramble;
+  })
+  .catch((error) => {
+    console.warn('Startup scramble preload failed', error);
+  });
+const startupReadyPromise = Promise.allSettled([startupBootstrapPromise, startupScramblePromise])
+  .then(() => {
+    startupReady = true;
+  });
 
 function bootstrapScrambleTimeoutMs() {
   return positiveIntegerEnv('TRAIN_TIMER_BOOTSTRAP_SCRAMBLE_TIMEOUT_MS', 2500);
@@ -92,7 +110,7 @@ function scramblePreviewTimeoutMs() {
 }
 
 function bootstrapSolveLimit() {
-  return positiveIntegerEnv('TRAIN_TIMER_BOOTSTRAP_SOLVE_LIMIT', 80);
+  return positiveIntegerEnv('TRAIN_TIMER_BOOTSTRAP_SOLVE_LIMIT', 24);
 }
 
 function positiveIntegerEnv(name, fallback) {
@@ -171,6 +189,10 @@ async function handleApi(request, response) {
   const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
 
   if (request.method === 'GET' && url.pathname === '/api/health') {
+    if (!startupReady) {
+      sendJson(response, 503, { ok: false, ready: false });
+      return;
+    }
     sendJson(response, 200, {
       ok: true,
       app: 'TrainTimer',
@@ -184,7 +206,7 @@ async function handleApi(request, response) {
 
   if (request.method === 'GET' && url.pathname === '/api/bootstrap') {
     const puzzle = url.searchParams.get('puzzle') || undefined;
-    const history = await loadHistoryForBootstrap(undefined, { limit: bootstrapSolveLimit() });
+    const history = await bootstrapHistoryForRequest();
     const summarySolves = history.summarySolves || history.solves;
     if (url.searchParams.get('historyOnly') === '1') {
       sendJson(response, 200, {
@@ -216,7 +238,7 @@ async function handleApi(request, response) {
 
   if (request.method === 'POST' && url.pathname === '/api/scramble') {
     const body = await readJsonBody(request);
-    sendJson(response, 200, { scramble: await generateScramble(body.puzzle, { timeoutMs: scrambleTimeoutMs() }) });
+    sendJson(response, 200, { scramble: await scrambleForRequest(body.puzzle) });
     return;
   }
 
@@ -464,9 +486,12 @@ async function handleApi(request, response) {
       bluetoothMoves: Array.isArray(body.bluetoothMoves) ? body.bluetoothMoves : [],
       bluetoothMoveLog: Array.isArray(body.bluetoothMoveLog) ? body.bluetoothMoveLog : [],
       bluetoothStateCorrections: Array.isArray(body.bluetoothStateCorrections) ? body.bluetoothStateCorrections : [],
+      bluetoothStateLog: Array.isArray(body.bluetoothStateLog) ? body.bluetoothStateLog : [],
       bluetoothSolvedByStatePacket: body.bluetoothSolvedByStatePacket === true,
       cfopStages: Array.isArray(body.cfopStages) ? body.cfopStages : [],
+      cfopAnalysisVersion: Number.isFinite(Number(body.cfopAnalysisVersion)) ? Math.max(0, Math.round(Number(body.cfopAnalysisVersion))) : 0,
       opEvents: Array.isArray(body.opEvents) ? body.opEvents : [],
+      opAnalysisVersion: Number.isFinite(Number(body.opAnalysisVersion)) ? Math.max(0, Math.round(Number(body.opAnalysisVersion))) : 0,
       bluetoothDeviceName: typeof body.bluetoothDeviceName === 'string' ? body.bluetoothDeviceName : '',
       bluetoothProtocols: Array.isArray(body.bluetoothProtocols) ? body.bluetoothProtocols : [],
       bluetoothSources: Array.isArray(body.bluetoothSources) ? body.bluetoothSources : [],
@@ -480,6 +505,20 @@ async function handleApi(request, response) {
       sessions: history.sessions,
       summary: summarizeSolves(solves),
     });
+    return;
+  }
+
+  if (request.method === 'PATCH' && url.pathname.startsWith('/api/solves/') && url.pathname.endsWith('/state-log')) {
+    const id = decodeURIComponent(url.pathname.slice('/api/solves/'.length, -'/state-log'.length));
+    const body = await readJsonBody(request);
+    const result = await updateSolve(id, {
+      bluetoothStateLog: Array.isArray(body.bluetoothStateLog) ? body.bluetoothStateLog : [],
+    });
+    if (!result) {
+      sendJson(response, 404, { error: 'Solve not found' });
+      return;
+    }
+    sendJson(response, 200, { solve: result.solve });
     return;
   }
 
@@ -505,8 +544,11 @@ async function handleApi(request, response) {
     if (Object.hasOwn(body, 'bluetoothDeviceName')) updates.bluetoothDeviceName = String(body.bluetoothDeviceName || '');
     if (Object.hasOwn(body, 'bluetoothMoveLog')) updates.bluetoothMoveLog = body.bluetoothMoveLog;
     if (Object.hasOwn(body, 'bluetoothStateCorrections')) updates.bluetoothStateCorrections = body.bluetoothStateCorrections;
+    if (Object.hasOwn(body, 'bluetoothStateLog')) updates.bluetoothStateLog = body.bluetoothStateLog;
     if (Object.hasOwn(body, 'cfopStages')) updates.cfopStages = body.cfopStages;
+    if (Object.hasOwn(body, 'cfopAnalysisVersion')) updates.cfopAnalysisVersion = body.cfopAnalysisVersion;
     if (Object.hasOwn(body, 'opEvents')) updates.opEvents = body.opEvents;
+    if (Object.hasOwn(body, 'opAnalysisVersion')) updates.opAnalysisVersion = body.opAnalysisVersion;
     if (Object.hasOwn(body, 'bluetoothProtocols')) updates.bluetoothProtocols = body.bluetoothProtocols;
     if (Object.hasOwn(body, 'bluetoothSources')) updates.bluetoothSources = body.bluetoothSources;
     if (Object.hasOwn(body, 'createdAt')) {
@@ -604,6 +646,29 @@ async function handleApi(request, response) {
   sendJson(response, 404, { error: 'Not found' });
 }
 
+async function bootstrapHistoryForRequest() {
+  await startupBootstrapPromise;
+  if (startupBootstrapHistory) {
+    const history = startupBootstrapHistory;
+    startupBootstrapHistory = null;
+    return history;
+  }
+  return loadHistoryForBootstrap(undefined, { limit: bootstrapSolveLimit() });
+}
+
+async function scrambleForRequest(puzzle) {
+  const normalizedPuzzle = String(puzzle || 'three').trim() || 'three';
+  if (normalizedPuzzle === 'three') {
+    await startupScramblePromise;
+    if (startupScramble) {
+      const scramble = startupScramble;
+      startupScramble = null;
+      return scramble;
+    }
+  }
+  return generateScramble(normalizedPuzzle, { timeoutMs: scrambleTimeoutMs() });
+}
+
 function summarizeSolvesBySession(solves) {
   const bySession = new Map();
   for (const solve of solves) {
@@ -620,7 +685,12 @@ function summarizeSolvesBySession(solves) {
 
 function bootstrapSolves(solves) {
   return solves.map((solve) => {
-    const { bluetoothMoveLog, ...rest } = solve;
+    const {
+      bluetoothMoveLog,
+      bluetoothStateCorrections,
+      bluetoothStateLog,
+      ...rest
+    } = solve;
     return rest;
   });
 }
@@ -654,14 +724,37 @@ async function serveStatic(request, response) {
   }
 
   try {
+    const fileStats = await stat(filePath);
+    const etag = `W/"${fileStats.size}-${Math.round(fileStats.mtimeMs)}"`;
+    const headers = {
+      ...staticHeaders,
+      ...staticCacheHeaders(url, filePath),
+      ETag: etag,
+      'Last-Modified': fileStats.mtime.toUTCString(),
+      'Content-Type': contentTypes[extname(filePath)] || 'application/octet-stream',
+    };
+    if (request.headers['if-none-match'] === etag) {
+      response.writeHead(304, headers);
+      response.end();
+      return;
+    }
     const content = await readFile(filePath);
-    response.writeHead(200, { ...staticHeaders, 'Content-Type': contentTypes[extname(filePath)] || 'application/octet-stream' });
+    response.writeHead(200, headers);
     response.end(content);
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;
     response.writeHead(404, { ...corsHeaders, 'Content-Type': 'text/plain; charset=utf-8' });
     response.end('Not found');
   }
+}
+
+function staticCacheHeaders(url, filePath) {
+  const versioned = url.searchParams.has('v') && extname(filePath) !== '.html';
+  return {
+    'Cache-Control': versioned
+      ? 'private, max-age=31536000, immutable'
+      : 'private, no-cache, max-age=0, must-revalidate',
+  };
 }
 
 async function readJsonBody(request) {

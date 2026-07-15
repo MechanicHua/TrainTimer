@@ -214,6 +214,7 @@ export function normalizeSolve(solve) {
   const bluetoothMoves = normalizeBluetoothMoves(solve.bluetoothMoves);
   const bluetoothMoveLog = normalizeBluetoothMoveLog(solve.bluetoothMoveLog, bluetoothMoves);
   const bluetoothStateCorrections = normalizeBluetoothStateCorrections(solve.bluetoothStateCorrections);
+  const bluetoothStateLog = normalizeBluetoothStateLog(solve.bluetoothStateLog);
   const importedBluetoothMoveCount = Number(solve.bluetoothMoveCount);
   const bluetoothMoveCount = bluetoothMoves.length > 0
     ? countMoveSteps(bluetoothMoves)
@@ -228,6 +229,8 @@ export function normalizeSolve(solve) {
     : computedBluetoothTps;
   const cfopStages = normalizeCfopStages(solve.cfopStages);
   const opEvents = normalizeOpEvents(solve.opEvents);
+  const cfopAnalysisVersion = normalizedAnalysisVersion(solve.cfopAnalysisVersion, cfopStages);
+  const opAnalysisVersion = normalizedAnalysisVersion(solve.opAnalysisVersion, opEvents);
   const timerStartedAtMs = Number(solve.timerStartedAtMs);
   const timerFinishedAtMs = Number(solve.timerFinishedAtMs);
 
@@ -253,9 +256,12 @@ export function normalizeSolve(solve) {
     bluetoothMoves,
     bluetoothMoveLog,
     bluetoothStateCorrections,
+    bluetoothStateLog,
     bluetoothSolvedByStatePacket: solve.bluetoothSolvedByStatePacket === true,
     cfopStages,
+    cfopAnalysisVersion,
     opEvents,
+    opAnalysisVersion,
     bluetoothMoveCount,
     bluetoothTps,
     bluetoothDeviceName: typeof solve.bluetoothDeviceName === 'string' ? solve.bluetoothDeviceName : '',
@@ -370,6 +376,59 @@ function normalizeBluetoothStateCorrection(entry) {
   };
 }
 
+function normalizeBluetoothStateLog(entries) {
+  if (!Array.isArray(entries)) return [];
+  return entries
+    .map(normalizeBluetoothStateLogEntry)
+    .filter(Boolean)
+    .map((entry, index) => ({ ...entry, index: index + 1 }));
+}
+
+function normalizeBluetoothStateLogEntry(entry) {
+  const facelets = normalizeFacelets(entry?.facelets);
+  const step = Number(entry?.step);
+  const elapsedMs = Number(entry?.elapsedMs);
+  const timestampMs = Number(entry?.timestampMs);
+  const solveStartedAtMs = Number(entry?.solveStartedAtMs);
+  const moveCounter = Number(entry?.moveCounter);
+  const counterModulo = Number(entry?.counterModulo);
+  const moves = normalizeBluetoothMoves(entry?.moves);
+  const hasPacketPayload = facelets
+    || typeof entry?.raw === 'string'
+    || typeof entry?.stateSignature === 'string'
+    || entry?.stateSolved === true
+    || entry?.stateSolved === false
+    || Number.isFinite(moveCounter);
+  if (!hasPacketPayload) return null;
+
+  return {
+    step: Number.isFinite(step) ? Math.max(0, Math.round(step)) : 0,
+    facelets,
+    solved: entry?.solved === true,
+    trustedSolved: entry?.trustedSolved === true,
+    stateSolved: entry?.stateSolved === true ? true : (entry?.stateSolved === false ? false : null),
+    stateSolvedUntrusted: entry?.stateSolvedUntrusted === true,
+    source: typeof entry?.source === 'string' ? entry.source : '',
+    protocol: typeof entry?.protocol === 'string' ? entry.protocol : '',
+    deviceName: typeof entry?.deviceName === 'string' ? entry.deviceName : '',
+    characteristicUuid: typeof entry?.characteristicUuid === 'string' ? entry.characteristicUuid : '',
+    mode: typeof entry?.mode === 'string' ? entry.mode : '',
+    stateSignature: typeof entry?.stateSignature === 'string' ? entry.stateSignature : '',
+    moveCounter: Number.isFinite(moveCounter) ? Math.max(0, Math.round(moveCounter)) : null,
+    counterModulo: Number.isFinite(counterModulo) ? Math.max(0, Math.round(counterModulo)) : null,
+    raw: typeof entry?.raw === 'string' ? entry.raw : '',
+    moves,
+    duplicateMovePacket: entry?.duplicateMovePacket === true,
+    physicalStateChanged: entry?.physicalStateChanged === true,
+    time: typeof entry?.time === 'string' ? entry.time : '',
+    isoTime: typeof entry?.isoTime === 'string' ? entry.isoTime : '',
+    elapsedMs: Number.isFinite(elapsedMs) ? Math.max(0, Math.round(elapsedMs)) : null,
+    timestampMs: Number.isFinite(timestampMs) ? Math.max(0, Math.round(timestampMs)) : null,
+    solveStartedAtMs: Number.isFinite(solveStartedAtMs) ? Math.max(0, Math.round(solveStartedAtMs)) : null,
+    solveStartedAtIsoTime: typeof entry?.solveStartedAtIsoTime === 'string' ? entry.solveStartedAtIsoTime : '',
+  };
+}
+
 function normalizeCfopStages(stages) {
   if (!Array.isArray(stages)) return [];
   return stages.map((stage) => {
@@ -403,6 +462,12 @@ function normalizeCfopStages(stages) {
       physicalStartStep: Number.isFinite(physicalStartStep) ? Math.max(0, Math.round(physicalStartStep)) : null,
       physicalEndStep: Number.isFinite(physicalEndStep) ? Math.max(0, Math.round(physicalEndStep)) : null,
       physicalTurns: Number.isFinite(physicalTurns) ? Math.max(0, Math.round(physicalTurns)) : null,
+      stateTransitionObserved: stage?.stateTransitionObserved === true,
+      unobservedTurns: stage?.unobservedTurns === true,
+      completionSource: typeof stage?.completionSource === 'string' ? stage.completionSource : '',
+      skipped: stage?.skipped === true,
+      skipAdjustment: typeof stage?.skipAdjustment === 'string' ? stage.skipAdjustment : '',
+      analysisVersion: normalizedAnalysisVersion(stage?.analysisVersion),
       durationMs: Number.isFinite(durationMs) ? Math.max(0, Math.round(durationMs)) : null,
       tps: Number.isFinite(tps) ? Math.max(0, tps) : null,
       startedAtElapsedMs: Number.isFinite(startedAtElapsedMs) ? Math.max(0, Math.round(startedAtElapsedMs)) : null,
@@ -467,9 +532,20 @@ function normalizeOpEvents(events) {
       signature: typeof event?.signature === 'string' ? event.signature : '',
       formulaAccepted: event?.formulaAccepted === true,
       formulaReason: typeof event?.formulaReason === 'string' ? event.formulaReason : '',
+      recoveredFromStateLog: event?.recoveredFromStateLog === true,
+      analysisVersion: normalizedAnalysisVersion(event?.analysisVersion),
       moveTimings: normalizeOpMoveTimings(event?.moveTimings),
     };
   }).filter((event) => event.kind && event.caseId);
+}
+
+function normalizedAnalysisVersion(value, items = []) {
+  const version = Number(value);
+  if (Number.isFinite(version)) return Math.max(0, Math.round(version));
+  return (Array.isArray(items) ? items : []).reduce((highest, item) => {
+    const itemVersion = Number(item?.analysisVersion);
+    return Number.isFinite(itemVersion) ? Math.max(highest, Math.max(0, Math.round(itemVersion))) : highest;
+  }, 0);
 }
 
 function normalizeOpMoveTimings(moveTimings) {
@@ -710,6 +786,7 @@ function stripHeavySolveForBootstrap(solve = {}) {
     bluetoothMoveLog,
     bluetoothMoves,
     bluetoothStateCorrections,
+    bluetoothStateLog,
     bluetoothMoveCount,
     ...rest
   } = solve || {};

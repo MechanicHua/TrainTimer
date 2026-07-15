@@ -427,8 +427,13 @@ static NSURL *TrainTimerChromeApplicationURL(void) {
   return [[NSWorkspace sharedWorkspace] URLForApplicationWithBundleIdentifier:@"com.google.Chrome"];
 }
 
-static BOOL TrainTimerOpenURLPreferChrome(NSURL *url) {
-  if (!url) return NO;
+typedef void (^TrainTimerOpenCompletion)(BOOL opened, BOOL usedChrome, NSError *error);
+
+static void TrainTimerOpenURLPreferChrome(NSURL *url, TrainTimerOpenCompletion completion) {
+  if (!url) {
+    if (completion) completion(NO, NO, nil);
+    return;
+  }
   NSURL *chromeURL = TrainTimerChromeApplicationURL();
   if (chromeURL) {
     if (@available(macOS 10.15, *)) {
@@ -438,14 +443,17 @@ static BOOL TrainTimerOpenURLPreferChrome(NSURL *url) {
                          withApplicationAtURL:chromeURL
                                 configuration:configuration
                             completionHandler:^(NSRunningApplication *app, NSError *error) {
+        (void)app;
         if (error) {
           TrainTimerAppendLog([NSString stringWithFormat:@"Chrome open failed: %@", error.localizedDescription]);
         }
+        if (completion) completion(error == nil, YES, error);
       }];
-      return YES;
+      return;
     }
   }
-  return [[NSWorkspace sharedWorkspace] openURL:url];
+  BOOL opened = [[NSWorkspace sharedWorkspace] openURL:url];
+  if (completion) completion(opened, NO, nil);
 }
 
 static void TrainTimerPrewarmChrome(void) {
@@ -457,6 +465,7 @@ static void TrainTimerPrewarmChrome(void) {
     [[NSWorkspace sharedWorkspace] openApplicationAtURL:chromeURL
                                          configuration:configuration
                                      completionHandler:^(NSRunningApplication *app, NSError *error) {
+      (void)app;
       if (error) {
         TrainTimerAppendLog([NSString stringWithFormat:@"Chrome prewarm failed: %@", error.localizedDescription]);
       }
@@ -603,26 +612,36 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
   return YES;
 }
 
-@interface TrainTimerAppDelegate : NSObject <NSApplicationDelegate>
+static NSToolbarItemIdentifier TrainTimerToolbarRefreshItemIdentifier = @"local.traintimer.toolbar.refresh";
+static NSToolbarItemIdentifier TrainTimerToolbarLogItemIdentifier = @"local.traintimer.toolbar.log";
+
+@interface TrainTimerAppDelegate : NSObject <NSApplicationDelegate, NSToolbarDelegate, NSMenuItemValidation, NSToolbarItemValidation>
 @property(nonatomic, copy) NSString *projectRoot;
 @property(nonatomic, copy) NSString *nodePath;
 @property(nonatomic, copy) NSString *host;
 @property(nonatomic, copy) NSString *basePort;
 @property(nonatomic, copy) NSString *port;
 @property(nonatomic, copy) NSString *currentURL;
-@property(nonatomic, assign) pid_t serverPid;
+@property(atomic, assign) pid_t serverPid;
 @property(nonatomic, strong) NSWindow *window;
+@property(nonatomic, strong) NSImageView *statusImageView;
+@property(nonatomic, strong) NSProgressIndicator *progressIndicator;
 @property(nonatomic, strong) NSTextField *statusField;
 @property(nonatomic, strong) NSTextField *urlField;
 @property(nonatomic, strong) NSTextField *messageField;
-@property(nonatomic, strong) NSTextField *logField;
-@property(nonatomic, strong) NSButton *startButton;
-@property(nonatomic, strong) NSButton *openButton;
+@property(nonatomic, strong) NSTextField *browserField;
+@property(nonatomic, strong) NSTextField *lastCheckField;
+@property(nonatomic, strong) NSTextField *feedbackField;
+@property(nonatomic, strong) NSButton *primaryButton;
 @property(nonatomic, strong) NSButton *stopButton;
 @property(nonatomic, strong) NSButton *restartButton;
-@property(nonatomic, strong) NSButton *refreshButton;
+@property(nonatomic, strong) NSButton *urlCopyButton;
+@property(nonatomic, strong) NSTimer *statusTimer;
+@property(nonatomic, strong) dispatch_group_t startupGroup;
 @property(nonatomic, assign) BOOL running;
 @property(nonatomic, assign) BOOL busy;
+@property(nonatomic, assign) BOOL refreshInFlight;
+@property(atomic, assign) BOOL terminating;
 @end
 
 @implementation TrainTimerAppDelegate
@@ -637,6 +656,7 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
   _basePort = [configuredPort copy];
   _port = [_basePort copy];
   _currentURL = [TrainTimerURLString(_host, TrainTimerPortInteger(_port, 3211)) copy];
+  _startupGroup = dispatch_group_create();
   return self;
 }
 
@@ -648,11 +668,11 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
   [NSApp activateIgnoringOtherApps:YES];
 
   [self startService:nil];
-  [NSTimer scheduledTimerWithTimeInterval:5.0
-                                   target:self
-                                 selector:@selector(refreshStatus:)
-                                 userInfo:nil
-                                  repeats:YES];
+  self.statusTimer = [NSTimer scheduledTimerWithTimeInterval:5.0
+                                                     target:self
+                                                   selector:@selector(refreshStatus:)
+                                                   userInfo:nil
+                                                    repeats:YES];
 }
 
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender {
@@ -660,16 +680,22 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
 }
 
 - (void)applicationWillTerminate:(NSNotification *)notification {
-  if (self.running) {
-    TrainTimerAppendLog(@"Window is closing; stopping TrainTimer service");
-    if (self.serverPid > 0) {
-      TrainTimerTerminatePid(self.serverPid, 1.5);
-      self.serverPid = 0;
-    }
-    NSInteger basePort = TrainTimerPortInteger(self.basePort, 3211);
-    TrainTimerTerminateHealthyProjectServers(self.host, basePort, TrainTimerManagedPortEnd(basePort));
-    TrainTimerStopLaunchAgent(YES);
+  self.terminating = YES;
+  [self.statusTimer invalidate];
+  self.statusTimer = nil;
+  TrainTimerAppendLog(@"Window is closing; stopping TrainTimer service");
+  if (self.serverPid > 0) {
+    TrainTimerTerminatePid(self.serverPid, 1.5);
+    self.serverPid = 0;
   }
+  dispatch_group_wait(self.startupGroup, dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.5 * NSEC_PER_SEC)));
+  if (self.serverPid > 0) {
+    TrainTimerTerminatePid(self.serverPid, 1.0);
+    self.serverPid = 0;
+  }
+  NSInteger basePort = TrainTimerPortInteger(self.basePort, 3211);
+  TrainTimerTerminateHealthyProjectServers(self.host, basePort, TrainTimerManagedPortEnd(basePort));
+  TrainTimerStopLaunchAgent(YES);
 }
 
 - (void)closeWindow:(id)sender {
@@ -684,6 +710,13 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
   [mainMenu addItem:appMenuItem];
 
   NSMenu *appMenu = [[NSMenu alloc] initWithTitle:appName];
+  NSMenuItem *aboutItem = [[NSMenuItem alloc] initWithTitle:@"关于 TrainTimer"
+                                                    action:@selector(orderFrontStandardAboutPanel:)
+                                             keyEquivalent:@""];
+  aboutItem.target = NSApp;
+  [appMenu addItem:aboutItem];
+  [appMenu addItem:[NSMenuItem separatorItem]];
+
   NSMenuItem *hideItem = [[NSMenuItem alloc] initWithTitle:[NSString stringWithFormat:@"隐藏 %@", appName]
                                                     action:@selector(hide:)
                                              keyEquivalent:@"h"];
@@ -725,113 +758,655 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
   [fileMenu addItem:closeItem];
   fileMenuItem.submenu = fileMenu;
 
+  NSMenuItem *serviceMenuItem = [[NSMenuItem alloc] initWithTitle:@"" action:nil keyEquivalent:@""];
+  [mainMenu addItem:serviceMenuItem];
+  NSMenu *serviceMenu = [[NSMenu alloc] initWithTitle:@"服务"];
+
+  NSMenuItem *openItem = [self menuItemWithTitle:@"打开 TrainTimer"
+                                         action:@selector(performPrimaryAction:)
+                                            key:@"o"
+                                      modifiers:NSEventModifierFlagCommand
+                                          symbol:@"globe"];
+  [serviceMenu addItem:openItem];
+  [serviceMenu addItem:[self menuItemWithTitle:@"刷新状态"
+                                        action:@selector(refreshStatus:)
+                                           key:@"r"
+                                     modifiers:NSEventModifierFlagCommand
+                                         symbol:@"arrow.clockwise"]];
+  [serviceMenu addItem:[NSMenuItem separatorItem]];
+  [serviceMenu addItem:[self menuItemWithTitle:@"停止服务"
+                                        action:@selector(stopService:)
+                                           key:@""
+                                     modifiers:0
+                                         symbol:@"stop.fill"]];
+  [serviceMenu addItem:[self menuItemWithTitle:@"重新启动服务"
+                                        action:@selector(restartService:)
+                                           key:@"r"
+                                     modifiers:(NSEventModifierFlagCommand | NSEventModifierFlagOption)
+                                         symbol:@"arrow.clockwise"]];
+  [serviceMenu addItem:[NSMenuItem separatorItem]];
+  [serviceMenu addItem:[self menuItemWithTitle:@"复制网页地址"
+                                        action:@selector(copyURL:)
+                                           key:@"c"
+                                     modifiers:(NSEventModifierFlagCommand | NSEventModifierFlagShift)
+                                         symbol:@"doc.on.doc"]];
+  [serviceMenu addItem:[self menuItemWithTitle:@"显示日志"
+                                        action:@selector(revealLog:)
+                                           key:@"l"
+                                     modifiers:(NSEventModifierFlagCommand | NSEventModifierFlagOption)
+                                         symbol:@"doc.text.magnifyingglass"]];
+  serviceMenuItem.submenu = serviceMenu;
+
+  NSMenuItem *windowMenuItem = [[NSMenuItem alloc] initWithTitle:@"" action:nil keyEquivalent:@""];
+  [mainMenu addItem:windowMenuItem];
+  NSMenu *windowMenu = [[NSMenu alloc] initWithTitle:@"窗口"];
+  NSMenuItem *minimizeItem = [[NSMenuItem alloc] initWithTitle:@"最小化"
+                                                       action:@selector(performMiniaturize:)
+                                                keyEquivalent:@"m"];
+  minimizeItem.keyEquivalentModifierMask = NSEventModifierFlagCommand;
+  [windowMenu addItem:minimizeItem];
+  windowMenuItem.submenu = windowMenu;
+  NSApp.windowsMenu = windowMenu;
+
   NSApp.mainMenu = mainMenu;
 }
 
-- (NSTextField *)labelWithFrame:(NSRect)frame text:(NSString *)text fontSize:(CGFloat)fontSize bold:(BOOL)bold {
-  NSTextField *field = [[NSTextField alloc] initWithFrame:frame];
+- (NSMenuItem *)menuItemWithTitle:(NSString *)title
+                           action:(SEL)action
+                              key:(NSString *)key
+                        modifiers:(NSEventModifierFlags)modifiers
+                            symbol:(NSString *)symbol {
+  NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:title action:action keyEquivalent:key ?: @""];
+  item.target = self;
+  item.keyEquivalentModifierMask = modifiers;
+  item.image = [NSImage imageWithSystemSymbolName:symbol accessibilityDescription:title];
+  return item;
+}
+
+- (NSTextField *)labelWithText:(NSString *)text
+                          font:(NSFont *)font
+                         color:(NSColor *)color
+                    selectable:(BOOL)selectable {
+  NSTextField *field = [[NSTextField alloc] initWithFrame:NSZeroRect];
+  field.translatesAutoresizingMaskIntoConstraints = NO;
   field.stringValue = text;
   field.editable = NO;
-  field.selectable = YES;
+  field.selectable = selectable;
   field.bezeled = NO;
   field.drawsBackground = NO;
   field.lineBreakMode = NSLineBreakByTruncatingMiddle;
-  field.font = bold ? [NSFont boldSystemFontOfSize:fontSize] : [NSFont systemFontOfSize:fontSize];
+  field.font = font;
+  field.textColor = color;
   return field;
 }
 
-- (NSButton *)buttonWithFrame:(NSRect)frame title:(NSString *)title action:(SEL)action {
-  NSButton *button = [[NSButton alloc] initWithFrame:frame];
+- (NSImage *)symbolImageNamed:(NSString *)name description:(NSString *)description pointSize:(CGFloat)pointSize {
+  NSImage *image = [NSImage imageWithSystemSymbolName:name accessibilityDescription:description];
+  NSImageSymbolConfiguration *configuration = [NSImageSymbolConfiguration configurationWithPointSize:pointSize
+                                                                                                weight:NSFontWeightMedium];
+  return [image imageWithSymbolConfiguration:configuration];
+}
+
+- (NSButton *)buttonWithTitle:(NSString *)title symbol:(NSString *)symbol action:(SEL)action {
+  NSButton *button = [[NSButton alloc] initWithFrame:NSZeroRect];
+  button.translatesAutoresizingMaskIntoConstraints = NO;
   button.title = title;
   button.target = self;
   button.action = action;
-  button.bezelStyle = NSBezelStyleRounded;
+  button.bezelStyle = NSBezelStylePush;
+  if (symbol.length > 0) {
+    button.image = [self symbolImageNamed:symbol description:title pointSize:14.0];
+    button.imagePosition = NSImageLeading;
+    button.imageHugsTitle = YES;
+  }
   return button;
 }
 
+- (NSStackView *)detailRowWithSymbol:(NSString *)symbol
+                                label:(NSString *)label
+                                value:(NSTextField *)value
+                              trailing:(NSView *)trailing {
+  NSImageView *iconView = [[NSImageView alloc] initWithFrame:NSZeroRect];
+  iconView.translatesAutoresizingMaskIntoConstraints = NO;
+  iconView.image = [self symbolImageNamed:symbol description:label pointSize:13.0];
+  iconView.contentTintColor = NSColor.secondaryLabelColor;
+  iconView.imageScaling = NSImageScaleProportionallyDown;
+  [NSLayoutConstraint activateConstraints:@[
+    [iconView.widthAnchor constraintEqualToConstant:18.0],
+    [iconView.heightAnchor constraintEqualToConstant:18.0]
+  ]];
+
+  NSTextField *labelField = [self labelWithText:label
+                                           font:[NSFont systemFontOfSize:12.0 weight:NSFontWeightMedium]
+                                          color:NSColor.secondaryLabelColor
+                                     selectable:NO];
+  [labelField.widthAnchor constraintEqualToConstant:68.0].active = YES;
+
+  [value setContentCompressionResistancePriority:NSLayoutPriorityDefaultLow
+                                  forOrientation:NSLayoutConstraintOrientationHorizontal];
+  [value setContentHuggingPriority:NSLayoutPriorityDefaultHigh
+                    forOrientation:NSLayoutConstraintOrientationHorizontal];
+
+  NSView *spacer = [[NSView alloc] initWithFrame:NSZeroRect];
+  [spacer setContentHuggingPriority:1.0 forOrientation:NSLayoutConstraintOrientationHorizontal];
+  [spacer setContentCompressionResistancePriority:1.0 forOrientation:NSLayoutConstraintOrientationHorizontal];
+  [spacer.heightAnchor constraintEqualToConstant:0.0].active = YES;
+
+  NSMutableArray<NSView *> *views = [NSMutableArray arrayWithObjects:iconView, labelField, value, spacer, nil];
+  if (trailing) [views addObject:trailing];
+  NSStackView *row = [NSStackView stackViewWithViews:views];
+  row.translatesAutoresizingMaskIntoConstraints = NO;
+  row.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+  row.alignment = NSLayoutAttributeCenterY;
+  row.distribution = NSStackViewDistributionFill;
+  row.spacing = 10.0;
+  return row;
+}
+
 - (void)buildWindow {
-  NSRect frame = NSMakeRect(0, 0, 520, 260);
+  NSRect frame = NSMakeRect(0, 0, 680, 420);
   self.window = [[NSWindow alloc] initWithContentRect:frame
                                            styleMask:(NSWindowStyleMaskTitled |
                                                       NSWindowStyleMaskClosable |
-                                                      NSWindowStyleMaskMiniaturizable)
+                                                      NSWindowStyleMaskMiniaturizable |
+                                                      NSWindowStyleMaskResizable)
                                              backing:NSBackingStoreBuffered
                                                defer:NO];
   self.window.title = @"TrainTimer";
-  [self.window center];
+  self.window.titleVisibility = NSWindowTitleHidden;
+  self.window.toolbarStyle = NSWindowToolbarStyleUnified;
+  self.window.tabbingMode = NSWindowTabbingModeDisallowed;
+  self.window.contentMinSize = NSMakeSize(600, 400);
+  [self.window setFrameAutosaveName:@"TrainTimerLauncherWindowFrameV2"];
+  if (![self.window setFrameUsingName:@"TrainTimerLauncherWindowFrameV2"]) {
+    [self.window center];
+  }
 
-  NSView *content = self.window.contentView;
-  self.statusField = [self labelWithFrame:NSMakeRect(24, 206, 468, 28)
-                                     text:@"状态：启动中"
-                                 fontSize:18
-                                     bold:YES];
-  self.urlField = [self labelWithFrame:NSMakeRect(24, 176, 468, 22)
-                                  text:[NSString stringWithFormat:@"地址：%@  管理端口：%@", self.currentURL, TrainTimerPortRangeLabel(self.basePort)]
-                              fontSize:13
-                                  bold:NO];
-  self.messageField = [self labelWithFrame:NSMakeRect(24, 130, 468, 44)
-                                      text:@"正在启动本地服务。"
-                                  fontSize:13
-                                      bold:NO];
+  NSToolbar *toolbar = [[NSToolbar alloc] initWithIdentifier:@"TrainTimerLauncherToolbar"];
+  toolbar.delegate = self;
+  toolbar.displayMode = NSToolbarDisplayModeIconOnly;
+  toolbar.allowsUserCustomization = NO;
+  self.window.toolbar = toolbar;
+
+  NSVisualEffectView *content = [[NSVisualEffectView alloc] initWithFrame:NSZeroRect];
+  content.material = NSVisualEffectMaterialWindowBackground;
+  content.blendingMode = NSVisualEffectBlendingModeBehindWindow;
+  content.state = NSVisualEffectStateFollowsWindowActiveState;
+  self.window.contentView = content;
+
+  NSImageView *appIcon = [[NSImageView alloc] initWithFrame:NSZeroRect];
+  appIcon.translatesAutoresizingMaskIntoConstraints = NO;
+  appIcon.image = [NSImage imageNamed:NSImageNameApplicationIcon];
+  appIcon.imageScaling = NSImageScaleProportionallyUpOrDown;
+  [NSLayoutConstraint activateConstraints:@[
+    [appIcon.widthAnchor constraintEqualToConstant:48.0],
+    [appIcon.heightAnchor constraintEqualToConstant:48.0]
+  ]];
+
+  NSTextField *appNameField = [self labelWithText:@"TrainTimer"
+                                             font:[NSFont systemFontOfSize:22.0 weight:NSFontWeightSemibold]
+                                            color:NSColor.labelColor
+                                       selectable:NO];
+  NSString *subtitle = TrainTimerChromeApplicationURL() ? @"本地计时器服务 · 服务就绪后自动在 Chrome 中打开" : @"本地计时器服务 · 服务就绪后自动打开网页";
+  NSTextField *appSubtitleField = [self labelWithText:subtitle
+                                                 font:[NSFont systemFontOfSize:13.0 weight:NSFontWeightRegular]
+                                                color:NSColor.secondaryLabelColor
+                                           selectable:NO];
+  NSView *titleStack = [[NSView alloc] initWithFrame:NSZeroRect];
+  titleStack.translatesAutoresizingMaskIntoConstraints = NO;
+  [titleStack addSubview:appNameField];
+  [titleStack addSubview:appSubtitleField];
+  [NSLayoutConstraint activateConstraints:@[
+    [appNameField.leadingAnchor constraintEqualToAnchor:titleStack.leadingAnchor],
+    [appNameField.topAnchor constraintEqualToAnchor:titleStack.topAnchor],
+    [appNameField.trailingAnchor constraintLessThanOrEqualToAnchor:titleStack.trailingAnchor],
+    [appSubtitleField.leadingAnchor constraintEqualToAnchor:titleStack.leadingAnchor],
+    [appSubtitleField.trailingAnchor constraintEqualToAnchor:titleStack.trailingAnchor],
+    [appSubtitleField.topAnchor constraintEqualToAnchor:appNameField.bottomAnchor constant:3.0],
+    [appSubtitleField.bottomAnchor constraintEqualToAnchor:titleStack.bottomAnchor]
+  ]];
+  [titleStack setContentHuggingPriority:NSLayoutPriorityRequired forOrientation:NSLayoutConstraintOrientationHorizontal];
+  [titleStack setContentCompressionResistancePriority:NSLayoutPriorityDefaultHigh forOrientation:NSLayoutConstraintOrientationHorizontal];
+  [appNameField setContentHuggingPriority:NSLayoutPriorityRequired forOrientation:NSLayoutConstraintOrientationHorizontal];
+  [appSubtitleField setContentHuggingPriority:NSLayoutPriorityRequired forOrientation:NSLayoutConstraintOrientationHorizontal];
+  NSView *headerSpacer = [[NSView alloc] initWithFrame:NSZeroRect];
+  [headerSpacer setContentHuggingPriority:1.0 forOrientation:NSLayoutConstraintOrientationHorizontal];
+  [headerSpacer setContentCompressionResistancePriority:1.0 forOrientation:NSLayoutConstraintOrientationHorizontal];
+  [headerSpacer.heightAnchor constraintEqualToConstant:0.0].active = YES;
+  NSStackView *header = [NSStackView stackViewWithViews:@[appIcon, titleStack, headerSpacer]];
+  header.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+  header.alignment = NSLayoutAttributeCenterY;
+  header.spacing = 14.0;
+
+  NSBox *statusCard = [[NSBox alloc] initWithFrame:NSZeroRect];
+  statusCard.translatesAutoresizingMaskIntoConstraints = NO;
+  statusCard.boxType = NSBoxCustom;
+  statusCard.titlePosition = NSNoTitle;
+  statusCard.borderWidth = 1.0;
+  statusCard.cornerRadius = 16.0;
+  statusCard.borderColor = NSColor.separatorColor;
+  statusCard.fillColor = NSColor.controlBackgroundColor;
+
+  NSView *statusIconContainer = [[NSView alloc] initWithFrame:NSZeroRect];
+  statusIconContainer.translatesAutoresizingMaskIntoConstraints = NO;
+  [NSLayoutConstraint activateConstraints:@[
+    [statusIconContainer.widthAnchor constraintEqualToConstant:40.0],
+    [statusIconContainer.heightAnchor constraintEqualToConstant:40.0]
+  ]];
+
+  self.statusImageView = [[NSImageView alloc] initWithFrame:NSZeroRect];
+  self.statusImageView.translatesAutoresizingMaskIntoConstraints = NO;
+  self.statusImageView.imageScaling = NSImageScaleProportionallyUpOrDown;
+  [self.statusImageView setAccessibilityElement:NO];
+  [statusIconContainer addSubview:self.statusImageView];
+
+  self.progressIndicator = [[NSProgressIndicator alloc] initWithFrame:NSZeroRect];
+  self.progressIndicator.translatesAutoresizingMaskIntoConstraints = NO;
+  self.progressIndicator.style = NSProgressIndicatorStyleSpinning;
+  self.progressIndicator.controlSize = NSControlSizeRegular;
+  self.progressIndicator.displayedWhenStopped = NO;
+  self.progressIndicator.accessibilityLabel = @"正在检查本地服务";
+  [statusIconContainer addSubview:self.progressIndicator];
+  [NSLayoutConstraint activateConstraints:@[
+    [self.statusImageView.centerXAnchor constraintEqualToAnchor:statusIconContainer.centerXAnchor],
+    [self.statusImageView.centerYAnchor constraintEqualToAnchor:statusIconContainer.centerYAnchor],
+    [self.statusImageView.widthAnchor constraintEqualToConstant:36.0],
+    [self.statusImageView.heightAnchor constraintEqualToConstant:36.0],
+    [self.progressIndicator.centerXAnchor constraintEqualToAnchor:statusIconContainer.centerXAnchor],
+    [self.progressIndicator.centerYAnchor constraintEqualToAnchor:statusIconContainer.centerYAnchor]
+  ]];
+
+  self.statusField = [self labelWithText:@"正在启动 TrainTimer"
+                                    font:[NSFont systemFontOfSize:20.0 weight:NSFontWeightSemibold]
+                                   color:NSColor.labelColor
+                              selectable:NO];
+  NSString *initialMessage = TrainTimerChromeApplicationURL() ? @"服务就绪后会自动在 Chrome 中打开。" : @"服务就绪后会自动在默认浏览器中打开。";
+  self.messageField = [self labelWithText:initialMessage
+                                     font:[NSFont systemFontOfSize:13.0 weight:NSFontWeightRegular]
+                                    color:NSColor.secondaryLabelColor
+                               selectable:NO];
   self.messageField.lineBreakMode = NSLineBreakByWordWrapping;
   self.messageField.usesSingleLineMode = NO;
-  self.logField = [self labelWithFrame:NSMakeRect(24, 24, 468, 20)
-                                  text:[NSString stringWithFormat:@"日志：%@/launcher.log", TrainTimerStateDirectory()]
-                              fontSize:11
-                                  bold:NO];
+  self.messageField.maximumNumberOfLines = 2;
+  NSStackView *statusTextStack = [NSStackView stackViewWithViews:@[self.statusField, self.messageField]];
+  statusTextStack.orientation = NSUserInterfaceLayoutOrientationVertical;
+  statusTextStack.alignment = NSLayoutAttributeLeading;
+  statusTextStack.spacing = 4.0;
+  [self.messageField.widthAnchor constraintLessThanOrEqualToConstant:510.0].active = YES;
 
-  self.startButton = [self buttonWithFrame:NSMakeRect(24, 82, 92, 30) title:@"启动" action:@selector(startService:)];
-  self.openButton = [self buttonWithFrame:NSMakeRect(124, 82, 92, 30) title:@"打开网页" action:@selector(openWeb:)];
-  self.stopButton = [self buttonWithFrame:NSMakeRect(224, 82, 92, 30) title:@"停止" action:@selector(stopService:)];
-  self.restartButton = [self buttonWithFrame:NSMakeRect(324, 82, 92, 30) title:@"重启" action:@selector(restartService:)];
-  self.refreshButton = [self buttonWithFrame:NSMakeRect(424, 82, 68, 30) title:@"刷新" action:@selector(refreshStatus:)];
+  NSStackView *statusHeader = [NSStackView stackViewWithViews:@[statusIconContainer, statusTextStack]];
+  statusHeader.translatesAutoresizingMaskIntoConstraints = NO;
+  statusHeader.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+  statusHeader.alignment = NSLayoutAttributeCenterY;
+  statusHeader.spacing = 14.0;
+  statusHeader.accessibilityRole = NSAccessibilityGroupRole;
+  statusHeader.accessibilityLabel = @"服务状态";
 
-  [content addSubview:self.statusField];
-  [content addSubview:self.urlField];
-  [content addSubview:self.messageField];
-  [content addSubview:self.logField];
-  [content addSubview:self.startButton];
-  [content addSubview:self.openButton];
-  [content addSubview:self.stopButton];
-  [content addSubview:self.restartButton];
-  [content addSubview:self.refreshButton];
+  NSBox *separator = [[NSBox alloc] initWithFrame:NSZeroRect];
+  separator.boxType = NSBoxSeparator;
+  separator.translatesAutoresizingMaskIntoConstraints = NO;
+
+  self.urlField = [self labelWithText:self.currentURL
+                                  font:[NSFont monospacedSystemFontOfSize:12.5 weight:NSFontWeightRegular]
+                                 color:NSColor.labelColor
+                            selectable:YES];
+  self.urlField.toolTip = [NSString stringWithFormat:@"TrainTimer 本地网页地址 · 管理端口 %@", TrainTimerPortRangeLabel(self.basePort)];
+  self.urlCopyButton = [self buttonWithTitle:@"" symbol:@"doc.on.doc" action:@selector(copyURL:)];
+  self.urlCopyButton.bezelStyle = NSBezelStyleAccessoryBarAction;
+  self.urlCopyButton.borderShape = NSControlBorderShapeCircle;
+  self.urlCopyButton.toolTip = @"复制网页地址";
+  self.urlCopyButton.accessibilityLabel = @"复制网页地址";
+  [self.urlCopyButton.widthAnchor constraintEqualToConstant:30.0].active = YES;
+
+  self.browserField = [self labelWithText:(TrainTimerChromeApplicationURL() ? @"Google Chrome · 启动后自动打开" : @"默认浏览器 · 未检测到 Google Chrome")
+                                      font:[NSFont systemFontOfSize:12.5 weight:NSFontWeightRegular]
+                                     color:NSColor.labelColor
+                                selectable:NO];
+  NSTextField *securityField = [self labelWithText:@"仅这台 Mac 可访问"
+                                               font:[NSFont systemFontOfSize:12.5 weight:NSFontWeightRegular]
+                                              color:NSColor.labelColor
+                                         selectable:NO];
+
+  NSStackView *urlRow = [self detailRowWithSymbol:@"link" label:@"网页地址" value:self.urlField trailing:self.urlCopyButton];
+  NSStackView *browserRow = [self detailRowWithSymbol:@"globe" label:@"浏览器" value:self.browserField trailing:nil];
+  NSStackView *securityRow = [self detailRowWithSymbol:@"lock.shield" label:@"访问范围" value:securityField trailing:nil];
+  NSStackView *detailStack = [NSStackView stackViewWithViews:@[urlRow, browserRow, securityRow]];
+  detailStack.translatesAutoresizingMaskIntoConstraints = NO;
+  detailStack.orientation = NSUserInterfaceLayoutOrientationVertical;
+  detailStack.alignment = NSLayoutAttributeLeading;
+  detailStack.distribution = NSStackViewDistributionFillEqually;
+  detailStack.spacing = 10.0;
+  [urlRow.widthAnchor constraintEqualToAnchor:detailStack.widthAnchor].active = YES;
+  [browserRow.widthAnchor constraintEqualToAnchor:detailStack.widthAnchor].active = YES;
+  [securityRow.widthAnchor constraintEqualToAnchor:detailStack.widthAnchor].active = YES;
+
+  NSStackView *cardStack = [NSStackView stackViewWithViews:@[statusHeader, separator, detailStack]];
+  cardStack.translatesAutoresizingMaskIntoConstraints = NO;
+  cardStack.orientation = NSUserInterfaceLayoutOrientationVertical;
+  cardStack.alignment = NSLayoutAttributeLeading;
+  cardStack.spacing = 15.0;
+  [statusCard.contentView addSubview:cardStack];
+  [NSLayoutConstraint activateConstraints:@[
+    [cardStack.leadingAnchor constraintEqualToAnchor:statusCard.contentView.leadingAnchor constant:22.0],
+    [cardStack.trailingAnchor constraintEqualToAnchor:statusCard.contentView.trailingAnchor constant:-22.0],
+    [cardStack.topAnchor constraintEqualToAnchor:statusCard.contentView.topAnchor constant:20.0],
+    [cardStack.bottomAnchor constraintEqualToAnchor:statusCard.contentView.bottomAnchor constant:-20.0],
+    [statusHeader.widthAnchor constraintEqualToAnchor:cardStack.widthAnchor],
+    [separator.widthAnchor constraintEqualToAnchor:cardStack.widthAnchor],
+    [detailStack.widthAnchor constraintEqualToAnchor:cardStack.widthAnchor],
+    [statusCard.heightAnchor constraintGreaterThanOrEqualToConstant:210.0]
+  ]];
+
+  self.primaryButton = [self buttonWithTitle:@"正在启动" symbol:@"globe" action:@selector(performPrimaryAction:)];
+  self.primaryButton.controlSize = NSControlSizeExtraLarge;
+  self.primaryButton.bezelStyle = NSBezelStylePush;
+  self.primaryButton.tintProminence = NSTintProminencePrimary;
+  self.primaryButton.borderShape = NSControlBorderShapeCapsule;
+  self.primaryButton.keyEquivalent = @"\r";
+  self.primaryButton.keyEquivalentModifierMask = 0;
+  self.primaryButton.toolTip = TrainTimerChromeApplicationURL() ? @"启动服务，或在 Google Chrome 中打开 TrainTimer" : @"启动服务，或在默认浏览器中打开 TrainTimer";
+  [self.primaryButton.widthAnchor constraintGreaterThanOrEqualToConstant:220.0].active = YES;
+
+  self.stopButton = [self buttonWithTitle:@"停止服务" symbol:@"stop.fill" action:@selector(stopService:)];
+  self.stopButton.controlSize = NSControlSizeLarge;
+  self.stopButton.toolTip = @"停止 TrainTimer 本地服务";
+
+  self.restartButton = [self buttonWithTitle:@"重新启动" symbol:@"arrow.clockwise" action:@selector(restartService:)];
+  self.restartButton.controlSize = NSControlSizeLarge;
+  self.restartButton.toolTip = @"重新启动 TrainTimer 本地服务";
+
+  NSView *actionSpacer = [[NSView alloc] initWithFrame:NSZeroRect];
+  [actionSpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
+  [actionSpacer.heightAnchor constraintEqualToConstant:0.0].active = YES;
+  NSStackView *actionRow = [NSStackView stackViewWithViews:@[actionSpacer, self.stopButton, self.restartButton, self.primaryButton]];
+  actionRow.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+  actionRow.alignment = NSLayoutAttributeCenterY;
+  actionRow.spacing = 10.0;
+
+  self.lastCheckField = [self labelWithText:@"正在检查服务状态"
+                                        font:[NSFont systemFontOfSize:11.5 weight:NSFontWeightRegular]
+                                       color:NSColor.tertiaryLabelColor
+                                  selectable:NO];
+  self.feedbackField = [self labelWithText:@""
+                                       font:[NSFont systemFontOfSize:11.5 weight:NSFontWeightMedium]
+                                      color:NSColor.secondaryLabelColor
+                                 selectable:NO];
+  self.feedbackField.lineBreakMode = NSLineBreakByTruncatingTail;
+  NSTextField *closeHintField = [self labelWithText:@"关闭窗口即停止服务"
+                                                font:[NSFont systemFontOfSize:12.0 weight:NSFontWeightRegular]
+                                               color:NSColor.secondaryLabelColor
+                                          selectable:NO];
+  NSImageView *closeHintIcon = [[NSImageView alloc] initWithFrame:NSZeroRect];
+  closeHintIcon.translatesAutoresizingMaskIntoConstraints = NO;
+  closeHintIcon.image = [self symbolImageNamed:@"info.circle" description:@"关闭提示" pointSize:11.0];
+  closeHintIcon.contentTintColor = NSColor.secondaryLabelColor;
+  [closeHintIcon.widthAnchor constraintEqualToConstant:14.0].active = YES;
+  [closeHintIcon.heightAnchor constraintEqualToConstant:14.0].active = YES;
+  NSStackView *closeHint = [NSStackView stackViewWithViews:@[closeHintIcon, closeHintField]];
+  closeHint.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+  closeHint.alignment = NSLayoutAttributeCenterY;
+  closeHint.spacing = 5.0;
+  NSView *footerSpacer = [[NSView alloc] initWithFrame:NSZeroRect];
+  [footerSpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
+  [footerSpacer.heightAnchor constraintEqualToConstant:0.0].active = YES;
+  NSStackView *footer = [NSStackView stackViewWithViews:@[self.lastCheckField, self.feedbackField, footerSpacer, closeHint]];
+  footer.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+  footer.alignment = NSLayoutAttributeCenterY;
+  footer.spacing = 8.0;
+
+  NSStackView *layout = [NSStackView stackViewWithViews:@[header, statusCard, actionRow, footer]];
+  layout.translatesAutoresizingMaskIntoConstraints = NO;
+  layout.orientation = NSUserInterfaceLayoutOrientationVertical;
+  layout.alignment = NSLayoutAttributeLeading;
+  layout.distribution = NSStackViewDistributionFill;
+  layout.spacing = 18.0;
+  [content addSubview:layout];
+  [NSLayoutConstraint activateConstraints:@[
+    [layout.leadingAnchor constraintEqualToAnchor:content.leadingAnchor constant:28.0],
+    [layout.trailingAnchor constraintEqualToAnchor:content.trailingAnchor constant:-28.0],
+    [layout.topAnchor constraintEqualToAnchor:content.topAnchor constant:22.0],
+    [layout.bottomAnchor constraintLessThanOrEqualToAnchor:content.bottomAnchor constant:-18.0],
+    [header.widthAnchor constraintEqualToAnchor:layout.widthAnchor],
+    [statusCard.widthAnchor constraintEqualToAnchor:layout.widthAnchor],
+    [actionRow.widthAnchor constraintEqualToAnchor:layout.widthAnchor],
+    [footer.widthAnchor constraintEqualToAnchor:layout.widthAnchor]
+  ]];
+
+  [self.progressIndicator startAnimation:nil];
+  self.statusImageView.hidden = YES;
   [self setControlsEnabled:NO];
 }
 
+- (NSArray<NSToolbarItemIdentifier> *)toolbarAllowedItemIdentifiers:(NSToolbar *)toolbar {
+  return @[
+    NSToolbarFlexibleSpaceItemIdentifier,
+    TrainTimerToolbarRefreshItemIdentifier,
+    TrainTimerToolbarLogItemIdentifier
+  ];
+}
+
+- (NSArray<NSToolbarItemIdentifier> *)toolbarDefaultItemIdentifiers:(NSToolbar *)toolbar {
+  return @[
+    NSToolbarFlexibleSpaceItemIdentifier,
+    TrainTimerToolbarRefreshItemIdentifier,
+    TrainTimerToolbarLogItemIdentifier
+  ];
+}
+
+- (NSToolbarItem *)toolbar:(NSToolbar *)toolbar
+     itemForItemIdentifier:(NSToolbarItemIdentifier)itemIdentifier
+ willBeInsertedIntoToolbar:(BOOL)flag {
+  NSToolbarItem *item = [[NSToolbarItem alloc] initWithItemIdentifier:itemIdentifier];
+  if ([itemIdentifier isEqualToString:TrainTimerToolbarRefreshItemIdentifier]) {
+    item.label = @"刷新";
+    item.paletteLabel = @"刷新状态";
+    item.toolTip = @"刷新服务状态 (⌘R)";
+    item.image = [self symbolImageNamed:@"arrow.clockwise" description:@"刷新服务状态" pointSize:15.0];
+    item.target = self;
+    item.action = @selector(refreshStatus:);
+    return item;
+  }
+  if ([itemIdentifier isEqualToString:TrainTimerToolbarLogItemIdentifier]) {
+    item.label = @"日志";
+    item.paletteLabel = @"显示日志";
+    item.toolTip = @"在访达中显示日志 (⌥⌘L)";
+    item.image = [self symbolImageNamed:@"doc.text.magnifyingglass" description:@"显示日志" pointSize:15.0];
+    item.target = self;
+    item.action = @selector(revealLog:);
+    return item;
+  }
+  return nil;
+}
+
+- (BOOL)validateMenuItem:(NSMenuItem *)menuItem {
+  SEL action = menuItem.action;
+  if (action == @selector(performPrimaryAction:)) {
+    if (self.running) {
+      menuItem.title = TrainTimerChromeApplicationURL() ? @"在 Chrome 中打开" : @"在默认浏览器中打开";
+      menuItem.image = [NSImage imageWithSystemSymbolName:@"globe" accessibilityDescription:menuItem.title];
+    } else {
+      menuItem.title = @"启动并打开 TrainTimer";
+      menuItem.image = [NSImage imageWithSystemSymbolName:@"play.fill" accessibilityDescription:menuItem.title];
+    }
+    return !self.busy && !self.refreshInFlight && (self.running || self.nodePath.length > 0);
+  }
+  if (action == @selector(openWeb:)) return !self.busy && !self.refreshInFlight && self.running;
+  if (action == @selector(stopService:)) return !self.busy && !self.refreshInFlight && self.running;
+  if (action == @selector(restartService:)) return !self.busy && !self.refreshInFlight && self.running;
+  if (action == @selector(refreshStatus:)) return !self.busy && !self.refreshInFlight;
+  if (action == @selector(copyURL:)) return self.currentURL.length > 0;
+  if (action == @selector(revealLog:)) return YES;
+  return YES;
+}
+
+- (BOOL)validateToolbarItem:(NSToolbarItem *)item {
+  if ([item.itemIdentifier isEqualToString:TrainTimerToolbarRefreshItemIdentifier]) {
+    return !self.busy && !self.refreshInFlight;
+  }
+  return YES;
+}
+
+- (void)setStatusSymbol:(NSString *)symbol color:(NSColor *)color description:(NSString *)description {
+  [self.progressIndicator stopAnimation:nil];
+  self.progressIndicator.hidden = YES;
+  self.statusImageView.hidden = NO;
+  self.statusImageView.image = [self symbolImageNamed:symbol description:description pointSize:34.0];
+  self.statusImageView.contentTintColor = color;
+  self.statusImageView.accessibilityLabel = description;
+}
+
+- (void)updateLastCheck {
+  NSString *time = [NSDateFormatter localizedStringFromDate:[NSDate date]
+                                                   dateStyle:NSDateFormatterNoStyle
+                                                   timeStyle:NSDateFormatterShortStyle];
+  self.lastCheckField.stringValue = [NSString stringWithFormat:@"刚刚检查 · %@", time];
+}
+
+- (void)clearTransientFeedback {
+  self.feedbackField.stringValue = @"";
+  self.feedbackField.textColor = NSColor.secondaryLabelColor;
+}
+
+- (void)showTransientFeedback:(NSString *)message color:(NSColor *)color {
+  [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(clearTransientFeedback) object:nil];
+  self.feedbackField.stringValue = message ?: @"";
+  self.feedbackField.textColor = color ?: NSColor.secondaryLabelColor;
+  [self performSelector:@selector(clearTransientFeedback) withObject:nil afterDelay:3.0];
+}
+
+- (void)announceStatus:(NSString *)message priority:(NSAccessibilityPriorityLevel)priority {
+  if (message.length == 0) return;
+  NSAccessibilityPostNotificationWithUserInfo(
+    NSApp,
+    NSAccessibilityAnnouncementRequestedNotification,
+    @{
+      NSAccessibilityAnnouncementKey: message,
+      NSAccessibilityPriorityKey: @(priority)
+    }
+  );
+}
+
 - (void)setControlsEnabled:(BOOL)enabled {
-  BOOL canStart = enabled && !self.running && self.nodePath.length > 0;
-  self.startButton.enabled = canStart;
-  self.openButton.enabled = enabled && self.running;
-  self.stopButton.enabled = enabled && self.running;
-  self.restartButton.enabled = enabled && self.running;
-  self.refreshButton.enabled = enabled && !self.busy;
+  BOOL ready = enabled && !self.busy && !self.refreshInFlight;
+  BOOL canUsePrimary = ready && (self.running || self.nodePath.length > 0);
+  self.primaryButton.enabled = canUsePrimary;
+  self.stopButton.enabled = ready && self.running;
+  self.restartButton.enabled = ready && self.running;
+  self.urlCopyButton.enabled = self.currentURL.length > 0;
+
+  if (!self.busy && !self.refreshInFlight) {
+    if (self.running) {
+      NSString *title = TrainTimerChromeApplicationURL() ? @"在 Chrome 中打开" : @"在默认浏览器中打开";
+      self.primaryButton.title = title;
+      self.primaryButton.image = [self symbolImageNamed:@"globe" description:title pointSize:15.0];
+    } else {
+      self.primaryButton.title = self.nodePath.length > 0 ? @"启动并打开" : @"需要 Node.js";
+      self.primaryButton.image = [self symbolImageNamed:@"play.fill" description:@"启动并打开" pointSize:15.0];
+    }
+  }
+
+  [self.window.toolbar validateVisibleItems];
+  [NSApp.mainMenu update];
 }
 
 - (void)setBusyMessage:(NSString *)message {
   self.busy = YES;
+  self.statusImageView.hidden = YES;
+  self.progressIndicator.hidden = NO;
+  [self.progressIndicator startAnimation:nil];
+  if ([message containsString:@"重启"] || [message containsString:@"重新启动"]) {
+    self.statusField.stringValue = @"正在重新启动";
+    self.primaryButton.title = @"正在重新启动";
+    self.progressIndicator.accessibilityLabel = @"正在重新启动本地服务";
+  } else if ([message containsString:@"停止"]) {
+    self.statusField.stringValue = @"正在停止服务";
+    self.primaryButton.title = @"正在停止";
+    self.progressIndicator.accessibilityLabel = @"正在停止本地服务";
+  } else {
+    self.statusField.stringValue = @"正在启动 TrainTimer";
+    self.primaryButton.title = @"正在启动";
+    self.progressIndicator.accessibilityLabel = @"正在启动本地服务";
+  }
   self.messageField.stringValue = message;
+  [self clearTransientFeedback];
+  self.lastCheckField.stringValue = @"正在更新服务状态";
   [self setControlsEnabled:NO];
+  [self announceStatus:self.statusField.stringValue priority:NSAccessibilityPriorityMedium];
 }
 
 - (void)showRunning {
+  BOOL shouldAnnounce = !self.running || self.busy;
   self.running = YES;
   self.busy = NO;
-  self.statusField.stringValue = @"状态：运行中";
-  self.urlField.stringValue = [NSString stringWithFormat:@"地址：%@  管理端口：%@", self.currentURL, TrainTimerPortRangeLabel(self.basePort)];
-  self.messageField.stringValue = @"本地网页服务正在运行。";
+  self.statusField.stringValue = @"TrainTimer 已就绪";
+  self.urlField.stringValue = self.currentURL;
+  self.messageField.stringValue = @"本地服务正在运行，可以开始计时。";
+  self.browserField.stringValue = TrainTimerChromeApplicationURL() ? @"Google Chrome · 启动后自动打开" : @"默认浏览器 · 未检测到 Google Chrome";
+  [self setStatusSymbol:@"checkmark.circle.fill" color:NSColor.systemGreenColor description:@"服务状态，运行中"];
+  [self updateLastCheck];
   [self setControlsEnabled:YES];
+  if (shouldAnnounce) [self announceStatus:@"TrainTimer 已就绪" priority:NSAccessibilityPriorityHigh];
 }
 
 - (void)showStoppedWithMessage:(NSString *)message {
+  BOOL shouldAnnounce = self.running || self.busy;
+  if (shouldAnnounce) [self clearTransientFeedback];
   self.running = NO;
   self.busy = NO;
-  self.statusField.stringValue = @"状态：未运行";
-  self.urlField.stringValue = [NSString stringWithFormat:@"地址：%@  管理端口：%@", self.currentURL, TrainTimerPortRangeLabel(self.basePort)];
-  self.messageField.stringValue = message ?: @"本地网页服务未运行。";
+  NSString *displayMessage = message ?: @"本地服务未运行。";
+  BOOL missingNode = [displayMessage containsString:@"Node.js"];
+  BOOL isError = missingNode || [displayMessage containsString:@"失败"] || [displayMessage containsString:@"超时"] || [displayMessage containsString:@"没有可用端口"];
+  if (missingNode) {
+    self.statusField.stringValue = @"需要 Node.js";
+  } else if (isError) {
+    self.statusField.stringValue = @"启动遇到问题";
+  } else {
+    self.statusField.stringValue = @"TrainTimer 已停止";
+  }
+  self.urlField.stringValue = self.currentURL;
+  self.messageField.stringValue = displayMessage;
+  if (isError) {
+    [self setStatusSymbol:@"exclamationmark.triangle.fill" color:NSColor.systemRedColor description:@"服务状态，出现错误"];
+  } else {
+    [self setStatusSymbol:@"pause.circle.fill" color:NSColor.secondaryLabelColor description:@"服务状态，已停止"];
+  }
+  [self updateLastCheck];
   [self setControlsEnabled:YES];
+  if (shouldAnnounce) [self announceStatus:self.statusField.stringValue priority:(isError ? NSAccessibilityPriorityHigh : NSAccessibilityPriorityMedium)];
+}
+
+- (void)performPrimaryAction:(id)sender {
+  if (self.busy || self.refreshInFlight) return;
+  if (self.running) {
+    [self openWeb:sender];
+  } else {
+    [self startService:sender];
+  }
+}
+
+- (void)copyURL:(id)sender {
+  if (self.currentURL.length == 0) return;
+  NSPasteboard *pasteboard = NSPasteboard.generalPasteboard;
+  [pasteboard clearContents];
+  [pasteboard writeObjects:@[self.currentURL]];
+  [self showTransientFeedback:@"网页地址已复制" color:NSColor.secondaryLabelColor];
+}
+
+- (void)revealLog:(id)sender {
+  TrainTimerEnsureStateDirectory();
+  NSString *logPath = [TrainTimerStateDirectory() stringByAppendingPathComponent:@"launcher.log"];
+  if (![[NSFileManager defaultManager] fileExistsAtPath:logPath]) {
+    [[NSFileManager defaultManager] createFileAtPath:logPath contents:[NSData data] attributes:nil];
+  }
+  [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:@[[NSURL fileURLWithPath:logPath]]];
 }
 
 - (void)startService:(id)sender {
+  [self startServiceOpeningBrowser:YES];
+}
+
+- (void)startServiceOpeningBrowser:(BOOL)shouldOpenBrowser {
+  if (self.busy || self.refreshInFlight || self.terminating) return;
   NSInteger basePort = TrainTimerPortInteger(self.basePort, 3211);
   NSInteger endPort = TrainTimerManagedPortEnd(basePort);
   NSString *healthyURL = TrainTimerFindHealthyServiceURL(self.host, basePort, endPort);
@@ -839,7 +1414,7 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
     self.currentURL = healthyURL;
     self.port = [NSString stringWithFormat:@"%ld", (long)TrainTimerURLPort(healthyURL, basePort)];
     [self showRunning];
-    [self openWeb:nil];
+    if (shouldOpenBrowser) [self openWeb:nil];
     return;
   }
   if (self.nodePath.length == 0) {
@@ -847,14 +1422,23 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
     return;
   }
 
-  TrainTimerPrewarmChrome();
-  [self setBusyMessage:@"正在启动服务；Chrome 已提前准备，服务就绪后会打开网页。"];
+  if (shouldOpenBrowser) TrainTimerPrewarmChrome();
+  NSString *startupMessage = nil;
+  if (!shouldOpenBrowser) {
+    startupMessage = @"正在重新启动本地服务。";
+  } else if (TrainTimerChromeApplicationURL()) {
+    startupMessage = @"正在准备本地服务。就绪后会自动在 Chrome 中打开。";
+  } else {
+    startupMessage = @"正在准备本地服务。就绪后会自动在默认浏览器中打开。";
+  }
+  [self setBusyMessage:startupMessage];
   NSString *nodePath = self.nodePath;
   NSString *projectRoot = self.projectRoot;
   NSString *host = self.host;
   NSString *basePortText = self.basePort;
 
-  dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+  dispatch_group_async(self.startupGroup, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+    if (self.terminating) return;
     NSInteger startPort = TrainTimerPortInteger(basePortText, 3211);
     NSInteger stopPort = TrainTimerManagedPortEnd(startPort);
     TrainTimerAppendLog([NSString stringWithFormat:@"Preparing managed ports %ld-%ld", (long)startPort, (long)stopPort]);
@@ -880,6 +1464,8 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
       return;
     }
 
+    if (self.terminating) return;
+
     TrainTimerAppendLog([NSString stringWithFormat:@"Starting direct service with %@ from %@ on %@; stopped %lu old service(s)",
                                                    nodePath,
                                                    runtimeRoot,
@@ -894,10 +1480,17 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
       });
       return;
     }
+    self.serverPid = spawnedPid;
+    if (self.terminating) {
+      TrainTimerTerminatePid(spawnedPid, 1.0);
+      self.serverPid = 0;
+      return;
+    }
 
     BOOL healthy = NO;
     NSString *actualURL = currentURL;
     for (NSUInteger attempt = 0; attempt < 120; attempt++) {
+      if (self.terminating) break;
       if (TrainTimerHealthCheck(currentURL)) {
         healthy = YES;
         break;
@@ -917,16 +1510,28 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
       [NSThread sleepForTimeInterval:0.25];
     }
 
+    if (self.terminating) {
+      TrainTimerTerminatePid(spawnedPid, 1.0);
+      self.serverPid = 0;
+      return;
+    }
+
     dispatch_async(dispatch_get_main_queue(), ^{
+      if (self.terminating) {
+        TrainTimerTerminatePid(spawnedPid, 1.0);
+        self.serverPid = 0;
+        return;
+      }
       if (healthy) {
         self.currentURL = actualURL;
         self.port = [NSString stringWithFormat:@"%ld", (long)TrainTimerURLPort(actualURL, selectedPort)];
         self.serverPid = spawnedPid;
         [self showRunning];
-        [self openWeb:nil];
+        if (shouldOpenBrowser) [self openWeb:nil];
       } else {
         TrainTimerAppendLog(@"Direct service did not become healthy");
         TrainTimerTerminatePid(spawnedPid, 1.0);
+        self.serverPid = 0;
         [self showStoppedWithMessage:@"启动失败或超时。请查看日志。"];
       }
     });
@@ -935,11 +1540,24 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
 
 - (void)openWeb:(id)sender {
   NSURL *url = [NSURL URLWithString:self.currentURL];
-  BOOL opened = TrainTimerOpenURLPreferChrome(url);
-  self.messageField.stringValue = opened ? @"网页已用 Chrome 打开。" : [NSString stringWithFormat:@"无法自动打开网页：%@", self.currentURL];
+  TrainTimerOpenURLPreferChrome(url, ^(BOOL opened, BOOL usedChrome, NSError *error) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+      if (opened && usedChrome) {
+        self.browserField.stringValue = @"Google Chrome · 已打开";
+        [self showTransientFeedback:@"已在 Chrome 中打开" color:NSColor.secondaryLabelColor];
+      } else if (opened) {
+        self.browserField.stringValue = @"默认浏览器 · 已打开";
+        [self showTransientFeedback:@"未找到 Chrome，已改用默认浏览器" color:NSColor.systemOrangeColor];
+      } else {
+        NSString *failure = error.localizedDescription.length > 0 ? @"无法在 Chrome 中打开，请重试或复制地址" : @"无法自动打开网页，请重试或复制地址";
+        [self showTransientFeedback:failure color:NSColor.systemRedColor];
+      }
+    });
+  });
 }
 
 - (void)stopService:(id)sender {
+  if (self.busy || self.refreshInFlight) return;
   NSInteger basePort = TrainTimerPortInteger(self.basePort, 3211);
   NSInteger endPort = TrainTimerManagedPortEnd(basePort);
   if (!self.running && !TrainTimerFindHealthyServiceURL(self.host, basePort, endPort)) {
@@ -961,12 +1579,14 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
 
     dispatch_async(dispatch_get_main_queue(), ^{
       self.serverPid = 0;
-      [self showStoppedWithMessage:[NSString stringWithFormat:@"本地网页服务已停止；已清理 %lu 个项目端口服务。", (unsigned long)stopped]];
+      TrainTimerAppendLog([NSString stringWithFormat:@"Stopped %lu managed TrainTimer service(s)", (unsigned long)stopped]);
+      [self showStoppedWithMessage:@"服务已安全停止。再次启动时会自动打开网页。"];
     });
   });
 }
 
 - (void)restartService:(id)sender {
+  if (self.busy || self.refreshInFlight) return;
   NSInteger basePort = TrainTimerPortInteger(self.basePort, 3211);
   NSInteger endPort = TrainTimerManagedPortEnd(basePort);
   if (!self.running && !TrainTimerFindHealthyServiceURL(self.host, basePort, endPort)) {
@@ -988,19 +1608,23 @@ static BOOL TrainTimerStartLaunchAgent(NSString *nodePath, NSString *projectRoot
 
     dispatch_async(dispatch_get_main_queue(), ^{
       self.serverPid = 0;
-      [self startService:nil];
+      self.busy = NO;
+      [self startServiceOpeningBrowser:NO];
     });
   });
 }
 
 - (void)refreshStatus:(id)sender {
-  if (self.busy && sender != nil) return;
+  if (self.busy || self.refreshInFlight) return;
+  self.refreshInFlight = YES;
+  [self setControlsEnabled:NO];
 
   dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
     NSInteger basePort = TrainTimerPortInteger(self.basePort, 3211);
     NSInteger endPort = TrainTimerManagedPortEnd(basePort);
     NSString *healthyURL = TrainTimerFindHealthyServiceURL(self.host, basePort, endPort);
     dispatch_async(dispatch_get_main_queue(), ^{
+      self.refreshInFlight = NO;
       if (healthyURL.length > 0) {
         self.currentURL = healthyURL;
         self.port = [NSString stringWithFormat:@"%ld", (long)TrainTimerURLPort(healthyURL, basePort)];

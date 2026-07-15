@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="1600"
+  height="420"
+  viewBox="0 0 1600 420"
+  role="img"
+  aria-labelledby="title description"
+  shape-rendering="geometricPrecision"
+  text-rendering="geometricPrecision"
+>
+  <title id="title">TrainTimer Name Primary wordmark concept</title>
+  <desc id="description">
+    A compact TrainTimer wordmark built around two matching custom T glyphs. The two i dots and the orange Train Timer separator repeat one vertical datum shape to create a measured rhythm.
+  </desc>
+  <metadata>
+    Concept text uses the locally installed Avenir Next Condensed Demi Bold as a construction base. Production artwork must convert the remaining text to outlines, then optically refine spacing and terminals before export.
+  </metadata>
+
+  <defs>
+    <!-- Custom T: broad datum bar, condensed stem, and a small calibrated cut at the lower-right terminal. -->
+    <path
+      id="custom-t"
+      d="M16 0H174C184 0 190 6 190 16V28C190 38 184 44 174 44H118V202L110 210H72V44H16C6 44 0 38 0 28V16C0 6 6 0 16 0Z"
+    />
+  </defs>
+
+  <g id="name" fill="#171A1F">
+    <use href="#custom-t" transform="translate(148 105)"/>
+    <text
+      x="288"
+      y="315"
+      font-family="Avenir Next Condensed, DIN Condensed, sans-serif"
+      font-size="260"
+      font-weight="600"
+      font-stretch="condensed"
+      font-kerning="normal"
+      letter-spacing="0.5"
+    >ra&#x0131;n</text>
+
+    <use href="#custom-t" transform="translate(807 105)"/>
+    <text
+      x="992"
+      y="315"
+      font-family="Avenir Next Condensed, DIN Condensed, sans-serif"
+      font-size="260"
+      font-weight="600"
+      font-stretch="condensed"
+      font-kerning="normal"
+      letter-spacing="0.5"
+    >&#x0131;mer</text>
+  </g>
+
+  <!-- The i dots and split marker share one exact 14 × 36 datum shape. -->
+  <g id="letter-datums" fill="#171A1F">
+    <rect x="506" y="126" width="14" height="36" rx="7"/>
+    <rect x="1017" y="126" width="14" height="36" rx="7"/>
+  </g>
+  <rect id="split-datum" x="735" y="192" width="14" height="36" rx="7" fill="#FF5A1F"/>
+</svg>

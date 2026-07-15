@@ -1,0 +1,855 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TrainTimer · Focus Arena v2</title>
+    <!--
+      Huashu-design v2 assumptions:
+      - Standalone visual prototype only. It does not replace or import the production app shell.
+      - The previous concept was too dashboard-like. This version makes the timer a cinematic training arena.
+      - Sample values are static demo data for layout pressure only.
+      - Brand cues come from existing TrainTimer assets: dark graphite, cyan, mint, timer/cube mark and orange highlight.
+    -->
+    <style>
+      :root {
+        color-scheme: dark;
+        --ink: #f7f7f8;
+        --muted: #8e8e93;
+        --soft: #c8c8ce;
+        --bg: #07080a;
+        --panel: rgba(24, 24, 28, 0.72);
+        --panel-strong: rgba(33, 33, 39, 0.86);
+        --line: rgba(255, 255, 255, 0.14);
+        --line-soft: rgba(255, 255, 255, 0.08);
+        --cyan: #18d6df;
+        --cyan-2: #00adb5;
+        --mint: #8dffbe;
+        --orange: #ff9f0a;
+        --red: #ff453a;
+        --green: #30d158;
+        --blue: #0a84ff;
+        --radius: 8px;
+        --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+      }
+
+      body {
+        min-height: 100dvh;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+          "Microsoft YaHei", "Segoe UI", sans-serif;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background:
+          radial-gradient(circle at 50% 48%, rgba(24, 214, 223, 0.18), transparent 28%),
+          radial-gradient(circle at 82% 16%, rgba(255, 159, 10, 0.18), transparent 20%),
+          linear-gradient(180deg, #19191d 0%, #0e0e12 48%, #050507 100%);
+      }
+
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.032) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.024) 1px, transparent 1px),
+          linear-gradient(110deg, transparent 0 46%, rgba(255, 255, 255, 0.055) 46.2% 46.6%, transparent 46.8%);
+        background-size: 72px 72px, 72px 72px, 100% 100%;
+        mask-image: radial-gradient(circle at 50% 48%, black 0 54%, transparent 84%);
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .arena {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: 282px minmax(0, 1fr) 316px;
+        grid-template-rows: 76px minmax(0, 1fr) 116px;
+        gap: 14px;
+        height: 100dvh;
+        min-height: 0;
+        overflow: hidden;
+        padding: 18px;
+      }
+
+      .top {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: 280px minmax(0, 1fr) auto;
+        gap: 14px;
+        align-items: center;
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+      }
+
+      .logo img {
+        width: 198px;
+        height: auto;
+      }
+
+      .session-title {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .session-title h1 {
+        margin: 0;
+        font-family: "Avenir Next Condensed", "DIN Alternate", "SF Pro Display", sans-serif;
+        font-size: clamp(32px, 4.8vw, 74px);
+        font-weight: 950;
+        letter-spacing: 0;
+        line-height: 0.82;
+      }
+
+      .session-title p {
+        margin: 9px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 720;
+      }
+
+      .system-strip {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 34px;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.055);
+        padding: 0 11px;
+        color: var(--soft);
+        font-size: 12px;
+        font-weight: 780;
+        white-space: nowrap;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--green);
+        box-shadow: 0 0 0 4px rgba(48, 209, 88, 0.16);
+      }
+
+      .dot.hot {
+        background: var(--orange);
+        box-shadow: 0 0 0 4px rgba(255, 159, 10, 0.17);
+      }
+
+      .rail,
+      .stage,
+      .bottom-bar {
+        min-width: 0;
+        min-height: 0;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)),
+          var(--panel);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        overflow: hidden;
+      }
+
+      .rail {
+        display: flex;
+        flex-direction: column;
+        padding: 12px;
+      }
+
+      .rail h2,
+      .stage h2 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 860;
+      }
+
+      .rail p,
+      .stage p {
+        margin: 5px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 650;
+        line-height: 1.45;
+      }
+
+      .left-rail {
+        grid-row: 2 / 4;
+      }
+
+      .right-rail {
+        grid-column: 3;
+        grid-row: 2 / 4;
+      }
+
+      .stage {
+        position: relative;
+        grid-column: 2;
+        grid-row: 2;
+        display: grid;
+        place-items: center;
+        padding: 22px;
+        background:
+          radial-gradient(circle at 50% 42%, rgba(24, 214, 223, 0.2), transparent 34%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.018)),
+          rgba(14, 14, 18, 0.8);
+      }
+
+      .stage::before,
+      .stage::after {
+        content: "";
+        position: absolute;
+        pointer-events: none;
+      }
+
+      .stage::before {
+        width: min(58vw, 660px);
+        aspect-ratio: 1;
+        border: 1px solid rgba(24, 214, 223, 0.22);
+        border-radius: 50%;
+        box-shadow:
+          inset 0 0 70px rgba(24, 214, 223, 0.07),
+          0 0 120px rgba(24, 214, 223, 0.08);
+      }
+
+      .stage::after {
+        inset: auto 0 0;
+        height: 34%;
+        background: linear-gradient(180deg, transparent, rgba(7, 8, 10, 0.58));
+      }
+
+      .timer-stack {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        justify-items: center;
+        width: min(100%, 790px);
+      }
+
+      .ready-line {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+        color: var(--mint);
+        font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .ready-line::before,
+      .ready-line::after {
+        content: "";
+        width: 68px;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--mint));
+      }
+
+      .ready-line::after {
+        background: linear-gradient(90deg, var(--mint), transparent);
+      }
+
+      .stage p.timer {
+        margin: 0;
+        color: #fff;
+        font-family: "Avenir Next Condensed", "DIN Condensed", "DIN Alternate", "SF Pro Display", sans-serif;
+        font-size: clamp(132px, 17vw, 248px);
+        font-weight: 950;
+        letter-spacing: 0;
+        line-height: 0.76;
+        font-variant-numeric: tabular-nums;
+        text-shadow:
+          0 0 34px rgba(24, 214, 223, 0.18),
+          0 22px 70px rgba(0, 0, 0, 0.62);
+      }
+
+      .stage p.timer span {
+        color: rgba(255, 255, 255, 0.72);
+        font-size: 0.56em;
+      }
+
+      .scramble-ribbon {
+        display: flex;
+        width: min(100%, 760px);
+        min-height: 48px;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 24px;
+        border: 1px solid rgba(24, 214, 223, 0.22);
+        border-radius: var(--radius);
+        background: rgba(4, 10, 12, 0.44);
+        padding: 8px 14px;
+        color: var(--soft);
+        font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+        font-size: clamp(13px, 1.24vw, 17px);
+        font-weight: 740;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+
+      .scramble-ribbon strong {
+        color: var(--cyan);
+      }
+
+      .scramble-ribbon em {
+        color: var(--orange);
+        font-style: normal;
+      }
+
+      .stage-metrics {
+        display: grid;
+        width: min(100%, 620px);
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-top: 18px;
+      }
+
+      .metric {
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.045);
+        padding: 10px;
+      }
+
+      .metric span {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 780;
+      }
+
+      .metric strong {
+        display: block;
+        margin-top: 3px;
+        color: var(--ink);
+        font-size: 22px;
+        font-weight: 900;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .bottom-bar {
+        grid-column: 2;
+        grid-row: 3;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 14px;
+        align-items: center;
+        padding: 12px;
+      }
+
+      .move-stream {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 6px;
+        overflow: hidden;
+        font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+      }
+
+      .turn {
+        display: grid;
+        width: 40px;
+        height: 40px;
+        flex: 0 0 auto;
+        place-items: center;
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--soft);
+        font-size: 13px;
+        font-weight: 850;
+      }
+
+      .turn.fast {
+        background: rgba(141, 255, 190, 0.12);
+        color: var(--mint);
+      }
+
+      .turn.slow {
+        background: rgba(255, 159, 10, 0.14);
+        color: #ffd28a;
+      }
+
+      .turn.error {
+        background: rgba(255, 69, 58, 0.16);
+        color: #ffb4ad;
+      }
+
+      .cta-stack {
+        display: flex;
+        gap: 8px;
+      }
+
+      .action {
+        min-height: 42px;
+        border: 0;
+        border-radius: var(--radius);
+        cursor: pointer;
+        padding: 0 16px;
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 840;
+        transition: transform 160ms var(--ease), background 160ms var(--ease);
+      }
+
+      .action:hover {
+        transform: translateY(-1px);
+      }
+
+      .action.primary {
+        background: linear-gradient(135deg, var(--cyan), var(--mint));
+        color: #020404;
+      }
+
+      .action.ghost {
+        border: 1px solid var(--line-soft);
+        background: rgba(255, 255, 255, 0.055);
+      }
+
+      .module {
+        display: grid;
+        gap: 9px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      .module + .module {
+        padding-top: 10px;
+      }
+
+      .module:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      .mini-cube {
+        display: grid;
+        width: 178px;
+        max-width: 100%;
+        aspect-ratio: 4 / 3;
+        grid-template-columns: repeat(12, 1fr);
+        grid-template-rows: repeat(9, 1fr);
+        gap: 3px;
+        align-self: center;
+        margin: 4px auto 0;
+      }
+
+      .facelet {
+        border-radius: 3px;
+        box-shadow: inset 0 0 0 1px rgba(7, 8, 10, 0.42);
+      }
+
+      .w { background: #f5f5f7; }
+      .y { background: #facc15; }
+      .r { background: #dc2626; }
+      .o { background: #f97316; }
+      .g { background: #16a34a; }
+      .b { background: #2563eb; }
+
+      .sync-grid {
+        display: grid;
+        gap: 8px;
+      }
+
+      .sync-row,
+      .stage-row,
+      .plan-row {
+        display: grid;
+        min-height: 38px;
+        align-items: center;
+        border-top: 1px solid var(--line-soft);
+        gap: 8px;
+        color: var(--soft);
+        font-size: 12px;
+      }
+
+      .sync-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+        border-top: 0;
+      }
+
+      .sync-row strong,
+      .stage-row strong,
+      .plan-row strong {
+        color: var(--ink);
+        font-weight: 860;
+      }
+
+      .sync-row span:last-child {
+        color: var(--cyan);
+        font-weight: 820;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .stage-row {
+        grid-template-columns: 45px minmax(0, 1fr) auto;
+      }
+
+      .stage-row i {
+        display: block;
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.09);
+        overflow: hidden;
+      }
+
+      .stage-row i::before {
+        content: "";
+        display: block;
+        width: var(--w);
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--cyan), var(--mint));
+      }
+
+      .stage-row.slow i::before {
+        background: linear-gradient(90deg, var(--orange), #ffd28a);
+      }
+
+      .module-highlight {
+        border: 1px solid rgba(255, 159, 10, 0.26);
+        border-radius: var(--radius);
+        background: rgba(255, 159, 10, 0.07);
+        padding: 11px;
+      }
+
+      .module-highlight h3 {
+        margin: 0;
+        color: #ffd28a;
+        font-size: 15px;
+      }
+
+      .module-highlight p {
+        margin-top: 7px;
+        color: var(--soft);
+      }
+
+      .plan-row {
+        grid-template-columns: 28px minmax(0, 1fr) auto;
+      }
+
+      .plan-row span:first-child {
+        display: grid;
+        width: 24px;
+        height: 24px;
+        place-items: center;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--soft);
+        font-size: 11px;
+        font-weight: 900;
+      }
+
+      .plan-row em {
+        color: var(--cyan);
+        font-style: normal;
+        font-weight: 850;
+      }
+
+      .sparkline {
+        display: grid;
+        height: 54px;
+        grid-template-columns: repeat(22, 1fr);
+        align-items: end;
+        gap: 3px;
+        padding-top: 6px;
+      }
+
+      .sparkline i {
+        min-height: 8px;
+        border-radius: 4px 4px 1px 1px;
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .sparkline .good {
+        background: linear-gradient(180deg, var(--mint), rgba(141, 255, 190, 0.24));
+      }
+
+      .sparkline .mid {
+        background: linear-gradient(180deg, var(--cyan), rgba(24, 214, 223, 0.2));
+      }
+
+      .sparkline .bad {
+        background: linear-gradient(180deg, var(--orange), rgba(255, 159, 10, 0.18));
+      }
+
+      .toast {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        z-index: 2;
+        border: 1px solid rgba(24, 214, 223, 0.24);
+        border-radius: var(--radius);
+        background: rgba(12, 12, 15, 0.94);
+        padding: 12px 14px;
+        color: var(--ink);
+        font-size: 13px;
+        opacity: 0;
+        transform: translateY(10px);
+        transition: opacity 180ms var(--ease), transform 180ms var(--ease);
+        pointer-events: none;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @media (max-width: 1180px) {
+        body {
+          overflow: auto;
+        }
+
+        .arena {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto auto auto auto auto;
+        }
+
+        .top,
+        .stage,
+        .left-rail,
+        .right-rail,
+        .bottom-bar {
+          grid-column: 1;
+          grid-row: auto;
+        }
+
+        .top {
+          grid-template-columns: 1fr;
+        }
+
+        .system-strip {
+          justify-content: flex-start;
+          flex-wrap: wrap;
+        }
+
+        .left-rail,
+        .right-rail {
+          min-height: 320px;
+        }
+      }
+
+      @media (max-width: 700px) {
+        .arena {
+          padding: 12px;
+        }
+
+        .timer {
+          font-size: clamp(92px, 29vw, 156px);
+        }
+
+        .stage-metrics,
+        .bottom-bar {
+          grid-template-columns: 1fr;
+        }
+
+        .cta-stack {
+          width: 100%;
+        }
+
+        .action {
+          flex: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="arena">
+      <header class="top">
+        <div class="logo">
+          <img src="../public/logo.svg" alt="TrainTimer" />
+        </div>
+        <div class="session-title">
+          <h1>Focus Arena</h1>
+          <p>把训练页面从「管理成绩」推到「准备下一把」。</p>
+        </div>
+        <div class="system-strip" aria-label="系统状态">
+          <span class="pill"><i class="dot"></i>GAN Gen4 82%</span>
+          <span class="pill"><i class="dot hot"></i>F2L 慢段锁定</span>
+          <span class="pill">3x3 · 主会话</span>
+        </div>
+      </header>
+
+      <aside class="rail left-rail" aria-label="打乱与实体状态">
+        <section class="module">
+          <div>
+            <h2>实体状态</h2>
+            <p>实体魔方、打乱目标和修正路线合并成一块。</p>
+          </div>
+          <div id="miniCube" class="mini-cube" aria-label="魔方展开图"></div>
+          <div class="sync-grid">
+            <div class="sync-row"><strong>路径进度</strong><span>14 / 22</span></div>
+            <div class="sync-row"><strong>最近通知</strong><span>36 ms</span></div>
+            <div class="sync-row"><strong>修正建议</strong><span>U' R'</span></div>
+          </div>
+        </section>
+        <section class="module">
+          <div>
+            <h2>CFOP 拆解</h2>
+            <p>只突出当前最该看的段落。</p>
+          </div>
+          <div class="stage-row"><strong>Cross</strong><i style="--w: 42%"></i><span>1.54s</span></div>
+          <div class="stage-row slow"><strong>F2L</strong><i style="--w: 88%"></i><span>5.81s</span></div>
+          <div class="stage-row"><strong>OLL</strong><i style="--w: 48%"></i><span>1.42s</span></div>
+          <div class="stage-row"><strong>PLL</strong><i style="--w: 61%"></i><span>2.08s</span></div>
+        </section>
+        <section class="module">
+          <div>
+            <h2>最近节奏</h2>
+            <p>ao12 仍在下降，但 F2L 停顿开始放大。</p>
+          </div>
+          <div class="sparkline" aria-label="最近成绩趋势">
+            <i class="bad" style="height: 78%"></i><i class="mid" style="height: 62%"></i><i class="mid" style="height: 66%"></i><i class="good" style="height: 44%"></i><i class="good" style="height: 38%"></i><i class="mid" style="height: 55%"></i><i class="bad" style="height: 82%"></i><i class="mid" style="height: 67%"></i><i class="good" style="height: 41%"></i><i class="mid" style="height: 58%"></i><i class="good" style="height: 46%"></i><i class="mid" style="height: 57%"></i><i class="bad" style="height: 72%"></i><i class="mid" style="height: 64%"></i><i class="good" style="height: 36%"></i><i class="mid" style="height: 52%"></i><i class="mid" style="height: 59%"></i><i class="good" style="height: 40%"></i><i class="mid" style="height: 56%"></i><i class="good" style="height: 35%"></i><i class="mid" style="height: 49%"></i><i class="good" style="height: 32%"></i>
+          </div>
+        </section>
+      </aside>
+
+      <section class="stage" aria-label="计时舞台">
+        <div class="timer-stack">
+          <div class="ready-line">Ready for next solve</div>
+          <p class="timer">10<span>.</span>847</p>
+          <div class="scramble-ribbon" aria-label="当前打乱">
+            <strong>R U R2 F B2 L D2 R2 U2 F2</strong>
+            <em>U?</em>
+            <span>R' F2 D B' L2</span>
+          </div>
+          <div class="stage-metrics" aria-label="上一把指标">
+            <div class="metric"><span>ao5</span><strong>11.42</strong></div>
+            <div class="metric"><span>TPS</span><strong>5.72</strong></div>
+            <div class="metric"><span>转动</span><strong>62</strong></div>
+            <div class="metric"><span>观察</span><strong>7.8</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="bottom-bar" aria-label="转动流">
+        <div class="move-stream">
+          <span class="turn fast">R</span>
+          <span class="turn fast">U</span>
+          <span class="turn">R'</span>
+          <span class="turn slow">U'</span>
+          <span class="turn slow">y</span>
+          <span class="turn">L'</span>
+          <span class="turn fast">U</span>
+          <span class="turn fast">L</span>
+          <span class="turn">R</span>
+          <span class="turn error">U?</span>
+          <span class="turn">R'</span>
+          <span class="turn fast">F2</span>
+          <span class="turn fast">D</span>
+          <span class="turn">B'</span>
+        </div>
+        <div class="cta-stack">
+          <button class="action ghost" type="button" data-toast="已把这把复盘摘要复制到草稿。">复制摘要</button>
+          <button class="action primary" type="button" data-toast="已锁定 F2L 慢段，下一把进入专项训练。">锁定专项</button>
+        </div>
+      </section>
+
+      <aside class="rail right-rail" aria-label="训练计划">
+        <section class="module">
+          <div class="module-highlight">
+            <h3>下一把只练一个问题</h3>
+            <p>第三槽回看过长。接下来 8 把固定 F2L 入口识别，目标把慢段从 0.62s 压到 0.42s。</p>
+          </div>
+        </section>
+        <section class="module">
+          <div>
+            <h2>专项队列</h2>
+            <p>可直接从复盘进入下一把，不再跳到另一个弹窗。</p>
+          </div>
+          <div class="plan-row"><span>1</span><strong>F2L 右前槽入口</strong><em>8 把</em></div>
+          <div class="plan-row"><span>2</span><strong>PLL U perm 识别</strong><em>6 把</em></div>
+          <div class="plan-row"><span>3</span><strong>OLL 27 零 AUF</strong><em>4 把</em></div>
+          <div class="plan-row"><span>4</span><strong>自由复原回测</strong><em>12 把</em></div>
+        </section>
+        <section class="module">
+          <div>
+            <h2>会话摘要</h2>
+            <p>把“值得行动”的数据留下，其余收起来。</p>
+          </div>
+          <div class="sync-grid">
+            <div class="sync-row"><strong>ao12</strong><span>11.68</span></div>
+            <div class="sync-row"><strong>ao50</strong><span>12.03</span></div>
+            <div class="sync-row"><strong>最佳单次</strong><span>9.94</span></div>
+            <div class="sync-row"><strong>本组目标</strong><span>18 min</span></div>
+          </div>
+        </section>
+      </aside>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      const cubeColors = {
+        U: ["w", "w", "r", "w", "w", "b", "g", "w", "w"],
+        L: ["o", "g", "o", "o", "o", "y", "o", "r", "o"],
+        F: ["g", "g", "w", "y", "g", "g", "g", "b", "g"],
+        R: ["r", "r", "b", "w", "r", "r", "y", "r", "r"],
+        B: ["b", "y", "b", "b", "b", "o", "b", "b", "w"],
+        D: ["y", "y", "g", "r", "y", "y", "y", "o", "y"],
+      };
+
+      const faceOffsets = { U: [3, 0], L: [0, 3], F: [3, 3], R: [6, 3], B: [9, 3], D: [3, 6] };
+      const cube = document.querySelector("#miniCube");
+
+      Object.entries(cubeColors).forEach(([face, colors]) => {
+        const [x, y] = faceOffsets[face];
+        colors.forEach((color, index) => {
+          const tile = document.createElement("i");
+          tile.className = `facelet ${color}`;
+          tile.style.gridColumn = `${x + (index % 3) + 1}`;
+          tile.style.gridRow = `${y + Math.floor(index / 3) + 1}`;
+          cube.appendChild(tile);
+        });
+      });
+
+      const toast = document.querySelector("#toast");
+      let toastTimer = 0;
+      document.querySelectorAll("[data-toast]").forEach((button) => {
+        button.addEventListener("click", () => {
+          toast.textContent = button.dataset.toast;
+          toast.classList.add("show");
+          window.clearTimeout(toastTimer);
+          toastTimer = window.setTimeout(() => toast.classList.remove("show"), 1700);
+        });
+      });
+    </script>
+  </body>
+</html>

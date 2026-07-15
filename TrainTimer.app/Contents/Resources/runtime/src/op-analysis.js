@@ -1,5 +1,10 @@
 import { algorithmTrainerCases } from './algorithm-trainer-cases.js';
-import { solveCfopAnalysis, solveFaceletSnapshotsForAnalysis } from './cfop-analysis.js';
+import { bluetoothStateLogCachePart, hasBluetoothStateLogSnapshots } from './bluetooth-state-log.js';
+import {
+  solveCfopAnalysis,
+  solveFaceletSnapshotsForAnalysis,
+  solveFaceletStateTimelineForAnalysis,
+} from './cfop-analysis.js';
 import { opPdfAlgorithmForCase } from './op-pdf-algorithms.js';
 import {
   applyMoveToFacelets,
@@ -68,6 +73,8 @@ let opCaseLibraryCache = null;
 let opCaseIndexCache = null;
 let pllPermutationCaseIndexCache = null;
 const opEventsForSaveCache = new WeakMap();
+
+export const opAnalysisVersion = 4;
 
 export function opCaseLibrary() {
   if (!opCaseLibraryCache) {
@@ -292,7 +299,9 @@ export function solveOpAnalysis(solve) {
   const records = Array.isArray(analysis.detectionRecords) && analysis.detectionRecords.length > 0
     ? analysis.detectionRecords
     : analysis.records;
-  if (!solve?.scramble || (solve.scramblePuzzle || 'three') !== 'three' || records.length === 0) {
+  const hasStateTimeline = hasBluetoothStateLogSnapshots(solve?.bluetoothStateLog)
+    || (Array.isArray(solve?.bluetoothStateCorrections) && solve.bluetoothStateCorrections.length > 0);
+  if (!solve?.scramble || (solve.scramblePuzzle || 'three') !== 'three' || (records.length === 0 && !hasStateTimeline)) {
     return { events: [], records: analysis.records, detectionRecords: records };
   }
 
@@ -356,6 +365,8 @@ export function opEventsForSave(solve) {
     signature: event.signature,
     formulaAccepted: event.formulaAccepted === true,
     formulaReason: event.formulaReason || '',
+    recoveredFromStateLog: event.recoveredFromStateLog === true,
+    analysisVersion: opAnalysisVersion,
     moveTimings: event.moveTimings,
   }));
   if (solve && typeof solve === 'object') opEventsForSaveCache.set(solve, { key: cacheKey, events });
@@ -459,8 +470,10 @@ function opEventsCacheKey(solve) {
     solve?.scramblePuzzle || '',
     solve?.timerStartedAtMs ?? '',
     solve?.timerStartedAt || '',
-    solve?.bluetoothSolvedByStatePacket === true || solve?.finalSolvedByStatePacket === true ? 1 : 0,
+    solveFinalSolvedByStatePacket(solve) ? 1 : 0,
+    solve?.timerSource || '',
     bluetoothStateCorrectionsCachePart(solve?.bluetoothStateCorrections),
+    bluetoothStateLogCachePart(solve?.bluetoothStateLog),
     moveLog.map(opMoveLogCachePart).join(','),
     moves.map((move) => String(move || '')).join(' '),
   ].join('|');
@@ -668,7 +681,124 @@ function opEventsForBottomFace(solve, snapshots, records, bottomFace, stages = [
       opEventFromStage(stages.find((stage) => stage.key === 'oll' || stage.label === 'O'), 'oll', opSnapshots, opRecords, solve),
       opEventFromStage(stages.find((stage) => stage.key === 'pll' || stage.label === 'P'), 'pll', opSnapshots, opRecords, solve),
     ].filter(Boolean);
-  return mergeOpEvents(scannedEvents, stageEvents);
+  const mergedEvents = mergeOpEvents(scannedEvents, stageEvents);
+  const stateTimelineEvents = opStateTimelineEventsForBottomFace(
+    solve,
+    records,
+    bottomFace,
+    stages,
+    normalizeOptions,
+    mergedEvents,
+  );
+  return mergeOpEvents(mergedEvents, stateTimelineEvents);
+}
+
+function opStateTimelineEventsForBottomFace(solve, records, bottomFace, stages, normalizeOptions, existingEvents) {
+  if (!hasBluetoothStateLogSnapshots(solve?.bluetoothStateLog)
+    && !(Array.isArray(solve?.bluetoothStateCorrections) && solve.bluetoothStateCorrections.length > 0)) {
+    return [];
+  }
+  const timeline = solveFaceletStateTimelineForAnalysis(solve, records)
+    .map((snapshot) => ({
+      ...snapshot,
+      facelets: normalizeOpSnapshotsForBottomFace([snapshot.facelets], bottomFace, stages, normalizeOptions)[0],
+    }));
+  if (timeline.length < 2) return [];
+
+  const existingKinds = new Set((Array.isArray(existingEvents) ? existingEvents : []).map((event) => event?.kind));
+  const events = [];
+  for (const kind of ['oll', 'pll']) {
+    if (existingKinds.has(kind)) continue;
+    const event = opEventFromStateTimeline(kind, timeline, records, solve, stages);
+    if (event) events.push(event);
+  }
+  return events;
+}
+
+function opEventFromStateTimeline(kind, timeline, records, solve, stages) {
+  const minimumStep = Math.max(0, Number(cfopF2lCompletionStep(stages)) || 0);
+  for (let startIndex = 0; startIndex < timeline.length - 1; startIndex += 1) {
+    const start = timeline[startIndex];
+    if (start.source !== 'state' || start.step < minimumStep) continue;
+    const recognition = kind === 'oll' ? recognizeOllCase(start.facelets) : recognizePllCase(start.facelets);
+    if (!recognition || recognition.confidence !== 'unique') continue;
+    if (kind === 'oll' && pllSignatureFromFacelets(start.facelets)) continue;
+
+    for (let endIndex = startIndex + 1; endIndex < timeline.length; endIndex += 1) {
+      const end = timeline[endIndex];
+      if (!opEventCompletionReached(kind, end.facelets, end.step, records.length, solve)) continue;
+      return buildStateTimelineOpEvent(kind, recognition, start, end, records, solve);
+    }
+  }
+  return null;
+}
+
+function buildStateTimelineOpEvent(kind, recognition, start, end, records, solve) {
+  const recordStart = Math.max(0, Math.min(records.length, start.step));
+  const recordEnd = Math.max(recordStart, Math.min(records.length, end.step));
+  const moves = records.slice(recordStart, recordEnd).map((record) => record.move).filter(Boolean);
+  const moveTimings = moveTimingsForRange(records, recordStart, recordEnd, start.elapsedMs);
+  const validation = moves.length > 0
+    ? evaluateOpFormulaCandidate({
+      kind,
+      caseId: recognition.caseId,
+      startFacelets: start.facelets,
+      moves,
+      maxMoves: kind === 'oll' ? 24 : 30,
+      moveTimings,
+    })
+    : { accepted: false, reason: 'state-log-recovery' };
+  const startedAtElapsedMs = finiteTimelineNumber(start.elapsedMs);
+  const completedAtElapsedMs = finiteTimelineNumber(end.elapsedMs);
+  const firstMoveElapsedMs = recordEnd > recordStart ? elapsedAtSolveStep(records, recordStart + 1) : null;
+  const durationMs = Number.isFinite(startedAtElapsedMs) && Number.isFinite(completedAtElapsedMs)
+    ? Math.max(0, completedAtElapsedMs - startedAtElapsedMs)
+    : null;
+  const observationMs = Number.isFinite(startedAtElapsedMs) && Number.isFinite(firstMoveElapsedMs)
+    ? Math.max(0, firstMoveElapsedMs - startedAtElapsedMs)
+    : null;
+  const firstMoveTimestampMs = recordEnd > recordStart ? timestampAtSolveStep(records, recordStart + 1, solve) : null;
+  const firstMoveIsoTime = recordEnd > recordStart ? isoTimeAtSolveStep(records, recordStart + 1, solve) : '';
+
+  return {
+    kind,
+    caseId: recognition.caseId,
+    name: recognition.name,
+    group: recognition.group,
+    algorithm: recognition.algorithm,
+    pdfLabel: recognition.pdfLabel || '',
+    source: recognition.source || '',
+    confidence: recognition.confidence,
+    matchCount: recognition.matchCount,
+    signature: recognition.signature,
+    startStep: moves.length > 0 ? recordStart + 1 : recordStart,
+    endStep: recordEnd,
+    completedAt: end.step,
+    turns: moves.length,
+    durationMs,
+    observationMs,
+    tps: durationMs > 0 ? Math.round((moves.length / (durationMs / 1000)) * 100) / 100 : null,
+    moves,
+    startedAtElapsedMs,
+    firstMoveElapsedMs,
+    completedAtElapsedMs,
+    startedAtTimestampMs: finiteTimelineNumber(start.timestampMs),
+    firstMoveTimestampMs,
+    completedAtTimestampMs: finiteTimelineNumber(end.timestampMs),
+    startedAtIsoTime: start.isoTime || '',
+    firstMoveIsoTime,
+    completedAtIsoTime: end.isoTime || '',
+    startFacelets: start.facelets,
+    formulaAccepted: validation.accepted === true,
+    formulaReason: validation.accepted === true ? validation.reason : 'state-log-recovery',
+    recoveredFromStateLog: true,
+    moveTimings,
+  };
+}
+
+function finiteTimelineNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 function opNeedsOrientationFallback(events) {
@@ -687,7 +817,8 @@ function opEventStartsAfterPrimaryF2l(event, stages) {
 function shouldTryOrientationFallback(solve, events, bottomFace) {
   if (!bottomFace) return true;
   if (!Array.isArray(events) || events.length === 0) return true;
-  return Array.isArray(solve?.bluetoothStateCorrections) && solve.bluetoothStateCorrections.length > 0;
+  return (Array.isArray(solve?.bluetoothStateCorrections) && solve.bluetoothStateCorrections.length > 0)
+    || hasBluetoothStateLogSnapshots(solve?.bluetoothStateLog);
 }
 
 function normalizeOpSnapshotsForBottomFace(snapshots, bottomFace, stages = [], options = {}) {

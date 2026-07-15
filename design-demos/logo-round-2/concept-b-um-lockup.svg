@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1600"
+     height="420"
+     viewBox="0 0 1600 420"
+     role="img"
+     aria-labelledby="um-lockup-title um-lockup-desc">
+  <title id="um-lockup-title">TrainTimer Turn T horizontal lockup</title>
+  <desc id="um-lockup-desc">A compact graphite T assembled from a horizontally shifted top row and a vertically shifted center slice, paired with the TrainTimer name. Slim cobalt registration tracks reveal the two cube-layer movements without arrows or notation.</desc>
+
+  <defs>
+    <linearGradient id="lockMark" x1="64" y1="58" x2="342" y2="350" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#34434D"/>
+      <stop offset="0.5" stop-color="#1D2931"/>
+      <stop offset="1" stop-color="#0D151B"/>
+    </linearGradient>
+    <linearGradient id="lockSignal" x1="48" y1="66" x2="280" y2="322" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#72B9FA"/>
+      <stop offset="1" stop-color="#2D82DB"/>
+    </linearGradient>
+    <filter id="lockShadow" x="-28%" y="-28%" width="156%" height="170%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#0B1116" flood-opacity="0.2"/>
+    </filter>
+    <rect id="lockTopBand" width="282" height="88" rx="18"/>
+    <path id="lockMiddleColumn" d="M0 0H88V156Q88 196 48 196H40Q0 196 0 156Z"/>
+  </defs>
+
+  <!-- Transparent canvas: the symbol and name form the lockup. -->
+  <g id="lockup-mark" transform="translate(24 0)">
+    <!-- Original continuous layer slots. Non-active cube blocks are absent. -->
+    <g fill="#81909A" fill-opacity="0.1" stroke="#50616B" stroke-opacity="0.13" stroke-width="2">
+      <use href="#lockTopBand" x="38" y="62"/>
+      <use href="#lockMiddleColumn" x="143" y="146"/>
+    </g>
+
+    <g fill="url(#lockSignal)">
+      <rect x="41" y="82" width="5" height="48" rx="2.5"/>
+      <rect x="163" y="151" width="48" height="5" rx="2.5"/>
+    </g>
+
+    <!-- The vertically shifted column is drawn first; the horizontal layer band owns and covers the junction. -->
+    <g fill="url(#lockMark)" filter="url(#lockShadow)">
+      <use href="#lockMiddleColumn" x="143" y="154"/>
+    </g>
+    <g fill="url(#lockMark)" filter="url(#lockShadow)">
+      <use href="#lockTopBand" x="46" y="62"/>
+    </g>
+    <g fill="none" stroke="#62717A" stroke-opacity="0.68" stroke-width="2.5" stroke-linecap="round">
+      <!-- One middle-slice seam and two top-layer seams. -->
+      <path d="M158 252H216"/>
+      <path d="M140 75V137M234 75V137"/>
+    </g>
+  </g>
+
+  <text x="422" y="263"
+        fill="#17232B"
+        font-family="Avenir Next, SF Pro Display, Helvetica Neue, sans-serif"
+        font-size="150"
+        font-weight="650"
+        letter-spacing="-5">TrainTimer</text>
+</svg>

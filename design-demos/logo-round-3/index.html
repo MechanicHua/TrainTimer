@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TrainTimer U/M Cube T · Round 3</title>
+  <link rel="icon" href="um-cube-t.svg" type="image/svg+xml" />
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #ecece8;
+      --ink: #171819;
+      --muted: #707478;
+      --line: rgba(23,24,25,.14);
+      --panel: #f8f8f5;
+      --dark: #111419;
+      --blue: #3b8fea;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+
+    body {
+      background:
+        radial-gradient(circle at 55% -18%, rgba(255,255,255,.95), transparent 46%),
+        var(--paper);
+      color: var(--ink);
+      font-family: "Avenir Next", "SF Pro Text", "PingFang SC", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page {
+      width: min(1500px, calc(100% - 64px));
+      margin: 0 auto;
+      padding: 54px 0 68px;
+    }
+
+    .masthead {
+      display: grid;
+      grid-template-columns: 1fr minmax(360px, 520px);
+      gap: 48px;
+      align-items: end;
+      padding-bottom: 28px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: #777b7f;
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(38px, 4.2vw, 62px);
+      font-weight: 640;
+      letter-spacing: -.058em;
+      line-height: 1.02;
+      text-wrap: balance;
+    }
+
+    .intro {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.75;
+      text-wrap: pretty;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(420px, .9fr);
+      min-height: 690px;
+      margin-top: 34px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.62);
+      overflow: hidden;
+      box-shadow: 0 1px 0 rgba(255,255,255,.9) inset;
+    }
+
+    .hero {
+      position: relative;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background: linear-gradient(90deg, #eef0f3 0 46%, #111419 46% 100%);
+    }
+
+    .hero::after {
+      position: absolute;
+      inset: 0 auto 0 46%;
+      width: 1px;
+      background: rgba(255,255,255,.38);
+      content: "";
+    }
+
+    .hero-icon {
+      position: relative;
+      z-index: 1;
+      width: min(68%, 560px);
+      aspect-ratio: 1;
+      border-radius: 22%;
+      filter: drop-shadow(0 28px 32px rgba(0,0,0,.22));
+    }
+
+    .caption {
+      position: absolute;
+      left: 20px;
+      bottom: 17px;
+      color: rgba(106,111,115,.78);
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 9px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .side {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 24px;
+      padding: 32px;
+      border-left: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .subhead {
+      margin: 0 0 10px;
+      color: #7d8185;
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    .lockup {
+      min-height: 142px;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .lockup img { width: min(100%, 610px); max-height: 116px; }
+
+    .scale-test {
+      display: flex;
+      align-items: flex-end;
+      gap: 18px;
+      min-height: 106px;
+      padding: 15px 16px;
+      border: 1px solid var(--line);
+      background: linear-gradient(120deg, #fff, #eef0f2);
+    }
+
+    .size {
+      display: grid;
+      justify-items: center;
+      gap: 7px;
+      color: #878b8e;
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 9px;
+    }
+
+    .size img { display: block; border-radius: 22%; }
+    .s96 img { width: 76px; height: 76px; }
+    .s64 img { width: 56px; height: 56px; }
+    .s32 img { width: 32px; height: 32px; }
+    .s16 img { width: 16px; height: 16px; }
+
+    .mono {
+      margin-left: auto;
+      padding-left: 18px;
+      border-left: 1px solid var(--line);
+    }
+
+    .mono img {
+      width: 62px;
+      height: 62px;
+      filter: grayscale(1) contrast(1.16);
+    }
+
+    .logic {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      border-top: 1px solid var(--line);
+      border-left: 1px solid var(--line);
+    }
+
+    .logic-item {
+      min-height: 92px;
+      padding: 14px 15px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .logic-item strong {
+      display: block;
+      margin-bottom: 6px;
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 11px;
+      letter-spacing: .08em;
+    }
+
+    .logic-item span {
+      color: #5f6468;
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .signal { color: var(--blue); }
+
+    .decision {
+      margin: 0;
+      color: #4e5357;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      color: #7d8184;
+      font-size: 11px;
+    }
+
+    @media (max-width: 1040px) {
+      .masthead { grid-template-columns: 1fr; gap: 18px; }
+      .board { grid-template-columns: 1fr; }
+      .hero { min-height: 600px; }
+      .side { border-left: 0; border-top: 1px solid var(--line); }
+    }
+
+    @media (max-width: 620px) {
+      .page { width: min(100% - 28px, 560px); padding-top: 32px; }
+      h1 { font-size: 36px; }
+      .hero { min-height: 420px; }
+      .hero-icon { width: min(76%, 360px); }
+      .side { padding: 22px 18px; }
+      .scale-test { gap: 12px; }
+      .logic { grid-template-columns: 1fr; }
+      footer { display: block; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="masthead">
+      <div>
+        <p class="eyebrow">TrainTimer · Logo refinement 03</p>
+        <h1>先像魔方，再读成 T</h1>
+      </div>
+      <p class="intro">保留 U 层横移与 M 层纵移的结构，同时补回四块低对比非活动块和完整 3×3 基准面。大尺寸能看见转层，小尺寸仍以高对比 T 为主。</p>
+    </header>
+
+    <section class="board" aria-label="TrainTimer U/M cube T refinement">
+      <div class="hero">
+        <img class="hero-icon" src="um-cube-t.svg" alt="更接近魔方形态的 U/M 转层 T 图标" />
+        <span class="caption">Primary app icon · light / dark context</span>
+      </div>
+
+      <aside class="side">
+        <div>
+          <p class="subhead">Horizontal lockup</p>
+          <div class="lockup"><img src="um-cube-t-lockup.svg" alt="TrainTimer U/M 魔方 T 横版组合" /></div>
+        </div>
+
+        <div>
+          <p class="subhead">Scale & grayscale stress test</p>
+          <div class="scale-test">
+            <span class="size s96"><img src="um-cube-t.svg" alt="76px" />76</span>
+            <span class="size s64"><img src="um-cube-t.svg" alt="56px" />56</span>
+            <span class="size s32"><img src="um-cube-t.svg" alt="32px" />32</span>
+            <span class="size s16"><img src="um-cube-t.svg" alt="16px" />16</span>
+            <span class="size mono"><img src="um-cube-t.svg" alt="灰度测试" />mono</span>
+          </div>
+        </div>
+
+        <div>
+          <p class="subhead">Construction logic</p>
+          <div class="logic">
+            <div class="logic-item"><strong>U · 横移</strong><span>顶部三块整体右移，左侧露出<span class="signal">蓝色登记边</span>。</span></div>
+            <div class="logic-item"><strong>M · 纵移</strong><span>中央两块整体下移，上方露出<span class="signal">蓝色登记边</span>。</span></div>
+            <div class="logic-item"><strong>T · 活动层</strong><span>冷白活动块保持高对比，交汇块归 U 层。</span></div>
+            <div class="logic-item"><strong>Cube · 基准面</strong><span>四块深色非活动块补全魔方轮廓，但不抢主符号。</span></div>
+          </div>
+        </div>
+
+        <p class="decision">本轮只改变图形结构，没有替换正式 App。确认轮廓后再进入配色、字标轮廓化与 macOS 图标资产制作。</p>
+      </aside>
+    </section>
+
+    <footer>
+      <span>Round 3 · Selected direction refinement.</span>
+      <span>正式 App、网页与 Bundle 资产尚未替换。</span>
+    </footer>
+  </main>
+</body>
+</html>

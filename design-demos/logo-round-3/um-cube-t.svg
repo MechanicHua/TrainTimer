@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1024"
+     height="1024"
+     viewBox="0 0 1024 1024"
+     role="img"
+     aria-labelledby="title desc"
+     shape-rendering="geometricPrecision">
+  <title id="title">TrainTimer U/M Cube T refined app icon</title>
+  <desc id="desc">A front-facing three-by-three speedcube reference face. Its light U top layer is shifted right and its light M center slice is shifted down, forming a T while four subdued inactive cubies preserve an unmistakable cube silhouette.</desc>
+
+  <defs>
+    <linearGradient id="base" x1="112" y1="72" x2="912" y2="958" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#28343D"/>
+      <stop offset="0.48" stop-color="#111920"/>
+      <stop offset="1" stop-color="#05090D"/>
+    </linearGradient>
+    <radialGradient id="baseLight" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"
+                    gradientTransform="translate(310 188) rotate(45) scale(690)">
+      <stop offset="0" stop-color="#F4FBFD" stop-opacity="0.12"/>
+      <stop offset="0.52" stop-color="#B4C7D0" stop-opacity="0.025"/>
+      <stop offset="1" stop-color="#0A0F14" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cubeFrame" x1="220" y1="180" x2="818" y2="860" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1D2A33"/>
+      <stop offset="1" stop-color="#0B1218"/>
+    </linearGradient>
+    <linearGradient id="inactive" x1="188" y1="396" x2="788" y2="788" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#33434E"/>
+      <stop offset="1" stop-color="#1E2B34"/>
+    </linearGradient>
+    <linearGradient id="uFace" x1="230" y1="188" x2="800" y2="372" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F7FAFA"/>
+      <stop offset="0.5" stop-color="#E0E7E8"/>
+      <stop offset="1" stop-color="#BCC8CC"/>
+    </linearGradient>
+    <linearGradient id="mFace" x1="420" y1="420" x2="604" y2="812" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E5EBEC"/>
+      <stop offset="0.56" stop-color="#C7D1D4"/>
+      <stop offset="1" stop-color="#98A8AE"/>
+    </linearGradient>
+    <linearGradient id="signal" x1="180" y1="202" x2="590" y2="650" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#83C5FF"/>
+      <stop offset="1" stop-color="#3B8FEA"/>
+    </linearGradient>
+    <filter id="appShadow" x="-12%" y="-12%" width="124%" height="134%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="25" flood-color="#010305" flood-opacity="0.7"/>
+    </filter>
+    <filter id="cubeShadow" x="-18%" y="-18%" width="136%" height="146%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="16" stdDeviation="17" flood-color="#020609" flood-opacity="0.5"/>
+    </filter>
+    <filter id="tileShadow" x="-24%" y="-24%" width="148%" height="160%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#010407" flood-opacity="0.52"/>
+    </filter>
+    <filter id="signalGlow" x="-80%" y="-80%" width="260%" height="260%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
+      <feColorMatrix in="blur" type="matrix"
+                     values="1 0 0 0 0
+                             0 1 0 0 0
+                             0 0 1 0 0
+                             0 0 0 0.3 0" result="softGlow"/>
+      <feMerge>
+        <feMergeNode in="softGlow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <rect id="tile" width="184" height="184" rx="39"/>
+  </defs>
+
+  <!-- macOS concept plate. -->
+  <g id="app-base" filter="url(#appShadow)">
+    <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#base)"/>
+    <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#baseLight)"/>
+    <rect x="49" y="49" width="926" height="926" rx="208"
+          fill="none" stroke="#E7F2F5" stroke-opacity="0.1" stroke-width="4"/>
+  </g>
+
+  <!-- A complete front-face carrier makes the object read as a cube before the active layers move. -->
+  <g id="cube-carrier" filter="url(#cubeShadow)">
+    <rect x="156" y="156" width="716" height="716" rx="118" fill="url(#cubeFrame)"/>
+    <rect x="170" y="170" width="688" height="688" rx="104"
+          fill="none" stroke="#9BB0BC" stroke-opacity="0.11" stroke-width="4"/>
+  </g>
+
+  <!-- Low-contrast inactive cubies preserve the 3×3 cube face without competing with the T. -->
+  <g id="inactive-cubies" fill="url(#inactive)" stroke="#A7B9C2" stroke-opacity="0.12" stroke-width="4">
+    <use href="#tile" x="188" y="396"/>
+    <use href="#tile" x="604" y="396"/>
+    <use href="#tile" x="188" y="604"/>
+    <use href="#tile" x="604" y="604"/>
+  </g>
+
+  <!-- Original active-layer sockets remain as a quiet registration grid. -->
+  <g id="registration-sockets" fill="#AFC0C8" fill-opacity="0.055"
+     stroke="#DDE8EC" stroke-opacity="0.08" stroke-width="4">
+    <use href="#tile" x="188" y="188"/>
+    <use href="#tile" x="396" y="188"/>
+    <use href="#tile" x="604" y="188"/>
+    <use href="#tile" x="420" y="396"/>
+    <use href="#tile" x="420" y="604"/>
+  </g>
+
+  <!-- Exposed cobalt registration edges show U moving right and M moving down. -->
+  <g id="turn-signals" fill="url(#signal)" filter="url(#signalGlow)">
+    <rect x="193" y="230" width="15" height="100" rx="7.5"/>
+    <rect x="401" y="230" width="15" height="100" rx="7.5"/>
+    <rect x="609" y="230" width="15" height="100" rx="7.5"/>
+    <rect x="462" y="401" width="100" height="15" rx="7.5"/>
+    <rect x="462" y="609" width="100" height="15" rx="7.5"/>
+  </g>
+
+  <!-- M slice moves vertically and remains behind the U layer at their shared center. -->
+  <g id="m-slice" fill="url(#mFace)" stroke="#FFFFFF" stroke-opacity="0.2" stroke-width="4" filter="url(#tileShadow)">
+    <use href="#tile" x="420" y="420"/>
+    <use href="#tile" x="420" y="628"/>
+  </g>
+
+  <!-- U layer moves horizontally as one grouped row, completing the top of the T. -->
+  <g id="u-layer" fill="url(#uFace)" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="4" filter="url(#tileShadow)">
+    <use href="#tile" x="212" y="188"/>
+    <use href="#tile" x="420" y="188"/>
+    <use href="#tile" x="628" y="188"/>
+  </g>
+
+  <!-- Small shared highlights keep the cubies related as one physical layer. -->
+  <g fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="4" stroke-linecap="round">
+    <path d="M238 210H360M446 210H568M654 210H776"/>
+    <path d="M446 442H568M446 650H568"/>
+  </g>
+</svg>

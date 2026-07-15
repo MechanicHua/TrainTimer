@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 1024 1024"
+     role="img"
+     aria-labelledby="title desc"
+     shape-rendering="geometricPrecision">
+  <title id="title">TrainTimer Split Turn / 分层转位 logo concept</title>
+  <desc id="desc">A precise speed-training mark built from two aligned cold-white instrument plates and one cobalt middle layer frozen during a turn. A square datum cutout is deliberately displaced from the central axis to express a measured split without drawing a cube, arrow, shutter, or puzzle.</desc>
+
+  <defs>
+    <linearGradient id="titanium" x1="104" y1="72" x2="896" y2="944" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2A3038"/>
+      <stop offset="0.48" stop-color="#1B2027"/>
+      <stop offset="1" stop-color="#101419"/>
+    </linearGradient>
+    <radialGradient id="instrumentLight" cx="0" cy="0" r="1" gradientTransform="translate(512 416) rotate(90) scale(560)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6F7C8C" stop-opacity="0.16"/>
+      <stop offset="0.62" stop-color="#27303A" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#0B0E12" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="coldWhite" x1="288" y1="184" x2="700" y2="850" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.46" stop-color="#F2F6FA"/>
+      <stop offset="1" stop-color="#D6DEE7"/>
+    </linearGradient>
+    <linearGradient id="cobalt" x1="226" y1="430" x2="822" y2="596" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2F6EFF"/>
+      <stop offset="0.55" stop-color="#1D5CEB"/>
+      <stop offset="1" stop-color="#1348C7"/>
+    </linearGradient>
+    <linearGradient id="cobaltEdge" x1="512" y1="432" x2="512" y2="610" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#76A0FF" stop-opacity="0.48"/>
+      <stop offset="0.16" stop-color="#76A0FF" stop-opacity="0"/>
+      <stop offset="0.78" stop-color="#062D91" stop-opacity="0"/>
+      <stop offset="1" stop-color="#062D91" stop-opacity="0.42"/>
+    </linearGradient>
+    <filter id="plateShadow" x="-20%" y="-20%" width="140%" height="150%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#05070A" flood-opacity="0.34"/>
+    </filter>
+    <filter id="turnShadow" x="-20%" y="-35%" width="140%" height="180%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="17" stdDeviation="14" flood-color="#05070A" flood-opacity="0.44"/>
+    </filter>
+  </defs>
+
+  <!-- Unmasked square background layer: the system can apply its own icon shape. -->
+  <g id="background-layer">
+    <rect width="1024" height="1024" fill="url(#titanium)"/>
+    <rect width="1024" height="1024" fill="url(#instrumentLight)"/>
+  </g>
+
+  <!-- The cobalt slice sits behind the calibrated body plates, as a real turned layer would. -->
+  <g id="signal-layer" filter="url(#turnShadow)" transform="rotate(-8 512 512)">
+    <path fill="#082B82" fill-opacity="0.72"
+          d="M219 429H805C834 429 858 453 858 482V574C858 603 834 627 805 627H219C190 627 166 603 166 574V482C166 453 190 429 219 429Z"/>
+    <path fill="url(#cobalt)" fill-rule="evenodd"
+          d="M219 414H805C834 414 858 438 858 467V559C858 588 834 612 805 612H219C190 612 166 588 166 559V467C166 438 190 414 219 414ZM585 463C570 463 558 475 558 490V536C558 551 570 563 585 563H641C656 563 668 551 668 536V490C668 475 656 463 641 463H585Z"/>
+    <path fill="url(#cobaltEdge)" fill-rule="evenodd"
+          d="M219 414H805C834 414 858 438 858 467V559C858 588 834 612 805 612H219C190 612 166 588 166 559V467C166 438 190 414 219 414ZM585 463C570 463 558 475 558 490V536C558 551 570 563 585 563H641C656 563 668 551 668 536V490C668 475 656 463 641 463H585Z"/>
+  </g>
+
+  <!-- Two aligned plates define the stationary datum. Their opposing notches expose the turned layer. -->
+  <g id="body-layer" fill="url(#coldWhite)" filter="url(#plateShadow)">
+    <path d="M300 184H724C756 184 782 210 782 242V392C782 424 756 450 724 450H584V421C584 396 564 376 539 376H485C460 376 440 396 440 421V450H300C268 450 242 424 242 392V242C242 210 268 184 300 184Z"/>
+    <path d="M300 574H440V603C440 628 460 648 485 648H539C564 648 584 628 584 603V574H724C756 574 782 600 782 632V782C782 814 756 840 724 840H300C268 840 242 814 242 782V632C242 600 268 574 300 574Z"/>
+  </g>
+
+  <!-- Restrained material highlights disappear naturally at small sizes. -->
+  <g id="surface-highlights" fill="none" stroke="#FFFFFF" stroke-opacity="0.42" stroke-width="5" stroke-linecap="round">
+    <path d="M304 202H718C744 202 764 222 764 248"/>
+    <path d="M304 592H423"/>
+    <path d="M601 592H718C744 592 764 612 764 638"/>
+  </g>
+</svg>

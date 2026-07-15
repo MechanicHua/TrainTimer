@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc" shape-rendering="geometricPrecision">
+  <title id="title">TrainTimer Liquid Layer static preview</title>
+  <desc id="desc">A static preview of a layered Liquid Glass treatment for the U and M cube T. Dynamic material effects must be configured in Apple Icon Composer.</desc>
+  <defs>
+    <linearGradient id="background" x1="74" y1="44" x2="930" y2="972" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5AA9E8"/>
+      <stop offset="0.26" stop-color="#245F91"/>
+      <stop offset="0.62" stop-color="#17344A"/>
+      <stop offset="1" stop-color="#09131B"/>
+    </linearGradient>
+    <radialGradient id="ambient" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(736 252) rotate(135) scale(570)">
+      <stop offset="0" stop-color="#BCEBFF" stop-opacity="0.64"/>
+      <stop offset="0.35" stop-color="#65B8EC" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#0A151E" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="glassU" x1="242" y1="218" x2="748" y2="430" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.88"/>
+      <stop offset="0.44" stop-color="#EAF8FF" stop-opacity="0.54"/>
+      <stop offset="1" stop-color="#8FD6FF" stop-opacity="0.36"/>
+    </linearGradient>
+    <linearGradient id="glassM" x1="432" y1="420" x2="594" y2="806" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#DDF5FF" stop-opacity="0.67"/>
+      <stop offset="1" stop-color="#6FBAE8" stop-opacity="0.33"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="244" y1="220" x2="788" y2="770" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.88"/>
+      <stop offset="0.52" stop-color="#D6F2FF" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#82C8F4" stop-opacity="0.62"/>
+    </linearGradient>
+    <filter id="glassShadow" x="-24%" y="-24%" width="148%" height="158%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="11" result="blur"/>
+      <feOffset dy="16" result="offset"/>
+      <feFlood flood-color="#00101C" flood-opacity="0.42" result="color"/>
+      <feComposite in="color" in2="offset" operator="in" result="shadow"/>
+      <feMerge><feMergeNode in="shadow"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="plateShadow" x="-12%" y="-12%" width="124%" height="136%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#02080C" flood-opacity="0.32"/>
+    </filter>
+    <rect id="cubie" width="176" height="176" rx="44"/>
+  </defs>
+
+  <g filter="url(#plateShadow)">
+    <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#background)"/>
+    <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#ambient)"/>
+    <rect x="48" y="48" width="928" height="928" rx="208" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="4"/>
+  </g>
+
+  <rect x="188" y="188" width="648" height="648" rx="120" fill="#06121B" fill-opacity="0.34" stroke="#D8F2FF" stroke-opacity="0.18" stroke-width="4"/>
+
+  <g fill="#163249" fill-opacity="0.46" stroke="#BFE7FF" stroke-opacity="0.2" stroke-width="4" filter="url(#glassShadow)">
+    <use href="#cubie" x="228" y="424"/>
+    <use href="#cubie" x="620" y="424"/>
+    <use href="#cubie" x="228" y="620"/>
+    <use href="#cubie" x="620" y="620"/>
+  </g>
+
+  <g fill="url(#glassU)" stroke="url(#edge)" stroke-width="6" filter="url(#glassShadow)">
+    <use href="#cubie" x="228" y="228"/>
+    <use href="#cubie" x="424" y="228"/>
+    <use href="#cubie" x="620" y="228"/>
+  </g>
+
+  <g fill="url(#glassM)" stroke="url(#edge)" stroke-width="6" filter="url(#glassShadow)">
+    <use href="#cubie" x="424" y="424"/>
+    <use href="#cubie" x="424" y="620"/>
+  </g>
+
+  <g fill="none" stroke="#FFFFFF" stroke-opacity="0.46" stroke-width="5">
+    <path d="M266 249h90c20 0 30 10 30 30" stroke-linecap="round"/>
+    <path d="M462 249h90c20 0 30 10 30 30" stroke-linecap="round"/>
+    <path d="M658 249h90c20 0 30 10 30 30" stroke-linecap="round"/>
+    <path d="M462 445h90c20 0 30 10 30 30" stroke-linecap="round"/>
+    <path d="M462 641h90c20 0 30 10 30 30" stroke-linecap="round"/>
+  </g>
+
+  <rect x="466" y="406" width="92" height="14" rx="7" fill="#76C8FF"/>
+</svg>

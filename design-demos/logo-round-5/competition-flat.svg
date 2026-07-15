@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc" shape-rendering="geometricPrecision">
+  <title id="title">TrainTimer Competition Flat app icon</title>
+  <desc id="desc">A strictly flat dark three-by-three cube where five cool-white cubies form a precise T.</desc>
+  <defs>
+    <rect id="cubie" width="176" height="176" rx="32"/>
+  </defs>
+
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="#172128"/>
+  <rect x="188" y="188" width="648" height="648" rx="112" fill="#090E12"/>
+
+  <g fill="#2B3942">
+    <use href="#cubie" x="228" y="424"/>
+    <use href="#cubie" x="620" y="424"/>
+    <use href="#cubie" x="228" y="620"/>
+    <use href="#cubie" x="620" y="620"/>
+  </g>
+
+  <g fill="#F0F4F5">
+    <use href="#cubie" x="228" y="228"/>
+    <use href="#cubie" x="424" y="228"/>
+    <use href="#cubie" x="620" y="228"/>
+  </g>
+
+  <g fill="#C8D3D7">
+    <use href="#cubie" x="424" y="424"/>
+    <use href="#cubie" x="424" y="620"/>
+  </g>
+
+  <rect x="472" y="410" width="80" height="8" rx="4" fill="#4C9FF0"/>
+</svg>

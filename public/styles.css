@@ -931,6 +931,51 @@ body[data-state="timing"] .timer-display {
   word-spacing: 0.18em;
 }
 
+/* High-order scrambles keep their full notation without stealing the timer's vertical space. */
+.scramble-text[data-puzzle="four"] {
+  margin-top: 12px;
+  font-size: clamp(22px, 1.85vw, 28px);
+  line-height: 1.5;
+  word-spacing: 0.13em;
+}
+
+.scramble-text[data-puzzle="five"] {
+  margin-top: 10px;
+  font-size: clamp(20px, 1.62vw, 24px);
+  line-height: 1.4;
+  word-spacing: 0.08em;
+}
+
+.scramble-text[data-puzzle="six"],
+.scramble-text[data-puzzle="seven"] {
+  margin-top: 9px;
+  font-size: clamp(17px, 1.28vw, 20.5px);
+  line-height: 1.32;
+  word-spacing: 0.04em;
+}
+
+.scramble-text[data-puzzle="five"] .scramble-move,
+.scramble-text[data-puzzle="six"] .scramble-move,
+.scramble-text[data-puzzle="seven"] .scramble-move {
+  margin-right: 0.22em;
+}
+
+/* Keep the timer visually anchored while larger high-order scrambles consume more rows. */
+@media (min-width: 981px) {
+  body:not([data-focus="true"]):has(.scramble-text[data-puzzle="four"]) .timer-surface {
+    transform: translateY(-10px);
+  }
+
+  body:not([data-focus="true"]):has(.scramble-text[data-puzzle="five"]) .timer-surface {
+    transform: translateY(-16px);
+  }
+
+  body:not([data-focus="true"]):has(.scramble-text[data-puzzle="six"]) .timer-surface,
+  body:not([data-focus="true"]):has(.scramble-text[data-puzzle="seven"]) .timer-surface {
+    transform: translateY(-24px);
+  }
+}
+
 .scramble-move {
   display: inline-block;
   margin-right: 0.34em;
@@ -4814,7 +4859,7 @@ button.solve-cfop-card.active {
   }
 
   .stats-panel {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .scramble-band,
@@ -4975,7 +5020,22 @@ button.solve-cfop-card.active {
   }
 
   .stats-panel {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .stats-panel div {
+    min-height: 54px;
+    gap: 4px;
+    padding: 6px 4px;
+  }
+
+  .stats-panel span {
+    font-size: 10px;
+  }
+
+  .stats-panel strong {
+    font-size: 14px;
   }
 
   .stats-insights {

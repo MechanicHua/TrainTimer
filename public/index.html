@@ -12,7 +12,7 @@
       }
     </script>
     <link rel="icon" href="./favicon.png?v=liquid-glass-v4" type="image/png" sizes="64x64" />
-    <link rel="stylesheet" href="./styles.css?v=20260602-facelet-engine-inspection" />
+    <link rel="stylesheet" href="./styles.css?v=20260716-high-order-scramble-v3" />
   </head>
   <body>
     <main class="app-shell">
@@ -27,8 +27,7 @@
           <button id="duplicateSessionButton" type="button">复制</button>
           <button id="mergeSessionButton" type="button">合并</button>
           <button id="renameSessionButton" type="button">重命名</button>
-          <button id="algorithmTrainerButton" type="button">算法训练</button>
-          <button id="timerSettingsButton" type="button">偏好</button>
+          <button id="timerSettingsButton" type="button">设置</button>
           <button id="deleteSessionButton" type="button">删会话</button>
         </div>
         <label class="scramble-puzzle-field">
@@ -91,32 +90,12 @@
               <i id="sessionGoalBar" aria-hidden="true"></i>
             </div>
             <div>
-              <span>当前</span>
-              <strong id="latestStat">-</strong>
-            </div>
-            <div>
-              <span>当前 mo3</span>
-              <strong id="mo3Stat">-</strong>
-            </div>
-            <div>
-              <span>当前 ao5</span>
-              <strong id="ao5Stat">-</strong>
-            </div>
-            <div>
-              <span>当前 ao12</span>
-              <strong id="ao12Stat">-</strong>
-            </div>
-            <div>
-              <span>平均</span>
-              <strong id="averageStat">-</strong>
+              <span>平均 TPS</span>
+              <strong id="averageTpsStat">-</strong>
             </div>
             <div>
               <span>最佳</span>
               <strong id="bestStat">-</strong>
-            </div>
-            <div>
-              <span>最佳 mo3</span>
-              <strong id="bestMo3Stat">-</strong>
             </div>
             <div>
               <span>最佳 ao5</span>
@@ -875,7 +854,7 @@
         <form method="dialog" class="timer-settings-inner">
           <div class="solve-dialog-header">
             <div>
-              <h2>计时偏好</h2>
+              <h2>计时设置</h2>
               <p id="timerSettingsMeta">保持当前计时显示</p>
             </div>
             <button type="submit" aria-label="关闭">关闭</button>
@@ -986,6 +965,6 @@
       <small id="pbToastQueue" class="pb-toast-queue" hidden>+1</small>
     </div>
 
-    <script type="module" src="./app.js?v=20260602-cube3d-step-faces"></script>
+    <script type="module" src="./app.js?v=20260716-settings-no-trainer"></script>
   </body>
 </html>

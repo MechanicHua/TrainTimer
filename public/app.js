@@ -146,11 +146,10 @@ const shortcutDefinitions = [
   { id: 'scramble', label: '新打乱', defaultCode: 'KeyR' },
   { id: 'lockScramble', label: '锁定打乱', defaultCode: 'KeyL' },
   { id: 'copyScramble', label: '复制打乱', defaultCode: 'KeyC' },
-  { id: 'trainer', label: '算法训练', defaultCode: 'KeyT' },
   { id: 'inspection', label: '观察开关', defaultCode: 'KeyI' },
   { id: 'stats', label: '统计详情', defaultCode: 'KeyS' },
   { id: 'allSolves', label: '全部成绩', defaultCode: 'KeyA' },
-  { id: 'preferences', label: '偏好', defaultCode: 'KeyP' },
+  { id: 'preferences', label: '设置', defaultCode: 'KeyP' },
   { id: 'lastOk', label: '上一把 OK', defaultCode: 'KeyO' },
   { id: 'lastPlusTwo', label: '上一把 +2', defaultCode: 'Digit2', aliases: ['Numpad2'] },
   { id: 'lastDnf', label: '上一把 DNF', defaultCode: 'KeyD' },
@@ -373,14 +372,9 @@ const elements = {
   sessionGoalStat: document.querySelector('#sessionGoalStat'),
   sessionGoalBar: document.querySelector('#sessionGoalBar'),
   bestStat: document.querySelector('#bestStat'),
-  averageStat: document.querySelector('#averageStat'),
-  mo3Stat: document.querySelector('#mo3Stat'),
-  ao5Stat: document.querySelector('#ao5Stat'),
-  ao12Stat: document.querySelector('#ao12Stat'),
-  bestMo3Stat: document.querySelector('#bestMo3Stat'),
+  averageTpsStat: document.querySelector('#averageTpsStat'),
   bestAo5Stat: document.querySelector('#bestAo5Stat'),
   bestAo12Stat: document.querySelector('#bestAo12Stat'),
-  latestStat: document.querySelector('#latestStat'),
   bluetoothButton: document.querySelector('#bluetoothButton'),
   bluetoothAnyButton: document.querySelector('#bluetoothAnyButton'),
   bluetoothReconnectButton: document.querySelector('#bluetoothReconnectButton'),
@@ -396,7 +390,6 @@ const elements = {
   mergeSessionButton: document.querySelector('#mergeSessionButton'),
   renameSessionButton: document.querySelector('#renameSessionButton'),
   deleteSessionButton: document.querySelector('#deleteSessionButton'),
-  algorithmTrainerButton: document.querySelector('#algorithmTrainerButton'),
   algorithmTrainerDialog: document.querySelector('#algorithmTrainerDialog'),
   algorithmTrainerMeta: document.querySelector('#algorithmTrainerMeta'),
   algorithmTrainerSet: document.querySelector('#algorithmTrainerSet'),
@@ -955,7 +948,6 @@ elements.timerShortcutGrid?.addEventListener('click', handleShortcutGridClick);
 elements.resetShortcutsButton?.addEventListener('click', resetKeyboardShortcuts);
 elements.accentThemeSelect.addEventListener('change', updateTimerSettingsFromControls);
 elements.confirmDeleteToggle.addEventListener('change', updateTimerSettingsFromControls);
-elements.algorithmTrainerButton.addEventListener('click', openAlgorithmTrainerDialog);
 elements.algorithmTrainerSet.addEventListener('change', () => {
   closeAlgorithmTrainerEditor({ render: false });
   algorithmTrainerSet = elements.algorithmTrainerSet.value || 'pll';
@@ -1883,12 +1875,6 @@ function handleGlobalShortcut(event) {
   if (shortcutMatches(event, 'copyScramble') && scramble?.scramble) {
     event.preventDefault();
     void copyCurrentScramble();
-    return true;
-  }
-
-  if (shortcutMatches(event, 'trainer')) {
-    event.preventDefault();
-    openAlgorithmTrainerDialog();
     return true;
   }
 
@@ -8838,6 +8824,7 @@ function renderScramble(options = {}) {
   const currentPuzzle = scramble.puzzle || scramblePuzzle;
   elements.scramblePuzzleSelect.value = currentPuzzle;
   elements.scramblePuzzleSelect.disabled = scrambleChangeLocked();
+  elements.scrambleText.dataset.puzzle = currentPuzzle;
   renderScrambleGuideDisplay();
   const sourceText = `${puzzleLabel(currentPuzzle)} · ${scramble.source}${scrambleLocked ? ' · 已锁定' : ''}`;
   if (sourceText !== scrambleSourceRenderKey) {
@@ -10474,11 +10461,7 @@ function renderStats() {
     partialSummary.dnfCount,
     partialSummary.latest,
     partialSummary.best,
-    partialSummary.average,
-    partialSummary.mo3,
-    partialSummary.ao5,
-    partialSummary.ao12,
-    partialSummary.bestMo3,
+    partialSummary.averageBluetoothTps,
     partialSummary.bestAo5,
     partialSummary.bestAo12,
   ].join(':') : '';
@@ -10500,14 +10483,9 @@ function renderStats() {
   elements.countStat.textContent = `${successCount}/${totalCount}`;
   renderSessionGoalProgress(successCount, totalCount, goal);
   elements.bestStat.textContent = sessionSummary.best == null ? '-' : formatTime(sessionSummary.best);
-  elements.averageStat.textContent = sessionSummary.average == null ? '-' : formatTime(sessionSummary.average);
-  elements.mo3Stat.textContent = sessionSummary.mo3 == null ? '-' : formatTime(sessionSummary.mo3);
-  elements.ao5Stat.textContent = sessionSummary.ao5 == null ? '-' : formatTime(sessionSummary.ao5);
-  elements.ao12Stat.textContent = sessionSummary.ao12 == null ? '-' : formatTime(sessionSummary.ao12);
-  elements.bestMo3Stat.textContent = sessionSummary.bestMo3 == null ? '-' : formatTime(sessionSummary.bestMo3);
+  elements.averageTpsStat.textContent = numberOrDash(sessionSummary.averageBluetoothTps, 2);
   elements.bestAo5Stat.textContent = sessionSummary.bestAo5 == null ? '-' : formatTime(sessionSummary.bestAo5);
   elements.bestAo12Stat.textContent = sessionSummary.bestAo12 == null ? '-' : formatTime(sessionSummary.bestAo12);
-  elements.latestStat.textContent = sessionSummary.latest == null ? '-' : formatTime(sessionSummary.latest);
   elements.statsDetailButton.disabled = totalCount === 0;
 }
 

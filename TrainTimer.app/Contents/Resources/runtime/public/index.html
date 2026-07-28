@@ -12,7 +12,7 @@
       }
     </script>
     <link rel="icon" href="./favicon.png?v=liquid-glass-v4" type="image/png" sizes="64x64" />
-    <link rel="stylesheet" href="./styles.css?v=20260716-high-order-scramble-v3" />
+    <link rel="stylesheet" href="./styles.css?v=20260728-native-dialog-scroll-v9" />
   </head>
   <body>
     <main class="app-shell">
@@ -54,7 +54,7 @@
           <button id="bluetoothReconnectButton" type="button" disabled>重连</button>
           <button id="bluetoothDisconnectButton" type="button" disabled>断开</button>
           <button id="bluetoothLogButton" type="button">日志</button>
-          <span id="bluetoothBattery">电量 -</span>
+          <span id="bluetoothBattery" hidden>电量 -</span>
           <span id="bluetoothStatus">未连接</span>
         </div>
       </header>
@@ -140,7 +140,7 @@
             <span id="bluetooth3dVelocity">Turn -</span>
           </div>
         </aside>
-        <div class="bluetooth-feed-panel" aria-label="蓝牙命令">
+        <div id="bluetoothFeedPanel" class="bluetooth-feed-panel" aria-label="蓝牙命令" hidden>
           <div class="bluetooth-feed-head">
             <strong>蓝牙命令</strong>
             <span id="bluetoothFeedMeta">等待连接</span>
@@ -203,11 +203,11 @@
         </section>
       </section>
 
-      <dialog id="allSolvesDialog" class="all-solves-dialog">
+      <dialog id="allSolvesDialog" class="all-solves-dialog" aria-labelledby="allSolvesDialogTitle">
         <form method="dialog" class="all-solves-inner">
           <div class="solve-dialog-header">
             <div>
-              <h2>全部成绩</h2>
+              <h2 id="allSolvesDialogTitle">全部成绩</h2>
               <p id="allSolvesMeta">-</p>
             </div>
             <button type="submit" aria-label="关闭">关闭</button>
@@ -316,7 +316,7 @@
             <button id="allTagSelectedButton" type="button">标签选中</button>
             <button id="allCommentSelectedButton" type="button">备注选中</button>
             <button id="allMoveSelectedButton" type="button">移动选中</button>
-            <button id="allDeleteSelectedButton" type="button">删除选中</button>
+            <button id="allDeleteSelectedButton" class="danger-action" type="button">删除选中</button>
             <button id="allExportJsonButton" type="button">导出列表 JSON</button>
             <button id="allExportCsvButton" type="button">导出列表 CSV</button>
             <button id="allExportCstimerButton" type="button">导出列表 csTimer CSV</button>
@@ -338,11 +338,11 @@
         </form>
       </dialog>
 
-      <dialog id="statsDialog" class="stats-dialog">
+      <dialog id="statsDialog" class="stats-dialog" aria-labelledby="statsDialogTitle">
         <form method="dialog" class="stats-dialog-inner">
           <div class="solve-dialog-header">
             <div>
-              <h2>统计详情</h2>
+              <h2 id="statsDialogTitle">统计详情</h2>
               <p id="statsDialogMeta">-</p>
             </div>
             <div class="dialog-header-actions">
@@ -417,11 +417,11 @@
         </form>
       </dialog>
 
-      <dialog id="exportDialog" class="export-dialog">
+      <dialog id="exportDialog" class="export-dialog" aria-labelledby="exportDialogTitle">
         <form method="dialog" class="export-dialog-inner">
           <div class="solve-dialog-header">
             <div>
-              <h2>导出成绩</h2>
+              <h2 id="exportDialogTitle">导出成绩</h2>
               <p id="exportDialogMeta">-</p>
             </div>
             <button type="submit" aria-label="关闭">关闭</button>
@@ -443,11 +443,11 @@
         </form>
       </dialog>
 
-      <dialog id="importDialog" class="import-dialog">
+      <dialog id="importDialog" class="import-dialog" aria-labelledby="importDialogTitle">
         <form method="dialog" class="import-dialog-inner">
           <div class="solve-dialog-header">
             <div>
-              <h2>导入预览</h2>
+              <h2 id="importDialogTitle">导入预览</h2>
               <p id="importDialogMeta">-</p>
             </div>
             <button type="submit" aria-label="关闭">关闭</button>
@@ -455,17 +455,17 @@
           <div id="importPreviewList" class="import-preview-list"></div>
           <div class="dialog-actions">
             <button type="submit">取消</button>
-            <button id="appendImportButton" type="button">追加导入</button>
-            <button id="replaceImportButton" type="button">替换全部</button>
+            <button id="appendImportButton" class="primary-action" type="button">追加导入</button>
+            <button id="replaceImportButton" class="danger-action" type="button">替换全部</button>
           </div>
         </form>
       </dialog>
 
-      <dialog id="markPenaltyDialog" class="move-dialog">
+      <dialog id="markPenaltyDialog" class="move-dialog" aria-labelledby="markPenaltyDialogTitle">
         <form method="dialog" class="move-dialog-inner">
           <div class="solve-dialog-header">
             <div>
-              <h2>标记罚时</h2>
+              <h2 id="markPenaltyDialogTitle">标记罚时</h2>
               <p id="markPenaltyMeta">-</p>
             </div>
             <button type="submit" aria-label="关闭">关闭</button>
@@ -480,16 +480,16 @@
           </label>
           <div class="dialog-actions">
             <button type="submit">取消</button>
-            <button id="confirmMarkPenaltyButton" type="button">标记</button>
+            <button id="confirmMarkPenaltyButton" class="primary-action" type="button">标记</button>
           </div>
         </form>
       </dialog>
 
-      <dialog id="puzzleSolvesDialog" class="move-dialog">
+      <dialog id="puzzleSolvesDialog" class="move-dialog" aria-labelledby="puzzleSolvesDialogTitle">
         <form method="dialog" class="move-dialog-inner">
           <div class="solve-dialog-header">
             <div>
-              <h2>编辑打乱类型</h2>
+              <h2 id="puzzleSolvesDialogTitle">编辑打乱类型</h2>
               <p id="puzzleSolvesMeta">-</p>
             </div>
             <button type="submit" aria-label="关闭">关闭</button>
@@ -510,16 +510,16 @@
           </label>
           <div class="dialog-actions">
             <button type="submit">取消</button>
-            <button id="confirmPuzzleButton" type="button">保存类型</button>
+            <button id="confirmPuzzleButton" class="primary-action" type="button">保存类型</button>
           </div>
         </form>
       </dialog>
 
-      <dialog id="moveSolvesDialog" class="move-dialog">
+      <dialog id="moveSolvesDialog" class="move-dialog" aria-labelledby="moveSolvesDialogTitle">
         <form method="dialog" class="move-dialog-inner">
           <div class="solve-dialog-header">
             <div>
-              <h2>移动成绩</h2>
+              <h2 id="moveSolvesDialogTitle">移动成绩</h2>
               <p id="moveSolvesMeta">-</p>
             </div>
             <button type="submit" aria-label="关闭">关闭</button>
@@ -530,16 +530,16 @@
           </label>
           <div class="dialog-actions">
             <button type="submit">取消</button>
-            <button id="confirmMoveButton" type="button">移动</button>
+            <button id="confirmMoveButton" class="primary-action" type="button">移动</button>
           </div>
         </form>
       </dialog>
 
-      <dialog id="mergeSessionDialog" class="move-dialog">
+      <dialog id="mergeSessionDialog" class="move-dialog" aria-labelledby="mergeSessionDialogTitle">
         <form method="dialog" class="move-dialog-inner">
           <div class="solve-dialog-header">
             <div>
-              <h2>合并会话</h2>
+              <h2 id="mergeSessionDialogTitle">合并会话</h2>
               <p id="mergeSessionMeta">-</p>
             </div>
             <button type="submit" aria-label="关闭">关闭</button>
@@ -555,11 +555,11 @@
         </form>
       </dialog>
 
-      <dialog id="tagSolvesDialog" class="move-dialog">
+      <dialog id="tagSolvesDialog" class="move-dialog" aria-labelledby="tagSolvesDialogTitle">
         <form method="dialog" class="move-dialog-inner">
           <div class="solve-dialog-header">
             <div>
-              <h2>编辑标签</h2>
+              <h2 id="tagSolvesDialogTitle">编辑标签</h2>
               <p id="tagSolvesMeta">-</p>
             </div>
             <button type="submit" aria-label="关闭">关闭</button>
@@ -570,16 +570,16 @@
           </label>
           <div class="dialog-actions">
             <button type="submit">取消</button>
-            <button id="confirmTagButton" type="button">保存标签</button>
+            <button id="confirmTagButton" class="primary-action" type="button">保存标签</button>
           </div>
         </form>
       </dialog>
 
-      <dialog id="commentSolvesDialog" class="move-dialog">
+      <dialog id="commentSolvesDialog" class="move-dialog" aria-labelledby="commentSolvesDialogTitle">
         <form method="dialog" class="move-dialog-inner">
           <div class="solve-dialog-header">
             <div>
-              <h2>编辑备注</h2>
+              <h2 id="commentSolvesDialogTitle">编辑备注</h2>
               <p id="commentSolvesMeta">-</p>
             </div>
             <button type="submit" aria-label="关闭">关闭</button>
@@ -590,16 +590,16 @@
           </label>
           <div class="dialog-actions">
             <button type="submit">取消</button>
-            <button id="confirmCommentButton" type="button">保存备注</button>
+            <button id="confirmCommentButton" class="primary-action" type="button">保存备注</button>
           </div>
         </form>
       </dialog>
 
-      <dialog id="manualEntryDialog" class="manual-dialog">
+      <dialog id="manualEntryDialog" class="manual-dialog" aria-labelledby="manualEntryDialogTitle">
         <form method="dialog" class="manual-entry-inner">
           <div class="solve-dialog-header">
             <div>
-              <h2>录入成绩</h2>
+              <h2 id="manualEntryDialogTitle">录入成绩</h2>
               <p id="manualEntryMeta">-</p>
             </div>
             <button type="submit" aria-label="关闭">关闭</button>
@@ -636,24 +636,96 @@
           </div>
           <p id="manualEntryError" class="form-error" aria-live="polite"></p>
           <div class="dialog-actions">
-            <button id="saveManualEntryButton" type="button">保存成绩</button>
+            <button id="saveManualEntryButton" class="primary-action" type="button">保存成绩</button>
           </div>
         </form>
       </dialog>
 
-      <dialog id="solveDialog" class="solve-dialog">
+      <dialog id="solveDialog" class="solve-dialog" aria-labelledby="solveDetailTitle">
         <form method="dialog" class="solve-dialog-inner">
           <div class="solve-dialog-header">
-            <div>
+            <div class="solve-detail-heading">
               <h2 id="solveDetailTitle">成绩详情</h2>
+              <output id="solveDetailResult" class="solve-detail-result">-</output>
               <p id="solveDetailMeta">-</p>
+              <p id="solveDetailContext" class="solve-detail-context">-</p>
             </div>
             <div class="dialog-header-actions">
-              <button id="prevSolveButton" type="button">上一条</button>
-              <button id="nextSolveDetailButton" type="button">下一条</button>
-              <button id="closeDialogButton" type="submit" aria-label="关闭">关闭</button>
+              <button id="prevSolveButton" type="button" aria-label="上一条成绩">
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M15 18l-6-6 6-6M9 12h10"></path>
+                </svg>
+                <span>上一条</span>
+              </button>
+              <button id="nextSolveDetailButton" type="button" aria-label="下一条成绩">
+                <span>下一条</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9 6l6 6-6 6M5 12h10"></path>
+                </svg>
+              </button>
+              <button id="closeDialogButton" type="submit" aria-label="关闭">
+                <span>关闭</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6L6 18"></path>
+                </svg>
+              </button>
             </div>
           </div>
+          <section id="solveAnalysisPanel" class="solve-analysis-panel" aria-labelledby="solveAnalysisTitle">
+            <div class="solve-analysis-head">
+              <div>
+                <h3 id="solveAnalysisTitle">与历史平均相比</h3>
+                <p id="solveAnalysisStatus" aria-live="polite">正在读取阶段数据</p>
+              </div>
+              <div id="solveAnalysisTabs" class="solve-analysis-tabs" role="tablist" aria-label="成绩阶段图表">
+                <button
+                  id="solveComparisonTab"
+                  type="button"
+                  role="tab"
+                  aria-selected="true"
+                  aria-controls="solveComparisonPanel"
+                  tabindex="0"
+                  data-solve-analysis-mode="comparison"
+                >阶段对比</button>
+                <button
+                  id="solveShareTab"
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="solveSharePanel"
+                  tabindex="-1"
+                  data-solve-analysis-mode="share"
+                >用时占比</button>
+              </div>
+            </div>
+            <div class="solve-analysis-viewport">
+              <section
+                id="solveComparisonPanel"
+                class="solve-analysis-view active"
+                role="tabpanel"
+                aria-labelledby="solveComparisonTab"
+                aria-hidden="false"
+                data-solve-analysis-view="comparison"
+              >
+                <div id="solveComparisonScale" class="solve-comparison-scale" aria-hidden="true"></div>
+                <div id="solveComparisonRows" class="solve-comparison-rows"></div>
+                <div id="solveComparisonEmpty" class="solve-analysis-empty" hidden></div>
+              </section>
+              <section
+                id="solveSharePanel"
+                class="solve-analysis-view"
+                role="tabpanel"
+                aria-labelledby="solveShareTab"
+                aria-hidden="true"
+                data-solve-analysis-view="share"
+                inert
+              >
+                <div id="solveShareChart" class="solve-share-chart"></div>
+                <div id="solveShareEmpty" class="solve-analysis-empty" hidden></div>
+              </section>
+            </div>
+            <p id="solveAnalysisA11y" class="sr-only" aria-live="polite"></p>
+          </section>
           <div class="solve-detail-grid">
             <div>
               <label for="solveDetailTimeInput">原始成绩</label>
@@ -708,13 +780,13 @@
           <div class="dialog-actions">
             <button id="copySolveSummaryButton" type="button">复制详情</button>
             <button id="copyScrambleButton" type="button">复制打乱</button>
-            <button id="saveTimeButton" type="button">保存修改</button>
+            <button id="saveTimeButton" class="primary-action" type="button">保存修改</button>
             <button id="deleteSolveDetailButton" class="danger-action" type="button">删除成绩</button>
           </div>
         </form>
       </dialog>
 
-      <dialog id="averageDialog" class="average-dialog">
+      <dialog id="averageDialog" class="average-dialog" aria-labelledby="averageDetailTitle">
         <form method="dialog" class="average-dialog-inner">
           <div class="solve-dialog-header">
             <div>
@@ -730,11 +802,11 @@
         </form>
       </dialog>
 
-      <dialog id="algorithmTrainerDialog" class="algorithm-dialog">
+      <dialog id="algorithmTrainerDialog" class="algorithm-dialog" aria-labelledby="algorithmTrainerDialogTitle">
         <form method="dialog" class="algorithm-dialog-inner">
           <div class="solve-dialog-header">
             <div>
-              <h2>算法训练</h2>
+              <h2 id="algorithmTrainerDialogTitle">算法训练</h2>
               <p id="algorithmTrainerMeta">PLL · 本地练习记录</p>
             </div>
             <button type="submit" aria-label="关闭">关闭</button>
@@ -776,12 +848,12 @@
             </label>
             <button id="algorithmTrainerAddButton" type="button">添加公式</button>
             <button id="algorithmTrainerEditButton" type="button" disabled>编辑公式</button>
-            <button id="algorithmTrainerDeleteButton" type="button">删除公式</button>
+            <button id="algorithmTrainerDeleteButton" class="danger-action" type="button">删除公式</button>
             <button id="algorithmTrainerExportButton" type="button">导出自定义</button>
             <button id="algorithmTrainerImportButton" type="button">导入自定义</button>
             <input id="algorithmTrainerImportFile" type="file" accept="application/json,text/plain,text/csv,.json,.txt,.csv" hidden />
-            <button id="algorithmTrainerNextButton" type="button" title="N 随机下一条">随机下一条</button>
-            <button id="algorithmTrainerResetButton" type="button">重置记录</button>
+            <button id="algorithmTrainerNextButton" class="primary-action" type="button" title="N 随机下一条">随机下一条</button>
+            <button id="algorithmTrainerResetButton" class="danger-action" type="button">重置记录</button>
           </div>
           <section id="algorithmTrainerEditor" class="algorithm-trainer-editor" hidden>
             <div class="algorithm-trainer-editor-head">
@@ -811,7 +883,7 @@
             </div>
             <p id="algorithmTrainerEditorError" class="algorithm-trainer-editor-error" aria-live="polite"></p>
             <div class="algorithm-trainer-editor-actions">
-              <button id="algorithmTrainerEditorSaveButton" type="button">保存公式</button>
+              <button id="algorithmTrainerEditorSaveButton" class="primary-action" type="button">保存公式</button>
             </div>
           </section>
           <div id="algorithmTrainerOverview" class="algorithm-trainer-overview" aria-label="算法训练概览"></div>
@@ -850,11 +922,11 @@
         </form>
       </dialog>
 
-      <dialog id="timerSettingsDialog" class="timer-settings-dialog">
+      <dialog id="timerSettingsDialog" class="timer-settings-dialog" aria-labelledby="timerSettingsDialogTitle">
         <form method="dialog" class="timer-settings-inner">
           <div class="solve-dialog-header">
             <div>
-              <h2>计时设置</h2>
+              <h2 id="timerSettingsDialogTitle">计时设置</h2>
               <p id="timerSettingsMeta">保持当前计时显示</p>
             </div>
             <button type="submit" aria-label="关闭">关闭</button>
@@ -927,11 +999,11 @@
         </form>
       </dialog>
 
-      <dialog id="bluetoothLogDialog" class="bluetooth-log-dialog">
+      <dialog id="bluetoothLogDialog" class="bluetooth-log-dialog" aria-labelledby="bluetoothLogDialogTitle">
         <form method="dialog" class="bluetooth-log-inner">
           <div class="solve-dialog-header">
             <div>
-              <h2>蓝牙日志</h2>
+              <h2 id="bluetoothLogDialogTitle">蓝牙日志</h2>
               <p id="bluetoothLogMeta">-</p>
             </div>
             <button type="submit" aria-label="关闭">关闭</button>
@@ -939,7 +1011,7 @@
           <div class="bluetooth-log-toolbar">
             <button id="copyBluetoothLogButton" type="button">复制日志</button>
             <button id="exportBluetoothLogButton" type="button">导出日志</button>
-            <button id="clearBluetoothLogButton" type="button">清空</button>
+            <button id="clearBluetoothLogButton" class="danger-action" type="button">清空</button>
           </div>
           <div class="bluetooth-move-strip">
             <strong id="bluetoothMoveCount">0</strong>
@@ -965,6 +1037,6 @@
       <small id="pbToastQueue" class="pb-toast-queue" hidden>+1</small>
     </div>
 
-    <script type="module" src="./app.js?v=20260716-settings-no-trainer"></script>
+    <script type="module" src="./app.js?v=20260728-native-dialog-scroll-v9"></script>
   </body>
 </html>

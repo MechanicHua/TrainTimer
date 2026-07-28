@@ -32,7 +32,7 @@ import { createExportPayload, safeExportFilename, scopedExportHistory, solvesToC
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const publicRoot = join(projectRoot, 'public');
 const srcRoot = join(projectRoot, 'src');
-const publicSrcModules = new Set(['algorithm-trainer-cases.js', 'algorithm-trainer-utils.js', 'bluetooth-moves.js', 'bluetooth-state-log.js', 'cfop-analysis.js', 'cube-state.js', 'inspection.js', 'move-metrics.js', 'op-analysis.js', 'op-case-diagrams.js', 'op-case-svg.js', 'op-formula-library.js', 'op-pdf-algorithms.js', 'op-poster-diagram-shapes.js', 'op-stats.js', 'replay-timing.js', 'rolling-averages.js', 'solve-summary.js', 'solves-export.js', 'solves-import.js', 'stats-summary.js']);
+const publicSrcModules = new Set(['algorithm-trainer-cases.js', 'algorithm-trainer-utils.js', 'bluetooth-moves.js', 'bluetooth-state-log.js', 'cfop-analysis.js', 'cfop-stage-stats.js', 'cube-state.js', 'inspection.js', 'move-metrics.js', 'op-analysis.js', 'op-case-diagrams.js', 'op-case-svg.js', 'op-formula-library.js', 'op-pdf-algorithms.js', 'op-poster-diagram-shapes.js', 'op-stats.js', 'replay-timing.js', 'rolling-averages.js', 'solve-summary.js', 'solves-export.js', 'solves-import.js', 'stats-summary.js']);
 const requestedPort = Number(process.env.PORT || 3211);
 const host = process.env.HOST || '127.0.0.1';
 let currentPort = requestedPort;

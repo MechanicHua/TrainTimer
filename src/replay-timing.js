@@ -16,6 +16,12 @@ export function replayDelayBeforeMove(records, moveIndex, options = {}) {
   const record = list[index];
   if (!record) return 0;
 
+  const recordedDelayMs = recordedDelayBeforeMove(list, index);
+  if (recordedDelayMs != null) {
+    const scale = positiveNumber(options.timeScale, 1);
+    return Math.max(0, Math.round(recordedDelayMs * scale));
+  }
+
   const fallbackDelayMs = positiveNumber(
     options.fallbackDelayMs,
     replayMoveAnimationDelay(record.move, options),
@@ -25,15 +31,26 @@ export function replayDelayBeforeMove(records, moveIndex, options = {}) {
     ? positiveNumber(options.maximumObservationDelayMs, defaultMaximumObservationDelayMs)
     : positiveNumber(options.maximumStepDelayMs, defaultMaximumStepDelayMs);
 
-  const elapsedMs = nonNegativeNumber(record.elapsedMs);
-  const previousElapsedMs = index === 0 ? 0 : nonNegativeNumber(list[index - 1]?.elapsedMs);
-  if (elapsedMs == null || previousElapsedMs == null || elapsedMs < previousElapsedMs) {
-    return clampDelay(fallbackDelayMs, minimumDelayMs, maximumDelayMs);
+  return clampDelay(fallbackDelayMs, minimumDelayMs, maximumDelayMs);
+}
+
+function recordedDelayBeforeMove(records, index) {
+  const record = records[index];
+  const elapsedMs = nonNegativeNumber(record?.elapsedMs);
+  const previousElapsedMs = index === 0 ? 0 : nonNegativeNumber(records[index - 1]?.elapsedMs);
+  if (elapsedMs != null && previousElapsedMs != null && elapsedMs >= previousElapsedMs) {
+    return elapsedMs - previousElapsedMs;
   }
 
-  const scale = positiveNumber(options.timeScale, 1);
-  const delayMs = Math.round((elapsedMs - previousElapsedMs) * scale);
-  return clampDelay(delayMs, minimumDelayMs, maximumDelayMs);
+  const timestampMs = nonNegativeNumber(record?.timestampMs);
+  const previousTimestampMs = index === 0
+    ? nonNegativeNumber(record?.solveStartedAtMs)
+    : nonNegativeNumber(records[index - 1]?.timestampMs);
+  if (timestampMs != null && previousTimestampMs != null && timestampMs >= previousTimestampMs) {
+    return timestampMs - previousTimestampMs;
+  }
+
+  return null;
 }
 
 function clampDelay(value, minimumDelayMs, maximumDelayMs) {

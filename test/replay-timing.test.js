@@ -19,18 +19,37 @@ test('replay delay uses per-move elapsed deltas after playback starts', () => {
   ];
 
   assert.equal(replayDelayBeforeMove(records, 1, { minimumDelayMs: 330 }), 1500);
-  assert.equal(replayDelayBeforeMove(records, 2, { minimumDelayMs: replayMoveAnimationDelay('U') }), 330);
+  assert.equal(replayDelayBeforeMove(records, 2, { minimumDelayMs: replayMoveAnimationDelay('U') }), 110);
 });
 
-test('replay delay clamps long observations and falls back when timing is invalid', () => {
+test('replay delay preserves long observations and falls back when timing is invalid', () => {
   assert.equal(
     replayDelayBeforeMove([{ move: 'R', elapsedMs: 15123 }], 0),
-    2600,
+    15123,
   );
   assert.equal(
     replayDelayBeforeMove([{ move: 'R', elapsedMs: 900 }, { move: 'U2', elapsedMs: 800 }], 1),
     470,
   );
+});
+
+test('replay delay preserves zero-gap bundled moves', () => {
+  const records = [
+    { move: 'R', elapsedMs: 820 },
+    { move: 'U', elapsedMs: 820 },
+  ];
+
+  assert.equal(replayDelayBeforeMove(records, 1), 0);
+});
+
+test('replay delay uses recorded timestamps when elapsed timing is unavailable', () => {
+  const records = [
+    { move: 'R', timestampMs: 11_500, solveStartedAtMs: 10_000 },
+    { move: 'U', timestampMs: 11_642 },
+  ];
+
+  assert.equal(replayDelayBeforeMove(records, 0), 1500);
+  assert.equal(replayDelayBeforeMove(records, 1), 142);
 });
 
 test('replay move animation delay distinguishes half turns from quarter turns', () => {

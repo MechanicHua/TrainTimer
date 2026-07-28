@@ -31,7 +31,10 @@
   --shadow-md: none;
   --shadow-lg: none;
   --radius: 8px;
-  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-spring: cubic-bezier(0.18, 1.08, 0.28, 1);
 }
 
 body[data-accent="blue"] {
@@ -355,6 +358,1617 @@ input[type="checkbox"]:hover:not(:disabled) {
 @media (prefers-reduced-motion: reduce) {
   .pb-confetti {
     display: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Unified dialog system · ui-ux-pro-max / TrainTimer dialog override
+   -------------------------------------------------------------------------- */
+
+:root {
+  --dialog-shell: rgba(24, 24, 29, 0.985);
+  --dialog-shell-strong: rgba(18, 18, 22, 0.995);
+  --dialog-surface: rgba(255, 255, 255, 0.052);
+  --dialog-surface-hover: rgba(255, 255, 255, 0.082);
+  --dialog-border: rgba(255, 255, 255, 0.12);
+  --dialog-border-soft: rgba(255, 255, 255, 0.075);
+  --dialog-muted: #a7a7ae;
+  --dialog-radius: 18px;
+  --dialog-section-radius: 12px;
+  --dialog-control-radius: 10px;
+}
+
+dialog {
+  --dialog-surface-width: 720px;
+  --dialog-viewport-gutter: 12px;
+  --dialog-scrollbar-width: 8px;
+  --dialog-scrollbar-track-clearance: 8px;
+  box-sizing: border-box;
+  width: min(
+    var(--dialog-surface-width),
+    calc(100vw - var(--dialog-viewport-gutter) - var(--dialog-viewport-gutter))
+  );
+  height: 100dvh;
+  max-width: 100vw;
+  max-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 0;
+  border-radius: 0;
+  padding: var(--dialog-viewport-gutter) 0;
+  background: transparent;
+  clip-path: inset(var(--dialog-viewport-gutter) 0 round var(--dialog-radius));
+  color: var(--ink);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  scrollbar-gutter: auto;
+  scrollbar-width: none;
+}
+
+.all-solves-dialog {
+  --dialog-surface-width: 1180px;
+}
+
+.stats-dialog {
+  --dialog-surface-width: 1080px;
+}
+
+.solve-dialog {
+  --dialog-surface-width: 840px;
+}
+
+.algorithm-dialog {
+  --dialog-surface-width: 980px;
+}
+
+.bluetooth-log-dialog {
+  --dialog-surface-width: 900px;
+}
+
+.manual-dialog,
+.average-dialog {
+  --dialog-surface-width: 720px;
+}
+
+.export-dialog,
+.import-dialog,
+.timer-settings-dialog {
+  --dialog-surface-width: 640px;
+}
+
+.move-dialog {
+  --dialog-surface-width: 480px;
+}
+
+dialog::backdrop {
+  background: rgba(3, 3, 6, 0.72);
+  -webkit-backdrop-filter: blur(12px) saturate(0.82);
+  backdrop-filter: blur(12px) saturate(0.82);
+}
+
+dialog[open] {
+  display: flex;
+  align-items: stretch;
+  flex-direction: column;
+  justify-content: safe center;
+  animation: dialog-shell-in 180ms var(--ease-enter) both;
+}
+
+dialog[open]::backdrop {
+  animation: dialog-backdrop-in 170ms var(--ease-enter) both;
+}
+
+dialog > form {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  max-height: none;
+  flex: 0 0 auto;
+  margin: 0;
+  overflow: clip;
+  border: 1px solid var(--dialog-border);
+  border-radius: var(--dialog-radius);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 96px),
+    var(--dialog-shell);
+  box-shadow:
+    0 32px 90px rgba(0, 0, 0, 0.58),
+    inset 0 1px 0 rgba(255, 255, 255, 0.065);
+  -webkit-backdrop-filter: blur(24px) saturate(1.16);
+  backdrop-filter: blur(24px) saturate(1.16);
+  padding: 20px;
+}
+
+dialog::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+dialog :is(.algorithm-trainer-card, .algorithm-trainer-list, .stats-op-formula-list, .bluetooth-log-rows) {
+  scrollbar-color: rgba(var(--accent-rgb), 0.32) transparent;
+  scrollbar-width: thin;
+}
+
+dialog :is(.algorithm-trainer-card, .algorithm-trainer-list, .stats-op-formula-list, .bluetooth-log-rows)::-webkit-scrollbar {
+  width: var(--dialog-scrollbar-width);
+  height: 8px;
+}
+
+dialog :is(.algorithm-trainer-card, .algorithm-trainer-list, .stats-op-formula-list, .bluetooth-log-rows)::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.34);
+  background-clip: padding-box;
+}
+
+.dialog-scroll-indicator {
+  position: fixed;
+  z-index: 12;
+  top: 0;
+  left: 0;
+  width: 4px;
+  min-height: 36px;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.72);
+  box-shadow:
+    0 0 1px rgba(var(--accent-strong-rgb), 0.72),
+    0 0 5px rgba(var(--accent-rgb), 0.16);
+  contain: strict;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(-100px, -100px, 0);
+  transition: opacity 140ms var(--ease-exit);
+  will-change: transform, height, opacity;
+}
+
+dialog[data-dialog-scrolling] > .dialog-scroll-indicator {
+  opacity: 0.9;
+}
+
+.algorithm-dialog-inner {
+  max-height: none;
+  padding: 20px;
+}
+
+dialog .solve-dialog-header {
+  position: sticky;
+  z-index: 8;
+  top: 0;
+  min-height: 72px;
+  align-items: center;
+  margin: -20px -20px 18px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--dialog-border-soft);
+  background: var(--dialog-shell);
+  backdrop-filter: blur(22px) saturate(1.18);
+}
+
+dialog .solve-dialog-header > div:first-child {
+  min-width: 0;
+}
+
+dialog .solve-dialog-header h2 {
+  color: var(--ink-strong);
+  font-size: 18px;
+  font-weight: 760;
+  letter-spacing: -0.012em;
+  line-height: 1.25;
+}
+
+dialog .solve-dialog-header p {
+  max-width: min(66ch, 70vw);
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--dialog-muted);
+  font-size: 12.5px;
+  font-weight: 570;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+dialog .solve-dialog-header > button[type="submit"],
+dialog .dialog-header-actions button[type="submit"] {
+  min-width: 64px;
+  min-height: 44px;
+  border: 1px solid var(--dialog-border-soft);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--muted-strong);
+}
+
+dialog .dialog-header-actions {
+  min-width: 0;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+dialog button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+dialog button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+dialog :is(button, input, select, textarea):focus-visible {
+  border-color: rgba(var(--accent-rgb), 0.72);
+  outline: 1px solid rgba(var(--accent-strong-rgb), 0.48);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--accent-focus);
+}
+
+dialog input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+dialog select,
+dialog textarea {
+  min-height: 44px;
+  border: 1px solid var(--dialog-border-soft);
+  border-radius: var(--dialog-control-radius);
+  background: rgba(255, 255, 255, 0.062);
+  color: var(--ink-strong);
+  font-size: 14px;
+}
+
+dialog textarea {
+  padding: 10px 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+dialog input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+dialog select {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+dialog input::placeholder,
+dialog textarea::placeholder {
+  color: #77777f;
+  opacity: 1;
+}
+
+dialog input[type="checkbox"],
+dialog input[type="radio"] {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  accent-color: var(--accent);
+}
+
+dialog :is(.all-solves-search, .all-solves-sort, .all-solves-date, .move-session-field, .manual-entry-grid label, .solve-detail-grid > div) > span,
+dialog .solve-detail-grid > div > label,
+dialog .algorithm-trainer-toolbar label > span,
+dialog .algorithm-trainer-editor-grid label > span {
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 680;
+  letter-spacing: 0.01em;
+}
+
+dialog :is(.solve-dialog-header, .dialog-actions, .all-solves-toolbar, .bluetooth-log-toolbar, .export-grid, .algorithm-trainer-toolbar, .algorithm-trainer-actions, .algorithm-trainer-editor-actions, .algorithm-trainer-setup, .algorithm-trainer-timer, .stats-chart-modes, .timer-shortcut-panel) button {
+  min-height: 40px;
+  border-radius: var(--dialog-control-radius);
+}
+
+dialog .dialog-actions {
+  position: sticky;
+  z-index: 7;
+  bottom: 0;
+  min-height: 68px;
+  align-items: center;
+  margin: 18px -20px -20px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--dialog-border-soft);
+  background: var(--dialog-shell);
+  backdrop-filter: blur(22px) saturate(1.18);
+}
+
+dialog .dialog-actions button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--dialog-border-soft);
+  background: rgba(255, 255, 255, 0.06);
+  font-weight: 690;
+}
+
+dialog .primary-action,
+dialog .dialog-actions .primary-action {
+  border-color: transparent;
+  background: var(--accent);
+  color: #001315;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+dialog .primary-action:hover:not(:disabled),
+dialog .dialog-actions .primary-action:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+dialog .danger-action,
+dialog .dialog-actions .danger-action {
+  border-color: rgba(255, 69, 58, 0.26);
+  background: rgba(255, 69, 58, 0.11);
+  color: #ff8a84;
+}
+
+dialog .danger-action:hover:not(:disabled),
+dialog .dialog-actions .danger-action:hover:not(:disabled) {
+  border-color: rgba(255, 69, 58, 0.44);
+  background: rgba(255, 69, 58, 0.18);
+  color: #ffb4ad;
+}
+
+dialog :is(.move-session-field, .timer-setting-row, .timer-shortcut-panel, .stats-chart-panel, .stats-record-panel, .session-overview-panel, .solve-detail-grid > div, .solve-detail-grid > section, .manual-entry-grid label, .import-preview-list > div, .bluetooth-state-panel, .bluetooth-move-strip, .algorithm-trainer-card, .algorithm-trainer-editor) {
+  border: 1px solid var(--dialog-border-soft);
+  border-radius: var(--dialog-section-radius);
+  background: var(--dialog-surface);
+  box-shadow: none;
+}
+
+dialog .move-session-field {
+  gap: 8px;
+  margin-top: 4px;
+  padding: 14px;
+}
+
+dialog .manual-entry-grid {
+  gap: 12px;
+}
+
+dialog .manual-entry-grid label,
+dialog .solve-detail-grid > div {
+  gap: 7px;
+  padding: 12px;
+}
+
+dialog .solve-detail-grid {
+  gap: 12px;
+}
+
+dialog .solve-detail-grid > section {
+  padding: 14px;
+}
+
+dialog .form-error,
+dialog .algorithm-trainer-editor-error {
+  min-height: 18px;
+  color: #ff8a84;
+  font-size: 12px;
+  font-weight: 680;
+  line-height: 1.45;
+}
+
+dialog .timer-settings-list {
+  gap: 8px;
+  margin-top: 0;
+}
+
+dialog .timer-setting-row {
+  min-height: 72px;
+  padding: 12px 14px;
+  transition: border-color 160ms var(--ease), background-color 160ms var(--ease);
+}
+
+dialog .timer-setting-row:hover {
+  border-color: rgba(var(--accent-rgb), 0.22);
+  background: var(--dialog-surface-hover);
+}
+
+dialog .timer-setting-row strong {
+  font-size: 14px;
+}
+
+dialog .timer-setting-row em,
+dialog .timer-shortcut-hint {
+  color: var(--dialog-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+dialog .timer-setting-row select {
+  min-width: 112px;
+}
+
+dialog .timer-shortcut-panel {
+  padding: 14px;
+}
+
+dialog .timer-shortcut-button {
+  min-height: 44px;
+  border: 1px solid var(--dialog-border-soft);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+dialog .all-solves-toolbar {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  justify-content: stretch;
+  margin-top: 0;
+  padding: 14px;
+  border: 1px solid var(--dialog-border-soft);
+  border-radius: var(--dialog-section-radius);
+  background: var(--dialog-surface);
+}
+
+dialog .all-solves-search {
+  min-width: 0;
+  grid-column: span 2;
+}
+
+dialog .all-solves-date-shortcuts {
+  display: grid;
+  grid-column: span 2;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  min-height: 44px;
+  padding: 3px;
+  border-color: var(--dialog-border-soft);
+  border-radius: var(--dialog-control-radius);
+}
+
+dialog .all-solves-toolbar :is(label, button, input, select) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+dialog .all-solves-toolbar label:not(.all-sessions-toggle) {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 6px;
+}
+
+dialog .all-solves-toolbar :is(input, select) {
+  width: 100%;
+}
+
+dialog .all-sessions-toggle {
+  min-height: 44px;
+  justify-content: center;
+  border: 1px solid var(--dialog-border-soft);
+  border-radius: var(--dialog-control-radius);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+dialog .all-solves-table {
+  border: 1px solid var(--dialog-border-soft);
+  border-radius: var(--dialog-section-radius);
+  background: rgba(0, 0, 0, 0.12);
+}
+
+dialog .all-solves-table .history-head {
+  position: sticky;
+  z-index: 3;
+  top: 0;
+  min-height: 40px;
+  background: rgba(30, 30, 35, 0.96);
+  backdrop-filter: blur(12px);
+}
+
+dialog .stats-chart-grid {
+  gap: 12px;
+}
+
+dialog .stats-chart-panel,
+dialog .stats-record-panel,
+dialog .session-overview-panel {
+  padding: 14px;
+}
+
+dialog .stats-chart-panel:hover {
+  transform: none;
+}
+
+dialog .stats-chart-modes {
+  border-color: var(--dialog-border-soft);
+  border-radius: var(--dialog-control-radius);
+  background: rgba(0, 0, 0, 0.16);
+}
+
+dialog .stats-chart-modes button {
+  min-height: 36px;
+}
+
+dialog .stats-insight,
+dialog .stats-detail-grid > div,
+dialog .stats-record-item,
+dialog .stats-op-item,
+dialog .stats-op-formula-case,
+dialog .session-overview-row {
+  border: 1px solid var(--dialog-border-soft);
+  border-radius: var(--dialog-control-radius);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+dialog .export-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+dialog .export-grid button {
+  min-height: 68px;
+  border: 1px solid var(--dialog-border-soft);
+  background: var(--dialog-surface);
+  font-size: 12.5px;
+  font-weight: 680;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+
+dialog .export-grid button:hover:not(:disabled) {
+  border-color: rgba(var(--accent-rgb), 0.42);
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--ink-strong);
+}
+
+dialog .import-preview-list {
+  gap: 10px;
+}
+
+dialog .import-preview-list > div {
+  min-height: 72px;
+  padding: 12px 14px;
+}
+
+dialog .average-detail-list {
+  gap: 8px;
+}
+
+dialog .average-detail-row {
+  min-height: 52px;
+  border: 1px solid var(--dialog-border-soft);
+  border-radius: var(--dialog-control-radius);
+  padding: 10px 12px;
+  background: var(--dialog-surface);
+}
+
+dialog .bluetooth-log-toolbar {
+  justify-content: flex-start;
+  margin-top: 0;
+  padding: 10px;
+  border: 1px solid var(--dialog-border-soft);
+  border-radius: var(--dialog-section-radius);
+  background: var(--dialog-surface);
+}
+
+dialog .bluetooth-move-strip,
+dialog .bluetooth-state-panel {
+  padding: 14px;
+}
+
+dialog .bluetooth-log-rows {
+  border: 1px solid var(--dialog-border-soft);
+  border-radius: var(--dialog-section-radius);
+  background: rgba(0, 0, 0, 0.14);
+}
+
+dialog .algorithm-trainer-toolbar {
+  margin-top: 0;
+  padding: 12px;
+  border: 1px solid var(--dialog-border-soft);
+  border-radius: var(--dialog-section-radius);
+  background: var(--dialog-surface);
+}
+
+dialog .algorithm-trainer-card,
+dialog .algorithm-trainer-editor {
+  border-radius: var(--dialog-section-radius);
+}
+
+dialog .algorithm-trainer-overview :is(button, em),
+dialog .algorithm-trainer-item {
+  border: 1px solid var(--dialog-border-soft);
+  border-radius: var(--dialog-control-radius);
+}
+
+@keyframes dialog-shell-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dialog-backdrop-in {
+  from {
+    background: rgba(3, 3, 6, 0);
+  }
+  to {
+    background: rgba(3, 3, 6, 0.72);
+  }
+}
+
+@media (max-width: 980px) {
+  dialog .all-solves-toolbar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  dialog .all-solves-search,
+  dialog .all-solves-date-shortcuts {
+    grid-column: span 3;
+  }
+
+  dialog .export-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  dialog {
+    --dialog-radius: 16px;
+    --dialog-viewport-gutter: 6px;
+  }
+
+  dialog > form,
+  .algorithm-dialog-inner {
+    max-height: none;
+    border-radius: 16px;
+    padding: 16px;
+  }
+
+  dialog .solve-dialog-header {
+    top: 0;
+    min-height: 68px;
+    margin: -16px -16px 16px;
+    padding: 14px 16px;
+  }
+
+  dialog .solve-dialog-header p {
+    max-width: 52vw;
+  }
+
+  dialog .dialog-header-actions {
+    flex-wrap: wrap;
+  }
+
+  dialog .dialog-header-actions button {
+    min-width: 0;
+    padding: 0 10px;
+  }
+
+  dialog .dialog-actions {
+    bottom: 0;
+    margin: 16px -16px -16px;
+    padding: 10px 16px;
+  }
+
+  dialog .dialog-actions button {
+    flex: 1 1 120px;
+  }
+
+  dialog .all-solves-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  dialog .all-solves-search,
+  dialog .all-solves-date-shortcuts {
+    grid-column: auto;
+  }
+
+  dialog .all-solves-date-shortcuts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  dialog .timer-shortcut-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  dialog .timer-setting-row {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  dialog .timer-setting-row em {
+    font-size: 11.5px;
+  }
+
+  dialog .stats-chart-modes {
+    flex-wrap: wrap;
+  }
+
+  dialog .stats-chart-modes button {
+    flex: 1 1 72px;
+  }
+}
+
+@media (max-width: 480px) {
+  dialog .export-grid,
+  dialog .timer-shortcut-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  dialog .solve-dialog-header p {
+    max-width: 46vw;
+  }
+
+  dialog .timer-setting-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  dialog .timer-setting-row :is(input, select) {
+    justify-self: stretch;
+  }
+
+  dialog .timer-setting-row select {
+    width: 100%;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Solve detail stage analytics
+   -------------------------------------------------------------------------- */
+
+:root {
+  --solve-chart-fast: #35e7e0;
+  --solve-chart-fast-rgb: 53, 231, 224;
+  --solve-chart-slow: #ff6257;
+  --solve-chart-slow-rgb: 255, 98, 87;
+  --solve-stage-cross: #31e4e8;
+  --solve-stage-cross-rgb: 49, 228, 232;
+  --solve-stage-f2l: #65a4ff;
+  --solve-stage-f2l-rgb: 101, 164, 255;
+  --solve-stage-oll: #c67cff;
+  --solve-stage-oll-rgb: 198, 124, 255;
+  --solve-stage-pll: #ffc34f;
+  --solve-stage-pll-rgb: 255, 195, 79;
+}
+
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+dialog.solve-dialog {
+  width: min(960px, calc(100vw - 24px));
+}
+
+.solve-dialog .solve-dialog-header {
+  min-height: 142px;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.solve-dialog .solve-detail-heading {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.solve-dialog .solve-detail-heading h2 {
+  margin: 0 0 3px;
+  font-size: 15px;
+  font-weight: 720;
+  letter-spacing: 0.01em;
+}
+
+.solve-dialog .solve-detail-result {
+  display: block;
+  color: var(--ink-strong);
+  font-size: clamp(38px, 5vw, 50px);
+  font-variant-numeric: tabular-nums;
+  font-weight: 720;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.solve-dialog .solve-detail-heading p {
+  max-width: min(62ch, 58vw);
+  margin: 4px 0 0;
+}
+
+.solve-dialog .solve-detail-heading .solve-detail-context {
+  margin-top: 1px;
+  color: #909099;
+  font-size: 11.5px;
+}
+
+.solve-dialog .dialog-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.solve-dialog .dialog-header-actions button {
+  display: inline-flex;
+  min-width: 96px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  background: rgba(255, 255, 255, 0.038);
+}
+
+.solve-dialog .dialog-header-actions button:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.19);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.solve-dialog .dialog-header-actions svg {
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.solve-analysis-panel {
+  position: relative;
+  min-width: 0;
+  margin: -2px 0 18px;
+  padding: 2px 4px 0;
+}
+
+.solve-analysis-head {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.solve-analysis-head > div:first-child {
+  min-width: 0;
+}
+
+.solve-analysis-head h3 {
+  margin: 0;
+  color: var(--ink-strong);
+  font-size: 18px;
+  font-weight: 710;
+  letter-spacing: -0.014em;
+}
+
+.solve-analysis-head p {
+  margin: 4px 0 0;
+  color: var(--dialog-muted);
+  font-size: 12px;
+  font-weight: 570;
+  line-height: 1.45;
+}
+
+.solve-analysis-tabs {
+  display: inline-grid;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(2, minmax(104px, 1fr));
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.solve-analysis-tabs button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 7px;
+  padding: 0 14px;
+  background: transparent;
+  color: var(--dialog-muted);
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 650;
+  transition:
+    background 170ms var(--ease),
+    color 170ms var(--ease),
+    box-shadow 170ms var(--ease);
+}
+
+.solve-analysis-tabs button:hover:not(:disabled) {
+  transform: none;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--ink-strong);
+}
+
+.solve-analysis-tabs button.active {
+  background: rgba(var(--accent-rgb), 0.18);
+  color: var(--accent-highlight);
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--accent-rgb), 0.52),
+    0 0 10px rgba(var(--accent-rgb), 0.1);
+}
+
+.solve-analysis-viewport {
+  display: grid;
+  min-height: 408px;
+}
+
+.solve-analysis-view {
+  grid-area: 1 / 1;
+  min-width: 0;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.solve-analysis-view.active {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.solve-comparison-scale-inner,
+.solve-comparison-row {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr) 150px;
+  align-items: center;
+  gap: 12px;
+}
+
+.solve-comparison-scale {
+  min-height: 70px;
+}
+
+.solve-comparison-scale-axis {
+  position: relative;
+  height: 70px;
+}
+
+.solve-comparison-direction {
+  position: absolute;
+  top: 0;
+  color: var(--dialog-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.solve-comparison-direction::after {
+  margin-left: 8px;
+  color: var(--muted-strong);
+  font-size: 18px;
+  line-height: 0;
+}
+
+.solve-comparison-direction.faster {
+  left: 11%;
+}
+
+.solve-comparison-direction.faster::after {
+  content: "←";
+}
+
+.solve-comparison-direction.slower {
+  right: 8%;
+}
+
+.solve-comparison-direction.slower::before {
+  content: "→";
+  margin-right: 8px;
+  color: var(--muted-strong);
+  font-size: 18px;
+  line-height: 0;
+}
+
+.solve-comparison-scale-label {
+  position: absolute;
+  bottom: 4px;
+  color: #d6d6db;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 610;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.solve-comparison-scale-label.average {
+  color: var(--ink-strong);
+}
+
+.solve-comparison-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.solve-comparison-row {
+  min-height: 74px;
+  border-radius: 9px;
+  transition: background 170ms var(--ease);
+}
+
+.solve-comparison-row:hover {
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.solve-comparison-row.faster {
+  --comparison-color: var(--solve-chart-fast);
+  --comparison-color-rgb: var(--solve-chart-fast-rgb);
+}
+
+.solve-comparison-row.slower {
+  --comparison-color: var(--solve-chart-slow);
+  --comparison-color-rgb: var(--solve-chart-slow-rgb);
+}
+
+.solve-comparison-row.equal {
+  --comparison-color: #d9dde3;
+  --comparison-color-rgb: 217, 221, 227;
+}
+
+.solve-comparison-stage {
+  color: var(--ink-strong);
+  font-size: 17px;
+  font-weight: 660;
+  letter-spacing: -0.012em;
+}
+
+.solve-comparison-axis {
+  position: relative;
+  min-width: 0;
+  height: 66px;
+}
+
+.solve-comparison-baseline {
+  position: absolute;
+  right: 0;
+  top: 29px;
+  left: 0;
+  height: 1px;
+  background: rgba(220, 225, 232, 0.23);
+}
+
+.solve-comparison-tick {
+  position: absolute;
+  top: 29px;
+  width: 1px;
+  background: rgba(231, 234, 239, 0.27);
+  transform: translate(-50%, -50%);
+  transition:
+    background 170ms var(--ease),
+    opacity 170ms var(--ease);
+}
+
+.solve-comparison-tick.minor {
+  height: 8px;
+  opacity: 0.7;
+}
+
+.solve-comparison-tick.major {
+  width: 2px;
+  height: 28px;
+  background: rgba(247, 248, 250, 0.82);
+}
+
+.solve-comparison-row:hover .solve-comparison-tick.minor {
+  background: rgba(241, 243, 247, 0.42);
+}
+
+.solve-comparison-beam {
+  position: absolute;
+  z-index: 2;
+  top: 27px;
+  height: 5px;
+  border-radius: 2px;
+  background: var(--comparison-color);
+  box-shadow:
+    0 0 3px rgba(var(--comparison-color-rgb), 0.8),
+    0 0 7px rgba(var(--comparison-color-rgb), 0.25);
+}
+
+.solve-comparison-beam::after {
+  position: absolute;
+  inset: -3px -2px;
+  border-radius: 5px;
+  background: rgba(var(--comparison-color-rgb), 0.32);
+  content: "";
+  filter: blur(3px);
+  pointer-events: none;
+}
+
+.solve-comparison-average-marker {
+  position: absolute;
+  z-index: 4;
+  top: 29px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.76);
+  background: #f7f8fa;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.23);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.solve-comparison-current-marker {
+  position: absolute;
+  z-index: 5;
+  top: 29px;
+  left: 50%;
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(248, 252, 255, 0.92);
+  border-radius: 50%;
+  background: var(--comparison-color);
+  box-shadow:
+    0 0 0 2px rgba(var(--comparison-color-rgb), 0.23),
+    0 0 5px rgba(var(--comparison-color-rgb), 0.9),
+    0 0 11px rgba(var(--comparison-color-rgb), 0.28);
+  transform: translate(-50%, -50%);
+  will-change: transform;
+}
+
+.solve-comparison-current-marker::after {
+  position: absolute;
+  top: 1px;
+  left: 3px;
+  width: 4px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.76);
+  content: "";
+  transform: rotate(-24deg);
+}
+
+.solve-comparison-average-text {
+  position: absolute;
+  top: 44px;
+  left: 50%;
+  color: #b9b9c0;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 560;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.solve-comparison-metrics {
+  display: grid;
+  grid-template-columns: minmax(58px, 1fr) auto;
+  align-items: end;
+  gap: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.solve-comparison-metrics > span {
+  display: grid;
+  gap: 1px;
+}
+
+.solve-comparison-metrics small {
+  color: var(--dialog-muted);
+  font-size: 10.5px;
+  font-weight: 560;
+}
+
+.solve-comparison-metrics strong {
+  color: var(--ink-strong);
+  font-size: 14px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.solve-comparison-metrics em {
+  color: var(--comparison-color);
+  font-size: 12.5px;
+  font-style: normal;
+  font-weight: 670;
+  text-align: right;
+  text-shadow: 0 0 7px rgba(var(--comparison-color-rgb), 0.18);
+  white-space: nowrap;
+}
+
+.solve-share-chart {
+  min-height: 390px;
+}
+
+.solve-share-figure {
+  display: grid;
+  min-width: 0;
+  min-height: 390px;
+  align-content: center;
+  margin: 0;
+  padding: 8px 14px 0;
+}
+
+.solve-share-annotations {
+  position: relative;
+  min-width: 0;
+}
+
+.solve-share-annotations.names {
+  height: 44px;
+}
+
+.solve-share-annotations.percentages {
+  height: 42px;
+}
+
+.solve-share-annotations > * {
+  position: absolute;
+  transform: translateX(calc(-50% + var(--annotation-shift, 0px)));
+  white-space: nowrap;
+}
+
+.solve-share-annotations.names strong {
+  bottom: 11px;
+  color: var(--ink-strong);
+  font-size: 14px;
+  font-weight: 640;
+}
+
+.solve-share-annotations.percentages span {
+  top: 11px;
+  color: #e6e6ea;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 610;
+}
+
+.solve-share-track {
+  position: relative;
+  height: 70px;
+}
+
+.solve-share-track::before {
+  position: absolute;
+  right: 0;
+  top: 32px;
+  left: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.22);
+  content: "";
+}
+
+.solve-share-track-inner {
+  position: absolute;
+  z-index: 2;
+  top: 29px;
+  right: 0;
+  left: 0;
+  display: flex;
+  height: 7px;
+  transform-origin: left center;
+  will-change: transform;
+}
+
+.solve-share-segment {
+  position: relative;
+  display: block;
+  min-width: 0;
+  height: 7px;
+}
+
+.solve-share-segment::before {
+  position: absolute;
+  inset: 1px 3px;
+  border-radius: 3px;
+  background: var(--stage-color);
+  box-shadow:
+    0 0 4px rgba(var(--stage-color-rgb), 0.72),
+    0 0 9px rgba(var(--stage-color-rgb), 0.22);
+  content: "";
+}
+
+.solve-share-segment:first-child::before {
+  left: 0;
+}
+
+.solve-share-segment:last-child::before {
+  right: 0;
+}
+
+.solve-share-boundary {
+  position: absolute;
+  z-index: 4;
+  top: 5px;
+  width: 1px;
+  height: 58px;
+  background: rgba(239, 241, 246, 0.5);
+  transform: translateX(-50%);
+}
+
+.solve-share-boundary::after {
+  position: absolute;
+  top: 27px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  background: var(--stage-color);
+  box-shadow:
+    0 0 4px rgba(var(--stage-color-rgb), 0.9),
+    0 0 10px rgba(var(--stage-color-rgb), 0.25);
+  content: "";
+  transform: translate(-50%, -50%);
+}
+
+[data-stage="cross"] {
+  --stage-color: var(--solve-stage-cross);
+  --stage-color-rgb: var(--solve-stage-cross-rgb);
+}
+
+[data-stage="f2l"] {
+  --stage-color: var(--solve-stage-f2l);
+  --stage-color-rgb: var(--solve-stage-f2l-rgb);
+}
+
+[data-stage="oll"] {
+  --stage-color: var(--solve-stage-oll);
+  --stage-color-rgb: var(--solve-stage-oll-rgb);
+}
+
+[data-stage="pll"] {
+  --stage-color: var(--solve-stage-pll);
+  --stage-color-rgb: var(--solve-stage-pll-rgb);
+}
+
+.solve-share-annotations.names [data-stage] {
+  color: var(--stage-color);
+  text-shadow: 0 0 7px rgba(var(--stage-color-rgb), 0.14);
+}
+
+.solve-share-times {
+  position: relative;
+  height: 64px;
+  margin-top: 5px;
+}
+
+.solve-share-time {
+  position: absolute;
+  top: 22px;
+  color: #c7c7ce;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 560;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.solve-share-time::before {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  width: 1px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.55);
+  content: "";
+}
+
+.solve-share-time.start {
+  transform: none;
+}
+
+.solve-share-time.start::before {
+  left: 0;
+}
+
+.solve-share-time.end {
+  transform: translateX(-100%);
+}
+
+.solve-share-time.end::before {
+  left: 100%;
+}
+
+.solve-share-total {
+  margin-top: 17px;
+  color: #bdbdc5;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 560;
+  text-align: center;
+}
+
+.solve-share-total strong {
+  margin-left: 7px;
+  color: var(--ink-strong);
+  font-size: 17px;
+  font-weight: 640;
+  letter-spacing: 0.02em;
+}
+
+.solve-analysis-empty {
+  display: flex;
+  min-height: 330px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--dialog-muted);
+  text-align: center;
+}
+
+.solve-analysis-empty[hidden] {
+  display: none;
+}
+
+.solve-analysis-empty p {
+  max-width: 42ch;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.solve-analysis-empty button {
+  min-height: 44px;
+  border: 1px solid rgba(var(--accent-rgb), 0.34);
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent-highlight);
+}
+
+.solve-analysis-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: solve-analysis-spin 800ms linear infinite;
+}
+
+@keyframes solve-analysis-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 760px) {
+  .solve-dialog .solve-dialog-header {
+    min-height: 136px;
+  }
+
+  .solve-analysis-head {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .solve-analysis-tabs {
+    width: 100%;
+  }
+
+  .solve-comparison-scale-inner,
+  .solve-comparison-row {
+    grid-template-columns: 56px minmax(0, 1fr) 112px;
+    gap: 8px;
+  }
+
+  .solve-comparison-scale-axis > span:nth-child(4),
+  .solve-comparison-scale-axis > span:nth-child(6) {
+    display: none;
+  }
+
+  .solve-comparison-stage {
+    font-size: 14px;
+  }
+
+  .solve-comparison-metrics {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .solve-comparison-metrics em {
+    text-align: left;
+  }
+
+  .solve-share-figure {
+    padding-right: 5px;
+    padding-left: 5px;
+  }
+}
+
+@media (max-width: 520px) {
+  .solve-dialog .solve-dialog-header {
+    min-height: 132px;
+    gap: 12px;
+  }
+
+  .solve-dialog .solve-detail-result {
+    font-size: 36px;
+  }
+
+  .solve-dialog .solve-detail-heading p {
+    max-width: 56vw;
+  }
+
+  .solve-dialog .dialog-header-actions {
+    width: 96px;
+    gap: 6px;
+  }
+
+  .solve-dialog .dialog-header-actions button {
+    min-width: 44px;
+    width: 44px;
+    padding: 0;
+  }
+
+  .solve-dialog .dialog-header-actions button span {
+    display: none;
+  }
+
+  .solve-analysis-panel {
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .solve-analysis-viewport {
+    min-height: 414px;
+  }
+
+  .solve-comparison-scale-inner,
+  .solve-comparison-row {
+    grid-template-columns: 43px minmax(0, 1fr) 77px;
+    gap: 5px;
+  }
+
+  .solve-comparison-stage {
+    font-size: 12.5px;
+  }
+
+  .solve-comparison-metrics strong {
+    font-size: 11.5px;
+  }
+
+  .solve-comparison-metrics em {
+    font-size: 10.5px;
+  }
+
+  .solve-comparison-average-text {
+    font-size: 9px;
+  }
+
+  .solve-comparison-direction {
+    font-size: 10px;
+  }
+
+  .solve-comparison-direction.faster {
+    left: 4%;
+  }
+
+  .solve-comparison-direction.slower {
+    right: 2%;
+  }
+
+  .solve-comparison-direction::after,
+  .solve-comparison-direction.slower::before {
+    font-size: 14px;
+  }
+
+  .solve-share-annotations.names strong,
+  .solve-share-annotations.percentages span {
+    font-size: 11px;
+  }
+
+  .solve-share-time {
+    font-size: 9.5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .solve-analysis-spinner {
+    animation: none;
+    border-color: rgba(var(--accent-rgb), 0.62);
+  }
+
+  .solve-comparison-current-marker,
+  .solve-share-track-inner {
+    will-change: auto;
+  }
+}
+
+@media (forced-colors: active) {
+  .solve-comparison-beam,
+  .solve-comparison-current-marker,
+  .solve-share-segment::before,
+  .solve-share-boundary::after {
+    background: Highlight;
+    box-shadow: none;
+    filter: none;
+  }
+
+  .solve-comparison-average-marker {
+    border-color: CanvasText;
+    background: Canvas;
+    box-shadow: none;
   }
 }
 
@@ -981,7 +2595,11 @@ body[data-state="timing"] .timer-display {
   margin-right: 0.34em;
   border-radius: 6px;
   padding: 0.02em 0.09em;
-  transition: background-color 160ms ease, box-shadow 160ms ease, color 160ms ease, transform 160ms ease;
+  transition:
+    background-color 160ms var(--ease),
+    box-shadow 160ms var(--ease),
+    color 160ms var(--ease),
+    transform 160ms var(--ease);
 }
 
 .scramble-move:hover {
@@ -1098,6 +2716,15 @@ body[data-state="timing"] .timer-display {
   background: linear-gradient(180deg, rgba(3, 8, 14, 0.36) 0%, rgba(3, 8, 14, 0.14) 70%, transparent 100%);
   box-shadow: none;
   backdrop-filter: blur(16px) saturate(1.06);
+}
+
+.bluetooth-feed-panel[hidden],
+#bluetoothBattery[hidden] {
+  display: none;
+}
+
+.preview-panel:has(> .bluetooth-feed-panel[hidden]) {
+  grid-template-rows: auto minmax(0, 1fr) 0;
 }
 
 .bluetooth-feed-head {
@@ -2052,9 +3679,8 @@ body[data-focus-transition="leave"] .bluetooth-3d-focus-host .bluetooth-3d-canva
 }
 
 .history-cfop-body {
-  max-height: min(224px, 32dvh);
-  overflow-x: hidden;
-  overflow-y: auto;
+  max-height: none;
+  overflow: visible;
   opacity: 1;
   padding-right: 2px;
   transform: translateY(0);
@@ -2071,19 +3697,6 @@ body[data-focus-transition="leave"] .bluetooth-3d-focus-host .bluetooth-3d-canva
   overflow: hidden;
   opacity: 0;
   transform: translateY(-4px);
-}
-
-.history-cfop-body::-webkit-scrollbar {
-  width: 5px;
-}
-
-.history-cfop-body::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.history-cfop-body::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: rgba(var(--accent-rgb), 0.24);
 }
 
 .history-cfop-stages {
@@ -5150,5 +6763,170 @@ button.solve-cfop-card.active {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Dialog shell properties are repeated at the end so they win the legacy cascade. */
+dialog:is(.solve-dialog, .all-solves-dialog, .stats-dialog, .average-dialog, .algorithm-dialog, .timer-settings-dialog, .export-dialog, .import-dialog, .move-dialog, .manual-dialog, .bluetooth-log-dialog) {
+  box-sizing: border-box;
+  width: min(
+    var(--dialog-surface-width),
+    calc(100vw - var(--dialog-viewport-gutter) - var(--dialog-viewport-gutter))
+  );
+  height: 100dvh;
+  max-width: 100vw;
+  max-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 0;
+  border-radius: 0;
+  padding: var(--dialog-viewport-gutter) 0;
+  background: transparent;
+  clip-path: inset(var(--dialog-viewport-gutter) 0 round var(--dialog-radius));
+  color: var(--ink);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+dialog.all-solves-dialog {
+  --dialog-surface-width: 1180px;
+}
+
+dialog.stats-dialog {
+  --dialog-surface-width: 1080px;
+}
+
+dialog.solve-dialog {
+  --dialog-surface-width: 840px;
+}
+
+dialog.algorithm-dialog {
+  --dialog-surface-width: 980px;
+}
+
+dialog.bluetooth-log-dialog {
+  --dialog-surface-width: 900px;
+}
+
+dialog:is(.manual-dialog, .average-dialog) {
+  --dialog-surface-width: 720px;
+}
+
+dialog:is(.export-dialog, .import-dialog, .timer-settings-dialog) {
+  --dialog-surface-width: 640px;
+}
+
+dialog.move-dialog {
+  --dialog-surface-width: 480px;
+}
+
+dialog[class]::backdrop {
+  background: rgba(3, 3, 6, 0.72);
+  -webkit-backdrop-filter: blur(12px) saturate(0.82);
+  backdrop-filter: blur(12px) saturate(0.82);
+}
+
+dialog[class][open] {
+  display: flex;
+  align-items: stretch;
+  flex-direction: column;
+  justify-content: safe center;
+  animation: dialog-shell-in 180ms var(--ease-enter) both;
+}
+
+dialog[class][open]::backdrop {
+  animation: dialog-backdrop-in 170ms var(--ease-enter) both;
+}
+
+dialog .solve-dialog-header > button[type="submit"],
+dialog .dialog-header-actions button[type="submit"] {
+  min-height: 46px;
+}
+
+dialog .all-solves-toolbar button {
+  color: var(--ink-strong);
+}
+
+dialog .all-sessions-toggle {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+dialog .danger-action,
+dialog .dialog-actions .danger-action,
+dialog .all-solves-toolbar .danger-action {
+  border-color: rgba(255, 69, 58, 0.3);
+  background: rgba(255, 69, 58, 0.12);
+  color: #ff9a94;
+}
+
+dialog .stats-chart-panel {
+  min-width: 0;
+  overflow: hidden;
+}
+
+dialog .stats-chart-panel canvas {
+  max-width: 100%;
+}
+
+dialog > form[class] {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  max-height: none;
+  flex: 0 0 auto;
+  margin: 0;
+  overflow: clip;
+  border: 1px solid var(--dialog-border);
+  border-radius: var(--dialog-radius);
+  padding: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 96px),
+    var(--dialog-shell);
+  box-shadow:
+    0 32px 90px rgba(0, 0, 0, 0.58),
+    inset 0 1px 0 rgba(255, 255, 255, 0.065);
+  -webkit-backdrop-filter: blur(24px) saturate(1.16);
+  backdrop-filter: blur(24px) saturate(1.16);
+}
+
+dialog.algorithm-dialog > form.algorithm-dialog-inner {
+  max-height: none;
+  padding: 20px;
+}
+
+@media (max-width: 720px) {
+  dialog:is(.solve-dialog, .all-solves-dialog, .stats-dialog, .average-dialog, .algorithm-dialog, .timer-settings-dialog, .export-dialog, .import-dialog, .move-dialog, .manual-dialog, .bluetooth-log-dialog) {
+    --dialog-radius: 16px;
+    --dialog-viewport-gutter: 6px;
+  }
+
+  dialog > form[class],
+  dialog.algorithm-dialog > form.algorithm-dialog-inner {
+    max-height: none;
+    border-radius: 16px;
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  dialog .session-overview-head,
+  dialog .session-overview-row {
+    grid-template-columns: minmax(0, 1fr) repeat(2, minmax(44px, 0.55fr));
+    gap: 6px;
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+
+  dialog .session-overview-head span:nth-child(n + 4),
+  dialog .session-overview-row span:nth-child(n + 4) {
+    display: none;
   }
 }

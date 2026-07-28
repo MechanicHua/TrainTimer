@@ -4,6 +4,7 @@ import { algorithmTrainerAlgorithmIsValid, algorithmTrainerAlgorithmStepCount, a
 import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from './bluetooth-moves.js?v=20260528-gan-latency';
 import { bluetoothStateLogPostSolveCaptureMs, bluetoothStateLogRevision, shouldCaptureBluetoothStateLogPacket } from './bluetooth-state-log.js?v=20260714-state-log-final';
 import { cfopAnalysisVersion, cfopStagesForSave, cfopStageTemplate, solveCfopAnalysis, solveMoveRecords } from './cfop-analysis.js?v=20260714-analysis-v5';
+import { aggregateCfopChartStages, buildCfopHistoryIndex, buildCfopStageComparison, buildCfopStageShare, cfopComparisonAxisPosition } from './cfop-stage-stats.js?v=20260727-solve-charts-v1';
 import { opAnalysisVersion, opEventsForSave } from './op-analysis.js?v=20260714-analysis-v5';
 import { opCaseSvgMarkup } from './op-case-svg.js?v=20260603-op-poster-diagrams';
 import { buildOpFormulaLibrary } from './op-formula-library.js?v=20260603-op-formula-library';
@@ -28,7 +29,7 @@ import { parseSolveImport } from './solves-import.js?v=20260528-gan-latency';
 import { buildStatsSummary } from './stats-summary.js?v=20260528-gan-latency';
 import { buildSolveSummary } from './solve-summary.js?v=20260528-gan-latency';
 import { bestAverageRecord, bestMeanRecord, bestSingleRecord, chronologicalSolves, recordMarksAt, rollingAverageAt, rollingAverageDetailAt, rollingMeanAt, rollingMeanDetailAt } from './rolling-averages.js?v=20260601-correction-perf';
-import { replayDelayBeforeMove, replayMoveAnimationDelay } from './replay-timing.js?v=20260603-replay-timing';
+import { replayDelayBeforeMove, replayMoveAnimationDelay } from './replay-timing.js?v=20260716-exact-replay-timing';
 
 const localApiOrigin = 'http://127.0.0.1:3211';
 const localHttpHost = /^(127\.0\.0\.1|localhost|\[::1\])$/.test(location.hostname);
@@ -102,6 +103,7 @@ const bluetoothLogRenderIntervalMs = 120;
 const bluetoothHighFrequencyMoveLogIntervalMs = 350;
 const bluetoothFeedRowLimit = 12;
 const bluetoothDebugLogging = localStorage.getItem('trainTimer.bluetoothDebug') === '1';
+const interfaceEaseOut = 'cubic-bezier(0.16, 1, 0.3, 1)';
 const byteHexLookup = Array.from({ length: 256 }, (_, index) => index.toString(16).padStart(2, '0'));
 const statsChartModes = new Set(['single', 'mo3', 'ao5', 'ao12', 'ao50', 'ao100', 'tps']);
 const statsChartLabels = {
@@ -382,6 +384,7 @@ const elements = {
   bluetoothLogButton: document.querySelector('#bluetoothLogButton'),
   bluetoothBattery: document.querySelector('#bluetoothBattery'),
   bluetoothStatus: document.querySelector('#bluetoothStatus'),
+  bluetoothFeedPanel: document.querySelector('#bluetoothFeedPanel'),
   bluetoothFeedMeta: document.querySelector('#bluetoothFeedMeta'),
   bluetoothFeedRows: document.querySelector('#bluetoothFeedRows'),
   sessionSelect: document.querySelector('#sessionSelect'),
@@ -577,7 +580,21 @@ const elements = {
   saveManualEntryButton: document.querySelector('#saveManualEntryButton'),
   solveDialog: document.querySelector('#solveDialog'),
   solveDetailTitle: document.querySelector('#solveDetailTitle'),
+  solveDetailResult: document.querySelector('#solveDetailResult'),
   solveDetailMeta: document.querySelector('#solveDetailMeta'),
+  solveDetailContext: document.querySelector('#solveDetailContext'),
+  solveAnalysisPanel: document.querySelector('#solveAnalysisPanel'),
+  solveAnalysisTitle: document.querySelector('#solveAnalysisTitle'),
+  solveAnalysisStatus: document.querySelector('#solveAnalysisStatus'),
+  solveAnalysisTabs: document.querySelector('#solveAnalysisTabs'),
+  solveAnalysisTabButtons: [...document.querySelectorAll('[data-solve-analysis-mode]')],
+  solveAnalysisViews: [...document.querySelectorAll('[data-solve-analysis-view]')],
+  solveComparisonScale: document.querySelector('#solveComparisonScale'),
+  solveComparisonRows: document.querySelector('#solveComparisonRows'),
+  solveComparisonEmpty: document.querySelector('#solveComparisonEmpty'),
+  solveShareChart: document.querySelector('#solveShareChart'),
+  solveShareEmpty: document.querySelector('#solveShareEmpty'),
+  solveAnalysisA11y: document.querySelector('#solveAnalysisA11y'),
   solveDetailTimeInput: document.querySelector('#solveDetailTimeInput'),
   solveDetailError: document.querySelector('#solveDetailError'),
   solveDetailPenaltySelect: document.querySelector('#solveDetailPenaltySelect'),
@@ -624,11 +641,16 @@ const elements = {
   pbToastQueue: document.querySelector('#pbToastQueue'),
 };
 
+const dialogScrollIndicatorStates = new WeakMap();
+let dialogScrollIndicatorResizeObserver = null;
+
 let appState = 'loading';
 let scramble = null;
 let solves = [];
 let sessions = [];
 let fullHistoryLoaded = false;
+let fullHistoryLoadPromise = null;
+let fullHistoryLoadError = '';
 let fullHistoryRequestId = 0;
 let scrambleLoadRequestId = 0;
 let scrambleLoadPromise = null;
@@ -704,8 +726,13 @@ let pendingDeletedSolves = [];
 let pendingImportSnapshot = null;
 let pendingImportPreview = null;
 let currentDetailSolveId = null;
+let solveAnalysisMode = localStorage.getItem('trainTimer.solveDetailChartMode') === 'share' ? 'share' : 'comparison';
+let cfopHistoryIndexCacheRef = null;
+let cfopHistoryIndexCache = null;
+let solveDetailNavigationDirection = 0;
 let currentAverageDetail = null;
 let solveReplayTimer = 0;
+let solveReplayNextDueAt = 0;
 let solveReplayStep = -1;
 let solveReplayPlaying = false;
 let solveReplayPreviewActive = false;
@@ -1085,6 +1112,9 @@ elements.confirmCommentButton.addEventListener('click', saveSelectedComment);
 elements.prevSolveButton.addEventListener('click', () => navigateSolveDetail(-1));
 elements.nextSolveDetailButton.addEventListener('click', () => navigateSolveDetail(1));
 elements.solveReplayButton.addEventListener('click', toggleSolveReplay);
+elements.solveAnalysisTabs?.addEventListener('click', handleSolveAnalysisTabClick);
+elements.solveAnalysisTabs?.addEventListener('keydown', handleSolveAnalysisTabKeyDown);
+elements.solveComparisonEmpty?.addEventListener('click', handleSolveAnalysisEmptyClick);
 elements.copySolveSummaryButton.addEventListener('click', copySelectedSolveSummary);
 elements.copyScrambleButton.addEventListener('click', copySelectedScramble);
 elements.copyStatsSummaryButton.addEventListener('click', copyStatsSummary);
@@ -1168,6 +1198,7 @@ elements.statsRecordList.addEventListener('click', handleStatsRecordClick);
 elements.sessionOverviewList.addEventListener('click', handleSessionOverviewClick);
 window.addEventListener('resize', updateHistoryRowsMask);
 window.addEventListener('resize', invalidateTimerDisplayFit);
+window.addEventListener('resize', adjustSolveShareAnnotations);
 document.addEventListener('visibilitychange', handleDocumentVisibilityChange);
 
 window.__trainTimerDebug = {
@@ -1303,10 +1334,19 @@ window.__trainTimerDebug = {
   },
   setBluetoothDeviceForTest(name = '模拟蓝牙魔方') {
     bluetoothDevice = { name: String(name || '模拟蓝牙魔方'), id: 'debug-device', gatt: { connected: true } };
+    setBluetoothConnectedState(true);
     setBluetoothDeviceNameStatus('已连接', 'debug');
     scheduleScrambleGuideLocalSolverWarmupWhenUseful();
     scheduleScrambleGuideServerSolverWarmupWhenUseful();
     renderBluetoothFeed();
+    return this.state();
+  },
+  setBluetoothConnectedForTest(connected = true) {
+    if (!bluetoothDevice) {
+      bluetoothDevice = { name: '模拟蓝牙魔方', id: 'debug-device', gatt: { connected: false } };
+    }
+    bluetoothDevice.gatt.connected = Boolean(connected);
+    setBluetoothConnectedState(Boolean(connected));
     return this.state();
   },
   async setBluetooth3dPreviewForTest(enabled = true, gyroEnabled = true) {
@@ -1709,7 +1749,126 @@ document.addEventListener('keydown', handleKeyDown);
 document.addEventListener('keyup', handleKeyUp);
 document.addEventListener('click', closeHistoryMenuOnOutsideClick);
 
+setupDialogScrollIndicators();
 await bootstrap();
+
+function setupDialogScrollIndicators() {
+  const dialogs = [...document.querySelectorAll('dialog')];
+  if (dialogs.length === 0) return;
+
+  if (typeof ResizeObserver === 'function') {
+    dialogScrollIndicatorResizeObserver = new ResizeObserver((entries) => {
+      const changedDialogs = new Set();
+      for (const entry of entries) {
+        const dialog = entry.target.closest('dialog');
+        if (dialog) changedDialogs.add(dialog);
+      }
+      for (const dialog of changedDialogs) scheduleDialogScrollIndicatorUpdate(dialog);
+    });
+  }
+
+  for (const dialog of dialogs) {
+    const indicator = document.createElement('span');
+    indicator.className = 'dialog-scroll-indicator';
+    indicator.setAttribute('aria-hidden', 'true');
+    dialog.append(indicator);
+
+    const state = {
+      indicator,
+      frame: 0,
+      fadeTimer: 0,
+    };
+    dialogScrollIndicatorStates.set(dialog, state);
+
+    dialog.addEventListener('scroll', () => {
+      dialog.dataset.dialogScrolling = 'true';
+      window.clearTimeout(state.fadeTimer);
+      state.fadeTimer = window.setTimeout(() => {
+        delete dialog.dataset.dialogScrolling;
+      }, 420);
+      scheduleDialogScrollIndicatorUpdate(dialog);
+    }, { passive: true });
+
+    dialog.addEventListener('toggle', () => {
+      if (!dialog.open) {
+        delete dialog.dataset.dialogScrollable;
+        delete dialog.dataset.dialogScrolling;
+        return;
+      }
+      scheduleDialogScrollIndicatorUpdate(dialog);
+    });
+
+    dialog.addEventListener('close', () => {
+      delete dialog.dataset.dialogScrollable;
+      delete dialog.dataset.dialogScrolling;
+      window.clearTimeout(state.fadeTimer);
+    });
+
+    if (dialogScrollIndicatorResizeObserver) {
+      dialogScrollIndicatorResizeObserver.observe(dialog);
+      const form = dialog.querySelector(':scope > form');
+      const header = form?.querySelector(':scope > .solve-dialog-header');
+      const footer = form?.querySelector(':scope > .dialog-actions');
+      if (form) dialogScrollIndicatorResizeObserver.observe(form);
+      if (header) dialogScrollIndicatorResizeObserver.observe(header);
+      if (footer) dialogScrollIndicatorResizeObserver.observe(footer);
+    }
+  }
+}
+
+function scheduleDialogScrollIndicatorUpdate(dialog) {
+  const state = dialogScrollIndicatorStates.get(dialog);
+  if (!state || state.frame) return;
+  state.frame = window.requestAnimationFrame(() => {
+    state.frame = 0;
+    updateDialogScrollIndicator(dialog);
+  });
+}
+
+function updateDialogScrollIndicator(dialog) {
+  const state = dialogScrollIndicatorStates.get(dialog);
+  if (!state || !dialog.open) return;
+
+  const scrollRange = Math.max(0, dialog.scrollHeight - dialog.clientHeight);
+  if (scrollRange <= 1) {
+    delete dialog.dataset.dialogScrollable;
+    return;
+  }
+
+  const form = dialog.querySelector(':scope > form');
+  const header = form?.querySelector(':scope > .solve-dialog-header');
+  const footer = form?.querySelector(':scope > .dialog-actions');
+  const dialogBox = dialog.getBoundingClientRect();
+  const headerBox = header?.getBoundingClientRect();
+  const footerBox = footer?.getBoundingClientRect();
+  const styles = getComputedStyle(dialog);
+  const viewportGutter = Number.parseFloat(styles.getPropertyValue('--dialog-viewport-gutter')) || 0;
+  const radius = Number.parseFloat(styles.getPropertyValue('--dialog-radius')) || 0;
+  const clearance = Number.parseFloat(styles.getPropertyValue('--dialog-scrollbar-track-clearance')) || 0;
+  const surfaceTop = dialogBox.top + viewportGutter;
+  const surfaceBottom = dialogBox.bottom - viewportGutter;
+  const trackTop = Math.max(surfaceTop + radius, headerBox?.bottom || surfaceTop) + clearance;
+  const trackBottom = Math.min(surfaceBottom - radius, footerBox?.top || surfaceBottom) - clearance;
+  const trackHeight = Math.max(0, trackBottom - trackTop);
+
+  if (trackHeight <= 36) {
+    delete dialog.dataset.dialogScrollable;
+    return;
+  }
+
+  const thumbHeight = Math.min(
+    trackHeight,
+    Math.max(36, trackHeight * (dialog.clientHeight / dialog.scrollHeight)),
+  );
+  const progress = Math.min(1, Math.max(0, dialog.scrollTop / scrollRange));
+  const thumbTop = trackTop + ((trackHeight - thumbHeight) * progress);
+  const thumbLeft = dialogBox.width - 7;
+  const thumbOffsetTop = (thumbTop - dialogBox.top) + dialog.scrollTop;
+
+  state.indicator.style.height = `${thumbHeight}px`;
+  state.indicator.style.transform = `translate3d(${thumbLeft}px, ${thumbOffsetTop}px, 0)`;
+  dialog.dataset.dialogScrollable = 'true';
+}
 
 async function bootstrap() {
   try {
@@ -1718,6 +1877,7 @@ async function bootstrap() {
     solves = Array.isArray(data.solves) ? data.solves : [];
     sessions = Array.isArray(data.sessions) ? data.sessions : [];
     historyPartial = data.historyPartial === true;
+    fullHistoryLoaded = !historyPartial;
     historyTotal = Number.isFinite(Number(data.historyTotal)) ? Math.max(0, Math.round(Number(data.historyTotal))) : solves.length;
     bootstrapSessionSummaries = data.sessionSummaries && typeof data.sessionSummaries === 'object'
       ? data.sessionSummaries
@@ -1754,9 +1914,23 @@ function scheduleFullHistoryLoad() {
 }
 
 async function loadFullHistoryInBackground() {
+  if (fullHistoryLoaded || !historyPartial) {
+    fullHistoryLoaded = true;
+    return;
+  }
+  if (fullHistoryLoadPromise) return fullHistoryLoadPromise;
+  fullHistoryLoadPromise = requestFullHistory()
+    .finally(() => {
+      fullHistoryLoadPromise = null;
+    });
+  return fullHistoryLoadPromise;
+}
+
+async function requestFullHistory() {
   const requestId = fullHistoryRequestId + 1;
   fullHistoryRequestId = requestId;
   const solveCountAtStart = solves.length;
+  fullHistoryLoadError = '';
   try {
     const data = await getJson('/api/solves');
     if (requestId !== fullHistoryRequestId) return;
@@ -1772,9 +1946,14 @@ async function loadFullHistoryInBackground() {
     fullHistoryLoaded = true;
     if (data.historyPath) elements.historyPath.textContent = data.historyPath;
     render();
+    if (elements.solveDialog.open && currentDetailSolveId) renderSolveAnalysisForCurrentSolve();
   } catch (error) {
     console.warn('完整历史后台加载失败', error);
+    fullHistoryLoadError = error?.message || '完整历史加载失败';
+    if (elements.solveDialog.open && currentDetailSolveId) renderSolveAnalysisForCurrentSolve({ historyError: true });
+    return false;
   }
+  return true;
 }
 
 function applyCurrentSessionPuzzle(fallback = scramblePuzzle || 'three') {
@@ -3561,6 +3740,7 @@ function loadMoreAllSolvesRows() {
 
 function openSolveDialog(id) {
   if (currentDetailSolveId !== id) stopSolveReplay();
+  solveDetailNavigationDirection = 0;
   currentDetailSolveId = id;
   renderSolveDialog();
   if (!elements.solveDialog.open) elements.solveDialog.showModal();
@@ -3577,15 +3757,18 @@ function renderSolveDialog() {
   const sessionSolves = solvesForSession(solve.sessionId);
   const solveIndex = sessionSolves.findIndex((item) => item.id === solve.id);
   const solveNumber = solveIndex + 1;
-  elements.solveDetailTitle.textContent = `成绩 ${displaySolveTime(solve)}`;
+  elements.solveDetailTitle.textContent = '成绩详情';
+  elements.solveDetailResult.textContent = displaySolveTime(solve);
   const timerSource = solve.timerSource === 'bluetooth' ? '蓝牙停表' : '手动停表';
   const positionText = solveIndex >= 0 ? `第 ${solveNumber} / ${sessionSolves.length} 条` : '未知位置';
   elements.solveDetailMeta.textContent = [
+    puzzleLabel(solve.scramblePuzzle || 'three'),
+    new Date(solve.createdAt).toLocaleString(),
+  ].filter(Boolean).join(' · ');
+  elements.solveDetailContext.textContent = [
     sessionNameForSolve(solve),
     positionText,
-    new Date(solve.createdAt).toLocaleString(),
     timerSource,
-    puzzleLabel(solve.scramblePuzzle || 'three'),
   ].filter(Boolean).join(' · ');
   elements.prevSolveButton.disabled = solveIndex <= 0;
   elements.nextSolveDetailButton.disabled = solveIndex < 0 || solveIndex >= sessionSolves.length - 1;
@@ -3596,7 +3779,9 @@ function renderSolveDialog() {
   elements.solveDetailScramble.value = solve.scramble || '';
   elements.solveDetailComment.value = solve.comment || '';
   elements.solveDetailTagsInput.value = formatTags(solve.tags);
-  renderSolveSolutionPanel(solve);
+  const solution = renderSolveSolutionPanel(solve);
+  renderSolveAnalysis(solve, solution.displayedStages);
+  animateSolveDetailNavigation();
 }
 
 function renderSolveSolutionPanel(solve) {
@@ -3613,7 +3798,7 @@ function renderSolveSolutionPanel(solve) {
     elements.solveDetailBluetoothStats.textContent = '复原分析';
     elements.solveBluetoothReplayMeta.textContent = '-';
     elements.solveCfopStages.replaceChildren();
-    return;
+    return { analysis, displayedStages, hasMoves };
   }
 
   const stageText = analysis.finalSolved || displayedStages.some((stage) => stage.key === 'pll' && stage.completed)
@@ -3637,6 +3822,484 @@ function renderSolveSolutionPanel(solve) {
     ...orderedOpEventsForDisplay(opEvents).map((event) => renderOpEventCard(event)),
   );
   updateSolveReplayHighlight();
+  return { analysis, displayedStages, hasMoves };
+}
+
+function renderSolveAnalysisForCurrentSolve(options = {}) {
+  const solve = solves.find((item) => item.id === currentDetailSolveId);
+  if (!solve || !elements.solveDialog.open) return;
+  const analysis = solveCfopAnalysis(solve);
+  const display = cfopDisplayForSolve(solve, analysis);
+  const displayedStages = display.hasData ? display.stages : analysis.stages;
+  renderSolveAnalysis(solve, displayedStages, options);
+}
+
+function renderSolveAnalysis(solve, displayedStages, options = {}) {
+  const aggregate = aggregateCfopChartStages(displayedStages);
+  const historyPending = historyPartial && !fullHistoryLoaded;
+  const historyFailed = historyPending && Boolean(fullHistoryLoadError || options.historyError);
+  let comparison = null;
+
+  renderSolveStageShare(aggregate);
+  if (aggregate && !historyPending) {
+    comparison = buildCfopStageComparison(solve, displayedStages, cachedCfopHistoryIndex());
+    renderSolveStageComparison(comparison);
+  } else {
+    elements.solveComparisonScale.replaceChildren();
+    elements.solveComparisonRows.replaceChildren();
+    if (!aggregate) {
+      renderSolveAnalysisEmpty(elements.solveComparisonEmpty, '这条成绩没有完整的四阶段 CFOP 计时。');
+    } else if (historyFailed) {
+      renderSolveAnalysisEmpty(elements.solveComparisonEmpty, '完整历史暂时无法载入，阶段占比仍可正常查看。', { retry: true });
+    } else {
+      renderSolveAnalysisLoading(elements.solveComparisonEmpty, '正在载入完整历史，用于计算阶段平均值…');
+      void loadFullHistoryInBackground();
+    }
+  }
+
+  const comparisonStatus = !aggregate
+    ? '缺少完整的 Cross、F2L、OLL、PLL 分段'
+    : (historyPending
+      ? (historyFailed ? '完整历史暂不可用' : '正在载入完整历史')
+      : (comparison?.historyCount > 0
+        ? `历史平均 · ${comparison.historyCount} 条有效 CFOP 成绩`
+        : '当前成绩之前暂无可比较的完整 CFOP 成绩'));
+  const shareStatus = aggregate
+    ? `四阶段记录合计 · ${formatCfopChartTime(aggregate.totalMs)}`
+    : '缺少完整的 Cross、F2L、OLL、PLL 分段';
+
+  elements.solveAnalysisPanel.dataset.comparisonStatus = comparisonStatus;
+  elements.solveAnalysisPanel.dataset.shareStatus = shareStatus;
+  elements.solveAnalysisA11y.textContent = solveAnalysisAccessibleSummary(comparison, aggregate);
+  applySolveAnalysisMode({ animate: false });
+}
+
+function cachedCfopHistoryIndex() {
+  if (cfopHistoryIndexCacheRef === solves && cfopHistoryIndexCache) return cfopHistoryIndexCache;
+  cfopHistoryIndexCacheRef = solves;
+  cfopHistoryIndexCache = buildCfopHistoryIndex(solves);
+  return cfopHistoryIndexCache;
+}
+
+function renderSolveStageComparison(comparison) {
+  if (!comparison?.current) {
+    elements.solveComparisonScale.replaceChildren();
+    elements.solveComparisonRows.replaceChildren();
+    renderSolveAnalysisEmpty(elements.solveComparisonEmpty, '这条成绩没有完整的四阶段 CFOP 计时。');
+    return;
+  }
+  if (comparison.rows.length === 0) {
+    elements.solveComparisonScale.replaceChildren();
+    elements.solveComparisonRows.replaceChildren();
+    renderSolveAnalysisEmpty(elements.solveComparisonEmpty, '当前成绩之前暂无可比较的完整 CFOP 成绩。');
+    return;
+  }
+
+  elements.solveComparisonEmpty.hidden = true;
+  elements.solveComparisonEmpty.replaceChildren();
+  elements.solveComparisonScale.replaceChildren(renderSolveComparisonScale(comparison.axisMaxRatio));
+  elements.solveComparisonRows.replaceChildren(
+    ...comparison.rows.map((row, index) => renderSolveComparisonRow(row, comparison.axisMaxRatio, index)),
+  );
+  if (solveAnalysisMode === 'comparison') requestAnimationFrame(animateSolveComparisonChart);
+}
+
+function renderSolveComparisonScale(axisMaxRatio) {
+  const scale = document.createElement('div');
+  scale.className = 'solve-comparison-scale-inner';
+  const blank = document.createElement('span');
+  blank.setAttribute('aria-hidden', 'true');
+  const axis = document.createElement('div');
+  axis.className = 'solve-comparison-scale-axis';
+  const fast = document.createElement('span');
+  fast.className = 'solve-comparison-direction faster';
+  fast.textContent = '更快';
+  const slow = document.createElement('span');
+  slow.className = 'solve-comparison-direction slower';
+  slow.textContent = '更慢';
+  axis.append(fast, slow);
+
+  const values = [-axisMaxRatio, -axisMaxRatio / 2, 0, axisMaxRatio / 2, axisMaxRatio];
+  values.forEach((value, index) => {
+    const label = document.createElement('span');
+    label.className = `solve-comparison-scale-label${index === 2 ? ' average' : ''}`;
+    label.style.left = `${index * 25}%`;
+    label.textContent = formatSignedPercentage(value);
+    axis.append(label);
+  });
+  const metricBlank = document.createElement('span');
+  metricBlank.setAttribute('aria-hidden', 'true');
+  scale.append(blank, axis, metricBlank);
+  return scale;
+}
+
+function renderSolveComparisonRow(row, axisMaxRatio, index) {
+  const state = row.deltaMs < -0.5 ? 'faster' : (row.deltaMs > 0.5 ? 'slower' : 'equal');
+  const position = cfopComparisonAxisPosition(row.ratio, axisMaxRatio);
+  const chartRow = document.createElement('div');
+  chartRow.className = `solve-comparison-row ${state}`;
+  chartRow.style.setProperty('--row-delay', `${index * 22}ms`);
+  chartRow.setAttribute(
+    'aria-label',
+    `${row.label}，当前 ${formatCfopChartTime(row.currentMs)}，历史平均 ${formatCfopChartTime(row.averageMs)}，${formatCfopDelta(row.deltaMs)}`,
+  );
+
+  const label = document.createElement('strong');
+  label.className = 'solve-comparison-stage';
+  label.textContent = row.label;
+
+  const axis = document.createElement('div');
+  axis.className = 'solve-comparison-axis';
+  axis.dataset.position = position.toFixed(4);
+  const baseline = document.createElement('span');
+  baseline.className = 'solve-comparison-baseline';
+  axis.append(baseline);
+  for (let tickIndex = 0; tickIndex <= 20; tickIndex += 1) {
+    const tick = document.createElement('i');
+    tick.className = `solve-comparison-tick${tickIndex % 5 === 0 ? ' major' : ' minor'}`;
+    tick.style.left = `${tickIndex * 5}%`;
+    tick.setAttribute('aria-hidden', 'true');
+    axis.append(tick);
+  }
+
+  const beam = document.createElement('span');
+  beam.className = 'solve-comparison-beam';
+  beam.style.left = `${Math.min(50, position)}%`;
+  beam.style.width = `${Math.abs(position - 50)}%`;
+  beam.style.transformOrigin = position < 50 ? 'right center' : 'left center';
+  const average = document.createElement('span');
+  average.className = 'solve-comparison-average-marker';
+  average.setAttribute('aria-hidden', 'true');
+  const current = document.createElement('span');
+  current.className = 'solve-comparison-current-marker';
+  current.setAttribute('aria-hidden', 'true');
+  const averageText = document.createElement('span');
+  averageText.className = 'solve-comparison-average-text';
+  averageText.textContent = `平均 ${formatCfopChartTime(row.averageMs)}`;
+  axis.append(beam, average, current, averageText);
+
+  const metrics = document.createElement('div');
+  metrics.className = 'solve-comparison-metrics';
+  const currentText = document.createElement('span');
+  currentText.innerHTML = `<small>当前</small><strong>${escapeHtml(formatCfopChartTime(row.currentMs))}</strong>`;
+  const delta = document.createElement('em');
+  delta.textContent = formatCfopDelta(row.deltaMs);
+  metrics.append(currentText, delta);
+  chartRow.append(label, axis, metrics);
+  return chartRow;
+}
+
+function renderSolveStageShare(aggregate) {
+  elements.solveShareChart.replaceChildren();
+  if (!aggregate) {
+    renderSolveAnalysisEmpty(elements.solveShareEmpty, '这条成绩没有完整的四阶段 CFOP 计时。');
+    return;
+  }
+  const share = buildCfopStageShare(aggregate);
+  if (!share) {
+    renderSolveAnalysisEmpty(elements.solveShareEmpty, '阶段记录总用时无效，暂时无法计算占比。');
+    return;
+  }
+
+  elements.solveShareEmpty.hidden = true;
+  elements.solveShareEmpty.replaceChildren();
+  const figure = document.createElement('figure');
+  figure.className = 'solve-share-figure';
+  figure.setAttribute(
+    'aria-label',
+    share.stages.map((stage) => `${stage.label} ${formatCfopChartTime(stage.durationMs)}，${stage.percentage}%`).join('；'),
+  );
+
+  const names = document.createElement('div');
+  names.className = 'solve-share-annotations names';
+  const percentages = document.createElement('div');
+  percentages.className = 'solve-share-annotations percentages';
+  const track = document.createElement('div');
+  track.className = 'solve-share-track';
+  const trackInner = document.createElement('div');
+  trackInner.className = 'solve-share-track-inner';
+  const times = document.createElement('div');
+  times.className = 'solve-share-times';
+
+  share.stages.forEach((stage) => {
+    const center = (stage.startMs + stage.durationMs / 2) / share.totalMs * 100;
+    const name = document.createElement('strong');
+    name.dataset.stage = stage.key;
+    name.dataset.center = center.toFixed(4);
+    name.style.left = `${center}%`;
+    name.textContent = stage.label;
+    const percentage = document.createElement('span');
+    percentage.dataset.stage = stage.key;
+    percentage.dataset.center = center.toFixed(4);
+    percentage.style.left = `${center}%`;
+    percentage.textContent = `${stage.percentage}%`;
+    names.append(name);
+    percentages.append(percentage);
+
+    const segment = document.createElement('span');
+    segment.className = 'solve-share-segment';
+    segment.dataset.stage = stage.key;
+    segment.style.width = `${stage.share * 100}%`;
+    trackInner.append(segment);
+  });
+
+  share.stages.slice(0, -1).forEach((stage) => {
+    const position = stage.endMs / share.totalMs * 100;
+    const boundary = document.createElement('i');
+    boundary.className = 'solve-share-boundary';
+    boundary.dataset.stage = stage.key;
+    boundary.style.left = `${position}%`;
+    boundary.setAttribute('aria-hidden', 'true');
+    track.append(boundary);
+  });
+
+  share.boundariesMs.forEach((boundaryMs, index) => {
+    const tick = document.createElement('span');
+    tick.className = 'solve-share-time';
+    tick.style.left = `${boundaryMs / share.totalMs * 100}%`;
+    tick.classList.toggle('start', index === 0);
+    tick.classList.toggle('end', index === share.boundariesMs.length - 1);
+    tick.textContent = index === share.boundariesMs.length - 1
+      ? formatCfopChartTime(boundaryMs)
+      : formatCfopChartTime(boundaryMs).replace(/s$/, '');
+    times.append(tick);
+  });
+
+  const total = document.createElement('figcaption');
+  total.className = 'solve-share-total';
+  total.innerHTML = `总用时 <strong>${escapeHtml(formatCfopChartTime(share.totalMs))}</strong>`;
+  track.append(trackInner);
+  figure.append(names, track, percentages, times, total);
+  elements.solveShareChart.append(figure);
+  requestAnimationFrame(() => {
+    adjustSolveShareAnnotations();
+    if (solveAnalysisMode === 'share') animateSolveShareChart();
+  });
+}
+
+function renderSolveAnalysisEmpty(container, text, options = {}) {
+  container.hidden = false;
+  const message = document.createElement('p');
+  message.textContent = text;
+  const children = [message];
+  if (options.retry) {
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.dataset.retryFullHistory = 'true';
+    retry.textContent = '重新载入';
+    children.push(retry);
+  }
+  container.replaceChildren(...children);
+}
+
+function renderSolveAnalysisLoading(container, text) {
+  container.hidden = false;
+  const spinner = document.createElement('i');
+  spinner.className = 'solve-analysis-spinner';
+  spinner.setAttribute('aria-hidden', 'true');
+  const message = document.createElement('p');
+  message.textContent = text;
+  container.replaceChildren(spinner, message);
+}
+
+function solveAnalysisAccessibleSummary(comparison, aggregate) {
+  if (!aggregate) return '当前成绩没有完整的四阶段 CFOP 计时。';
+  const share = buildCfopStageShare(aggregate);
+  const shareText = share?.stages
+    .map((stage) => `${stage.label} ${formatCfopChartTime(stage.durationMs)}，占 ${stage.percentage}%`)
+    .join('；') || '';
+  const comparisonText = comparison?.rows?.length > 0
+    ? comparison.rows.map((row) => (
+      `${row.label} 当前 ${formatCfopChartTime(row.currentMs)}，历史平均 ${formatCfopChartTime(row.averageMs)}，${formatCfopDelta(row.deltaMs)}`
+    )).join('；')
+    : '';
+  return [comparisonText, shareText].filter(Boolean).join('。');
+}
+
+function formatCfopChartTime(ms) {
+  if (!Number.isFinite(ms)) return '--';
+  if (ms >= 60000) return `${formatTime(ms)}s`;
+  return `${(Math.max(0, ms) / 1000).toFixed(3)}s`;
+}
+
+function formatCfopDelta(deltaMs) {
+  if (!Number.isFinite(deltaMs) || Math.abs(deltaMs) < 0.5) return '持平 0.000s';
+  return `${deltaMs < 0 ? '快' : '慢'} ${Math.abs(deltaMs / 1000).toFixed(3)}s`;
+}
+
+function formatSignedPercentage(ratio) {
+  if (!Number.isFinite(ratio) || Math.abs(ratio) < 0.00001) return '0';
+  const percentage = ratio * 100;
+  const digits = Number.isInteger(percentage) ? 0 : 1;
+  return `${percentage > 0 ? '+' : '−'}${Math.abs(percentage).toFixed(digits)}%`;
+}
+
+function handleSolveAnalysisTabClick(event) {
+  const button = event.target instanceof Element
+    ? event.target.closest('[data-solve-analysis-mode]')
+    : null;
+  if (!button) return;
+  setSolveAnalysisMode(button.dataset.solveAnalysisMode, { animate: true });
+}
+
+function handleSolveAnalysisTabKeyDown(event) {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+  const buttons = elements.solveAnalysisTabButtons;
+  const currentIndex = Math.max(0, buttons.indexOf(event.target));
+  let nextIndex = currentIndex;
+  if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + buttons.length) % buttons.length;
+  if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % buttons.length;
+  if (event.key === 'Home') nextIndex = 0;
+  if (event.key === 'End') nextIndex = buttons.length - 1;
+  event.preventDefault();
+  const nextButton = buttons[nextIndex];
+  setSolveAnalysisMode(nextButton.dataset.solveAnalysisMode, { animate: true });
+  nextButton.focus();
+}
+
+function handleSolveAnalysisEmptyClick(event) {
+  const retry = event.target instanceof Element
+    ? event.target.closest('[data-retry-full-history]')
+    : null;
+  if (!retry) return;
+  fullHistoryLoadError = '';
+  renderSolveAnalysisForCurrentSolve();
+}
+
+function setSolveAnalysisMode(mode, options = {}) {
+  solveAnalysisMode = mode === 'share' ? 'share' : 'comparison';
+  localStorage.setItem('trainTimer.solveDetailChartMode', solveAnalysisMode);
+  applySolveAnalysisMode(options);
+}
+
+function applySolveAnalysisMode(options = {}) {
+  for (const button of elements.solveAnalysisTabButtons) {
+    const active = button.dataset.solveAnalysisMode === solveAnalysisMode;
+    button.setAttribute('aria-selected', active ? 'true' : 'false');
+    button.tabIndex = active ? 0 : -1;
+    button.classList.toggle('active', active);
+  }
+  for (const view of elements.solveAnalysisViews) {
+    const active = view.dataset.solveAnalysisView === solveAnalysisMode;
+    view.classList.toggle('active', active);
+    view.setAttribute('aria-hidden', active ? 'false' : 'true');
+    view.inert = !active;
+    if (active && options.animate && !solveAnalysisReducedMotion()) {
+      view.animate(
+        [
+          { opacity: 0, transform: `translateX(${solveAnalysisMode === 'share' ? 5 : -5}px)` },
+          { opacity: 1, transform: 'translateX(0)' },
+        ],
+        { duration: 180, easing: interfaceEaseOut },
+      );
+      requestAnimationFrame(() => {
+        if (solveAnalysisMode === 'share') animateSolveShareChart();
+        else animateSolveComparisonChart();
+      });
+    }
+  }
+  const comparisonActive = solveAnalysisMode === 'comparison';
+  elements.solveAnalysisTitle.textContent = comparisonActive ? '与历史平均相比' : '本次复原阶段占比';
+  elements.solveAnalysisStatus.textContent = comparisonActive
+    ? (elements.solveAnalysisPanel.dataset.comparisonStatus || '-')
+    : (elements.solveAnalysisPanel.dataset.shareStatus || '-');
+}
+
+function animateSolveComparisonChart() {
+  if (solveAnalysisReducedMotion()) return;
+  elements.solveComparisonRows.querySelectorAll('.solve-comparison-row').forEach((row, index) => {
+    const axis = row.querySelector('.solve-comparison-axis');
+    const marker = row.querySelector('.solve-comparison-current-marker');
+    const beam = row.querySelector('.solve-comparison-beam');
+    if (!axis || !marker || !beam) return;
+    const position = Number(axis.dataset.position);
+    const shift = axis.clientWidth * (position - 50) / 100;
+    const finalTransform = `translate(calc(-50% + ${shift.toFixed(2)}px), -50%)`;
+    marker.style.transform = finalTransform;
+    marker.animate(
+      [
+        { opacity: 0.68, transform: 'translate(-50%, -50%) scale(0.82)' },
+        { opacity: 1, transform: `${finalTransform} scale(1)` },
+      ],
+      {
+        duration: 260,
+        delay: index * 22,
+        easing: interfaceEaseOut,
+        fill: 'backwards',
+      },
+    );
+    beam.animate(
+      [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }],
+      {
+        duration: 260,
+        delay: index * 22,
+        easing: interfaceEaseOut,
+        fill: 'backwards',
+      },
+    );
+  });
+}
+
+function animateSolveShareChart() {
+  if (solveAnalysisReducedMotion()) return;
+  const track = elements.solveShareChart.querySelector('.solve-share-track-inner');
+  const annotations = elements.solveShareChart.querySelectorAll('.solve-share-annotations, .solve-share-times, .solve-share-total');
+  track?.animate(
+    [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }],
+    { duration: 260, easing: interfaceEaseOut, fill: 'backwards' },
+  );
+  annotations.forEach((node) => node.animate(
+    [{ opacity: 0 }, { opacity: 1 }],
+    { duration: 150, delay: 90, easing: 'ease-out', fill: 'backwards' },
+  ));
+}
+
+function adjustSolveShareAnnotations() {
+  elements.solveShareChart.querySelectorAll('.solve-share-annotations').forEach((layer) => {
+    const items = [...layer.children];
+    if (items.length < 2 || layer.clientWidth <= 0) return;
+    const inset = 8;
+    const gap = 8;
+    const positions = items.map((item) => {
+      const desired = Number(item.dataset.center) / 100 * layer.clientWidth;
+      return { item, desired, x: desired, width: item.getBoundingClientRect().width };
+    });
+    positions[0].x = Math.max(inset + positions[0].width / 2, positions[0].x);
+    for (let index = 1; index < positions.length; index += 1) {
+      const previous = positions[index - 1];
+      const current = positions[index];
+      current.x = Math.max(current.x, previous.x + previous.width / 2 + current.width / 2 + gap);
+    }
+    const last = positions.at(-1);
+    const overflow = last.x + last.width / 2 + inset - layer.clientWidth;
+    if (overflow > 0) positions.forEach((position) => { position.x -= overflow; });
+    for (let index = positions.length - 2; index >= 0; index -= 1) {
+      const current = positions[index];
+      const next = positions[index + 1];
+      current.x = Math.min(current.x, next.x - next.width / 2 - current.width / 2 - gap);
+    }
+    positions.forEach((position) => {
+      position.item.style.setProperty('--annotation-shift', `${(position.x - position.desired).toFixed(2)}px`);
+    });
+  });
+}
+
+function solveAnalysisReducedMotion() {
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+}
+
+function animateSolveDetailNavigation() {
+  const direction = solveDetailNavigationDirection;
+  solveDetailNavigationDirection = 0;
+  if (!direction || solveAnalysisReducedMotion()) return;
+  const targets = [elements.solveDetailResult, elements.solveDetailMeta, elements.solveDetailContext, elements.solveAnalysisPanel];
+  targets.forEach((target) => target?.animate(
+    [
+      { opacity: 0.58, transform: `translateX(${direction > 0 ? 5 : -5}px)` },
+      { opacity: 1, transform: 'translateX(0)' },
+    ],
+    { duration: 180, easing: interfaceEaseOut },
+  ));
 }
 
 function renderCfopStageCard(stage) {
@@ -3808,7 +4471,10 @@ function startSolveReplay() {
   const records = solveMoveRecords(solve);
   if (records.length === 0) return;
   clearTimeout(solveReplayTimer);
-  if (cube3d?.turnAnimation) completeBluetoothCube3dTurnAnimation(false);
+  if (cube3d?.turnQueue) cube3d.turnQueue.length = 0;
+  if (cube3d?.turnAnimation) {
+    completeBluetoothCube3dTurnAnimation(false, { startQueued: false });
+  }
   cancelBluetooth3dMovePulse();
   solveReplayPlaying = true;
   solveReplayFocusedOpManual = false;
@@ -3819,9 +4485,12 @@ function startSolveReplay() {
   const nextStepIndex = solveReplayStep + 1;
   const delay = replayDelayBeforeMove(records, nextStepIndex, {
     fallbackDelayMs: 120,
-    minimumDelayMs: 120,
   });
-  solveReplayTimer = window.setTimeout(() => advanceSolveReplay(solve, records), delay);
+  solveReplayNextDueAt = performance.now() + delay;
+  solveReplayTimer = window.setTimeout(
+    () => advanceSolveReplay(solve, records),
+    Math.max(0, solveReplayNextDueAt - performance.now()),
+  );
 }
 
 function closeSolveDialogForReplayPlayback() {
@@ -3840,7 +4509,14 @@ function advanceSolveReplay(solve, records) {
   updateSolveReplayHighlight();
   const current = records[solveReplayStep];
   const stepToApply = solveReplayStep + 1;
-  const animationDelay = replayMoveAnimationDelay(current.move);
+  if (cube3d?.turnQueue) cube3d.turnQueue.length = 0;
+  if (cube3d?.turnAnimation) {
+    completeBluetoothCube3dTurnAnimation(true, { startQueued: false });
+  }
+  const animationDelay = replayMoveAnimationDelay(current.move, {
+    quarterTurnDelayMs: cube3dTurnDurationMs,
+    halfTurnDelayMs: cube3dDoubleTurnDurationMs,
+  });
   triggerBluetoothCube3dTurnAnimation(current.move, {
     onComplete: () => showSolveReplayPreview(solve, stepToApply),
   });
@@ -3851,15 +4527,19 @@ function advanceSolveReplay(solve, records) {
   const delay = nextStepIndex < records.length
     ? replayDelayBeforeMove(records, nextStepIndex, {
       fallbackDelayMs: animationDelay,
-      minimumDelayMs: animationDelay,
     })
     : animationDelay;
-  solveReplayTimer = window.setTimeout(() => advanceSolveReplay(solve, records), delay);
+  solveReplayNextDueAt = (solveReplayNextDueAt || performance.now()) + delay;
+  solveReplayTimer = window.setTimeout(
+    () => advanceSolveReplay(solve, records),
+    Math.max(0, solveReplayNextDueAt - performance.now()),
+  );
 }
 
 function stopSolveReplay(options = {}) {
   clearTimeout(solveReplayTimer);
   solveReplayTimer = 0;
+  solveReplayNextDueAt = 0;
   solveReplayPlaying = false;
   if (!options.keepStep) solveReplayStep = -1;
   if (!options.keepStep) {
@@ -4016,6 +4696,7 @@ function navigateSolveDetail(offset) {
   const nextSolve = sessionSolves[solveIndex + offset];
   if (!nextSolve) return;
   stopSolveReplay();
+  solveDetailNavigationDirection = offset;
   currentDetailSolveId = nextSolve.id;
   renderSolveDialog();
 }
@@ -4421,9 +5102,26 @@ function setBluetoothConnectedState(connected) {
     setBluetoothDeviceNameStatus('已连接');
   }
   renderBluetoothReconnectButton();
+  renderBluetoothConnectionDetails(connected);
   renderPreviewMode();
   if (connected) scheduleScrambleGuideLocalSolverWarmupWhenUseful();
   if (connected) scheduleScrambleGuideServerSolverWarmupWhenUseful();
+}
+
+function renderBluetoothConnectionDetails(connected = Boolean(bluetoothDevice?.gatt?.connected)) {
+  const visible = Boolean(connected);
+  const visibilityChanged = elements.bluetoothFeedPanel?.hidden === visible
+    || elements.bluetoothBattery?.hidden === visible;
+  if (elements.bluetoothFeedPanel) elements.bluetoothFeedPanel.hidden = !visible;
+  if (elements.bluetoothBattery) elements.bluetoothBattery.hidden = !visible;
+  if (!visible) {
+    bluetoothFeedRenderKey = '';
+    return;
+  }
+  if (visibilityChanged) {
+    bluetoothFeedRenderKey = '';
+    renderBluetoothFeed();
+  }
 }
 
 function setBluetoothStatusText(text, title = '') {

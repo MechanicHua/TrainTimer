@@ -18,6 +18,7 @@ const mirroredSourceModules = [
   'bluetooth-moves.js',
   'bluetooth-state-log.js',
   'cfop-analysis.js',
+  'cfop-stage-stats.js',
   'cube-state.js',
   'history.js',
   'move-metrics.js',
@@ -67,6 +68,7 @@ test('packaged runtime exposes OP browser modules through the server allow-list'
     'op-poster-diagram-shapes.js',
     'op-stats.js',
     'replay-timing.js',
+    'cfop-stage-stats.js',
   ];
 
   for (const file of requiredModules) {
@@ -77,4 +79,5 @@ test('packaged runtime exposes OP browser modules through the server allow-list'
   assert.match(appSource, /from '\.\/op-formula-library\.js\?/);
   assert.match(appSource, /from '\.\/op-stats\.js\?/);
   assert.match(appSource, /from '\.\/replay-timing\.js\?/);
+  assert.match(appSource, /from '\.\/cfop-stage-stats\.js\?/);
 });

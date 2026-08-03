@@ -1750,7 +1750,40 @@ document.addEventListener('keyup', handleKeyUp);
 document.addEventListener('click', closeHistoryMenuOnOutsideClick);
 
 setupDialogScrollIndicators();
+setupDialogEdgeAnchors();
 await bootstrap();
+
+function setupDialogEdgeAnchors() {
+  for (const dialog of document.querySelectorAll('dialog')) {
+    dialog.addEventListener('wheel', (event) => {
+      const scrollRange = Math.max(0, dialog.scrollHeight - dialog.clientHeight);
+      if (!dialog.open || scrollRange <= 1 || event.deltaY === 0) {
+        delete dialog.dataset.dialogEdgeAnchor;
+        return;
+      }
+
+      const currentAnchor = dialog.dataset.dialogEdgeAnchor;
+      if (currentAnchor === 'bottom' && dialog.scrollTop <= 0.5) return;
+      if (currentAnchor === 'top' && dialog.scrollTop >= scrollRange - 0.5) return;
+
+      if (event.deltaY < 0 && dialog.scrollTop <= 0.5) {
+        dialog.dataset.dialogEdgeAnchor = 'bottom';
+        return;
+      }
+
+      if (event.deltaY > 0 && dialog.scrollTop >= scrollRange - 0.5) {
+        dialog.dataset.dialogEdgeAnchor = 'top';
+        return;
+      }
+
+      delete dialog.dataset.dialogEdgeAnchor;
+    }, { capture: true, passive: true });
+
+    dialog.addEventListener('close', () => {
+      delete dialog.dataset.dialogEdgeAnchor;
+    });
+  }
+}
 
 function setupDialogScrollIndicators() {
   const dialogs = [...document.querySelectorAll('dialog')];
@@ -1763,7 +1796,11 @@ function setupDialogScrollIndicators() {
         const dialog = entry.target.closest('dialog');
         if (dialog) changedDialogs.add(dialog);
       }
-      for (const dialog of changedDialogs) scheduleDialogScrollIndicatorUpdate(dialog);
+      for (const dialog of changedDialogs) {
+        const state = dialogScrollIndicatorStates.get(dialog);
+        if (state) state.flowSpaceDirty = true;
+        scheduleDialogScrollIndicatorUpdate(dialog);
+      }
     });
   }
 
@@ -1777,6 +1814,7 @@ function setupDialogScrollIndicators() {
       indicator,
       frame: 0,
       fadeTimer: 0,
+      flowSpaceDirty: true,
     };
     dialogScrollIndicatorStates.set(dialog, state);
 
@@ -1795,6 +1833,7 @@ function setupDialogScrollIndicators() {
         delete dialog.dataset.dialogScrolling;
         return;
       }
+      state.flowSpaceDirty = true;
       scheduleDialogScrollIndicatorUpdate(dialog);
     });
 
@@ -1851,6 +1890,20 @@ function updateDialogScrollIndicator(dialog) {
   const trackBottom = Math.min(surfaceBottom - radius, footerBox?.top || surfaceBottom) - clearance;
   const trackHeight = Math.max(0, trackBottom - trackTop);
 
+  if (!dialog.dataset.dialogEdgeAnchor && form && state.flowSpaceDirty) {
+    const setFlowSpace = (element, box, property) => {
+      if (!element || !box) return;
+      const elementStyles = getComputedStyle(element);
+      const marginStart = Number.parseFloat(elementStyles.marginBlockStart) || 0;
+      const marginEnd = Number.parseFloat(elementStyles.marginBlockEnd) || 0;
+      const value = `${Math.max(0, box.height + marginStart + marginEnd).toFixed(3)}px`;
+      if (form.style.getPropertyValue(property) !== value) form.style.setProperty(property, value);
+    };
+    setFlowSpace(header, headerBox, '--dialog-header-flow-space');
+    setFlowSpace(footer, footerBox, '--dialog-footer-flow-space');
+    state.flowSpaceDirty = false;
+  }
+
   if (trackHeight <= 36) {
     delete dialog.dataset.dialogScrollable;
     return;
@@ -1862,11 +1915,10 @@ function updateDialogScrollIndicator(dialog) {
   );
   const progress = Math.min(1, Math.max(0, dialog.scrollTop / scrollRange));
   const thumbTop = trackTop + ((trackHeight - thumbHeight) * progress);
-  const thumbLeft = dialogBox.width - 7;
-  const thumbOffsetTop = (thumbTop - dialogBox.top) + dialog.scrollTop;
+  const thumbLeft = dialogBox.right - 7;
 
   state.indicator.style.height = `${thumbHeight}px`;
-  state.indicator.style.transform = `translate3d(${thumbLeft}px, ${thumbOffsetTop}px, 0)`;
+  state.indicator.style.transform = `translate3d(${thumbLeft}px, ${thumbTop}px, 0)`;
   dialog.dataset.dialogScrollable = 'true';
 }
 
@@ -3701,8 +3753,13 @@ function handleCompactHistoryRowSelection(event, row) {
     else selectedSolveIds.add(id);
     historySelectionAnchorId = id;
   } else {
-    selectedSolveIds = new Set([id]);
-    historySelectionAnchorId = id;
+    if (selectedSolveIds.has(id)) {
+      selectedSolveIds.delete(id);
+      if (historySelectionAnchorId === id) historySelectionAnchorId = null;
+    } else {
+      selectedSolveIds = new Set([id]);
+      historySelectionAnchorId = id;
+    }
   }
 
   renderHistory();

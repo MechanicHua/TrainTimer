@@ -453,7 +453,7 @@ dialog[open] {
   align-items: stretch;
   flex-direction: column;
   justify-content: safe center;
-  animation: dialog-shell-in 180ms var(--ease-enter) both;
+  animation: dialog-shell-in 180ms var(--ease-enter);
 }
 
 dialog[open]::backdrop {
@@ -539,10 +539,13 @@ dialog .solve-dialog-header {
   top: 0;
   min-height: 72px;
   align-items: center;
-  margin: -20px -20px 18px;
+  margin: -20px -21px 18px;
   padding: 16px 20px;
-  border-bottom: 1px solid var(--dialog-border-soft);
+  border: 1px solid var(--dialog-border);
+  border-bottom-color: var(--dialog-border-soft);
+  border-radius: var(--dialog-radius) var(--dialog-radius) 0 0;
   background: var(--dialog-shell);
+  box-shadow: none;
   backdrop-filter: blur(22px) saturate(1.18);
 }
 
@@ -659,10 +662,13 @@ dialog .dialog-actions {
   bottom: 0;
   min-height: 68px;
   align-items: center;
-  margin: 18px -20px -20px;
+  margin: 18px -21px -20px;
   padding: 12px 20px;
-  border-top: 1px solid var(--dialog-border-soft);
+  border: 1px solid var(--dialog-border);
+  border-top-color: var(--dialog-border-soft);
+  border-radius: 0 0 var(--dialog-radius) var(--dialog-radius);
   background: var(--dialog-shell);
+  box-shadow: none;
   backdrop-filter: blur(22px) saturate(1.18);
 }
 
@@ -970,7 +976,7 @@ dialog .algorithm-trainer-item {
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: none;
   }
 }
 
@@ -1014,7 +1020,7 @@ dialog .algorithm-trainer-item {
   dialog .solve-dialog-header {
     top: 0;
     min-height: 68px;
-    margin: -16px -16px 16px;
+    margin: -16px -17px 16px;
     padding: 14px 16px;
   }
 
@@ -1033,7 +1039,7 @@ dialog .algorithm-trainer-item {
 
   dialog .dialog-actions {
     bottom: 0;
-    margin: 16px -16px -16px;
+    margin: 16px -17px -16px;
     padding: 10px 16px;
   }
 
@@ -6833,7 +6839,7 @@ dialog[class][open] {
   align-items: stretch;
   flex-direction: column;
   justify-content: safe center;
-  animation: dialog-shell-in 180ms var(--ease-enter) both;
+  animation: dialog-shell-in 180ms var(--ease-enter);
 }
 
 dialog[class][open]::backdrop {
@@ -6895,6 +6901,64 @@ dialog > form[class] {
     inset 0 1px 0 rgba(255, 255, 255, 0.065);
   -webkit-backdrop-filter: blur(24px) saturate(1.16);
   backdrop-filter: blur(24px) saturate(1.16);
+}
+
+dialog > form[class]:has(> .solve-dialog-header) {
+  border-top-width: 0;
+}
+
+dialog > form[class]:has(> .dialog-actions) {
+  border-bottom-width: 0;
+}
+
+dialog[class][open][data-dialog-edge-anchor] {
+  transform: none;
+}
+
+dialog[data-dialog-scrollable] > form[class] {
+  overflow: visible;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+dialog[data-dialog-edge-anchor="top"] > form[class]::before,
+dialog[data-dialog-edge-anchor="bottom"] > form[class]::after {
+  content: "";
+  display: block;
+  width: 100%;
+  flex: none;
+  pointer-events: none;
+}
+
+dialog[data-dialog-edge-anchor="top"] > form[class]::before {
+  height: var(--dialog-header-flow-space, 0px);
+}
+
+dialog[data-dialog-edge-anchor="bottom"] > form[class]::after {
+  height: var(--dialog-footer-flow-space, 0px);
+}
+
+dialog[data-dialog-edge-anchor="bottom"] > form[class] > .dialog-actions,
+dialog[data-dialog-edge-anchor="top"] > form[class] > .solve-dialog-header {
+  position: fixed;
+  right: auto;
+  left: 50%;
+  z-index: 20;
+  box-sizing: border-box;
+  width: min(
+    var(--dialog-surface-width),
+    calc(100vw - var(--dialog-viewport-gutter) - var(--dialog-viewport-gutter))
+  );
+  margin: 0;
+  transform: translateX(-50%);
+}
+
+dialog[data-dialog-edge-anchor="bottom"] > form[class] > .dialog-actions {
+  bottom: var(--dialog-viewport-gutter);
+}
+
+dialog[data-dialog-edge-anchor="top"] > form[class] > .solve-dialog-header {
+  top: var(--dialog-viewport-gutter);
 }
 
 dialog.algorithm-dialog > form.algorithm-dialog-inner {

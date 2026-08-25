@@ -14,8 +14,8 @@ test('dialogs use the browser native scroll pipeline instead of simulated elasti
   ]);
 
   assert.doesNotMatch(appSource, /setupDialogElasticOverscroll|dialog-overscroll-physics|primeNativeScrollEnd/);
-  assert.match(indexSource, /styles\.css\?v=20260803-native-edge-anchor-v33/);
-  assert.match(indexSource, /app\.js\?v=20260803-native-edge-anchor-v33/);
+  assert.match(indexSource, /styles\.css\?v=20260825-comparison-saturation-motion-v66/);
+  assert.match(indexSource, /app\.js\?v=20260825-comparison-saturation-motion-v66/);
   assert.match(stylesSource, /dialog:is\([^}]+\)\s*\{[^}]*overflow-y:\s*auto;[^}]*overscroll-behavior:\s*contain;[^}]*padding:\s*var\(--dialog-viewport-gutter\)\s+0;[^}]*clip-path:\s*inset\(var\(--dialog-viewport-gutter\)\s+0\s+round\s+var\(--dialog-radius\)\);/s);
   assert.match(stylesSource, /dialog\s*>\s*form\[class\]\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*100%;[^}]*overflow:\s*clip;[^}]*border:\s*1px solid var\(--dialog-border\);[^}]*border-radius:\s*var\(--dialog-radius\);[^}]*background:/s);
   assert.match(stylesSource, /dialog > form\[class\]:has\(> \.solve-dialog-header\)\s*\{[^}]*border-top-width:\s*0;/s);

@@ -4,7 +4,7 @@ import { algorithmTrainerAlgorithmIsValid, algorithmTrainerAlgorithmStepCount, a
 import { bluetoothMovePacketSignature, decodeBatteryLevel, decodeBluetoothMoves } from './bluetooth-moves.js?v=20260528-gan-latency';
 import { bluetoothStateLogPostSolveCaptureMs, bluetoothStateLogRevision, shouldCaptureBluetoothStateLogPacket } from './bluetooth-state-log.js?v=20260714-state-log-final';
 import { cfopAnalysisVersion, cfopStagesForSave, cfopStageTemplate, solveCfopAnalysis, solveMoveRecords } from './cfop-analysis.js?v=20260714-analysis-v5';
-import { aggregateCfopChartStages, buildCfopHistoryIndex, buildCfopStageComparison, buildCfopStageShare, cfopComparisonAxisPosition } from './cfop-stage-stats.js?v=20260727-solve-charts-v1';
+import { aggregateCfopChartStages, buildCfopHistoryIndex, buildCfopStageComparison, buildCfopStageShare, cfopComparisonAxisPosition, cfopComparisonColor } from './cfop-stage-stats.js?v=20260825-comparison-color-scale-v2';
 import { opAnalysisVersion, opEventsForSave } from './op-analysis.js?v=20260714-analysis-v5';
 import { opCaseSvgMarkup } from './op-case-svg.js?v=20260603-op-poster-diagrams';
 import { buildOpFormulaLibrary } from './op-formula-library.js?v=20260603-op-formula-library';
@@ -30,11 +30,14 @@ import { buildStatsSummary } from './stats-summary.js?v=20260528-gan-latency';
 import { buildSolveSummary } from './solve-summary.js?v=20260528-gan-latency';
 import { bestAverageRecord, bestMeanRecord, bestSingleRecord, chronologicalSolves, recordMarksAt, rollingAverageAt, rollingAverageDetailAt, rollingMeanAt, rollingMeanDetailAt } from './rolling-averages.js?v=20260601-correction-perf';
 import { replayDelayBeforeMove, replayMoveAnimationDelay } from './replay-timing.js?v=20260716-exact-replay-timing';
+import { createDualKawaseTextBlurPrecomputer } from './scramble-blur.js?v=20260823-dual-kawase-worker-v42';
 
 const localApiOrigin = 'http://127.0.0.1:3211';
 const localHttpHost = /^(127\.0\.0\.1|localhost|\[::1\])$/.test(location.hostname);
 const apiOrigin = localHttpHost ? '' : localApiOrigin;
 const holdToStartMs = 500;
+const timerFocusEnterTransitionMs = 360;
+const timerFocusLeaveTransitionMs = 720;
 const timerDisplayFrameMs = 1000 / 30;
 const inspectionDisplayFrameMs = 50;
 const holdDisplayFrameMs = 1000 / 30;
@@ -92,6 +95,9 @@ const scrambleGuideLocalCorrectionWarmupDelayMs = 300;
 const scrambleGuideLocalCorrectionWarmupTimeoutMs = 1500;
 const scrambleGuideBacktrackCorrectionMaxWrongMoves = 4;
 const scrambleGuideBacktrackCorrectionMaxMoves = 25;
+const scrambleTextBlurPrecomputeDelayMs = 980;
+const scrambleTextBlurIdleTimeoutMs = 2600;
+const scramblePrefetchDelayMs = 420;
 const cube3dTurnDurationMs = 72;
 const cube3dDoubleTurnDurationMs = 96;
 const cube3dTurnQueueLimit = 3;
@@ -655,6 +661,11 @@ let fullHistoryRequestId = 0;
 let scrambleLoadRequestId = 0;
 let scrambleLoadPromise = null;
 let nextSolvePromise = null;
+let prefetchedScrambleData = null;
+let scramblePrefetchPromise = null;
+let scramblePrefetchPuzzle = '';
+let scramblePrefetchTimer = 0;
+let scramblePrefetchGeneration = 0;
 let historyPartial = false;
 let historyTotal = 0;
 let bootstrapSessionSummaries = null;
@@ -905,6 +916,23 @@ let scrambleGuideMoveNodeStates = [];
 let scrambleGuideRenderedVisualState = null;
 let scrambleGuideMetaRenderKey = '';
 let scrambleSourceRenderKey = '';
+let scrambleFormulaRenderKey = '';
+let scrambleTextTransitionGhost = null;
+let scrambleTextTransitionBlurGhost = null;
+let scrambleTextTransitionAnimations = [];
+let scrambleTextTransitionId = 0;
+const scrambleTextBlurPrecomputer = createDualKawaseTextBlurPrecomputer({
+  maxPixelRatio: 1.25,
+  blurOffset: 0.85,
+});
+let scrambleTextBlurCache = null;
+let scrambleTextBlurPendingKey = '';
+let scrambleTextBlurComputingKey = '';
+let scrambleTextBlurPrecomputeTimer = 0;
+let scrambleTextBlurIdleHandle = 0;
+let scrambleTextBlurGeneration = 0;
+let scrambleTextBlurStatus = 'cold';
+let scrambleTextBlurLastPrecomputeMs = 0;
 let bluetoothNextSolveGestureCandidate = null;
 let bluetoothNextSolveGestureFlushTimer = 0;
 let bluetoothNextSolveGestureLoading = false;
@@ -944,6 +972,7 @@ let timerDisplayLayoutTimer = 0;
 let timerDisplayFitKey = '';
 let timerDisplayMeasureKey = '';
 let timerDisplayTextKey = '';
+let retainedTimerResultText = '';
 const bluetooth3dCanvasHomeParent = elements.bluetooth3dCanvas?.parentElement || null;
 const bluetooth3dCanvasHomeNextSibling = elements.bluetooth3dCanvas?.nextSibling || null;
 let bluetooth3dFocusHost = null;
@@ -955,7 +984,7 @@ elements.inspectionToggle.addEventListener('change', () => {
   setInspectionEnabled(elements.inspectionToggle.checked);
 });
 elements.nextButton.addEventListener('click', nextSolve);
-elements.scrambleButton.addEventListener('click', loadScramble);
+elements.scrambleButton.addEventListener('click', loadNewScrambleFromUserAction);
 elements.lastOkButton.addEventListener('click', () => updateLatestSolvePenalty('ok'));
 elements.lastPlusTwoButton.addEventListener('click', () => updateLatestSolvePenalty('+2'));
 elements.lastDnfButton.addEventListener('click', () => updateLatestSolvePenalty('dnf'));
@@ -1199,6 +1228,7 @@ elements.sessionOverviewList.addEventListener('click', handleSessionOverviewClic
 window.addEventListener('resize', updateHistoryRowsMask);
 window.addEventListener('resize', invalidateTimerDisplayFit);
 window.addEventListener('resize', adjustSolveShareAnnotations);
+window.addEventListener('resize', invalidateScrambleTextBlurCache);
 document.addEventListener('visibilitychange', handleDocumentVisibilityChange);
 
 window.__trainTimerDebug = {
@@ -1325,6 +1355,11 @@ window.__trainTimerDebug = {
     resetBluetoothNextSolveGesture();
     renderScramble();
     renderTimer();
+    return this.state();
+  },
+  async prepareScrambleBlurForTest() {
+    cancelScheduledScrambleTextBlurPrecompute();
+    await prepareScrambleTextBlurNow(scrambleFormulaRenderKey, scrambleTextBlurGeneration);
     return this.state();
   },
   setStateForTest(nextState) {
@@ -1454,6 +1489,13 @@ window.__trainTimerDebug = {
       bluetoothRequest: bluetoothRequestSummary(bluetoothRequestOptions(false)),
       bluetoothOptionalServices,
       scrambleLocked,
+      scramblePrefetch: {
+        ready: Boolean(prefetchedScrambleData),
+        puzzle: scramblePrefetchPuzzle,
+        pending: Boolean(scramblePrefetchPromise || scramblePrefetchTimer),
+      },
+      retainedTimerResultText,
+      scrambleBlur: scrambleTextBlurDebugState(),
     };
   },
 };
@@ -1744,10 +1786,44 @@ function performanceStatsSnapshot() {
   };
 }
 
+const pointerActionFocusSelector = [
+  'button',
+  'input[type="button"]',
+  'input[type="submit"]',
+  'input[type="reset"]',
+  'input[type="checkbox"]',
+  'input[type="radio"]',
+  'summary',
+  '[role="button"]',
+  '[role="checkbox"]',
+  '[role="radio"]',
+  '[role="switch"]',
+  '[role="tab"]',
+  '[role="option"]',
+].join(', ');
+const pointerSelectionFocusSelector = [
+  'select',
+  'input[type="date"]',
+  'input[type="datetime-local"]',
+  'input[type="time"]',
+  'input[type="month"]',
+  'input[type="week"]',
+  'input[type="color"]',
+  'input[type="file"]',
+  'input[type="range"]',
+].join(', ');
+const pointerReleasedFocusSelector = `${pointerActionFocusSelector}, ${pointerSelectionFocusSelector}`;
+let pendingPointerSelectionFocus = null;
+
 document.addEventListener('keydown', handleShortcutRecordingKeyDown, true);
+document.addEventListener('keydown', clearPendingPointerSelectionFocus, true);
+document.addEventListener('keydown', releaseFocusedActionForSpace, true);
 document.addEventListener('keydown', handleKeyDown);
 document.addEventListener('keyup', handleKeyUp);
 document.addEventListener('click', closeHistoryMenuOnOutsideClick);
+document.addEventListener('pointerdown', rememberPointerSelectionFocus, true);
+document.addEventListener('click', releasePointerActionFocus);
+document.addEventListener('change', releasePointerSelectionFocus);
 
 setupDialogScrollIndicators();
 setupDialogEdgeAnchors();
@@ -2032,7 +2108,7 @@ function handleKeyDown(event) {
 
   if (handleEscapeKey(event)) return;
 
-  if (appState === 'done' && handleDoneQuickAction(event)) return;
+  if ((appState === 'done' || appState === 'ready') && handleDoneQuickAction(event)) return;
 
   if (shortcutMatches(event, 'lockScramble') && canToggleScrambleLock()) {
     event.preventDefault();
@@ -2068,6 +2144,63 @@ function handleKeyDown(event) {
   }
 }
 
+function releasePointerActionFocus(event) {
+  if (!(event instanceof MouseEvent) || event.detail <= 0) return;
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+
+  const directControl = target.closest(pointerActionFocusSelector);
+  const labelControl = target.closest('label')?.control;
+  const control = directControl || (
+    labelControl instanceof Element && labelControl.matches(pointerActionFocusSelector)
+      ? labelControl
+      : null
+  );
+  releaseControlFocus(control);
+}
+
+function rememberPointerSelectionFocus(event) {
+  const target = event.target;
+  pendingPointerSelectionFocus = target instanceof Element
+    ? target.closest(pointerSelectionFocusSelector)
+    : null;
+}
+
+function clearPendingPointerSelectionFocus() {
+  pendingPointerSelectionFocus = null;
+}
+
+function releaseFocusedActionForSpace(event) {
+  if (event.code !== 'Space' || event.metaKey || event.ctrlKey || event.altKey) return;
+  const target = event.target;
+  const control = target instanceof Element ? target.closest(pointerReleasedFocusSelector) : null;
+  if (!(control instanceof HTMLElement)) return;
+  event.preventDefault();
+  releaseControlFocus(control);
+}
+
+function releasePointerSelectionFocus(event) {
+  const target = event.target;
+  if (!(target instanceof Element) || target !== pendingPointerSelectionFocus) return;
+  pendingPointerSelectionFocus = null;
+  releaseControlFocus(target);
+}
+
+function releaseControlFocus(control) {
+  if (!(control instanceof HTMLElement)) return;
+
+  const blurActiveActionControl = () => {
+    const activeControl = document.activeElement;
+    if (
+      activeControl === control
+      || (activeControl instanceof HTMLElement && activeControl.matches(pointerReleasedFocusSelector))
+    ) activeControl.blur();
+  };
+
+  blurActiveActionControl();
+  window.requestAnimationFrame(blurActiveActionControl);
+}
+
 function handleEscapeKey(event) {
   if (!shortcutMatches(event, 'cancel')) return false;
 
@@ -2099,7 +2232,7 @@ function handleGlobalShortcut(event) {
 
   if (shortcutMatches(event, 'scramble') && !scrambleChangeLocked()) {
     event.preventDefault();
-    void loadScramble();
+    void loadNewScrambleFromUserAction();
     return true;
   }
 
@@ -2556,38 +2689,40 @@ function timingTimerTickDelay(elapsedMs = performance.now() - startedAt) {
 async function finishTiming(options = {}) {
   if (appState !== 'timing') return;
   clearTimerTick();
+  const shouldAutoPrepareNextSolve = finishSource !== 'bluetooth';
   const finishedAt = Number.isFinite(options.finishedAt) ? options.finishedAt : performance.now();
   const durationMs = Math.max(0, finishedAt - startedAt);
   const timerFinishedAtMs = timerStartedAtMs > 0 ? timerStartedAtMs + Math.round(durationMs) : Date.now();
   const timerFinishedAtIsoTime = new Date(timerFinishedAtMs).toISOString();
+  const activeInspectionUsedForSave = activeInspectionUsed;
   const stateLogCapture = finishSource === 'bluetooth'
     ? beginBluetoothPostSolveStateLogCapture(finishedAt)
     : null;
-  appState = 'saving';
-  setTimerDisplayText(formatTime(durationMs));
-  elements.statusText.textContent = finishSource === 'bluetooth' ? '蓝牙复原' : '保存中';
-  elements.timerHint.textContent = finishSource === 'bluetooth' ? '检测到已复原，正在写入成绩' : '正在写入成绩';
-  await nextPaintOrTimeout();
-  render();
+  const finishedScramble = {
+    scramble: scramble.scramble,
+    source: scramble.source,
+    puzzle: scramble.puzzle || scramblePuzzle,
+  };
   const bluetoothMetadata = bluetoothSolveMetadata();
   const bluetoothMovesForSave = bluetoothMoveSequence();
   const bluetoothMoveLogForSave = bluetoothMoveRecordSequence();
   const bluetoothStateCorrectionsForSave = bluetoothStateCorrectionSequence();
   const bluetoothStateLogForSave = bluetoothStateLogSequence();
+  const bluetoothSolvedByStatePacketForSave = bluetoothSolvedByStatePacket;
   markBluetoothStateLogIncludedInInitialSave(stateLogCapture, bluetoothStateLogForSave);
   const cfopStages = cfopStagesForSave({
-    scramble: scramble.scramble,
-    scramblePuzzle: scramble.puzzle || scramblePuzzle,
+    scramble: finishedScramble.scramble,
+    scramblePuzzle: finishedScramble.puzzle,
     timerSource: finishSource,
     bluetoothMoves: bluetoothMovesForSave,
     bluetoothMoveLog: bluetoothMoveLogForSave,
     bluetoothStateCorrections: bluetoothStateCorrectionsForSave,
     bluetoothStateLog: bluetoothStateLogForSave,
-    bluetoothSolvedByStatePacket,
+    bluetoothSolvedByStatePacket: bluetoothSolvedByStatePacketForSave,
   });
   const opEvents = opEventsForSave({
-    scramble: scramble.scramble,
-    scramblePuzzle: scramble.puzzle || scramblePuzzle,
+    scramble: finishedScramble.scramble,
+    scramblePuzzle: finishedScramble.puzzle,
     timerStartedAt: timerStartedAtIsoTime,
     timerStartedAtMs,
     timerSource: finishSource,
@@ -2595,8 +2730,22 @@ async function finishTiming(options = {}) {
     bluetoothMoveLog: bluetoothMoveLogForSave,
     bluetoothStateCorrections: bluetoothStateCorrectionsForSave,
     bluetoothStateLog: bluetoothStateLogForSave,
-    bluetoothSolvedByStatePacket,
+    bluetoothSolvedByStatePacket: bluetoothSolvedByStatePacketForSave,
   });
+
+  retainedTimerResultText = formatTime(durationMs);
+  appState = 'saving';
+  setTimerDisplayText(retainedTimerResultText);
+  elements.statusText.textContent = finishSource === 'bluetooth' ? '蓝牙复原' : '保存中';
+  elements.timerHint.textContent = finishSource === 'bluetooth' ? '检测到已复原，正在写入成绩' : '正在写入成绩';
+  const nextScramblePromise = shouldAutoPrepareNextSolve
+    ? Promise.resolve(prepareNextScrambleAtFinish()).then(() => true).catch((error) => {
+      console.warn('停表时生成下一条打乱失败', error);
+      return false;
+    })
+    : Promise.resolve(false);
+  await nextPaintOrTimeout();
+  render();
 
   const data = await postJson('/api/solves', {
     durationMs,
@@ -2605,10 +2754,10 @@ async function finishTiming(options = {}) {
     timerStartedAtMs,
     timerFinishedAt: timerFinishedAtIsoTime,
     timerFinishedAtMs,
-    scramble: scramble.scramble,
-    scrambleSource: scramble.source,
-    scramblePuzzle: scramble.puzzle || scramblePuzzle,
-    inspectionEnabled: activeInspectionUsed,
+    scramble: finishedScramble.scramble,
+    scrambleSource: finishedScramble.source,
+    scramblePuzzle: finishedScramble.puzzle,
+    inspectionEnabled: activeInspectionUsedForSave,
     sessionId: currentSessionId,
     penalty: activePenalty,
     timerSource: finishSource,
@@ -2616,7 +2765,7 @@ async function finishTiming(options = {}) {
     bluetoothMoveLog: bluetoothMoveLogForSave,
     bluetoothStateCorrections: bluetoothStateCorrectionsForSave,
     bluetoothStateLog: bluetoothStateLogForSave,
-    bluetoothSolvedByStatePacket,
+    bluetoothSolvedByStatePacket: bluetoothSolvedByStatePacketForSave,
     cfopStages,
     cfopAnalysisVersion,
     opEvents,
@@ -2630,9 +2779,18 @@ async function finishTiming(options = {}) {
   attachBluetoothStateLogCaptureToSolve(stateLogCapture, data.solve?.id);
   selectedSolveIds.clear();
   finishSource = 'manual';
+  showPbToastForSolve(data.solve);
+
+  if (await nextScramblePromise) {
+    activePenalty = 'ok';
+    appState = 'ready';
+    syncCurrentScrambleGuideState();
+    render();
+    return;
+  }
+
   appState = 'done';
   render();
-  showPbToastForSolve(data.solve);
 }
 
 function nextPaintOrTimeout() {
@@ -2794,6 +2952,33 @@ async function runNextSolve() {
   render();
 }
 
+function prepareNextScrambleAtFinish() {
+  clearBluetoothNextSolveGestureCandidate();
+  if (scrambleLocked && scramble?.scramble) {
+    resetBluetoothSolveTracking();
+    resetScrambleGuide();
+    render();
+    return true;
+  }
+  const prefetched = takePrefetchedScrambleData(scramblePuzzle);
+  if (prefetched) {
+    applyLoadedScramble(prefetched);
+    return true;
+  }
+  return loadScramble();
+}
+
+async function loadNewScrambleFromUserAction() {
+  retainedTimerResultText = '';
+  setTimerDisplayText('0.000');
+  const shouldMarkReady = appState === 'done';
+  await loadScramble();
+  if (shouldMarkReady && appState === 'done') {
+    appState = 'ready';
+    render();
+  }
+}
+
 async function changeScramblePuzzle() {
   const nextPuzzle = elements.scramblePuzzleSelect.value || 'three';
   if (nextPuzzle === scramblePuzzle) return;
@@ -2879,6 +3064,8 @@ async function toggleScrambleLock() {
   if (!canToggleScrambleLock()) return;
   scrambleLocked = !scrambleLocked;
   localStorage.setItem('trainTimer.scrambleLocked', scrambleLocked ? '1' : '0');
+  if (scrambleLocked) clearScramblePrefetch();
+  else scheduleScramblePrefetch();
   render();
   if (!scrambleLocked && scramble && (scramble.puzzle || 'three') !== scramblePuzzle) {
     await loadScramble();
@@ -2906,20 +3093,10 @@ async function runLoadScramble(options = {}, requestId = scrambleLoadRequestId) 
   clearBluetoothNextSolveGestureCandidate();
   elements.scrambleButton.disabled = true;
   try {
-    const data = await postJson('/api/scramble', { puzzle: scramblePuzzle });
+    const requestedPuzzle = scramblePuzzle;
+    const data = await nextScrambleData(requestedPuzzle);
     if (requestId !== scrambleLoadRequestId) return;
-    scramble = data.scramble;
-    scramblePuzzle = scramble.puzzle || sessionPuzzleForId(currentSessionId, scramblePuzzle);
-    localStorage.setItem('trainTimer.scramblePuzzle', scramblePuzzle);
-    activeInspectionUsed = false;
-    clearInspectionEntryAnimation();
-    inspectionStartedAt = 0;
-    inspectionBluetoothStartBlockedUntil = 0;
-    resetBluetoothSolveTracking();
-    resetScrambleGuide();
-    syncCurrentScrambleGuideState();
-    if (options.markReady && appState === 'loading') appState = 'ready';
-    render();
+    applyLoadedScramble(data, options);
   } catch (error) {
     if (options.markReady && appState === 'loading') {
       appState = 'error';
@@ -2934,6 +3111,102 @@ async function runLoadScramble(options = {}, requestId = scrambleLoadRequestId) 
       elements.scrambleButton.disabled = scrambleLocked || ['timing', 'inspection', 'hold', 'saving'].includes(appState);
     }
   }
+}
+
+function applyLoadedScramble(data, options = {}) {
+  if (!data?.scramble?.scramble) throw new Error('打乱生成结果无效');
+  scramble = data.scramble;
+  scramblePuzzle = scramble.puzzle || sessionPuzzleForId(currentSessionId, scramblePuzzle);
+  localStorage.setItem('trainTimer.scramblePuzzle', scramblePuzzle);
+  activeInspectionUsed = false;
+  clearInspectionEntryAnimation();
+  inspectionStartedAt = 0;
+  inspectionBluetoothStartBlockedUntil = 0;
+  resetBluetoothSolveTracking();
+  resetScrambleGuide();
+  syncCurrentScrambleGuideState();
+  if (options.markReady && appState === 'loading') appState = 'ready';
+  render();
+  scheduleScramblePrefetch(scramblePuzzle);
+}
+
+function scheduleScramblePrefetch(puzzle = scramblePuzzle) {
+  const requestedPuzzle = String(puzzle || 'three');
+  if (scrambleLocked || !scramble?.scramble) {
+    clearScramblePrefetch();
+    return;
+  }
+  if (
+    scramblePrefetchPuzzle === requestedPuzzle
+    && (prefetchedScrambleData || scramblePrefetchPromise || scramblePrefetchTimer)
+  ) return;
+  clearScramblePrefetch();
+  const generation = scramblePrefetchGeneration;
+  scramblePrefetchPuzzle = requestedPuzzle;
+  scramblePrefetchTimer = window.setTimeout(() => {
+    scramblePrefetchTimer = 0;
+    startScramblePrefetch(requestedPuzzle, generation);
+  }, scramblePrefetchDelayMs);
+}
+
+function startScramblePrefetch(puzzle = scramblePuzzle, generation = scramblePrefetchGeneration) {
+  const requestedPuzzle = String(puzzle || 'three');
+  if (scrambleLocked) return Promise.resolve(null);
+  if (prefetchedScrambleData && scramblePrefetchPuzzle === requestedPuzzle) {
+    return Promise.resolve(prefetchedScrambleData);
+  }
+  if (scramblePrefetchPromise && scramblePrefetchPuzzle === requestedPuzzle) return scramblePrefetchPromise;
+  if (scramblePrefetchPuzzle !== requestedPuzzle) {
+    clearScramblePrefetch();
+    generation = scramblePrefetchGeneration;
+    scramblePrefetchPuzzle = requestedPuzzle;
+  }
+  if (scramblePrefetchTimer) window.clearTimeout(scramblePrefetchTimer);
+  scramblePrefetchTimer = 0;
+  const request = postJson('/api/scramble', { puzzle: requestedPuzzle })
+    .then((data) => {
+      if (generation !== scramblePrefetchGeneration || scramblePrefetchPuzzle !== requestedPuzzle) return null;
+      prefetchedScrambleData = data;
+      return data;
+    })
+    .catch((error) => {
+      if (generation === scramblePrefetchGeneration) console.warn('预生成下一条打乱失败', error);
+      return null;
+    })
+    .finally(() => {
+      if (generation === scramblePrefetchGeneration) scramblePrefetchPromise = null;
+    });
+  scramblePrefetchPromise = request;
+  return request;
+}
+
+async function nextScrambleData(puzzle = scramblePuzzle) {
+  const requestedPuzzle = String(puzzle || 'three');
+  const cached = takePrefetchedScrambleData(requestedPuzzle);
+  if (cached) return cached;
+  const prefetched = await startScramblePrefetch(requestedPuzzle);
+  const ready = takePrefetchedScrambleData(requestedPuzzle);
+  if (ready) return ready;
+  if (prefetched?.scramble?.scramble) return prefetched;
+  return postJson('/api/scramble', { puzzle: requestedPuzzle });
+}
+
+function takePrefetchedScrambleData(puzzle = scramblePuzzle) {
+  const requestedPuzzle = String(puzzle || 'three');
+  if (!prefetchedScrambleData || scramblePrefetchPuzzle !== requestedPuzzle) return null;
+  const data = prefetchedScrambleData;
+  prefetchedScrambleData = null;
+  scramblePrefetchPuzzle = '';
+  return data;
+}
+
+function clearScramblePrefetch() {
+  scramblePrefetchGeneration += 1;
+  if (scramblePrefetchTimer) window.clearTimeout(scramblePrefetchTimer);
+  scramblePrefetchTimer = 0;
+  prefetchedScrambleData = null;
+  scramblePrefetchPromise = null;
+  scramblePrefetchPuzzle = '';
 }
 
 async function copyCurrentScramble() {
@@ -3837,7 +4110,7 @@ function renderSolveDialog() {
   elements.solveDetailComment.value = solve.comment || '';
   elements.solveDetailTagsInput.value = formatTags(solve.tags);
   const solution = renderSolveSolutionPanel(solve);
-  renderSolveAnalysis(solve, solution.displayedStages);
+  renderSolveAnalysis(solve, solution.displayedStages, { hasBluetoothData: solution.hasData });
   animateSolveDetailNavigation();
 }
 
@@ -3855,7 +4128,7 @@ function renderSolveSolutionPanel(solve) {
     elements.solveDetailBluetoothStats.textContent = '复原分析';
     elements.solveBluetoothReplayMeta.textContent = '-';
     elements.solveCfopStages.replaceChildren();
-    return { analysis, displayedStages, hasMoves };
+    return { analysis, displayedStages, hasMoves, hasData: false };
   }
 
   const stageText = analysis.finalSolved || displayedStages.some((stage) => stage.key === 'pll' && stage.completed)
@@ -3879,7 +4152,7 @@ function renderSolveSolutionPanel(solve) {
     ...orderedOpEventsForDisplay(opEvents).map((event) => renderOpEventCard(event)),
   );
   updateSolveReplayHighlight();
-  return { analysis, displayedStages, hasMoves };
+  return { analysis, displayedStages, hasMoves, hasData: cfopDisplay.hasData };
 }
 
 function renderSolveAnalysisForCurrentSolve(options = {}) {
@@ -3888,10 +4161,16 @@ function renderSolveAnalysisForCurrentSolve(options = {}) {
   const analysis = solveCfopAnalysis(solve);
   const display = cfopDisplayForSolve(solve, analysis);
   const displayedStages = display.hasData ? display.stages : analysis.stages;
-  renderSolveAnalysis(solve, displayedStages, options);
+  renderSolveAnalysis(solve, displayedStages, { ...options, hasBluetoothData: display.hasData });
 }
 
 function renderSolveAnalysis(solve, displayedStages, options = {}) {
+  elements.solveAnalysisPanel.hidden = !options.hasBluetoothData;
+  if (!options.hasBluetoothData) {
+    elements.solveAnalysisA11y.textContent = '';
+    return;
+  }
+
   const aggregate = aggregateCfopChartStages(displayedStages);
   const historyPending = historyPartial && !fullHistoryLoaded;
   const historyFailed = historyPending && Boolean(fullHistoryLoadError || options.historyError);
@@ -3993,9 +4272,13 @@ function renderSolveComparisonScale(axisMaxRatio) {
 function renderSolveComparisonRow(row, axisMaxRatio, index) {
   const state = row.deltaMs < -0.5 ? 'faster' : (row.deltaMs > 0.5 ? 'slower' : 'equal');
   const position = cfopComparisonAxisPosition(row.ratio, axisMaxRatio);
+  const comparisonColor = cfopComparisonColor(row.deltaMs);
   const chartRow = document.createElement('div');
   chartRow.className = `solve-comparison-row ${state}`;
   chartRow.style.setProperty('--row-delay', `${index * 22}ms`);
+  chartRow.style.setProperty('--comparison-saturation', comparisonColor.saturation.toFixed(4));
+  chartRow.dataset.colorSaturation = comparisonColor.saturation.toFixed(4);
+  chartRow.dataset.finalColor = comparisonColor.css;
   chartRow.setAttribute(
     'aria-label',
     `${row.label}，当前 ${formatCfopChartTime(row.currentMs)}，历史平均 ${formatCfopChartTime(row.averageMs)}，${formatCfopDelta(row.deltaMs)}`,
@@ -4263,36 +4546,42 @@ function applySolveAnalysisMode(options = {}) {
 }
 
 function animateSolveComparisonChart() {
-  if (solveAnalysisReducedMotion()) return;
+  const reducedMotion = solveAnalysisReducedMotion();
   elements.solveComparisonRows.querySelectorAll('.solve-comparison-row').forEach((row, index) => {
     const axis = row.querySelector('.solve-comparison-axis');
     const marker = row.querySelector('.solve-comparison-current-marker');
     const beam = row.querySelector('.solve-comparison-beam');
     if (!axis || !marker || !beam) return;
+    row.getAnimations({ subtree: true }).forEach((animation) => animation.cancel());
     const position = Number(axis.dataset.position);
     const shift = axis.clientWidth * (position - 50) / 100;
     const finalTransform = `translate(calc(-50% + ${shift.toFixed(2)}px), -50%)`;
     marker.style.transform = finalTransform;
+    if (reducedMotion) return;
+    const timing = {
+      duration: 260,
+      delay: index * 22,
+      easing: interfaceEaseOut,
+      fill: 'backwards',
+    };
+    const saturationAnimation = row.animate(
+      [
+        { '--comparison-saturation': '0' },
+        { '--comparison-saturation': row.dataset.colorSaturation || '0' },
+      ],
+      timing,
+    );
+    saturationAnimation.id = 'solve-comparison-saturation';
     marker.animate(
       [
         { opacity: 0.68, transform: 'translate(-50%, -50%) scale(0.82)' },
         { opacity: 1, transform: `${finalTransform} scale(1)` },
       ],
-      {
-        duration: 260,
-        delay: index * 22,
-        easing: interfaceEaseOut,
-        fill: 'backwards',
-      },
+      timing,
     );
     beam.animate(
       [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }],
-      {
-        duration: 260,
-        delay: index * 22,
-        easing: interfaceEaseOut,
-        fill: 'backwards',
-      },
+      timing,
     );
   });
 }
@@ -5136,10 +5425,11 @@ function setBluetoothScanningState(scanning, compatibilityMode, label = '') {
 function setBluetoothConnectedState(connected) {
   const availability = bluetoothAvailability();
   elements.bluetoothButton.disabled = connected;
-  elements.bluetoothButton.textContent = '连接蓝牙魔方';
+  setTopbarControlLabel(elements.bluetoothButton, '连接蓝牙魔方');
   elements.bluetoothAnyButton.disabled = connected;
   elements.bluetoothDisconnectButton.disabled = !connected;
   elements.bluetoothDisconnectButton.title = connected ? '断开当前蓝牙魔方' : '当前没有已连接设备';
+  elements.bluetoothStatus.closest('.bluetooth-status')?.classList.toggle('connected', connected);
   if (!connected && !availability.canRequest) {
     elements.bluetoothButton.disabled = true;
     elements.bluetoothAnyButton.disabled = true;
@@ -5163,6 +5453,13 @@ function setBluetoothConnectedState(connected) {
   renderPreviewMode();
   if (connected) scheduleScrambleGuideLocalSolverWarmupWhenUseful();
   if (connected) scheduleScrambleGuideServerSolverWarmupWhenUseful();
+}
+
+function setTopbarControlLabel(button, label) {
+  if (!button) return;
+  const labelElement = button.querySelector('.topbar-control-label');
+  if (labelElement) labelElement.textContent = label;
+  else button.textContent = label;
 }
 
 function renderBluetoothConnectionDetails(connected = Boolean(bluetoothDevice?.gatt?.connected)) {
@@ -9451,7 +9748,7 @@ function renderTimer() {
     setElementText(elements.timerHint, '正在生成打乱');
   } else if (appState === 'ready') {
     setElementText(elements.statusText, '准备');
-    setTimerDisplayText('0.000');
+    setTimerDisplayText(retainedTimerResultText || '0.000');
     setElementText(
       elements.timerHint,
       scrambleGuideReadyHint() || (inspectionEnabled ? '按 Space 开始观察' : '长按 Space 超过 0.5s，松开开始计时'),
@@ -9516,6 +9813,7 @@ function setDatasetValue(element, key, value) {
 }
 
 function setTimerFocusDataset(focusActive) {
+  if (focusActive) setDatasetValue(document.body, 'focusVisited', 'true');
   const nextValue = focusActive ? 'true' : 'false';
   if (document.body.dataset.focus === nextValue) return false;
   window.clearTimeout(timerFocusTransitionTimer);
@@ -9529,7 +9827,7 @@ function setTimerFocusDataset(focusActive) {
       syncBluetooth3dFocusHost(timerFocusActive() && bluetooth3dUiActive());
       if (bluetooth3dUiActive()) scheduleBluetoothCube3dLayoutResize();
     }
-  }, 360);
+  }, transition === 'leave' ? timerFocusLeaveTransitionMs : timerFocusEnterTransitionMs);
   return true;
 }
 
@@ -9577,10 +9875,17 @@ function renderQuickActions() {
 function renderScramble(options = {}) {
   if (!scramble) return;
   const currentPuzzle = scramble.puzzle || scramblePuzzle;
+  const nextFormulaRenderKey = `${currentPuzzle}\n${scramble.scramble || ''}`;
+  const transitionSnapshot = scrambleFormulaRenderKey && nextFormulaRenderKey !== scrambleFormulaRenderKey
+    ? captureScrambleTextTransition()
+    : null;
+  scrambleFormulaRenderKey = nextFormulaRenderKey;
   elements.scramblePuzzleSelect.value = currentPuzzle;
   elements.scramblePuzzleSelect.disabled = scrambleChangeLocked();
   elements.scrambleText.dataset.puzzle = currentPuzzle;
   renderScrambleGuideDisplay();
+  if (transitionSnapshot) animateScrambleTextTransition(transitionSnapshot);
+  scheduleScrambleTextBlurPrecompute(nextFormulaRenderKey);
   const sourceText = `${puzzleLabel(currentPuzzle)} · ${scramble.source}${scrambleLocked ? ' · 已锁定' : ''}`;
   if (sourceText !== scrambleSourceRenderKey) {
     scrambleSourceRenderKey = sourceText;
@@ -9592,6 +9897,219 @@ function renderScramble(options = {}) {
   } else {
     renderScramblePreview(scramble.scramble, currentPuzzle);
   }
+}
+
+function captureScrambleTextTransition() {
+  finishScrambleTextTransition();
+  if (scrambleTextTransitionReducedMotion() || typeof elements.scrambleText?.animate !== 'function') return null;
+  const parent = elements.scrambleText.parentElement;
+  const textWidth = elements.scrambleText.offsetWidth;
+  const textHeight = elements.scrambleText.offsetHeight;
+  if (!parent || textWidth <= 0 || textHeight <= 0) return null;
+
+  const ghost = elements.scrambleText.cloneNode(false);
+  ghost.textContent = elements.scrambleText.textContent;
+  ghost.removeAttribute('id');
+  ghost.setAttribute('aria-hidden', 'true');
+  ghost.classList.add('scramble-text-transition-old');
+  ghost.style.margin = '0';
+  ghost.style.top = `${elements.scrambleText.offsetTop}px`;
+  ghost.style.left = `${elements.scrambleText.offsetLeft}px`;
+  ghost.style.width = `${textWidth}px`;
+  const blurGhost = takeScrambleTextBlurGhost(textWidth, textHeight);
+  return { ghost, blurGhost, parent };
+}
+
+function animateScrambleTextTransition(snapshot) {
+  if (!snapshot?.ghost || !snapshot.parent || scrambleTextTransitionReducedMotion()) return;
+  const transitionId = ++scrambleTextTransitionId;
+  const incoming = elements.scrambleText;
+  const outgoing = snapshot.ghost;
+  const blurredOutgoing = snapshot.blurGhost || null;
+  scrambleTextTransitionGhost = outgoing;
+  scrambleTextTransitionBlurGhost = blurredOutgoing;
+  if (blurredOutgoing) snapshot.parent.append(blurredOutgoing);
+  snapshot.parent.append(outgoing);
+  incoming.classList.add('scramble-text-transition-new');
+
+  const outgoingAnimation = outgoing.animate([
+    { opacity: 1, transform: 'translate3d(0, 0, 0)' },
+    { opacity: 0, transform: 'translate3d(0, -8px, 0)' },
+  ], {
+    duration: 420,
+    easing: 'cubic-bezier(0.4, 0, 1, 1)',
+    fill: 'forwards',
+  });
+  const blurAnimation = blurredOutgoing?.animate([
+    { opacity: 0, transform: 'translate3d(0, 0, 0)' },
+    { opacity: 0.72, transform: 'translate3d(0, -3px, 0)', offset: 0.42 },
+    { opacity: 0, transform: 'translate3d(0, -9px, 0)' },
+  ], {
+    duration: 560,
+    easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    fill: 'forwards',
+  });
+  const incomingAnimation = incoming.animate([
+    { opacity: 0, transform: 'translate3d(0, 10px, 0)' },
+    { opacity: 1, transform: 'translate3d(0, 0, 0)' },
+  ], {
+    duration: 760,
+    delay: 72,
+    easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+    fill: 'backwards',
+  });
+  scrambleTextTransitionAnimations = [outgoingAnimation, blurAnimation, incomingAnimation].filter(Boolean);
+  void Promise.allSettled(scrambleTextTransitionAnimations.map((animation) => animation.finished)).then(() => {
+    if (transitionId !== scrambleTextTransitionId) return;
+    cleanupScrambleTextTransition();
+  });
+}
+
+function finishScrambleTextTransition() {
+  scrambleTextTransitionId += 1;
+  for (const animation of scrambleTextTransitionAnimations) animation.cancel();
+  cleanupScrambleTextTransition();
+}
+
+function cleanupScrambleTextTransition() {
+  scrambleTextTransitionAnimations = [];
+  scrambleTextTransitionGhost?.remove();
+  scrambleTextTransitionGhost = null;
+  scrambleTextTransitionBlurGhost?.remove();
+  scrambleTextTransitionBlurGhost = null;
+  elements.scrambleText?.classList.remove('scramble-text-transition-new');
+}
+
+function scrambleTextTransitionReducedMotion() {
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+}
+
+function scheduleScrambleTextBlurPrecompute(formulaKey) {
+  if (!formulaKey || scrambleTextTransitionReducedMotion()) {
+    cancelScheduledScrambleTextBlurPrecompute();
+    scrambleTextBlurCache = null;
+    scrambleTextBlurStatus = 'reduced-motion';
+    return;
+  }
+  if (
+    scrambleTextBlurCache?.key === formulaKey
+    || scrambleTextBlurPendingKey === formulaKey
+    || scrambleTextBlurComputingKey === formulaKey
+  ) return;
+  cancelScheduledScrambleTextBlurPrecompute();
+  const generation = ++scrambleTextBlurGeneration;
+  scrambleTextBlurPendingKey = formulaKey;
+  scrambleTextBlurStatus = 'scheduled';
+  scrambleTextBlurPrecomputeTimer = window.setTimeout(() => {
+    scrambleTextBlurPrecomputeTimer = 0;
+    const run = (deadline = null) => {
+      scrambleTextBlurIdleHandle = 0;
+      if (generation !== scrambleTextBlurGeneration || formulaKey !== scrambleFormulaRenderKey) return;
+      if (deadline && !deadline.didTimeout && deadline.timeRemaining() < 10) {
+        scrambleTextBlurIdleHandle = window.requestIdleCallback(run, { timeout: scrambleTextBlurIdleTimeoutMs });
+        return;
+      }
+      if (appState === 'timing' || appState === 'hold') {
+        scrambleTextBlurPendingKey = '';
+        scheduleScrambleTextBlurPrecompute(formulaKey);
+        return;
+      }
+      scrambleTextBlurPendingKey = '';
+      void prepareScrambleTextBlurNow(formulaKey, generation);
+    };
+    if (typeof window.requestIdleCallback === 'function') {
+      scrambleTextBlurIdleHandle = window.requestIdleCallback(run, { timeout: scrambleTextBlurIdleTimeoutMs });
+    } else {
+      scrambleTextBlurPrecomputeTimer = window.setTimeout(run, 180);
+    }
+  }, scrambleTextBlurPrecomputeDelayMs);
+}
+
+function cancelScheduledScrambleTextBlurPrecompute() {
+  scrambleTextBlurGeneration += 1;
+  if (scrambleTextBlurPrecomputeTimer) window.clearTimeout(scrambleTextBlurPrecomputeTimer);
+  if (scrambleTextBlurIdleHandle && typeof window.cancelIdleCallback === 'function') {
+    window.cancelIdleCallback(scrambleTextBlurIdleHandle);
+  }
+  scrambleTextBlurPrecomputeTimer = 0;
+  scrambleTextBlurIdleHandle = 0;
+  scrambleTextBlurPendingKey = '';
+}
+
+async function prepareScrambleTextBlurNow(formulaKey, generation = scrambleTextBlurGeneration) {
+  if (
+    !formulaKey
+    || formulaKey !== scrambleFormulaRenderKey
+    || generation !== scrambleTextBlurGeneration
+    || scrambleTextTransitionReducedMotion()
+  ) return false;
+  const startedAt = performance.now();
+  scrambleTextBlurComputingKey = formulaKey;
+  scrambleTextBlurStatus = 'computing';
+  try {
+    const result = await scrambleTextBlurPrecomputer.precompute(elements.scrambleText);
+    scrambleTextBlurLastPrecomputeMs = performance.now() - startedAt;
+    if (
+      !result
+      || formulaKey !== scrambleFormulaRenderKey
+      || generation !== scrambleTextBlurGeneration
+    ) {
+      if (formulaKey === scrambleFormulaRenderKey && generation === scrambleTextBlurGeneration) {
+        scrambleTextBlurStatus = scrambleTextBlurPrecomputer.state;
+      }
+      return false;
+    }
+    scrambleTextBlurCache = { key: formulaKey, ...result };
+    scrambleTextBlurStatus = 'ready';
+    return true;
+  } catch (error) {
+    scrambleTextBlurLastPrecomputeMs = performance.now() - startedAt;
+    scrambleTextBlurStatus = 'failed';
+    console.warn('Dual Kawase 打乱模糊预计算失败，已回退为无模糊动画', error);
+    return false;
+  } finally {
+    if (scrambleTextBlurComputingKey === formulaKey) scrambleTextBlurComputingKey = '';
+  }
+}
+
+function takeScrambleTextBlurGhost(textWidth, textHeight) {
+  const cache = scrambleTextBlurCache;
+  if (
+    !cache
+    || cache.key !== scrambleFormulaRenderKey
+    || Math.abs(cache.cssWidth - textWidth) > 2
+    || Math.abs(cache.cssHeight - textHeight) > 2
+  ) return null;
+  scrambleTextBlurCache = null;
+  scrambleTextBlurStatus = 'consumed';
+  const canvas = cache.canvas;
+  canvas.setAttribute('aria-hidden', 'true');
+  canvas.classList.add('scramble-text-transition-old', 'scramble-text-transition-blur');
+  canvas.style.top = `${elements.scrambleText.offsetTop}px`;
+  canvas.style.left = `${elements.scrambleText.offsetLeft}px`;
+  canvas.style.width = `${textWidth}px`;
+  canvas.style.height = `${textHeight}px`;
+  return canvas;
+}
+
+function invalidateScrambleTextBlurCache() {
+  scrambleTextBlurCache = null;
+  cancelScheduledScrambleTextBlurPrecompute();
+  if (scrambleFormulaRenderKey) scheduleScrambleTextBlurPrecompute(scrambleFormulaRenderKey);
+}
+
+function scrambleTextBlurDebugState() {
+  return {
+    status: scrambleTextBlurStatus,
+    ready: Boolean(scrambleTextBlurCache),
+    cacheKey: scrambleTextBlurCache?.key || '',
+    pendingKey: scrambleTextBlurPendingKey,
+    computingKey: scrambleTextBlurComputingKey,
+    rendererReady: scrambleTextBlurPrecomputer.rendererReady,
+    rendererState: scrambleTextBlurPrecomputer.state,
+    backend: scrambleTextBlurPrecomputer.backend,
+    lastPrecomputeMs: Number(scrambleTextBlurLastPrecomputeMs.toFixed(3)),
+  };
 }
 
 function renderScrambleGuideDisplay(correctionSnapshot = null, options = {}) {
@@ -14560,7 +15078,7 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
           ${renderAverageButton(solve.id, solveNumber, 12, ao12, ao12Marks)}
         </span>
         <span class="row-actions">
-          <button class="icon-more-button" data-detail-id="${solve.id}" type="button" aria-label="查看第 ${solveNumber} 条详情" title="详情">
+          <button class="icon-more-button" data-detail-id="${solve.id}" type="button" aria-label="查看第 ${solveNumber} 条详情">
             <span aria-hidden="true">•••</span>
           </button>
           ${renderDeleteSolveButton(solve.id, `删除第 ${solveNumber} 条成绩`)}
@@ -14587,7 +15105,7 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
           </select>
         </span>
         <span class="row-actions">
-          <button class="icon-more-button" data-detail-id="${solve.id}" type="button" aria-label="查看第 ${solveNumber} 条详情" title="详情">
+          <button class="icon-more-button" data-detail-id="${solve.id}" type="button" aria-label="查看第 ${solveNumber} 条详情">
             <span aria-hidden="true">•••</span>
           </button>
           ${renderDeleteSolveButton(solve.id, `删除第 ${solveNumber} 条成绩`)}
@@ -14598,7 +15116,7 @@ function renderSolveRow(solve, solveNumber, sessionSolves, options = {}) {
 
 function renderDeleteSolveButton(solveId, label = '删除成绩') {
   return `
-    <button class="icon-delete-button" data-delete-id="${escapeHtml(solveId)}" type="button" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">
+    <button class="icon-delete-button" data-delete-id="${escapeHtml(solveId)}" type="button" aria-label="${escapeHtml(label)}">
       ${deleteIconSvg()}
     </button>
   `;
@@ -14684,43 +15202,47 @@ function renderHistoryControls(sessionSolves = filteredSolves()) {
   elements.tagSelectedButton.disabled = selectedSolveIds.size === 0;
   elements.commentSelectedButton.disabled = selectedSolveIds.size === 0;
   elements.moveSelectedButton.disabled = !canMoveSelected;
-  elements.moveSelectedButton.title = sessionsCanMove
-    ? '把选中成绩移动到其他会话'
-    : '请先新建另一个会话';
+  setBorderlessActionLabel(
+    elements.moveSelectedButton,
+    sessionsCanMove ? '移动选中成绩：把选中成绩移动到其他会话' : '移动选中成绩：请先新建另一个会话',
+  );
   elements.deleteSelectedButton.disabled = selectedSolveIds.size === 0;
   const canUndoSnapshot = Boolean(pendingImportSnapshot);
   const canUndoDelete = pendingDeletedSolves.length > 0;
   elements.undoDeleteButton.disabled = !canUndoSnapshot && !canUndoDelete;
   if (pendingImportSnapshot?.mode === 'delete-session') {
     elements.undoDeleteButton.textContent = '撤销删会话';
-    elements.undoDeleteButton.title = `恢复会话：${pendingImportSnapshot.fileName || '已删除会话'}`;
+    setBorderlessActionLabel(elements.undoDeleteButton, `恢复会话：${pendingImportSnapshot.fileName || '已删除会话'}`);
   } else if (pendingImportSnapshot?.mode === 'move-solves') {
     elements.undoDeleteButton.textContent = '撤销移动';
-    elements.undoDeleteButton.title = `恢复移动前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`;
+    setBorderlessActionLabel(elements.undoDeleteButton, `恢复移动前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`);
   } else if (pendingImportSnapshot?.mode === 'merge-session') {
     elements.undoDeleteButton.textContent = '撤销合并';
-    elements.undoDeleteButton.title = `恢复合并前的数据：${pendingImportSnapshot.fileName || '会话合并'}`;
+    setBorderlessActionLabel(elements.undoDeleteButton, `恢复合并前的数据：${pendingImportSnapshot.fileName || '会话合并'}`);
   } else if (pendingImportSnapshot?.mode === 'mark-penalty') {
     elements.undoDeleteButton.textContent = '撤销标记';
-    elements.undoDeleteButton.title = `恢复标记前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`;
+    setBorderlessActionLabel(elements.undoDeleteButton, `恢复标记前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`);
   } else if (pendingImportSnapshot?.mode === 'puzzle-solves') {
     elements.undoDeleteButton.textContent = '撤销类型';
-    elements.undoDeleteButton.title = `恢复打乱类型修改前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`;
+    setBorderlessActionLabel(elements.undoDeleteButton, `恢复打乱类型修改前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`);
   } else if (pendingImportSnapshot?.mode === 'tag-solves') {
     elements.undoDeleteButton.textContent = '撤销标签';
-    elements.undoDeleteButton.title = `恢复标签修改前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`;
+    setBorderlessActionLabel(elements.undoDeleteButton, `恢复标签修改前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`);
   } else if (pendingImportSnapshot?.mode === 'comment-solves') {
     elements.undoDeleteButton.textContent = '撤销备注';
-    elements.undoDeleteButton.title = `恢复备注修改前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`;
+    setBorderlessActionLabel(elements.undoDeleteButton, `恢复备注修改前的数据：${pendingImportSnapshot.fileName || '选中成绩'}`);
   } else if (pendingImportSnapshot?.mode === 'edit-solve') {
     elements.undoDeleteButton.textContent = '撤销编辑';
-    elements.undoDeleteButton.title = `恢复编辑前的数据：${pendingImportSnapshot.fileName || '成绩详情'}`;
+    setBorderlessActionLabel(elements.undoDeleteButton, `恢复编辑前的数据：${pendingImportSnapshot.fileName || '成绩详情'}`);
   } else if (canUndoSnapshot) {
     elements.undoDeleteButton.textContent = '撤销导入';
-    elements.undoDeleteButton.title = `恢复导入前的数据：${pendingImportSnapshot.fileName || '导入文件'}`;
+    setBorderlessActionLabel(elements.undoDeleteButton, `恢复导入前的数据：${pendingImportSnapshot.fileName || '导入文件'}`);
   } else {
     elements.undoDeleteButton.textContent = '撤销删除';
-    elements.undoDeleteButton.title = canUndoDelete ? `恢复 ${pendingDeletedSolves.length} 条刚删除的成绩` : '没有可撤销的操作';
+    setBorderlessActionLabel(
+      elements.undoDeleteButton,
+      canUndoDelete ? `恢复 ${pendingDeletedSolves.length} 条刚删除的成绩` : '没有可撤销的操作',
+    );
   }
   elements.clearAllButton.disabled = sessionSolves.length === 0;
   elements.manageSolvesButton.disabled = solves.length === 0;
@@ -14728,6 +15250,12 @@ function renderHistoryControls(sessionSolves = filteredSolves()) {
     elements.selectAllSolves.checked = visibleIds.length > 0 && visibleIds.every((id) => selectedSolveIds.has(id));
     elements.selectAllSolves.indeterminate = visibleIds.some((id) => selectedSolveIds.has(id)) && !elements.selectAllSolves.checked;
   }
+}
+
+function setBorderlessActionLabel(element, label) {
+  if (!element) return;
+  element.setAttribute('aria-label', label);
+  element.removeAttribute('title');
 }
 
 function renderHistorySortControls() {
@@ -14740,10 +15268,10 @@ function renderHistorySortControls() {
     const arrow = button.querySelector('.sort-arrow');
     if (arrow) arrow.textContent = active ? (historySortDirection === 'asc' ? '↑' : '↓') : '';
     const label = labels[key] || key;
-    button.title = active
+    const accessibleLabel = active
       ? `${label}排序：${historySortDirection === 'asc' ? '从快到慢' : '从慢到快'}，点击切换`
       : `${label}排序：默认时间顺序，点击按从快到慢排序`;
-    button.setAttribute('aria-label', button.title);
+    setBorderlessActionLabel(button, accessibleLabel);
   });
 }
 
@@ -15297,8 +15825,10 @@ function fractionToMs(fraction = '') {
 }
 
 function shouldIgnoreTimerKey(event) {
-  if (document.querySelector('dialog[open]')) return true;
   const target = event.target;
+  const dialogOpen = Boolean(document.querySelector('dialog[open]'));
+  if (target instanceof HTMLElement && target.closest(pointerReleasedFocusSelector)) return dialogOpen;
+  if (dialogOpen) return true;
   return target instanceof HTMLElement && Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
 }
 

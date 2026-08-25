@@ -12,7 +12,7 @@
       }
     </script>
     <link rel="icon" href="./favicon.png?v=liquid-glass-v4" type="image/png" sizes="64x64" />
-    <link rel="stylesheet" href="./styles.css?v=20260803-native-edge-anchor-v33" />
+    <link rel="stylesheet" href="./styles.css?v=20260825-comparison-saturation-motion-v66" />
   </head>
   <body>
     <main class="app-shell">
@@ -21,14 +21,53 @@
           <h1>TrainTimer</h1>
           <p id="statusText">加载中...</p>
         </div>
-        <div class="session-box">
-          <select id="sessionSelect" aria-label="当前会话"></select>
-          <button id="newSessionButton" type="button">新会话</button>
-          <button id="duplicateSessionButton" type="button">复制</button>
-          <button id="mergeSessionButton" type="button">合并</button>
-          <button id="renameSessionButton" type="button">重命名</button>
-          <button id="timerSettingsButton" type="button">设置</button>
-          <button id="deleteSessionButton" type="button">删会话</button>
+        <div class="session-box" aria-label="会话控制">
+          <div class="session-select-control">
+            <svg class="session-grid-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <rect x="3" y="3" width="5" height="5" rx="1"></rect>
+              <rect x="9.5" y="3" width="5" height="5" rx="1"></rect>
+              <rect x="16" y="3" width="5" height="5" rx="1"></rect>
+              <rect x="3" y="9.5" width="5" height="5" rx="1"></rect>
+              <rect x="9.5" y="9.5" width="5" height="5" rx="1"></rect>
+              <rect x="16" y="9.5" width="5" height="5" rx="1"></rect>
+              <rect x="3" y="16" width="5" height="5" rx="1"></rect>
+              <rect x="9.5" y="16" width="5" height="5" rx="1"></rect>
+              <rect x="16" y="16" width="5" height="5" rx="1"></rect>
+            </svg>
+            <select id="sessionSelect" aria-label="当前会话"></select>
+          </div>
+          <div class="session-actions" role="group" aria-label="会话操作">
+            <button id="newSessionButton" class="topbar-icon-action" type="button" aria-label="新会话" title="新会话">
+              <span class="topbar-icon-frame" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h7"></path><path d="M14 2v6h6"></path><path d="M17 13v6"></path><path d="M14 16h6"></path></svg>
+              </span>
+            </button>
+            <button id="duplicateSessionButton" class="topbar-icon-action" type="button" aria-label="复制会话" title="复制会话">
+              <span class="topbar-icon-frame" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"></path></svg>
+              </span>
+            </button>
+            <button id="mergeSessionButton" class="topbar-icon-action" type="button" aria-label="合并会话" title="合并会话">
+              <span class="topbar-icon-frame" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M16 3h3a2 2 0 0 1 2 2v3"></path><path d="M3 16v3a2 2 0 0 0 2 2h3"></path><path d="M21 16v3a2 2 0 0 1-2 2h-3"></path><path d="M8 12h8"></path><path d="m13 9 3 3-3 3"></path></svg>
+              </span>
+            </button>
+            <button id="renameSessionButton" class="topbar-icon-action" type="button" aria-label="重命名会话" title="重命名会话">
+              <span class="topbar-icon-frame" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"></path></svg>
+              </span>
+            </button>
+            <button id="timerSettingsButton" class="topbar-icon-action" type="button" aria-label="计时器设置" title="计时器设置">
+              <span class="topbar-icon-frame" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 .6 1.51 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.14.38.36.72.66 1 .3.25.68.4 1.07.4H21a2 2 0 1 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15Z"></path></svg>
+              </span>
+            </button>
+            <button id="deleteSessionButton" class="topbar-icon-action" type="button" aria-label="删除会话" title="删除会话">
+              <span class="topbar-icon-frame" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="m19 6-1 15H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg>
+              </span>
+            </button>
+          </div>
         </div>
         <label class="scramble-puzzle-field">
           <span>类型</span>
@@ -46,16 +85,39 @@
         </label>
         <label class="toggle">
           <input id="inspectionToggle" type="checkbox" />
+          <svg class="inspection-clock" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2.5 1.5"></path><path d="M9 2h6"></path><path d="M12 2v3"></path></svg>
           <span>15s 观察</span>
+          <span class="inspection-check" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="m7 12 3 3 7-7"></path></svg>
+          </span>
         </label>
         <div class="bluetooth-box">
-          <button id="bluetoothButton" type="button">连接蓝牙魔方</button>
-          <button id="bluetoothAnyButton" type="button" title="列出更多蓝牙设备，用于设备名不在默认列表里的智能魔方">兼容扫描</button>
-          <button id="bluetoothReconnectButton" type="button" disabled>重连</button>
-          <button id="bluetoothDisconnectButton" type="button" disabled>断开</button>
-          <button id="bluetoothLogButton" type="button">日志</button>
+          <button id="bluetoothButton" type="button" aria-label="连接蓝牙魔方">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m7 7 10 10-5 4V3l5 4L7 17"></path></svg>
+            <span class="topbar-control-label">连接蓝牙魔方</span>
+          </button>
+          <button id="bluetoothAnyButton" type="button" aria-label="兼容扫描" title="列出更多蓝牙设备，用于设备名不在默认列表里的智能魔方">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3"></path><path d="M16 4h3a1 1 0 0 1 1 1v3"></path><path d="M20 16v3a1 1 0 0 1-1 1h-3"></path><path d="M8 20H5a1 1 0 0 1-1-1v-3"></path><path d="M7 12h10"></path></svg>
+            <span class="topbar-control-label">兼容扫描</span>
+          </button>
+          <button id="bluetoothReconnectButton" type="button" aria-label="重新连接蓝牙魔方" title="重新连接蓝牙魔方" disabled>
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 7v5h-5"></path><path d="M4 17a8 8 0 0 0 13.5 1L20 15"></path><path d="M4 9a8 8 0 0 1 13.5-1L20 10"></path></svg>
+            <span class="topbar-control-label">重连</span>
+          </button>
+          <button id="bluetoothDisconnectButton" type="button" aria-label="断开蓝牙魔方" title="断开蓝牙魔方" disabled>
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m3 3 18 18"></path><path d="m7 7 10 10-5 4V9"></path><path d="m12 3 5 4-3 2.4"></path><path d="m7 17 2.2-2.2"></path></svg>
+            <span class="topbar-control-label">断开</span>
+          </button>
+          <button id="bluetoothLogButton" type="button" aria-label="蓝牙日志" title="蓝牙日志">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"></path><path d="M14 2v6h6"></path><path d="M8 13h8"></path><path d="M8 17h6"></path></svg>
+            <span class="topbar-control-label">日志</span>
+          </button>
           <span id="bluetoothBattery" hidden>电量 -</span>
-          <span id="bluetoothStatus">未连接</span>
+          <span class="bluetooth-status">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m3 3 18 18"></path><path d="m7 7 10 10-5 4V9"></path><path d="m12 3 5 4-3 2.4"></path><path d="m7 17 2.2-2.2"></path></svg>
+            <span id="bluetoothStatus">未连接</span>
+            <i aria-hidden="true"></i>
+          </span>
         </div>
       </header>
 
@@ -155,7 +217,7 @@
           <div class="history-heading-actions">
             <p id="historyPath">-</p>
             <details id="historyActionsMenu" class="history-actions-menu">
-              <summary aria-label="打开成绩操作菜单" title="成绩操作">
+              <summary aria-label="打开成绩操作菜单">
                 <span class="menu-glyph" aria-hidden="true"><span></span><span></span><span></span></span>
               </summary>
               <div class="manager-toolbar history-actions-popover" aria-label="成绩管理工具">
@@ -1037,6 +1099,6 @@
       <small id="pbToastQueue" class="pb-toast-queue" hidden>+1</small>
     </div>
 
-    <script type="module" src="./app.js?v=20260803-native-edge-anchor-v33"></script>
+    <script type="module" src="./app.js?v=20260825-comparison-saturation-motion-v66"></script>
   </body>
 </html>

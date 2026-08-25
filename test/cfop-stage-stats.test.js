@@ -7,6 +7,7 @@ import {
   buildCfopStageShare,
   cfopComparisonAxisMax,
   cfopComparisonAxisPosition,
+  cfopComparisonColor,
   roundedPercentages,
 } from '../src/cfop-stage-stats.js';
 
@@ -87,6 +88,24 @@ test('selects a shared comparison scale and maps values around the midpoint', ()
   assert.equal(cfopComparisonAxisPosition(-0.2, 0.2), 0);
   assert.equal(cfopComparisonAxisPosition(0, 0.2), 50);
   assert.equal(cfopComparisonAxisPosition(0.2, 0.2), 100);
+});
+
+test('continuously increases comparison color saturation with the absolute time difference', () => {
+  const equal = cfopComparisonColor(0);
+  const slightlyFast = cfopComparisonColor(-130);
+  const clearlyFast = cfopComparisonColor(-2510);
+  const slightlySlow = cfopComparisonColor(130);
+  const clearlySlow = cfopComparisonColor(2848);
+
+  assert.deepEqual(equal.rgb, [247, 248, 250]);
+  assert.deepEqual(slightlyFast.rgb, [239, 247, 249]);
+  assert.deepEqual(clearlyFast.rgb, [85, 234, 228]);
+  assert.deepEqual(slightlySlow.rgb, [247, 242, 243]);
+  assert.deepEqual(clearlySlow.rgb, [255, 106, 95]);
+  assert.ok(slightlyFast.saturation < clearlyFast.saturation);
+  assert.ok(slightlySlow.saturation < clearlySlow.saturation);
+  assert.deepEqual(cfopComparisonColor(-3000).rgb, [53, 231, 224]);
+  assert.deepEqual(cfopComparisonColor(3000).rgb, [255, 98, 87]);
 });
 
 test('rounds displayed stage shares to exactly one hundred percent', () => {

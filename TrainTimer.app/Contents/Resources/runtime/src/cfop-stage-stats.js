@@ -10,6 +10,10 @@ const stageLabels = {
 };
 
 const supportedAxisMaxima = [0.2, 0.3, 0.4, 0.5, 0.75, 1, 1.5, 2];
+const comparisonColorFullScaleMs = 3000;
+const comparisonColorNeutralRgb = [247, 248, 250];
+const comparisonColorFastRgb = [53, 231, 224];
+const comparisonColorSlowRgb = [255, 98, 87];
 
 export function aggregateCfopChartStages(stages) {
   if (!Array.isArray(stages) || stages.length === 0) return null;
@@ -111,6 +115,24 @@ export function cfopComparisonAxisMax(ratios) {
 export function cfopComparisonAxisPosition(ratio, axisMaxRatio) {
   if (!Number.isFinite(ratio) || !Number.isFinite(axisMaxRatio) || axisMaxRatio <= 0) return 50;
   return Math.max(0, Math.min(100, 50 + (ratio / (axisMaxRatio * 2)) * 100));
+}
+
+export function cfopComparisonColor(deltaMs) {
+  const differenceMs = Number(deltaMs);
+  const saturation = Number.isFinite(differenceMs)
+    ? Math.min(1, Math.abs(differenceMs) / comparisonColorFullScaleMs)
+    : 0;
+  const targetRgb = differenceMs < 0
+    ? comparisonColorFastRgb
+    : (differenceMs > 0 ? comparisonColorSlowRgb : comparisonColorNeutralRgb);
+  const rgb = comparisonColorNeutralRgb.map((channel, index) => (
+    Math.round(channel + (targetRgb[index] - channel) * saturation)
+  ));
+  return {
+    saturation,
+    rgb,
+    css: `rgb(${rgb.join(', ')})`,
+  };
 }
 
 export function buildCfopStageShare(aggregate) {

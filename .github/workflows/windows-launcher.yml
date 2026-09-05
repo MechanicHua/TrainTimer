@@ -14,7 +14,7 @@ on:
       - 'public/**'
       - 'scripts/build-windows-launcher.*'
       - 'src/**'
-      - 'test/windows-launcher.test.js'
+      - 'test/**'
       - 'vendor/**'
       - 'windows/**'
 

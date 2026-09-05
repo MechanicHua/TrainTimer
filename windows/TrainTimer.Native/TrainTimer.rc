@@ -3,7 +3,9 @@
 #include "resource.h"
 
 IDI_TRAINTIMER ICON "../TrainTimer.Launcher/Assets/TrainTimerIcon.ico"
+#ifndef TRAINTIMER_MSVC_MANIFEST
 IDR_MAIN_MANIFEST RT_MANIFEST "TrainTimer.manifest"
+#endif
 
 VS_VERSION_INFO VERSIONINFO
  FILEVERSION 0,1,0,0

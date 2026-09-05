@@ -1,0 +1,12 @@
+#pragma once
+
+#define IDI_TRAINTIMER 101
+
+#define IDR_MAIN_MANIFEST 1
+
+#define IDC_REFRESH 1001
+#define IDC_LOG 1002
+#define IDC_COPY 1003
+#define IDC_STOP 1004
+#define IDC_RESTART 1005
+#define IDC_PRIMARY 1006

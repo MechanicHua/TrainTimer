@@ -17,10 +17,10 @@ macOS 双击启动：
 Windows 图形启动器：
 
 ```powershell
-.\scripts\build-windows-launcher.ps1
+.\scripts\build-windows-launcher.ps1 -NodeExecutablePath (Get-Command node.exe).Source
 ```
 
-构建后解压 `dist\TrainTimer-Windows-win-x64.zip`，双击 `TrainTimer.exe`。Windows 启动器沿用 macOS 版的服务状态、停止、重启、日志与自动打开 Chrome 行为，并使用 Windows 11 Mica、系统圆角和深浅色模式。详细说明见 `windows\README-Windows.md`。
+普通用户优先使用 `dist\TrainTimer-Windows-x64-Setup.exe`；也可以完整解压 `dist\TrainTimer-Windows-win-x64.zip` 后双击 `TrainTimer.exe`。Windows 启动器是轻量原生 Win32 程序，不再携带 .NET/WPF 运行时；正式包内置 Node.js，保留服务状态、停止、重启、日志、深浅色模式和自动打开浏览器等功能。详细说明见 `windows\README-Windows.md`。
 
 网页界面：
 

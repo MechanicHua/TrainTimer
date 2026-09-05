@@ -24,11 +24,12 @@
 
 ## Confirmed Windows launcher facts
 
-- Microsoft currently lists .NET 10 as an LTS release supported through November 2028.
-- WPF projects use the unified `Microsoft.NET.Sdk` with `UseWPF=true` and a Windows target framework.
-- Microsoft documents `EnableWindowsTargeting=true` for building Windows-targeted projects from macOS or Linux; the SDK then obtains the required Windows targeting/runtime packs.
-- Windows 11 exposes system backdrop and window-corner attributes through `DwmSetWindowAttribute`; the launcher can request Mica and rounded corners while keeping a conservative fallback on older Windows versions.
-- The Windows launcher will ship as a self-contained `win-x64` executable so the destination computer does not need a preinstalled .NET runtime. It still requires Node.js unless a bundled `Resources/node/node.exe` is supplied.
+- The active Windows launcher is a native Win32 x64 application whose editable source is `windows/TrainTimer.Native/launcher.c`; the older WPF project is retained only as legacy reference.
+- The native launcher uses only Windows system libraries and does not require or bundle a .NET runtime.
+- It validates `/api/health` as TrainTimer before attaching, searches ports 3211–3240, and uses a Windows Job Object to stop only the process tree it created.
+- The release package bundles `Resources/node/node.exe`, so the destination computer does not need a preinstalled Node.js runtime.
+- The browser already loads `public/vendor/three.module.js`; the Windows package therefore omits the redundant `node_modules/three` copy.
+- The Inno Setup build uses LZMA2 solid compression and installs per-user without administrator privileges.
 
 ## Design rules used
 
@@ -49,7 +50,4 @@
 - https://developer.apple.com/videos/play/wwdc2025/220/
 - https://developer.apple.com/videos/play/wwdc2025/361/
 - Local SDK header: `AppKit.framework/Headers/NSGlassEffectView.h`
-- https://learn.microsoft.com/en-us/dotnet/core/releases-and-support
-- https://learn.microsoft.com/en-us/dotnet/core/tools/sdk-errors/netsdk1100
-- https://learn.microsoft.com/en-us/dotnet/core/compatibility/sdk/5.0/sdk-and-target-framework-change
 - https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/nf-dwmapi-dwmsetwindowattribute

@@ -1,0 +1,65 @@
+name: Build Windows launcher
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+    paths:
+      - '.github/workflows/windows-launcher.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'public/**'
+      - 'scripts/build-windows-launcher.*'
+      - 'src/**'
+      - 'test/windows-launcher.test.js'
+      - 'vendor/**'
+      - 'windows/**'
+
+permissions:
+  contents: read
+
+jobs:
+  windows-x64:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Verify project
+        run: |
+          npm ci
+          npm test
+
+      - name: Install Inno Setup
+        shell: powershell
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build native launcher and packages
+        shell: powershell
+        run: |
+          $nodeExe = (Get-Command node.exe).Source
+          .\scripts\build-windows-launcher.ps1 -NodeExecutablePath $nodeExe
+          $launcher = Get-Item .\dist\native-build\TrainTimer.exe
+          if ($launcher.Length -gt 5MB) {
+            throw "Native launcher is unexpectedly large: $($launcher.Length) bytes"
+          }
+          Get-FileHash .\dist\TrainTimer-Windows-win-x64.zip -Algorithm SHA256
+          Get-FileHash .\dist\TrainTimer-Windows-x64-Setup.exe -Algorithm SHA256
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: TrainTimer-Windows-x64
+          if-no-files-found: error
+          path: |
+            dist/TrainTimer-Windows-win-x64.zip
+            dist/TrainTimer-Windows-x64-Setup.exe
+          compression-level: 0

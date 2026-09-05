@@ -13,6 +13,7 @@ test('Windows launcher builds as a native x64 Win32 application', async () => {
   assert.match(project, /<PlatformToolset>v143<\/PlatformToolset>/);
   assert.match(project, /<RuntimeLibrary>MultiThreaded<\/RuntimeLibrary>/);
   assert.match(project, /<SubSystem>Windows<\/SubSystem>/);
+  assert.match(project, /<GenerateManifest>false<\/GenerateManifest>/);
   assert.doesNotMatch(project, /UseWPF|TargetFramework|SelfContained|PublishSingleFile/);
   assert.match(manifest, /PerMonitorV2/);
   assert.match(manifest, /requestedExecutionLevel level="asInvoker"/);

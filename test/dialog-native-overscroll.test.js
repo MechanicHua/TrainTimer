@@ -41,7 +41,7 @@ test('dialogs use the browser native scroll pipeline instead of simulated elasti
   assert.match(appSource, /box\.height \+ marginStart \+ marginEnd/);
   assert.match(appSource, /--dialog-header-flow-space/);
   assert.match(appSource, /--dialog-footer-flow-space/);
-  assert.match(appSource, /function setupDialogEdgeAnchors\(\) \{(?:(?!setTimeout)[\s\S])*?\n\}\n\nfunction setupDialogScrollIndicators/);
+  assert.match(appSource, /function setupDialogEdgeAnchors\(\) \{(?:(?!setTimeout)[\s\S])*?\r?\n\}\r?\n\r?\nfunction setupDialogScrollIndicators/);
   assert.match(appSource, /delete dialog\.dataset\.dialogEdgeAnchor;[\s\S]*\}, \{ capture: true, passive: true \}\);[\s\S]*dialog\.addEventListener\('close'/s);
   assert.match(appSource, /const surfaceTop = dialogBox\.top \+ viewportGutter;/);
   assert.match(appSource, /const surfaceBottom = dialogBox\.bottom - viewportGutter;/);

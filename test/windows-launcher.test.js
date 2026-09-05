@@ -65,4 +65,6 @@ test('Windows packaging uses one native UI runtime and a compressed installer', 
   assert.match(installer, /Compression=lzma2\/ultra64/);
   assert.match(installer, /SolidCompression=yes/);
   assert.match(installer, /PrivilegesRequired=lowest/);
+  assert.match(installer, /MessagesFile: "compiler:Default\.isl"/);
+  assert.doesNotMatch(installer, /ChineseSimplified\.isl/);
 });

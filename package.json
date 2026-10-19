@@ -7,9 +7,11 @@
     "train-timer": "./src/cli.js"
   },
   "scripts": {
+    "build:three": "node ./scripts/build-three.mjs",
     "start": "node ./src/cli.js",
     "web": "node ./src/server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "build:web": "node ./scripts/build-browser.mjs"
   },
   "engines": {
     "node": ">=18"
@@ -17,5 +19,8 @@
   "license": "GPL-3.0-or-later",
   "dependencies": {
     "three": "0.165.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.9"
   }
 }

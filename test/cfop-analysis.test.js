@@ -2,9 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   cfopStagesForSave,
+  effectiveStageMoveRecords,
   solveCfopAnalysis,
   solveFaceletStateTimelineForAnalysis,
   solveMoveRecords,
+  solvePhysicalMoveRecords,
 } from '../src/cfop-analysis.js';
 import { applyMoveToFacelets, faceletsFromScramble } from '../src/cube-state.js';
 
@@ -100,6 +102,7 @@ test('CFOP stages save elapsed and absolute timing points', () => {
   const stages = cfopStagesForSave({
     scramble: 'R U',
     scramblePuzzle: 'three',
+    inspectionDurationMs: 9000,
     timerStartedAt: '2026-06-02T10:00:00.000Z',
     timerStartedAtMs: 1780394400000,
     bluetoothMoveLog: [
@@ -129,7 +132,7 @@ test('CFOP stages save elapsed and absolute timing points', () => {
   assert.equal(cross.startedAtElapsedMs, 0);
   assert.equal(cross.firstMoveElapsedMs, 850);
   assert.equal(cross.completedAtElapsedMs, 850);
-  assert.equal(cross.observationMs, 850);
+  assert.equal(cross.observationMs, 9000);
   assert.equal(cross.startedAtTimestampMs, 1780394400000);
   assert.equal(cross.firstMoveTimestampMs, 1780394400850);
   assert.equal(cross.completedAtTimestampMs, 1780394400850);
@@ -180,6 +183,7 @@ test('CFOP stage turns use logical steps while detection keeps physical double-f
     ['R', 1530],
   ];
   const analysis = solveCfopAnalysis({
+    cfopBottomFace: 'U',
     scramble: "U2 B R2 F2 U2 B' U2 L2 D2 R2 F' L F' R U L' F' R D",
     scramblePuzzle: 'three',
     bluetoothMoveLog: moves.map(([move, elapsedMs]) => ({ move, elapsedMs })),
@@ -255,7 +259,7 @@ test('cross stage is named for solved F2L pairs present at cross completion', ()
   assert.equal(pll.turns, 1);
 });
 
-test('late collapsed multiple-pair cross candidates are named conservatively', () => {
+test('late crosses retain their actual solved pair count', () => {
   const moves = [
     'B', 'B', "R'", 'F', 'F', "D'", 'F', "D'", "F'", 'D', 'L', "D'",
     "L'", 'L', "L'", 'D', 'L', "D'", "L'", 'D', 'D', 'L', "D'",
@@ -272,7 +276,7 @@ test('late collapsed multiple-pair cross candidates are named conservatively', (
 
   assert.equal(analysis.stages[0].completedAt, 29);
   assert.equal(analysis.stages[0].physicalCompletedAt, 34);
-  assert.equal(analysis.stages[0].name, 'Cross');
+  assert.equal(analysis.stages[0].name, 'xxcross');
 });
 
 test('CFOP analysis prefers staged progress over final-state-only bottom candidates', () => {
@@ -287,13 +291,13 @@ test('CFOP analysis prefers staged progress over final-state-only bottom candida
   assert.deepEqual(
     analysis.stages.map((stage) => [stage.label, stage.completedAt, stage.turns]),
     [
-      ['C', 10, 10],
+      ['C', 10, 8],
       ['F1', 18, 8],
       ['F2', 26, 8],
       ['F3', 34, 8],
       ['F4', 42, 8],
-      ['O', 55, 13],
-      ['P', 74, 19],
+      ['O', 55, 11],
+      ['P', 74, 18],
     ],
   );
   assert.deepEqual(
@@ -345,11 +349,12 @@ test('state timeline preserves staged CFOP progress when several state packets s
   assert.equal(analysis.stages[0].name, 'Cross');
   assert.deepEqual(
     analysis.stages.map((stage) => stage.completedAtElapsedMs),
-    physicalBoundaries.map((step) => step * 100),
+    [700, 1850, 2750, 3650, 4550, 5700, 8400],
   );
   assert.ok(analysis.stages.every((stage) => stage.completed && stage.turns === 0));
   assert.ok(analysis.stages.every((stage) => stage.unobservedTurns === true));
   assert.ok(analysis.stages.every((stage) => stage.completionSource === 'state'));
+  assert.ok(analysis.stages.every((stage) => stage.timingInterpolated));
 });
 
 function stagedProgressFixture() {
@@ -366,3 +371,135 @@ function stagedProgressFixture() {
     ],
   };
 }
+
+test('leading loops become observation while internal loops only remove turns', () => {
+  const { scramble, moves } = stagedProgressFixture();
+  const analyze = (sequence) => solveCfopAnalysis({
+    scramble, durationMs: (sequence.length - 1) * 1000,
+    bluetoothMoveLog: sequence.map((move, index) => ({ move, elapsedMs: index * 1000 })),
+  });
+  const baseline = analyze(moves);
+  const start = baseline.stages[0].physicalEndStep;
+  const insertLoop = (index) => [...moves.slice(0, index), 'R', 'U', "U'", "R'", ...moves.slice(index)];
+  const leading = analyze(insertLoop(start)).stages[1];
+  assert.equal(leading.observationMs, baseline.stages[1].observationMs + 4000);
+  assert.equal(leading.turns, baseline.stages[1].turns);
+  assert.equal(leading.executionMs, baseline.stages[1].executionMs);
+  const middle = analyze(insertLoop(start + 1)).stages[1];
+  assert.equal(middle.observationMs, baseline.stages[1].observationMs);
+  assert.equal(middle.turns, baseline.stages[1].turns);
+  assert.equal(middle.executionMs, baseline.stages[1].executionMs + 4000);
+});
+
+test('each stage starts observation at the previous completion and retains its own loops', () => {
+  const { scramble, moves } = stagedProgressFixture();
+  const solve = (sequence) => ({ scramble, durationMs: sequence.length * 100,
+    bluetoothMoveLog: sequence.map((move, index) => ({ move, elapsedMs: (index + 1) * 100 })) });
+  const baseline = solveCfopAnalysis(solve(moves));
+  const crossEnd = baseline.stages[0].physicalEndStep;
+  const sequence = [...moves.slice(0, crossEnd), 'R', "R'", ...moves.slice(crossEnd)];
+  const { stages } = solveCfopAnalysis(solve(sequence));
+  assert.equal(stages[0].durationMs, baseline.stages[0].durationMs);
+  assert.equal(stages[1].startedAtElapsedMs, stages[0].completedAtElapsedMs);
+  assert.equal(stages[1].observationMs, baseline.stages[1].observationMs + 200);
+  assert.equal(stages[1].turns, baseline.stages[1].turns);
+  assert.equal(stages.reduce((sum, stage) => sum + stage.durationMs, 0), sequence.length * 100);
+});
+
+test('confirming state packets do not postpone completion and PLL ends at stopwatch time', () => {
+  const { scramble, moves } = stagedProgressFixture();
+  const base = {
+    scramble, timerStartedAtMs: 100000, durationMs: moves.length * 100,
+    bluetoothMoveLog: moves.map((move, index) => ({ move, elapsedMs: (index + 1) * 100 })),
+  };
+  const baseline = solveCfopAnalysis(base);
+  const crossEnd = baseline.stages[0].physicalEndStep;
+  let crossFacelets = faceletsFromScramble(scramble);
+  for (const move of moves.slice(0, crossEnd)) crossFacelets = applyMoveToFacelets(crossFacelets, move);
+  const withPackets = { ...base, bluetoothStateLog: [
+    { step: crossEnd, facelets: crossFacelets, elapsedMs: crossEnd * 100 + 60 },
+    { step: moves.length, facelets: faceletsFromScramble(''), elapsedMs: base.durationMs + 390, solved: true, trustedSolved: true },
+  ] };
+  for (const durationMs of [base.durationMs, base.durationMs + 700, base.durationMs - 50]) {
+    const { stages } = solveCfopAnalysis({ ...withPackets, durationMs });
+    assert.equal(stages[0].completedAtElapsedMs, baseline.stages[0].completedAtElapsedMs);
+    assert.equal(stages.at(-1).completedAtElapsedMs, durationMs);
+    assert.equal(stages.at(-1).completedAtTimestampMs, base.timerStartedAtMs + durationMs);
+    assert.equal(stages.reduce((sum, stage) => sum + stage.durationMs, 0), durationMs);
+    stages.forEach((stage, index) => {
+      assert.ok(stage.durationMs >= 0);
+      assert.equal(stage.observationMs + stage.executionMs, stage.durationMs);
+      if (index) assert.equal(stage.startedAtElapsedMs, stages[index - 1].completedAtElapsedMs);
+    });
+  }
+});
+
+test('loop detection ignores delayed state corrections and erases complete nested loops', () => {
+  const moves = ['F', 'D', "D'", 'L', "L'", "F'", 'R', 'U', "U'", 'D'];
+  const records = moves.map((move, index) => ({ step: index + 1, move, elapsedMs: index * 100 }));
+  const snapshots = [
+    { step: 0, facelets: faceletsFromScramble('R U F') },
+    { step: 2, facelets: faceletsFromScramble('B L') },
+    { step: 6, facelets: faceletsFromScramble('D2 R') },
+    { step: 10, facelets: faceletsFromScramble('F U') },
+  ];
+  assert.deepEqual(effectiveStageMoveRecords(snapshots, records).map((r) => r.step), [7, 10]);
+  // A useful turn before an internal loop keeps its original execution time.
+  assert.equal(effectiveStageMoveRecords(snapshots, records)[0].elapsedMs, 600);
+});
+
+test('Cross observation is actual pre-solve inspection and never changes stopwatch totals', () => {
+  const { scramble, moves } = stagedProgressFixture();
+  const base = { scramble, durationMs: moves.length * 100, inspectionEnabled: true,
+    bluetoothMoveLog: moves.map((move, i) => ({ move, elapsedMs: i * 100 })) };
+  for (const inspectionDurationMs of [0, 9850, 17300]) {
+    const { stages } = solveCfopAnalysis({ ...base, inspectionDurationMs });
+    assert.equal(stages[0].observationMs, inspectionDurationMs);
+    assert.equal(stages[0].executionMs, stages[0].durationMs);
+    assert.equal(stages.reduce((n, s) => n + s.durationMs, 0), base.durationMs);
+    for (const stage of stages.slice(1)) assert.equal(stage.observationMs + stage.executionMs, stage.durationMs);
+  }
+  assert.equal(solveCfopAnalysis(base).stages[0].observationMs, null);
+  assert.equal(solveCfopAnalysis({ ...base, inspectionEnabled: false }).stages[0].observationMs, 0);
+  const stored = cfopStagesForSave({ ...base, inspectionDurationMs: 9850 });
+  assert.equal(solveCfopAnalysis({ ...base, cfopStages: stored }).stages[0].observationMs, 9850);
+  assert.equal(solveCfopAnalysis({ ...base, cfopStages: [{ label: 'C', analysisVersion: 5, observationMs: 52 }] }).stages[0].observationMs, null);
+});
+
+test('OLL and PLL leading AUF turns are observation but internal U turns stay in execution', () => {
+  const inverse = (moves) => moves.slice().reverse().map((move) => move.endsWith('2') ? move : move.endsWith("'") ? move.slice(0, -1) : `${move}'`).join(' ');
+  const algorithms = [
+    ['oll', "R U R' U R U2 R'"],
+    ['pll', "R U R' U' R' F R2 U' R' U' R U R' F'"],
+  ];
+  for (const [key, algorithm] of algorithms) {
+    const moves = ['U', 'R', "R'", 'U2', ...algorithm.split(' ')];
+    const solve = { scramble: inverse(moves), durationMs: moves.length * 100,
+      bluetoothMoveLog: moves.map((move, i) => ({ move, elapsedMs: (i + 1) * 100 })) };
+    const analysis = solveCfopAnalysis(solve);
+    const stage = analysis.stages.find((stage) => stage.key === key);
+    assert.equal(analysis.bottomFace, 'D');
+    assert.equal(stage.firstMoveElapsedMs, 500);
+    assert.equal(stage.observationMs, 500);
+    assert.equal(stage.executionMs, stage.durationMs - 500);
+    assert.equal(stage.wastedPhysicalTurns, 2);
+    assert.equal(stage.turns, algorithm.split(' ').length + 2);
+    assert.equal(analysis.stages.reduce((n, s) => n + s.durationMs, 0), solve.durationMs);
+    const flipped = { U: 'D', D: 'U', F: 'B', B: 'F', R: 'R', L: 'L' };
+    const flippedMoves = moves.map((move) => flipped[move[0]] + move.slice(1));
+    const rotated = solveCfopAnalysis({ ...solve, scramble: inverse(flippedMoves),
+      bluetoothMoveLog: flippedMoves.map((move, i) => ({ move, elapsedMs: (i + 1) * 100 })) });
+    assert.equal(rotated.bottomFace, 'U');
+    assert.equal(rotated.stages.find((stage) => stage.key === key).observationMs, 500);
+  }
+});
+
+test('PLL skip with only AUF has observation time and no formula execution time', () => {
+  const { stages } = solveCfopAnalysis({ scramble: 'U', durationMs: 400,
+    bluetoothMoveLog: [{ move: "U'", elapsedMs: 400 }] });
+  const pll = stages.find((stage) => stage.key === 'pll');
+  assert.equal(pll.skipped, true);
+  assert.equal(pll.durationMs, 400);
+  assert.equal(pll.observationMs, 400);
+  assert.equal(pll.executionMs, 0);
+});

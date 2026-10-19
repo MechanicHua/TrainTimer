@@ -1,0 +1,28 @@
+name: traintimer
+description: Offline native desktop speedcubing timer.
+publish_to: none
+version: 0.1.0+1
+environment:
+  sdk: '>=3.9.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  drift: ^2.28.2
+  sqlite3: ^2.9.3
+  sqlite3_flutter_libs: ^0.5.39
+  path: ^1.9.1
+  path_provider: ^2.1.5
+  uuid: ^4.5.1
+  crypto: ^3.0.6
+  ffi: ^2.1.4
+  pointycastle: ^3.9.1
+  traintimer_min2phase:
+    path: native/min2phase
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  integration_test:
+    sdk: flutter
+flutter:
+  uses-material-design: true

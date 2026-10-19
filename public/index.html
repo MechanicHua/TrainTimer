@@ -12,7 +12,7 @@
       }
     </script>
     <link rel="icon" href="./favicon.png?v=liquid-glass-v4" type="image/png" sizes="64x64" />
-    <link rel="stylesheet" href="./styles.css?v=20260825-comparison-saturation-motion-v66" />
+    <link rel="stylesheet" href="./styles.css?v=ef39d03e502f" />
   </head>
   <body>
     <main class="app-shell">
@@ -254,13 +254,13 @@
         <section id="historyCfopPanel" class="history-cfop-panel" hidden>
           <button id="historyCfopToggle" class="history-cfop-toggle" type="button" aria-expanded="true">
             <span>
-              <strong id="historyCfopTitle">复原详情</strong>
+              <strong id="historyCfopTitle">阶段对比</strong>
               <small id="historyCfopMeta">-</small>
             </span>
             <i aria-hidden="true"></i>
           </button>
           <div id="historyCfopBody" class="history-cfop-body">
-            <div id="historyCfopStages" class="history-cfop-stages" aria-label="CFOP 步骤计时和 TPS"></div>
+            <div id="historyCfopStages" class="history-cfop-stages history-stage-comparison" aria-label="阶段对比：当前成绩与历史平均"></div>
           </div>
         </section>
       </section>
@@ -426,7 +426,6 @@
                   <button data-stats-chart-mode="ao12" type="button">ao12</button>
                   <button data-stats-chart-mode="ao50" type="button">ao50</button>
                   <button data-stats-chart-mode="ao100" type="button">ao100</button>
-                  <button data-stats-chart-mode="tps" type="button">TPS</button>
                 </div>
               </div>
               <canvas id="statsTrendChart" aria-label="当前会话成绩趋势"></canvas>
@@ -732,112 +731,100 @@
                 </svg>
               </button>
             </div>
-          </div>
-          <section id="solveAnalysisPanel" class="solve-analysis-panel" aria-labelledby="solveAnalysisTitle">
-            <div class="solve-analysis-head">
-              <div>
-                <h3 id="solveAnalysisTitle">与历史平均相比</h3>
-                <p id="solveAnalysisStatus" aria-live="polite">正在读取阶段数据</p>
-              </div>
-              <div id="solveAnalysisTabs" class="solve-analysis-tabs" role="tablist" aria-label="成绩阶段图表">
-                <button
-                  id="solveComparisonTab"
-                  type="button"
-                  role="tab"
-                  aria-selected="true"
-                  aria-controls="solveComparisonPanel"
-                  tabindex="0"
-                  data-solve-analysis-mode="comparison"
-                >阶段对比</button>
-                <button
-                  id="solveShareTab"
-                  type="button"
-                  role="tab"
-                  aria-selected="false"
-                  aria-controls="solveSharePanel"
-                  tabindex="-1"
-                  data-solve-analysis-mode="share"
-                >用时占比</button>
-              </div>
-            </div>
-            <div class="solve-analysis-viewport">
-              <section
-                id="solveComparisonPanel"
-                class="solve-analysis-view active"
-                role="tabpanel"
-                aria-labelledby="solveComparisonTab"
-                aria-hidden="false"
-                data-solve-analysis-view="comparison"
-              >
-                <div id="solveComparisonScale" class="solve-comparison-scale" aria-hidden="true"></div>
-                <div id="solveComparisonRows" class="solve-comparison-rows"></div>
-                <div id="solveComparisonEmpty" class="solve-analysis-empty" hidden></div>
-              </section>
-              <section
-                id="solveSharePanel"
-                class="solve-analysis-view"
-                role="tabpanel"
-                aria-labelledby="solveShareTab"
-                aria-hidden="true"
-                data-solve-analysis-view="share"
-                inert
-              >
-                <div id="solveShareChart" class="solve-share-chart"></div>
-                <div id="solveShareEmpty" class="solve-analysis-empty" hidden></div>
-              </section>
-            </div>
-            <p id="solveAnalysisA11y" class="sr-only" aria-live="polite"></p>
-          </section>
-          <div class="solve-detail-grid">
-            <div>
-              <label for="solveDetailTimeInput">原始成绩</label>
-              <input id="solveDetailTimeInput" type="text" inputmode="decimal" autocomplete="off" placeholder="12.345 或 1:02.345" />
-              <p id="solveDetailError" class="form-error" aria-live="polite"></p>
-            </div>
-            <div>
-              <label for="solveDetailPenaltySelect">罚时</label>
-              <select id="solveDetailPenaltySelect">
-                <option value="ok">OK</option>
-                <option value="+2">+2</option>
-                <option value="dnf">DNF</option>
-              </select>
-            </div>
-            <div>
-              <label for="solveDetailPuzzleSelect">打乱类型</label>
-              <select id="solveDetailPuzzleSelect">
-                <option value="two">2x2</option>
-                <option value="three">3x3</option>
-                <option value="four">4x4</option>
-                <option value="five">5x5</option>
-                <option value="six">6x6</option>
-                <option value="seven">7x7</option>
-                <option value="clock">Clock</option>
-                <option value="skewb">Skewb</option>
-                <option value="sq1">Square-1</option>
-              </select>
-            </div>
-            <div>
+            <div class="solve-detail-scramble-field">
               <label for="solveDetailScramble">打乱公式</label>
-              <textarea id="solveDetailScramble" class="solve-detail-scramble" rows="3" maxlength="420" placeholder="可留空，或粘贴这把的打乱公式"></textarea>
+              <textarea id="solveDetailScramble" class="solve-detail-scramble" rows="2" spellcheck="false" autocapitalize="off" maxlength="420" placeholder="可留空，或粘贴这把的打乱公式"></textarea>
             </div>
-            <div>
-              <label for="solveDetailComment">备注</label>
-              <textarea id="solveDetailComment" rows="3" maxlength="240" placeholder="记录失误、PLL、手法问题等"></textarea>
-            </div>
-            <div>
-              <label for="solveDetailTagsInput">标签</label>
-              <input id="solveDetailTagsInput" type="text" autocomplete="off" placeholder="用逗号分隔，例如 PLL, 慢十字" />
-            </div>
-            <section id="solveSolutionPanel" class="solve-solution-panel wide" hidden>
-              <div class="solve-solution-head">
+          </div>
+          <div class="solve-dialog-content" tabindex="0" role="region" aria-label="成绩分析与备注">
+            <section id="solveAnalysisPanel" class="solve-analysis-panel" aria-labelledby="solveAnalysisTitle">
+              <div class="solve-analysis-head">
                 <div>
-                  <strong id="solveDetailBluetoothStats">复原分析</strong>
-                  <span id="solveBluetoothReplayMeta">-</span>
+                  <h3 id="solveAnalysisTitle">与历史平均相比</h3>
+                  <p id="solveAnalysisStatus" aria-live="polite">正在读取阶段数据</p>
                 </div>
-                <button id="solveReplayButton" type="button">播放</button>
+                <div id="solveAnalysisTabs" class="solve-analysis-tabs" role="tablist" aria-label="成绩阶段图表">
+                  <button
+                    id="solveComparisonTab"
+                    type="button"
+                    role="tab"
+                    aria-selected="true"
+                    aria-controls="solveComparisonPanel"
+                    tabindex="0"
+                    data-solve-analysis-mode="comparison"
+                  >阶段对比</button>
+                  <button
+                    id="solveShareTab"
+                    type="button"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="solveSharePanel"
+                    tabindex="-1"
+                    data-solve-analysis-mode="share"
+                  >用时占比</button>
+                </div>
               </div>
-              <div id="solveCfopStages" class="solve-cfop-stages" aria-label="CFOP 分段"></div>
+              <div class="solve-analysis-viewport">
+                <section
+                  id="solveComparisonPanel"
+                  class="solve-analysis-view active"
+                  role="tabpanel"
+                  aria-labelledby="solveComparisonTab"
+                  aria-hidden="false"
+                  data-solve-analysis-view="comparison"
+                >
+                  <div id="solveComparisonScale" class="solve-comparison-scale" aria-hidden="true"></div>
+                  <div id="solveComparisonRows" class="solve-comparison-rows"></div>
+                  <div id="solveComparisonEmpty" class="solve-analysis-empty" hidden></div>
+                </section>
+                <section
+                  id="solveSharePanel"
+                  class="solve-analysis-view"
+                  role="tabpanel"
+                  aria-labelledby="solveShareTab"
+                  aria-hidden="true"
+                  data-solve-analysis-view="share"
+                  inert
+                >
+                  <div id="solveShareChart" class="solve-share-chart"></div>
+                  <div id="solveShareEmpty" class="solve-analysis-empty" hidden></div>
+                </section>
+              </div>
+              <p id="solveAnalysisA11y" class="sr-only" aria-live="polite"></p>
             </section>
+            <div class="solve-detail-grid">
+              <div id="solveDetailPenaltyField">
+                <label for="solveDetailPenaltySelect">罚时</label>
+                <select id="solveDetailPenaltySelect">
+                  <option value="ok">OK</option>
+                  <option value="+2">+2</option>
+                  <option value="dnf">DNF</option>
+                </select>
+              </div>
+              <section id="solveSolutionPanel" class="solve-solution-panel wide" hidden>
+                <div class="solve-solution-head">
+                  <div>
+                    <strong id="solveDetailBluetoothStats">复原分析</strong>
+                    <span id="solveBluetoothReplayMeta">-</span>
+                  </div>
+                  <label class="solve-bottom-face-field">底面
+                    <select id="solveBottomFaceSelect" aria-label="复原底面">
+                      <option value="">自动</option>
+                      <option value="U">白 · U</option><option value="D">黄 · D</option>
+                      <option value="F">绿 · F</option><option value="B">蓝 · B</option>
+                      <option value="L">橙 · L</option><option value="R">红 · R</option>
+                    </select>
+                  </label>
+                  <button id="solveReplayButton" type="button">播放</button>
+                </div>
+                <div id="solveCfopStages" class="solve-cfop-stages" aria-label="CFOP 分段"></div>
+              </section>
+              <div class="solve-detail-comment-field wide">
+                <label for="solveDetailComment">备注</label>
+                <textarea id="solveDetailComment" rows="2" maxlength="240" placeholder="记录失误、PLL、手法问题等"></textarea>
+              </div>
+            </div>
+            <p id="solveDetailError" class="form-error" aria-live="polite"></p>
           </div>
           <div class="dialog-actions">
             <button id="copySolveSummaryButton" type="button">复制详情</button>
@@ -1099,6 +1086,6 @@
       <small id="pbToastQueue" class="pb-toast-queue" hidden>+1</small>
     </div>
 
-    <script type="module" src="./app.js?v=20260825-comparison-saturation-motion-v66"></script>
+    <script type="module" src="./app.bundle.js?v=dd08aa20237f"></script>
   </body>
 </html>

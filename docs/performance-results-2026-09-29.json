@@ -1,0 +1,493 @@
+{
+  "environment": "Apple M1 Pro, Node 23.11, Chromium 153 headless; synthetic data only; no physical BLE device",
+  "node": {
+    "capturedAt": "2026-09-29T06:58:16.582Z",
+    "node": "v23.11.0",
+    "platform": "darwin 27.0.0 arm64",
+    "cpu": "Apple M1 Pro",
+    "synthetic": true,
+    "sourceSha256": {
+      "public/app.js": "a4a8116d5d104a6ec26632570033431dfd2d3cd2173c23ccaaf184bfd8bf4b7c",
+      "src/cube-state.js": "f88ed79b32dd754d01d8cba9204961144a400d8f4a82351cbf90ace44b49edc4",
+      "src/cfop-analysis.js": "e73f529c07611c4cfae72009694de0d77e80c825d2918a6d8ebb695c2da8dc80",
+      "src/op-analysis.js": "f3e033648bdc92f9ace241517ffedb168d570dabb34756d6caf0dbc5e5ec8d3c",
+      "src/history.js": "7636631fc751d5e8795e013e567ac094a29285f54e3fa131f341a64ef4ed23b8"
+    },
+    "results": {
+      "localWarmup1": {
+        "ms": 36.038625,
+        "ready": true
+      },
+      "localWarmup2": {
+        "ms": 0.017042000000003554,
+        "ready": true
+      },
+      "localWarmup3": {
+        "ms": 0.06370800000000543,
+        "ready": true
+      },
+      "localSearchInput1": {
+        "n": 30,
+        "p50Ms": 0.009541999999996165,
+        "p95Ms": 0.09641599999999073,
+        "maxMs": 0.26062500000000455,
+        "hits": 30
+      },
+      "localSearchInput4": {
+        "n": 30,
+        "p50Ms": 0.06550000000000011,
+        "p95Ms": 0.155666999999994,
+        "maxMs": 0.27079200000000014,
+        "hits": 30
+      },
+      "localSearchInput8": {
+        "n": 30,
+        "p50Ms": 10.555291000000011,
+        "p95Ms": 14.065250000000006,
+        "maxMs": 14.081375000000037,
+        "hits": 21
+      },
+      "localSearchInput20": {
+        "n": 30,
+        "p50Ms": 14.033165999999994,
+        "p95Ms": 14.055041999999958,
+        "maxMs": 14.218375000000037,
+        "hits": 0
+      },
+      "analysis20": {
+        "cfop": {
+          "n": 30,
+          "p50Ms": 0.5962500000000546,
+          "p95Ms": 1.0262500000000045,
+          "maxMs": 3.5159580000000688
+        },
+        "opIncludesCfop": {
+          "n": 30,
+          "p50Ms": 7.5171249999999645,
+          "p95Ms": 9.206707999999935,
+          "maxMs": 18.995000000000005
+        },
+        "combined": {
+          "n": 30,
+          "p50Ms": 8.09829099999979,
+          "p95Ms": 9.8321669999998,
+          "maxMs": 22.510958000000073
+        },
+        "sharedContext": {
+          "n": 30,
+          "p50Ms": 7.446416999999997,
+          "p95Ms": 8.086458000000107,
+          "maxMs": 8.19945800000005
+        },
+        "firstCombinedMs": 22.510958000000073
+      },
+      "analysis60": {
+        "cfop": {
+          "n": 30,
+          "p50Ms": 1.194166000000223,
+          "p95Ms": 1.6496250000000146,
+          "maxMs": 1.7647499999998217
+        },
+        "opIncludesCfop": {
+          "n": 30,
+          "p50Ms": 20.835624999999936,
+          "p95Ms": 21.95724999999993,
+          "maxMs": 22.62795899999992
+        },
+        "combined": {
+          "n": 30,
+          "p50Ms": 22.019500000000107,
+          "p95Ms": 23.16837499999997,
+          "maxMs": 24.39270899999974
+        },
+        "sharedContext": {
+          "n": 30,
+          "p50Ms": 20.287791999999854,
+          "p95Ms": 21.119875000000093,
+          "maxMs": 24.128499999999804
+        },
+        "firstCombinedMs": 23.16837499999997
+      },
+      "analysis120": {
+        "cfop": {
+          "n": 30,
+          "p50Ms": 2.1700000000000728,
+          "p95Ms": 2.70049999999992,
+          "maxMs": 2.9417499999999563
+        },
+        "opIncludesCfop": {
+          "n": 30,
+          "p50Ms": 38.510707999999795,
+          "p95Ms": 39.60370799999964,
+          "maxMs": 39.87566700000025
+        },
+        "combined": {
+          "n": 30,
+          "p50Ms": 40.71320799999967,
+          "p95Ms": 42.17820799999981,
+          "maxMs": 42.19658400000026
+        },
+        "sharedContext": {
+          "n": 30,
+          "p50Ms": 38.50045799999998,
+          "p95Ms": 39.02287500000011,
+          "maxMs": 39.26158399999986
+        },
+        "firstCombinedMs": 40.98887400000012
+      },
+      "history1000": {
+        "normalization": {
+          "n": 5,
+          "p50Ms": 0.7429999999994834,
+          "p95Ms": 3.088375000000269,
+          "maxMs": 3.088375000000269
+        },
+        "rollingWindowsOnly": {
+          "n": 5,
+          "p50Ms": 9.304000000000087,
+          "p95Ms": 9.862874999999804,
+          "maxMs": 9.862874999999804
+        },
+        "linearWindows": {
+          "n": 5,
+          "p50Ms": 1.0988750000005894,
+          "p95Ms": 1.46100000000024,
+          "maxMs": 1.46100000000024
+        },
+        "rawJsonBytes": 157818
+      },
+      "history10000": {
+        "normalization": {
+          "n": 5,
+          "p50Ms": 6.877875000000131,
+          "p95Ms": 9.3667089999999,
+          "maxMs": 9.3667089999999
+        },
+        "rollingWindowsOnly": {
+          "n": 5,
+          "p50Ms": 75.85020900000018,
+          "p95Ms": 84.15345799999977,
+          "maxMs": 84.15345799999977
+        },
+        "linearWindows": {
+          "n": 5,
+          "p50Ms": 2.308999999999287,
+          "p95Ms": 6.989249999999629,
+          "maxMs": 6.989249999999629
+        },
+        "rawJsonBytes": 1588128
+      },
+      "min2phase": {
+        "coldMs": 531.4076249999998,
+        "warm": {
+          "n": 20,
+          "p50Ms": 0.5100000000002183,
+          "p95Ms": 1.7993750000005093,
+          "maxMs": 1.8787920000004306
+        },
+        "sources": [
+          "min2phase",
+          "min2phase",
+          "min2phase",
+          "min2phase",
+          "min2phase",
+          "min2phase",
+          "min2phase",
+          "min2phase",
+          "min2phase",
+          "min2phase",
+          "min2phase",
+          "min2phase",
+          "min2phase",
+          "min2phase",
+          "min2phase",
+          "min2phase",
+          "min2phase",
+          "min2phase",
+          "min2phase",
+          "min2phase",
+          "min2phase"
+        ]
+      },
+      "tnoodle": {
+        "generation": {
+          "n": 3,
+          "p50Ms": 209.35362499999974,
+          "p95Ms": 767.6042080000007,
+          "maxMs": 767.6042080000007
+        },
+        "preview": {
+          "n": 3,
+          "p50Ms": 1.9347910000005868,
+          "p95Ms": 3.7159160000001066,
+          "maxMs": 3.7159160000001066
+        },
+        "sources": [
+          {
+            "scramble": "bundled-tnoodle-cli-1.1.1",
+            "preview": "bundled-tnoodle-cli-1.1.1"
+          },
+          {
+            "scramble": "bundled-tnoodle-cli-1.1.1",
+            "preview": "bundled-tnoodle-cli-1.1.1"
+          },
+          {
+            "scramble": "bundled-tnoodle-cli-1.1.1",
+            "preview": "bundled-tnoodle-cli-1.1.1"
+          }
+        ]
+      }
+    },
+    "memoryAtEnd": {
+      "rss": 176603136,
+      "heapTotal": 87703552,
+      "heapUsed": 41867240,
+      "external": 2165153,
+      "arrayBuffers": 55742
+    }
+  },
+  "gyroAndTransition": {
+    "elapsed": 2011.699999988079,
+    "frames": 120,
+    "fps": 59.651041408118054,
+    "idleFrames": 0,
+    "transitions": [
+      {
+        "duration": 180,
+        "delay": 0
+      },
+      {
+        "duration": 200,
+        "delay": 0
+      }
+    ],
+    "ghosts": 0,
+    "stats": {
+      "renderCount": 125,
+      "lastFrameDeltaMs": 16.60000000000582,
+      "needsRender": false,
+      "hasFrame": false,
+      "hasTimer": false,
+      "hasPulseFrame": false,
+      "hasPulseTimer": false,
+      "hasTurnAnimation": false,
+      "turnQueueLength": 0,
+      "hasPendingFaces": false,
+      "lastFacesSignature": "#f8fafc#f8fafc#f8fafc#f8fafc#f8fafc#f8fafc#f8fafc#f8fafc#f8fafc|#dc2626#dc2626#dc2626#dc2626#dc2626#dc2626#dc2626#dc2626#dc2626|#16a34a#16a34a#16a34a#16a34a#16a34a#16a34a#16a34a#16a34a#16a34a|#facc15#facc15#facc15#facc15#facc15#facc15#facc15#facc15#facc15|#f97316#f97316#f97316#f97316#f97316#f97316#f97316#f97316#f97316|#2563eb#2563eb#2563eb#2563eb#2563eb#2563eb#2563eb#2563eb#2563eb",
+      "pendingFacesSignature": "",
+      "turnTargetSignature": "",
+      "queuedTargetSignatures": [],
+      "stickerInstances": 54,
+      "stickerDrawCalls": 1,
+      "drawCalls": 2,
+      "triangles": 120,
+      "textures": 0,
+      "antialias": true,
+      "pixelRatio": 1,
+      "stickerMaterialVertexColors": false,
+      "instanceColorSample": [
+        0.9386857151985168,
+        0.9559733271598816,
+        0.9734452962875366,
+        0.9386857151985168,
+        0.9559733271598816,
+        0.9734452962875366,
+        0.9386857151985168,
+        0.9559733271598816,
+        0.9734452962875366,
+        0.9386857151985168,
+        0.9559733271598816,
+        0.9734452962875366,
+        0.9386857151985168,
+        0.9559733271598816,
+        0.9734452962875366,
+        0.9386857151985168,
+        0.9559733271598816,
+        0.9734452962875366
+      ],
+      "baseQuaternion": {
+        "x": -0.25181799739052974,
+        "y": 0.34365982153625046,
+        "z": -0.07934572886245467,
+        "w": 0.9012157780260959
+      },
+      "groupQuaternion": {
+        "x": 0.25241186422436934,
+        "y": -0.3432238738008807,
+        "z": 0.08090395778691438,
+        "w": -0.9010772291353881
+      },
+      "dragging": false,
+      "gyroAgeMs": 1312.6000000089407
+    }
+  },
+  "turnStreams": [
+    {
+      "interval": 200,
+      "maxQueue": 0,
+      "count": 31,
+      "expected": 31,
+      "matches": true,
+      "queue": 0,
+      "catchupMs": 0.20000000298023224
+    },
+    {
+      "interval": 100,
+      "maxQueue": 0,
+      "count": 31,
+      "expected": 31,
+      "matches": true,
+      "queue": 0,
+      "catchupMs": 0.3999999910593033
+    },
+    {
+      "interval": 50,
+      "maxQueue": 1,
+      "count": 31,
+      "expected": 31,
+      "matches": true,
+      "queue": 0,
+      "catchupMs": 0.29999999701976776
+    },
+    {
+      "interval": 33,
+      "maxQueue": 2,
+      "count": 31,
+      "expected": 31,
+      "matches": true,
+      "queue": 0,
+      "catchupMs": 22.400000005960464
+    },
+    {
+      "interval": 0,
+      "maxQueue": 3,
+      "count": 31,
+      "expected": 31,
+      "matches": true,
+      "queue": 0,
+      "catchupMs": 89
+    }
+  ],
+  "correctionWorkerAndServer": {
+    "first": {
+      "correction": "L'",
+      "solver": {
+        "localHits": 1,
+        "localMisses": 0,
+        "localSkipped": 0,
+        "localAverageMs": 5.3,
+        "localLastMs": 5.3,
+        "localMaxMs": 5.3,
+        "localWarmups": 1,
+        "localWarmupMs": 0.6,
+        "localWarmed": true,
+        "serverWarmups": 1,
+        "serverWarmupErrors": 0,
+        "serverWarmupMs": 687.8,
+        "serverWarmed": true,
+        "requests": 1,
+        "completed": 1,
+        "errors": 0,
+        "aborted": 0,
+        "coalesced": 0,
+        "retries": 0,
+        "retryPending": false,
+        "retryCount": 0,
+        "averageWallMs": 23.2,
+        "lastWallMs": 23.2,
+        "maxWallMs": 23.2
+      }
+    },
+    "second": {
+      "correction": "U F B U2 B2 R2 B2 U' D' L2 B2 D2 R2 F2",
+      "solver": {
+        "localHits": 1,
+        "localMisses": 1,
+        "localSkipped": 0,
+        "localAverageMs": 3.15,
+        "localLastMs": 1,
+        "localMaxMs": 5.3,
+        "localWarmups": 1,
+        "localWarmupMs": 0.6,
+        "localWarmed": true,
+        "serverWarmups": 1,
+        "serverWarmupErrors": 0,
+        "serverWarmupMs": 687.8,
+        "serverWarmed": true,
+        "requests": 2,
+        "completed": 2,
+        "errors": 0,
+        "aborted": 0,
+        "coalesced": 0,
+        "retries": 0,
+        "retryPending": false,
+        "retryCount": 0,
+        "averageWallMs": 16.4,
+        "lastWallMs": 9.6,
+        "maxWallMs": 23.2
+      }
+    },
+    "workers": [
+      "http://127.0.0.1:3321/app.bundle.js?v=20260929-performance-v91",
+      "http://127.0.0.1:3321/correction-worker.bundle.js"
+    ]
+  },
+  "finishFlow": {
+    "status": 201,
+    "keys": [
+      "solve"
+    ],
+    "errors": [],
+    "state": {
+      "appState": "ready",
+      "display": "3.006",
+      "rows": 21
+    }
+  },
+  "analysisApi": {
+    "id": "baac03e3-9dd6-4634-8d33-72173a568423",
+    "saveKeys": [
+      "solve"
+    ],
+    "status": "complete",
+    "stages": 7,
+    "finalSolved": true,
+    "comment": "analysis must preserve edits",
+    "errors": []
+  },
+  "detail": {
+    "errors": [],
+    "open": true,
+    "detail": "成绩详情\n3.000\n\n3x3 · 2026/9/29 15:00:38\n\n性能测试 · 第 10001 / 10001 条 · 蓝牙停表\n\n上一条\n下一条\n关闭\n打乱公式\n与历史平均相比\n\n当前成绩之前暂无可比较的完整 CFOP 成绩\n\n阶段对比\n用时占比\n\n当前成绩之前暂无可比较的完整 CFOP 成绩。\n\nCross 2.000s，占 67%；F2L 0.000s，占 0%；OLL 0.000s，占 0%；PLL 1.000s，占 33%\n\n复原分析\n3 步 · 1.000 TPS · 已复原 · CFOP 底面 L · 判断 高 · 蓝牙魔方\n播放\nC\nxxxxcross\n2.000\n2 步 · 1.00 TPS · 赛前观察 0.000 · 复原 2.000\nF1\nF2L U/B\n0.000\n0 步 · 0.00 TPS · 观察 0.000 · 复原 0.000\nF2\nF2L U/F\n0.000\n0 步 · 0.00 TPS · 观察 0.000 · 复原 0.000\nF3\nF2L F/D\n0.000\n0 步 · 0.00 TPS · 观察 0.000 · 复原 0.000\nF4\nF2L D/B\n0.000\n0 步 · 0.00 TPS · 观察 0.000 · 复原 0.000\nO\n跳 O\n0.000\n0 步 · OLL Skip · 观察 0.000 · 复原 0.000\nP\n跳 P\n1.000\n1 步 · PLL Skip · 观察 1.000 · 复原 0.000\n备注\n复制详情\n复制打乱\n保存修改\n删除成绩",
+    "comment": "analysis must preserve edits"
+  },
+  "history10000": {
+    "initialMountedRows": 21,
+    "middleMountedRows": 29,
+    "rowHeight": 37,
+    "totalScrollHeight": 370004,
+    "filteredMatches": 200
+  },
+  "puzzlesVerified": [
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "clock",
+    "skewb",
+    "sq1"
+  ],
+  "finalBuildSmoke": {
+    "entry": "http://127.0.0.1:3321/app.bundle.js?v=e9b85a00c7ba",
+    "state": "ready",
+    "rows": 21,
+    "errors": []
+  },
+  "tests": {
+    "total": 371,
+    "passed": 371,
+    "failed": 0
+  }
+}

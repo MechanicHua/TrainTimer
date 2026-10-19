@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+import { stopTnoodle } from './tnoodle-service.js';
+import { analyzeSolveInBackground, stopAnalysisWorker } from './analysis-service.js';
+import { analysisInputKey } from './analysis-input.js';
+import { cfopAnalysisVersion } from './cfop-analysis.js';
+import { opAnalysisVersion } from './op-analysis.js';
 import { createServer } from 'node:http';
 import { rmSync } from 'node:fs';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
@@ -24,6 +29,7 @@ import {
   saveSolve,
   summarizeSolves,
   updateSolve,
+  updateSolveAnalysis,
   updateSolves,
   updateSession,
 } from './history.js';
@@ -32,7 +38,7 @@ import { createExportPayload, safeExportFilename, scopedExportHistory, solvesToC
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const publicRoot = join(projectRoot, 'public');
 const srcRoot = join(projectRoot, 'src');
-const publicSrcModules = new Set(['algorithm-trainer-cases.js', 'algorithm-trainer-utils.js', 'bluetooth-moves.js', 'bluetooth-state-log.js', 'cfop-analysis.js', 'cfop-stage-stats.js', 'cube-state.js', 'inspection.js', 'move-metrics.js', 'op-analysis.js', 'op-case-diagrams.js', 'op-case-svg.js', 'op-formula-library.js', 'op-pdf-algorithms.js', 'op-poster-diagram-shapes.js', 'op-stats.js', 'replay-timing.js', 'rolling-averages.js', 'solve-summary.js', 'solves-export.js', 'solves-import.js', 'stats-summary.js']);
+const publicSrcModules = new Set(['analysis-input.js', 'replay-state.js', 'algorithm-trainer-cases.js', 'algorithm-trainer-utils.js', 'bluetooth-moves.js', 'bluetooth-state-log.js', 'cfop-analysis.js', 'cfop-stage-stats.js', 'cube-state.js', 'inspection.js', 'move-metrics.js', 'op-analysis.js', 'op-case-diagrams.js', 'op-case-svg.js', 'op-formula-library.js', 'op-pdf-algorithms.js', 'op-poster-diagram-shapes.js', 'op-stats.js', 'replay-timing.js', 'rolling-averages.js', 'solve-summary.js', 'solves-export.js', 'solves-import.js', 'stats-summary.js']);
 const requestedPort = Number(process.env.PORT || 3211);
 const host = process.env.HOST || '127.0.0.1';
 let currentPort = requestedPort;
@@ -153,6 +159,8 @@ process.once('SIGINT', shutdown);
 process.once('SIGTERM', shutdown);
 
 function shutdown() {
+  stopAnalysisWorker();
+  stopTnoodle();
   stopCubeCorrectionSolver();
   clearServerStatus();
   server.close(() => process.exit(0));
@@ -423,6 +431,9 @@ async function handleApi(request, response) {
     const scope = url.searchParams.get('scope') === 'session' ? 'session' : 'all';
     const sessionId = url.searchParams.get('sessionId') || 'default';
     const exportHistory = scopedExportHistory(history, scope, sessionId);
+    if (!['cstimer', 'cstimer-json'].includes(format)) {
+      exportHistory.solves = await completeExportAnalysis(exportHistory.solves);
+    }
     const suffix = scope === 'session' ? `-${safeExportFilename(sessionId)}` : '';
 
     if (format === 'csv') {
@@ -478,6 +489,7 @@ async function handleApi(request, response) {
       scrambleSource: String(body.scrambleSource || 'unknown'),
       scramblePuzzle: String(body.scramblePuzzle || 'three'),
       inspectionEnabled: Boolean(body.inspectionEnabled),
+      inspectionDurationMs: body.inspectionDurationMs,
       sessionId: String(body.sessionId || 'default'),
       penalty: body.penalty,
       comment: typeof body.comment === 'string' ? body.comment : '',
@@ -488,6 +500,7 @@ async function handleApi(request, response) {
       bluetoothStateCorrections: Array.isArray(body.bluetoothStateCorrections) ? body.bluetoothStateCorrections : [],
       bluetoothStateLog: Array.isArray(body.bluetoothStateLog) ? body.bluetoothStateLog : [],
       bluetoothSolvedByStatePacket: body.bluetoothSolvedByStatePacket === true,
+      cfopBottomFace: body.cfopBottomFace,
       cfopStages: Array.isArray(body.cfopStages) ? body.cfopStages : [],
       cfopAnalysisVersion: Number.isFinite(Number(body.cfopAnalysisVersion)) ? Math.max(0, Math.round(Number(body.cfopAnalysisVersion))) : 0,
       opEvents: Array.isArray(body.opEvents) ? body.opEvents : [],
@@ -498,6 +511,10 @@ async function handleApi(request, response) {
     };
     const solves = await saveSolve(solve);
     const savedSolve = solves.find((item) => item.id === solve.id) || solve;
+    if (body.compactResponse === true) {
+      sendJson(response, 201, { solve: savedSolve });
+      return;
+    }
     const history = await loadHistory();
     sendJson(response, 201, {
       solve: savedSolve,
@@ -505,6 +522,24 @@ async function handleApi(request, response) {
       sessions: history.sessions,
       summary: summarizeSolves(solves),
     });
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname.startsWith('/api/solves/') && url.pathname.endsWith('/analysis')) {
+    const id = decodeURIComponent(url.pathname.slice('/api/solves/'.length, -'/analysis'.length));
+    const body = await readJsonBody(request);
+    const history = await loadHistory();
+    const solve = history.solves.find((item) => item.id === id);
+    if (!solve) { sendJson(response, 404, { error: 'Solve not found' }); return; }
+    if (solve.analysisStatus === 'complete' && solve.analysisRawRevision === (solve.rawRevision || 0)
+      && solve.cfopAnalysisVersion === cfopAnalysisVersion && solve.opAnalysisVersion === opAnalysisVersion) {
+      sendJson(response, 200, { solve }); return;
+    }
+    const input = analysisInputKey(solve);
+    const result = await analyzeSolveInBackground(solve, { priority: body.priority === true });
+    const saved = await updateSolveAnalysis(id, input, result);
+    if (!saved) { sendJson(response, 409, { error: 'Solve changed during analysis' }); return; }
+    sendJson(response, 200, { solve: saved });
     return;
   }
 
@@ -545,6 +580,12 @@ async function handleApi(request, response) {
     if (Object.hasOwn(body, 'bluetoothMoveLog')) updates.bluetoothMoveLog = body.bluetoothMoveLog;
     if (Object.hasOwn(body, 'bluetoothStateCorrections')) updates.bluetoothStateCorrections = body.bluetoothStateCorrections;
     if (Object.hasOwn(body, 'bluetoothStateLog')) updates.bluetoothStateLog = body.bluetoothStateLog;
+    if (Object.hasOwn(body, 'cfopBottomFace')) {
+      if (body.cfopBottomFace !== '' && !/^[URFDLB]$/.test(String(body.cfopBottomFace))) {
+        sendJson(response, 400, { error: 'Invalid CFOP bottom face' }); return;
+      }
+      updates.cfopBottomFace = body.cfopBottomFace;
+    }
     if (Object.hasOwn(body, 'cfopStages')) updates.cfopStages = body.cfopStages;
     if (Object.hasOwn(body, 'cfopAnalysisVersion')) updates.cfopAnalysisVersion = body.cfopAnalysisVersion;
     if (Object.hasOwn(body, 'opEvents')) updates.opEvents = body.opEvents;
@@ -772,4 +813,16 @@ function sendJson(response, status, payload) {
 function sendText(response, status, content, contentType, headers = {}) {
   response.writeHead(status, { ...corsHeaders, 'Content-Type': contentType, ...headers });
   response.end(content);
+}
+
+async function completeExportAnalysis(solves) {
+  const output = [];
+  for (const solve of solves) {
+    const hasRaw = solve.scramble && (solve.scramblePuzzle || 'three') === 'three'
+      && [solve.bluetoothMoves, solve.bluetoothMoveLog, solve.bluetoothStateCorrections, solve.bluetoothStateLog].some((items) => items?.length);
+    const ready = solve.analysisStatus === 'complete' && solve.analysisRawRevision === (solve.rawRevision || 0)
+      && solve.cfopAnalysisVersion === cfopAnalysisVersion && solve.opAnalysisVersion === opAnalysisVersion;
+    output.push(hasRaw && !ready ? { ...solve, ...await analyzeSolveInBackground(solve, { priority: true }) } : solve);
+  }
+  return output;
 }

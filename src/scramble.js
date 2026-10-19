@@ -1,3 +1,4 @@
+import { requestTnoodle } from './tnoodle-service.js';
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -53,7 +54,9 @@ export async function drawScrambleSvg(scramble, puzzle = defaultPuzzle(), option
 
   for (const candidate of commands) {
     try {
-      const { stdout } = await execFileAsync(candidate.command, candidate.args, { timeout, maxBuffer: 1024 * 1024 });
+      const stdout = candidate.source === 'bundled-tnoodle-cli-1.1.1'
+        ? await requestTnoodle('draw', normalizedPuzzle, normalizedScramble, timeout)
+        : (await execFileAsync(candidate.command, candidate.args, { timeout, maxBuffer: 1024 * 1024 })).stdout;
       const svg = normalizeSvgOutput(stdout);
       if (svg) return { svg, puzzle: normalizedPuzzle, source: candidate.source };
     } catch {
@@ -70,7 +73,9 @@ async function generateExternalScramble(puzzle, options = {}) {
 
   for (const candidate of commands) {
     try {
-      const { stdout } = await execFileAsync(candidate.command, candidate.args, { timeout });
+      const stdout = candidate.source === 'bundled-tnoodle-cli-1.1.1'
+        ? await requestTnoodle('scramble', puzzle, '', timeout)
+        : (await execFileAsync(candidate.command, candidate.args, { timeout })).stdout;
       const scramble = normalizeExternalOutput(stdout);
       if (scramble) return { scramble, puzzle, source: candidate.source };
     } catch {

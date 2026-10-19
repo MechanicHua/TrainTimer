@@ -28,7 +28,6 @@ const faceNormals = {
 const oppositeFaces = { U: 'D', D: 'U', R: 'L', L: 'R', F: 'B', B: 'F' };
 const topFace = 'U';
 const sideFaces = ['F', 'R', 'B', 'L'];
-const opBottomFaceOrder = ['D', 'U', 'F', 'B', 'L', 'R'];
 const uRotations = ['', 'U', 'U2', "U'"];
 const yRotations = ['', 'y', 'y2', "y'"];
 const pllCornerStickerPositions = [
@@ -74,7 +73,7 @@ let opCaseIndexCache = null;
 let pllPermutationCaseIndexCache = null;
 const opEventsForSaveCache = new WeakMap();
 
-export const opAnalysisVersion = 4;
+export const opAnalysisVersion = 5;
 
 export function opCaseLibrary() {
   if (!opCaseLibraryCache) {
@@ -107,7 +106,17 @@ export function recognizePllCase(facelets) {
   return recognizeOpCase(facelets, 'pll');
 }
 
+const recognitionCache = new Map();
 export function recognizeOpCase(facelets, kind) {
+  const key = `${kind}:${facelets}`;
+  if (recognitionCache.has(key)) return recognitionCache.get(key);
+  const result = recognizeOpCaseUncached(facelets, kind);
+  recognitionCache.set(key, result);
+  while (recognitionCache.size > 1024) recognitionCache.delete(recognitionCache.keys().next().value);
+  return result;
+}
+
+function recognizeOpCaseUncached(facelets, kind) {
   if (!supportedKinds.has(kind)) return null;
   const text = String(facelets || '').trim().toUpperCase();
   if (!/^[URFDLB]{54}$/.test(text)) return null;
@@ -130,7 +139,6 @@ export function recognizeOpCase(facelets, kind) {
       group: '',
       algorithm: '',
       matchCount: 0,
-      confidence: 'none',
       matches: [],
     };
   }
@@ -146,7 +154,6 @@ export function recognizeOpCase(facelets, kind) {
     pdfLabel: best.pdfLabel || '',
     source: best.source || '',
     matchCount: matches.length,
-    confidence: matches.length === 1 ? 'unique' : 'ambiguous',
     matches: matches.map((item) => ({
       caseId: item.id,
       name: item.name,
@@ -176,7 +183,6 @@ function recognizePllCaseByPermutation(facelets) {
     pdfLabel: best.pdfLabel || '',
     source: best.source || '',
     matchCount: matches.length,
-    confidence: matches.length === 1 ? 'unique' : 'ambiguous',
     matches: matches.map((item) => ({
       caseId: item.id,
       name: item.name,
@@ -294,8 +300,7 @@ function pllRecognitionSignaturesFromFacelets(facelets) {
   return [...new Set(signatures)];
 }
 
-export function solveOpAnalysis(solve) {
-  const analysis = solveCfopAnalysis(solve);
+export function solveOpAnalysis(solve, analysis = solveCfopAnalysis(solve)) {
   const records = Array.isArray(analysis.detectionRecords) && analysis.detectionRecords.length > 0
     ? analysis.detectionRecords
     : analysis.records;
@@ -308,33 +313,20 @@ export function solveOpAnalysis(solve) {
   const stages = Array.isArray(analysis.stages) ? analysis.stages : [];
   const snapshots = opFaceletSnapshotsForSolve(solve, records);
   if (snapshots.length === 0) return { events: [], records: analysis.records, detectionRecords: records };
-  const primaryBottomFace = analysis.bottomFace || 'D';
-  let events = opEventsForBottomFace(solve, snapshots, records, primaryBottomFace, stages, {
-    includeStageEvents: true,
+  if (!analysis.bottomFace) return { events: [], records: analysis.records, detectionRecords: records };
+  const events = opEventsForBottomFace(solve, snapshots, records, analysis.bottomFace, stages, {
+    includeStageEvents: true, forceOrientation: true,
   });
-
-  if (opNeedsOrientationFallback(events) && shouldTryOrientationFallback(solve, events, analysis.bottomFace)) {
-    for (const bottomFace of opBottomFaceOrder) {
-      if (bottomFace === primaryBottomFace) continue;
-      const fallbackEvents = opEventsForBottomFace(solve, snapshots, records, bottomFace, [], {
-        forceOrientation: true,
-        includeStageEvents: false,
-      }).filter((event) => event.formulaAccepted === true && opEventStartsAfterPrimaryF2l(event, stages));
-      if (fallbackEvents.length === 0) continue;
-      events = mergeOpEvents(fallbackEvents, events);
-      if (!opNeedsOrientationFallback(events)) break;
-    }
-  }
 
   return { events, records: analysis.records, detectionRecords: records };
 }
 
-export function opEventsForSave(solve) {
-  const cacheKey = opEventsCacheKey(solve);
+export function opEventsForSave(solve, analysis) {
+  const cacheKey = `${opEventsCacheKey(solve)}|${analysis?.bottomFace || ''}`;
   const cached = solve && typeof solve === 'object' ? opEventsForSaveCache.get(solve) : null;
   if (cached?.key === cacheKey) return cached.events;
 
-  const events = solveOpAnalysis(solve).events.map((event) => ({
+  const events = solveOpAnalysis(solve, analysis).events.map((event) => ({
     kind: event.kind,
     caseId: event.caseId,
     name: event.name,
@@ -342,7 +334,6 @@ export function opEventsForSave(solve) {
     algorithm: event.algorithm,
     pdfLabel: event.pdfLabel || '',
     source: event.source || '',
-    confidence: event.confidence,
     matchCount: event.matchCount,
     startStep: event.startStep,
     endStep: event.endStep,
@@ -381,8 +372,8 @@ export function evaluateOpFormulaCandidate(options = {}) {
   if (!/^[URFDLB]{54}$/.test(startFacelets)) return rejectedFormula('invalid-start-state');
 
   const startRecognition = recognizeOpCase(startFacelets, kind);
-  if (!startRecognition || startRecognition.confidence === 'none') return rejectedFormula('unrecognized-start-state');
-  if (startRecognition.confidence !== 'unique') return rejectedFormula('ambiguous-start-state', { startRecognition });
+  if (!startRecognition || startRecognition.matchCount === 0) return rejectedFormula('unrecognized-start-state');
+  if (startRecognition.matchCount !== 1) return rejectedFormula('ambiguous-start-state', { startRecognition });
   if (options.caseId && startRecognition.caseId !== options.caseId) {
     return rejectedFormula('case-mismatch', { startRecognition });
   }
@@ -407,7 +398,7 @@ export function evaluateOpFormulaCandidate(options = {}) {
         : 1200;
       if (pauseMs != null
         && pauseMs >= pauseThresholdMs
-        && intermediate?.confidence === 'unique'
+        && intermediate?.matchCount === 1
         && intermediate.caseId !== startRecognition.caseId) {
         return rejectedFormula('intermediate-op-case', {
           startRecognition,
@@ -424,7 +415,7 @@ export function evaluateOpFormulaCandidate(options = {}) {
   if (kind === 'oll') {
     if (!pllSignatureFromFacelets(facelets)) {
       const finalRecognition = recognizeOllCase(facelets);
-      if (finalRecognition?.confidence === 'unique' && finalRecognition.caseId !== startRecognition.caseId) {
+      if (finalRecognition?.matchCount === 1 && finalRecognition.caseId !== startRecognition.caseId) {
         return rejectedFormula('intermediate-op-case', {
           startRecognition,
           moves,
@@ -466,6 +457,8 @@ function opEventsCacheKey(solve) {
   const moveLog = Array.isArray(solve?.bluetoothMoveLog) ? solve.bluetoothMoveLog : [];
   const moves = Array.isArray(solve?.bluetoothMoves) ? solve.bluetoothMoves : [];
   return [
+    solve?.cfopBottomFace || '',
+    solve?.durationMs ?? '',
     solve?.scramble || '',
     solve?.scramblePuzzle || '',
     solve?.timerStartedAtMs ?? '',
@@ -669,12 +662,10 @@ function opFaceletSnapshotsForSolve(solve, records) {
 }
 
 function opEventsForBottomFace(solve, snapshots, records, bottomFace, stages = [], options = {}) {
-  const normalizeOptions = options.forceOrientation === true || !hasInitialRawOpState(snapshots)
-    ? options
-    : { ...options, preserveRawOrientation: true };
+  const normalizeOptions = options;
   const opSnapshots = normalizeOpSnapshotsForBottomFace(snapshots, bottomFace, stages, normalizeOptions);
   const opRecords = normalizeOpRecordsForBottomFace(records, bottomFace, stages, normalizeOptions);
-  const scannedEvents = scanOpEvents(solve, opSnapshots, opRecords, opScanBoundsFromStages(stages, snapshots));
+  const scannedEvents = scanOpEvents(solve, opSnapshots, opRecords, opScanBoundsFromStages(stages));
   const stageEvents = options.includeStageEvents === false
     ? []
     : [
@@ -721,7 +712,7 @@ function opEventFromStateTimeline(kind, timeline, records, solve, stages) {
     const start = timeline[startIndex];
     if (start.source !== 'state' || start.step < minimumStep) continue;
     const recognition = kind === 'oll' ? recognizeOllCase(start.facelets) : recognizePllCase(start.facelets);
-    if (!recognition || recognition.confidence !== 'unique') continue;
+    if (!recognition || recognition.matchCount !== 1) continue;
     if (kind === 'oll' && pllSignatureFromFacelets(start.facelets)) continue;
 
     for (let endIndex = startIndex + 1; endIndex < timeline.length; endIndex += 1) {
@@ -768,7 +759,6 @@ function buildStateTimelineOpEvent(kind, recognition, start, end, records, solve
     algorithm: recognition.algorithm,
     pdfLabel: recognition.pdfLabel || '',
     source: recognition.source || '',
-    confidence: recognition.confidence,
     matchCount: recognition.matchCount,
     signature: recognition.signature,
     startStep: moves.length > 0 ? recordStart + 1 : recordStart,
@@ -801,31 +791,10 @@ function finiteTimelineNumber(value) {
   return Number.isFinite(number) ? number : null;
 }
 
-function opNeedsOrientationFallback(events) {
-  const items = Array.isArray(events) ? events : [];
-  return !items.some((event) => event.kind === 'oll' && event.formulaAccepted === true)
-    || !items.some((event) => event.kind === 'pll' && event.formulaAccepted === true);
-}
-
-function opEventStartsAfterPrimaryF2l(event, stages) {
-  const f2lCompletedAt = cfopF2lCompletionStep(stages);
-  if (!Number.isFinite(f2lCompletedAt)) return true;
-  const startStep = Number(event?.startStep);
-  return Number.isFinite(startStep) && startStep > f2lCompletedAt;
-}
-
-function shouldTryOrientationFallback(solve, events, bottomFace) {
-  if (!bottomFace) return true;
-  if (!Array.isArray(events) || events.length === 0) return true;
-  return (Array.isArray(solve?.bluetoothStateCorrections) && solve.bluetoothStateCorrections.length > 0)
-    || hasBluetoothStateLogSnapshots(solve?.bluetoothStateLog);
-}
-
 function normalizeOpSnapshotsForBottomFace(snapshots, bottomFace, stages = [], options = {}) {
   const bottom = String(bottomFace || 'D').toUpperCase();
   if (options.preserveRawOrientation === true) return snapshots;
   if (!oppositeFaces[bottom] || bottom === 'D') return snapshots;
-  if (options.forceOrientation !== true && !shouldNormalizeOpSnapshotsForCfopBottom(stages)) return snapshots;
   return snapshots.map((facelets) => orientFaceletsForOpBottom(facelets, bottom));
 }
 
@@ -833,29 +802,10 @@ function normalizeOpRecordsForBottomFace(records, bottomFace, stages = [], optio
   const bottom = String(bottomFace || 'D').toUpperCase();
   if (options.preserveRawOrientation === true) return records;
   if (!Array.isArray(records) || !oppositeFaces[bottom] || bottom === 'D') return records;
-  if (options.forceOrientation !== true && !shouldNormalizeOpSnapshotsForCfopBottom(stages)) return records;
   return records.map((record) => {
     const move = orientMoveForOpBottom(record?.move, bottom);
     return move === record?.move ? record : { ...record, move };
   });
-}
-
-function shouldNormalizeOpSnapshotsForCfopBottom(stages) {
-  const items = Array.isArray(stages) ? stages : [];
-  const f2lCompletedAt = Math.max(
-    ...items
-      .filter((stage) => /^F\d+$/.test(String(stage?.label || '')))
-      .map(opStageCompletedAt)
-      .filter(Number.isFinite),
-  );
-  const ollCompletedAt = opStageCompletedAt(items.find((stage) => stage?.key === 'oll' || stage?.label === 'O'));
-  const pllCompletedAt = opStageCompletedAt(items.find((stage) => stage?.key === 'pll' || stage?.label === 'P'));
-  const opBoundary = Number.isFinite(ollCompletedAt) ? ollCompletedAt : pllCompletedAt;
-  if (!Number.isFinite(f2lCompletedAt) || !Number.isFinite(opBoundary)) return false;
-  if (f2lCompletedAt < opBoundary) return true;
-  if (f2lCompletedAt !== opBoundary) return false;
-  const ollStage = items.find((stage) => stage?.key === 'oll' || stage?.label === 'O');
-  return Number(ollStage?.turns) === 0 || Number(ollStage?.physicalTurns) === 0;
 }
 
 function orientFaceletsForOpBottom(facelets, bottomFace) {
@@ -1024,28 +974,18 @@ function scanOpEvents(solve, snapshots, records, bounds = {}) {
   const pllStartAt = pllStartFromOllEvent ? Math.max(0, oll.endStep ?? 0) : stagePllStartAt;
   let pllEvents = scanOpEventsOfKind('pll', solve, snapshots, records, pllStartAt, { endAt: pllEndAt });
   if (pllEvents.length === 0 && pllStartAt > 0 && pllStartFromOllEvent) {
-    pllEvents = scanOpEventsOfKind('pll', solve, snapshots, records, 0, { endAt: pllEndAt });
+    pllEvents = scanOpEventsOfKind('pll', solve, snapshots, records, stagePllStartAt, { endAt: pllEndAt });
   }
   return [...ollEvents, ...pllEvents].filter(Boolean);
 }
 
-function opScanBoundsFromStages(stages, snapshots = []) {
-  if (hasInitialRawOpState(snapshots)) return {};
+function opScanBoundsFromStages(stages) {
   return {
     ollStartAt: cfopF2lCompletionStep(stages),
     pllStartAt: cfopOllCompletionStep(stages),
     ollEndAt: cfopOllCompletionStep(stages),
     pllEndAt: cfopPllCompletionStep(stages),
   };
-}
-
-function hasInitialRawOpState(snapshots) {
-  const initialFacelets = Array.isArray(snapshots) ? snapshots[0] : '';
-  if (!initialFacelets) return false;
-  const oll = recognizeOllCase(initialFacelets);
-  if (oll?.confidence === 'unique' && !pllSignatureFromFacelets(initialFacelets)) return true;
-  const pll = recognizePllCase(initialFacelets);
-  return pll?.confidence === 'unique';
 }
 
 function cfopF2lCompletionStep(stages) {
@@ -1062,31 +1002,15 @@ function cfopF2lCompletionStep(stages) {
 }
 
 function cfopOllCompletionStep(stages) {
-  const stage = (Array.isArray(stages) ? stages : [])
-    .find((item) => item?.key === 'oll' || item?.label === 'O');
-  const startStep = opStageStartStep(stage);
+  const stage = (Array.isArray(stages) ? stages : []).find((item) => item?.key === 'oll' || item?.label === 'O');
   const completedAt = opStageCompletedAt(stage);
-  return stage?.completed
-    && Number.isInteger(startStep)
-    && startStep > 0
-    && Number.isFinite(completedAt)
-    && completedAt > 0
-    ? completedAt
-    : null;
+  return stage?.completed && Number.isFinite(completedAt) ? completedAt : null;
 }
 
 function cfopPllCompletionStep(stages) {
-  const stage = (Array.isArray(stages) ? stages : [])
-    .find((item) => item?.key === 'pll' || item?.label === 'P');
-  const startStep = opStageStartStep(stage);
+  const stage = (Array.isArray(stages) ? stages : []).find((item) => item?.key === 'pll' || item?.label === 'P');
   const completedAt = opStageCompletedAt(stage);
-  return stage?.completed
-    && Number.isInteger(startStep)
-    && startStep > 0
-    && Number.isFinite(completedAt)
-    && completedAt > 0
-    ? completedAt
-    : null;
+  return stage?.completed && Number.isFinite(completedAt) ? completedAt : null;
 }
 
 function opStageStartStep(stage) {
@@ -1156,7 +1080,7 @@ function findAcceptedOpEvent(kind, snapshots, records, solve, startAt = 0, optio
   for (let startIndex = firstStartIndex; startIndex <= lastStartIndex; startIndex += 1) {
     const startFacelets = snapshots[startIndex];
     const recognition = kind === 'oll' ? recognizeOllCase(startFacelets) : recognizePllCase(startFacelets);
-    if (!recognition || recognition.confidence !== 'unique') continue;
+    if (!recognition || recognition.matchCount !== 1) continue;
     if (kind === 'oll' && pllSignatureFromFacelets(startFacelets)) continue;
 
     const maxEndIndex = Math.min(scanEndAt, startIndex + maxMoves);
@@ -1168,7 +1092,7 @@ function findAcceptedOpEvent(kind, snapshots, records, solve, startAt = 0, optio
       const formulaRecognition = kind === 'oll'
         ? recognizeOllCase(formulaStartFacelets)
         : recognizePllCase(formulaStartFacelets);
-      if (!formulaRecognition || formulaRecognition.confidence !== 'unique' || formulaRecognition.caseId !== recognition.caseId) continue;
+      if (!formulaRecognition || formulaRecognition.matchCount !== 1 || formulaRecognition.caseId !== recognition.caseId) continue;
       const moves = records.slice(formulaStartIndex, endIndex).map((record) => record.move).filter(Boolean);
       const moveTimings = moveTimingsForRange(records, formulaStartIndex, endIndex, elapsedAtSolveStep(records, startIndex));
       const validation = evaluateOpFormulaCandidate({
@@ -1208,7 +1132,7 @@ function findRejectedOpTransition(kind, snapshots, records, solve, startAt = 0, 
   for (let startIndex = firstStartIndex; startIndex <= lastStartIndex; startIndex += 1) {
     const startFacelets = snapshots[startIndex];
     const recognition = kind === 'oll' ? recognizeOllCase(startFacelets) : recognizePllCase(startFacelets);
-    if (!recognition || recognition.confidence !== 'unique') continue;
+    if (!recognition || recognition.matchCount !== 1) continue;
     if (kind === 'oll' && pllSignatureFromFacelets(startFacelets)) continue;
 
     const maxEndIndex = Math.min(scanEndAt - 1, startIndex + maxMoves);
@@ -1217,14 +1141,14 @@ function findRejectedOpTransition(kind, snapshots, records, solve, startAt = 0, 
       if (pauseMs == null || pauseMs < 1200) continue;
       const endFacelets = snapshots[endIndex];
       const nextRecognition = kind === 'oll' ? recognizeOllCase(endFacelets) : recognizePllCase(endFacelets);
-      if (!nextRecognition || nextRecognition.confidence !== 'unique' || nextRecognition.caseId === recognition.caseId) continue;
+      if (!nextRecognition || nextRecognition.matchCount !== 1 || nextRecognition.caseId === recognition.caseId) continue;
       const formulaStartIndex = opFormulaStartIndex(records, startIndex, endIndex);
       if (formulaStartIndex >= endIndex) continue;
       const formulaStartFacelets = snapshots[formulaStartIndex];
       const formulaRecognition = kind === 'oll'
         ? recognizeOllCase(formulaStartFacelets)
         : recognizePllCase(formulaStartFacelets);
-      if (!formulaRecognition || formulaRecognition.confidence !== 'unique' || formulaRecognition.caseId !== recognition.caseId) continue;
+      if (!formulaRecognition || formulaRecognition.matchCount !== 1 || formulaRecognition.caseId !== recognition.caseId) continue;
       const moves = records.slice(formulaStartIndex, endIndex).map((record) => record.move).filter(Boolean);
       const validation = evaluateOpFormulaCandidate({
         kind,
@@ -1260,14 +1184,14 @@ function findCompositeOpTransitionForAccepted(kind, snapshots, records, solve, a
 
   const startFacelets = snapshots[startIndex];
   const recognition = kind === 'oll' ? recognizeOllCase(startFacelets) : recognizePllCase(startFacelets);
-  if (!recognition || recognition.confidence !== 'unique') return null;
+  if (!recognition || recognition.matchCount !== 1) return null;
 
   for (let splitIndex = startIndex + 1; splitIndex < endIndex; splitIndex += 1) {
     const intermediateFacelets = snapshots[splitIndex];
     const nextRecognition = kind === 'oll'
       ? recognizeOllCase(intermediateFacelets)
       : recognizePllCase(intermediateFacelets);
-    if (!nextRecognition || nextRecognition.confidence !== 'unique' || nextRecognition.caseId === recognition.caseId) continue;
+    if (!nextRecognition || nextRecognition.matchCount !== 1 || nextRecognition.caseId === recognition.caseId) continue;
 
     const suffixMoves = records
       .slice(splitIndex, endIndex)
@@ -1359,14 +1283,14 @@ function opEventFromStage(stage, kind, snapshots, records, solve = null) {
     .map((record) => record.move)
     .filter(Boolean);
   const stateRecognition = kind === 'oll' ? recognizeOllCase(facelets) : recognizePllCase(facelets);
-  const formulaRecognition = (!stateRecognition || stateRecognition.confidence === 'none')
+  const formulaRecognition = (!stateRecognition || stateRecognition.matchCount === 0)
     ? recognizeOpCaseFromFormula(kind, moves)
     : null;
-  const recognition = stateRecognition && stateRecognition.confidence !== 'none'
+  const recognition = stateRecognition && stateRecognition.matchCount > 0
     ? stateRecognition
     : formulaRecognition;
-  if (!recognition || recognition.confidence === 'none') return null;
-  const moveTimings = moveTimingsForRange(records, formulaStartIndex, stage.endStep, stage.startedAtElapsedMs);
+  if (!recognition || recognition.matchCount !== 1) return null;
+  const moveTimings = moveTimingsForRange(records, formulaStartIndex, stageEndStep, stage.startedAtElapsedMs);
   const validation = formulaRecognition
     ? { accepted: true, reason: 'formula-match' }
     : evaluateOpFormulaCandidate({
@@ -1390,7 +1314,6 @@ function opEventFromStage(stage, kind, snapshots, records, solve = null) {
     algorithm: recognition.algorithm,
     pdfLabel: recognition.pdfLabel || '',
     source: recognition.source || '',
-    confidence: recognition.confidence,
     matchCount: recognition.matchCount,
     signature: recognition.signature,
     startStep: formulaStartIndex + 1,
@@ -1439,7 +1362,6 @@ function recognizeOpCaseFromFormula(kind, moves) {
       pdfLabel: item.pdfLabel || '',
       source: item.source || '',
       matchCount: 1,
-      confidence: 'formula',
       matches: [{
         caseId: item.id,
         name: item.name,
@@ -1488,7 +1410,6 @@ function opEventFromRange({
     algorithm: recognition.algorithm,
     pdfLabel: recognition.pdfLabel || '',
     source: recognition.source || '',
-    confidence: recognition.confidence,
     matchCount: recognition.matchCount,
     signature: recognition.signature,
     startStep,
@@ -1620,7 +1541,7 @@ function movesEqual(left, right) {
 function isValidPllCompletionState(facelets) {
   if (isSolvedFacelets(facelets) || isSolvedByCenters(facelets)) return true;
   const pll = recognizePllCase(facelets);
-  if (pll?.confidence === 'unique') return true;
+  if (pll?.matchCount === 1) return true;
   return uRotations.some((rotation) => {
     if (!rotation) return false;
     try {

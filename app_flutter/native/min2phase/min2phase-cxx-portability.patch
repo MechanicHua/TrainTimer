@@ -1,0 +1,74 @@
+diff --git a/src/CubieCube.cpp b/src/CubieCube.cpp
+index 8bf974e..860b81b 100644
+--- a/src/CubieCube.cpp
++++ b/src/CubieCube.cpp
+@@ -277,7 +277,7 @@ namespace min2phase {
+         for (i = 0; i < n - 1; i++) {
+             v = getVal(arr[i], isEdge) << 2;
+             idx = (n - i) * idx + (val >> v & 0xf);
+-            val -= 0x1111111111111110L << v;
++            val -= UINT64_C(0x1111111111111110) << v;
+         }
+ 
+         return idx;
+diff --git a/src/Search.cpp b/src/Search.cpp
+index dd4c3bd..2bea732 100644
+--- a/src/Search.cpp
++++ b/src/Search.cpp
+@@ -143,7 +143,7 @@ int8_t min2phase::Search::phase1PreMoves(int8_t maxl, int8_t lm, CubieCube* cc,
+ 
+     preMoveLen = maxPreMoves-maxl;
+ 
+-    if (preMoveLen == 0 || ((VAL >> (lm+32)) & 1) == 0) {
++    if (preMoveLen == 0 || ((VAL >> ((lm+32) & 31)) & 1) == 0) {
+         depth1 = length1-preMoveLen;
+         phase1Cubie[0] = *cc;
+         allowShorter = depth1 == MIN_P1LENGTH_PRE && preMoveLen != 0;
+@@ -547,4 +547,4 @@ int8_t min2phase::Search::phase1opt(coords::CoordCube ud, coords::CoordCube rl,
+     }
+ 
+     return 1;
+-}
+\ No newline at end of file
++}
+diff --git a/src/coords.cpp b/src/coords.cpp
+index 4405545..8491bcd 100644
+--- a/src/coords.cpp
++++ b/src/coords.cpp
+@@ -266,7 +266,7 @@ namespace min2phase { namespace coords {
+     }
+ 
+     bool hasZero(int32_t val) {
+-        return ((val - 0x11111111) & ~val & 0x88888888) != 0;
++        return ((uint32_t(val) - UINT32_C(0x11111111)) & ~uint32_t(val) & UINT32_C(0x88888888)) != 0;
+     }
+ 
+     //init basic 18 moves
+@@ -683,17 +683,17 @@ namespace min2phase { namespace coords {
+         done = 1;
+ 
+         while (depth < MAX_DEPTH) {
+-            mask = (depth + 1) * 0x11111111 ^ 0xffffffff;
++            mask = int32_t(uint32_t(depth + 1) * UINT32_C(0x11111111) ^ UINT32_C(0xffffffff));
+ 
+             for (i = 0; i < PrunTableSize; i++) {
+                 val = PrunTable[i] ^ mask;
+                 val &= val >> 1;
+-                PrunTable[i] += val & (val >> 2) & 0x11111111;
++                PrunTable[i] = int32_t(uint32_t(PrunTable[i]) + uint32_t(val & (val >> 2) & 0x11111111));
+             }
+ 
+             inv = depth > INV_DEPTH;
+             select = inv ? (depth + 2) : depth;
+-            selArrMask = select * 0x11111111;
++            selArrMask = int32_t(uint32_t(select) * UINT32_C(0x11111111));
+             check = inv ? depth : (depth + 2);
+             depth++;
+             xorVal = depth ^ (depth + 1);
+@@ -853,4 +853,4 @@ namespace min2phase { namespace coords {
+ 
+         return getPruning(coords.TwistFlipPrun, (twistc >> 3) << 11 | coords.FlipS2RF[flipc ^ (twistc & 7)]);
+     }
+-} }
+\ No newline at end of file
++} }

@@ -9,7 +9,7 @@ const caseOrder = new Map(algorithmTrainerCases
   .filter((item) => supportedKinds.has(item.set))
   .map((item, index) => [`${item.set}:${item.id}`, index]));
 
-export function buildOpFormulaLibrary(solves = []) {
+export function buildOpFormulaLibrary(solves = [], options = {}) {
   const formulas = [];
   const byKey = new Map();
   let pdfFormulaCount = 0;
@@ -26,7 +26,7 @@ export function buildOpFormulaLibrary(solves = []) {
   }
 
   for (const solve of Array.isArray(solves) ? solves : []) {
-    for (const event of opEventsForFormulaLibrarySolve(solve)) {
+    for (const event of opEventsForFormulaLibrarySolve(solve, options)) {
       const formula = formulaEntryFromEvent(event, solve);
       if (!formula) continue;
       const key = formulaDedupKey(formula);
@@ -68,7 +68,6 @@ function formulaEntryFromPdf(item) {
     algorithm: moves.join(' '),
     moves,
     moveCount: moves.length,
-    confidence: 'verified',
     occurrences: 1,
     userOccurrences: 0,
     durationSampleCount: 0,
@@ -77,7 +76,8 @@ function formulaEntryFromPdf(item) {
   };
 }
 
-function opEventsForFormulaLibrarySolve(solve) {
+function opEventsForFormulaLibrarySolve(solve, options) {
+  if (options.storedOnly) return solve?.opEvents || [];
   if (Array.isArray(solve?.opEvents) && solve.opEvents.length > 0) return solve.opEvents;
   try {
     return opEventsForSave(solve);
@@ -117,7 +117,6 @@ function formulaEntryFromEvent(event, solve) {
     algorithm: moves.join(' '),
     moves,
     moveCount: moves.length,
-    confidence: event.confidence || 'verified',
     occurrences: 1,
     userOccurrences: 1,
     firstSeenAt: solve?.createdAt || event.completedAtIsoTime || '',
@@ -177,7 +176,7 @@ function isCompositeOpFormula(kind, caseId, moves, startFacelets) {
     }
 
     const intermediate = recognizeOpCase(facelets, kind);
-    if (!intermediate || intermediate.confidence !== 'unique' || intermediate.caseId === caseId) continue;
+    if (!intermediate || intermediate.matchCount !== 1 || intermediate.caseId === caseId) continue;
 
     const suffix = moves.slice(index + 1);
     const suffixValidation = evaluateOpFormulaCandidate({

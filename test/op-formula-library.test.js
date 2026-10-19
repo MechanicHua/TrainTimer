@@ -50,7 +50,7 @@ test('PDF OP formulas generate the expected recognition signatures', () => {
       ? recognizeOllCase(faceletsFromScramble(setup))
       : recognizePllCase(faceletsFromScramble(setup));
 
-    assert.equal(recognition?.confidence, 'unique', `${item.pdfLabel} is uniquely recognized`);
+    assert.equal(recognition?.matchCount, 1, `${item.pdfLabel} is uniquely recognized`);
     assert.equal(recognition?.caseId, item.caseId, `${item.pdfLabel} maps to ${item.caseId}`);
   }
 });

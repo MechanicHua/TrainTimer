@@ -1,0 +1,1507 @@
+id	group	ms	steps	status	moves
+random-0	uniform-pairs	0.232583000	20	0	L U2 B2 U' B2 L2 U' R2 U' R2 B2 D' L2 F' U B F' D' L' U'
+random-1	uniform-pairs	0.114666000	20	0	R2 D2 L2 B R2 L' F' D' B F2 D F2 U' R2 F2 U' B2 D2 R2 D
+random-2	uniform-pairs	1.091375000	20	0	L' D R L2 F L' B' U F2 U F R2 D2 R2 D2 B D2 B' U2 B
+random-3	uniform-pairs	1.241791000	20	0	U D' L' U R L2 B' R2 U2 L' F' L2 U2 F' U2 B2 D2 R2 U2 F
+random-4	uniform-pairs	0.070166000	20	0	L U2 B L' B L' U' R' D2 L2 U2 B2 U2 B2 D2 R F2 U2 R U'
+random-5	uniform-pairs	14.737084000	20	0	U2 F' U B L' F2 U' L F2 B' D F2 L2 U2 F2 R B2 R U2 R'
+random-6	uniform-pairs	0.598334000	20	0	D' L' F D' R2 B R' B2 R F' D2 R2 D R2 B2 U' F2 B2 U L2
+random-7	uniform-pairs	0.286000000	20	0	D R' U2 F2 U' R2 F2 U' B2 U2 L2 R2 U F L F2 R D2 L D2
+random-8	uniform-pairs	3.964500000	20	0	L B' D R' F' L D' F B L2 F2 U' R2 U D2 F2 B2 L2 F R2
+random-9	uniform-pairs	0.220292000	20	0	L2 F' D2 B2 U' B R' F2 U' L2 U' L2 U2 L2 U R2 U2 R2 L D
+random-10	uniform-pairs	0.407500000	20	0	F' R2 D2 B' R2 F D2 L2 F2 D2 R2 B' U' R' B2 R' F2 R B' D2
+random-11	uniform-pairs	0.104916000	20	0	F U F' R' L' D' L D' L F2 D2 B2 U B2 R2 U D F2 U B2
+random-12	uniform-pairs	0.192125000	19	0	F2 L B R' F R D B2 R2 U2 F2 D R2 D' F2 L2 U' B' D'
+random-13	uniform-pairs	1.024084000	20	0	U' D R' U2 B D' L' U2 F L2 B' R2 F R2 B' D2 F' D' L' U'
+random-14	uniform-pairs	1.307375000	20	0	B D' L' B' L F' L' U D B2 L2 F2 L2 D2 R U2 R U2 R2 U
+random-15	uniform-pairs	5.266958000	18	0	F' U2 R D2 L' D' L D' B2 D2 F2 U' F2 U' F D B R2
+random-16	uniform-pairs	3.025500000	20	0	R D R D2 L' D2 B2 D2 L' D2 L2 R U B' D' L D2 R B U'
+random-17	uniform-pairs	0.131209000	20	0	U' F2 U2 F2 L' D2 B2 F2 R' D2 L2 U2 R2 B' U' B2 L R' U' B2
+random-18	uniform-pairs	0.238167000	20	0	R B2 L B2 R' D2 R' U2 B2 D2 L B D' U2 B2 R F' L' U2 F'
+random-19	uniform-pairs	1.220333000	20	0	D L B U' B2 L' F L' F2 U R' D2 L2 U2 D2 L B2 L U2 R
+random-20	uniform-pairs	0.691708000	20	0	D R' D B2 D F' B2 L2 D' B D' L2 D R2 F2 B2 R2 B2 U D
+random-21	uniform-pairs	0.515792000	20	0	D' B R D' R B2 R F D' L2 B2 U' R2 F2 U' B2 D B2 R' F
+random-22	uniform-pairs	0.239792000	20	0	D' B' F2 L2 D2 L2 D2 F2 U F2 U B2 F2 R U B R' D2 R2 U'
+random-23	uniform-pairs	0.225000000	20	0	R2 L' B' L' B' R' B' R2 B2 D F2 D F2 R2 D' L2 B2 U F' D
+random-24	uniform-pairs	0.035666000	19	0	L' U2 B2 U2 L2 F2 U2 L2 B2 U' R2 U F' R2 F2 R' D U' B'
+random-25	uniform-pairs	0.030916000	20	0	U2 R' B2 R B' D F D R' L2 F2 U L2 U R2 F2 U2 R2 D L2
+random-26	uniform-pairs	0.254125000	20	0	L' D B2 F2 D R2 F2 U L2 U2 F2 U' L D2 B R U B2 R' F2
+random-27	uniform-pairs	0.164208000	20	0	B2 R2 U2 F' R2 F' R2 F2 D2 F' U2 F R' B2 L' D F D' B R2
+random-28	uniform-pairs	0.743625000	20	0	U R2 U2 R F L2 B L U' L2 D R2 D' F2 L2 B2 U2 L2 R' B'
+random-29	uniform-pairs	0.036250000	20	0	R D2 F2 U2 B D' F' U' L' F2 U' F2 U2 F2 R2 B2 L2 F2 U' L2
+random-30	uniform-pairs	0.543792000	20	0	D2 U2 F' L2 R2 B' R2 B2 R2 F' R2 D L' F2 U2 R2 B R2 B2 R2
+random-31	uniform-pairs	0.545292000	20	0	R F D2 F D2 B' U' B2 D F2 U2 L2 B' R2 F' U2 R2 F D2 L2
+random-32	uniform-pairs	0.411583000	20	0	R' F D' B2 D' L' D' R2 B' L D F2 L2 U' B2 R2 U2 B2 U F2
+random-33	uniform-pairs	0.218500000	20	0	F R D2 F2 B2 U B' L' D' F2 R' B2 U2 L' U2 L F2 B2 L D2
+random-34	uniform-pairs	11.558042000	20	0	R L' U' F U2 L' F' R' L2 D2 B2 U' F2 B2 U2 L2 U2 L' B L
+random-35	uniform-pairs	0.429708000	20	0	B' R' L' U L2 D' L F B' R' L2 U2 L U2 D2 F2 R' B2 L D2
+random-36	uniform-pairs	0.599125000	20	0	R D L' F' U2 D B2 L' F2 R F2 B2 U F2 R2 U2 L2 U' R2 D
+random-37	uniform-pairs	12.371209000	20	0	B R2 D2 L2 D2 F2 B' R U2 B2 U F2 U F2 B2 R2 U' B' R2 F2
+random-38	uniform-pairs	10.235125000	19	0	U2 R2 D2 L' D2 R B' R D R2 U F' B' U2 B' L2 B2 L2 D2
+random-39	uniform-pairs	1.633500000	20	0	D' F' U R2 B L' B2 U L' B2 L U2 R F2 R2 U2 F2 R2 D' F'
+random-40	uniform-pairs	0.198917000	20	0	U' D' R2 F2 R2 F' L' F2 L2 U' B2 L2 D2 R2 L2 F2 U2 F2 D' L
+random-41	uniform-pairs	1.430125000	20	0	U2 L2 U L2 R2 D F2 L2 R2 D R B L F' U2 R2 F2 R' D F2
+random-42	uniform-pairs	0.111250000	20	0	F' D F B2 R D' B D' F2 U R2 B2 U2 F2 R2 U' R2 U L' D
+random-43	uniform-pairs	0.477792000	20	0	F' D2 L' U2 R B2 R2 F2 U2 R' U2 R F' L B2 D' L B2 L2 F'
+random-44	uniform-pairs	0.930333000	20	0	F' B2 U' L U R' L F R2 D2 R2 U' F2 L2 D L2 D F2 R B'
+random-45	uniform-pairs	0.827375000	20	0	B' U' D' R' U2 R2 D' F B2 U L2 B2 D R2 D2 B2 D B2 L' F
+random-46	uniform-pairs	0.900459000	19	0	B' R' B' U R' U' D F D2 R' D2 F R2 U2 D2 F2 B U2 L2
+random-47	uniform-pairs	2.987625000	20	0	B' U2 R B2 R' F2 U2 R F2 D2 R' F D L' D2 F2 L' D R' U2
+random-48	uniform-pairs	0.429708000	18	0	B2 U' R' D R F' B' R U B D B2 R2 U B2 D' F2 D2
+random-49	uniform-pairs	0.249625000	19	0	L2 D2 L2 B' D2 B D2 U2 B' F' D F2 U2 L' D2 B' D' F R'
+random-50	uniform-pairs	0.218792000	20	0	B' R2 B2 L2 U F2 L2 D2 F2 D F2 L2 R' F' D' R B' D F2 D'
+random-51	uniform-pairs	5.078208000	18	0	L' F2 R F' R2 B R' U L' F2 R L2 U L2 D2 R2 D2 F2
+random-52	uniform-pairs	3.863916000	20	0	U' D' L F' U' D2 L2 F R U2 L D B2 R2 B2 D' L2 D2 L2 B2
+random-53	uniform-pairs	1.288459000	20	0	F2 U' L U2 L' F' U2 R2 U2 L' F' U2 R2 B2 U2 L2 B2 L2 F R2
+random-54	uniform-pairs	19.557584000	20	0	F' L B U B2 U' F2 U' B2 U L2 D B D L' U' F R D' L
+random-55	uniform-pairs	1.162958000	19	0	D F' L2 B2 R2 B' R F L2 B2 U F2 R2 D L2 U' B2 L' B2
+random-56	uniform-pairs	1.261125000	20	0	U D2 L' B U' B R2 D L B R' D2 L U2 R' U2 R' B2 U2 R
+random-57	uniform-pairs	0.375334000	20	0	F' U' F' L2 B R2 D2 B' R2 D2 F' U2 F2 U' R' U' B2 U R D'
+random-58	uniform-pairs	1.494208000	20	0	F2 D2 L U2 R2 B R D' F U' R U2 B2 U2 D2 R2 D2 R' B2 U2
+random-59	uniform-pairs	3.107791000	20	0	D' B' U2 B2 F L2 F' R2 U2 F' R2 U' B2 L B' D B2 R F L
+random-60	uniform-pairs	0.041167000	20	0	B' D2 F2 D2 B2 F2 L2 D2 R' B2 L D2 R' U' B2 L B R2 D U2
+random-61	uniform-pairs	0.147250000	19	0	R2 U2 F U2 D L' F B' R D2 R2 U2 B2 L' U2 R' D2 R D
+random-62	uniform-pairs	10.314000000	19	0	R' B' D2 L' D2 F U B' U2 B2 L' R2 B2 L2 F' U2 F' B' D2
+random-63	uniform-pairs	0.326417000	20	0	F L B2 D R' F R' U2 B' L2 B2 U2 D2 L2 U2 F2 R B2 L U2
+random-64	uniform-pairs	0.656625000	20	0	R2 D' R' L U D2 F' U' R' U F2 R2 D B2 R2 D2 L2 U D R
+random-65	uniform-pairs	0.103208000	20	0	R' F' B2 R2 U' R' B2 D' F D R2 F2 U2 F2 D B2 U' F2 D L2
+random-66	uniform-pairs	0.431459000	20	0	R D2 R' F2 B' U D2 R' U D B2 R2 F2 L2 U' R2 L2 U2 F2 B'
+random-67	uniform-pairs	0.219583000	19	0	U' B L2 F L2 U2 F R2 B' L2 F2 L D B' F' U' R B' D2
+random-68	uniform-pairs	0.064000000	20	0	F2 R2 B' U' L' U D2 F' D2 R' D2 L2 D2 L' F2 R' U2 L' B2 R2
+random-69	uniform-pairs	0.344292000	20	0	D2 L2 B L' D' F' B U L' F' R2 U2 L2 F2 D B2 U' D2 L2 U
+random-70	uniform-pairs	0.166041000	20	0	U2 R2 D' F2 U B2 D' B2 R2 U' B2 R' B2 D B' R B U' B D2
+random-71	uniform-pairs	0.143584000	20	0	U R F' U2 B' L D' B2 R2 D2 L' D2 R D2 R U2 R F2 L' U
+random-72	uniform-pairs	0.635125000	19	0	B2 L2 U' B2 F2 D B2 U2 B2 D F2 B' U R2 F2 D F U2 L'
+random-73	uniform-pairs	0.298209000	20	0	D2 B R2 D2 R D2 F B2 R' L' U2 L U2 B2 U2 L U2 L U' F
+random-74	uniform-pairs	13.385041000	20	0	D' R' D' R' D' B' U' D' B' L2 F' D2 R2 B' D2 B' D2 R' U' F2
+random-75	uniform-pairs	0.124625000	20	0	F2 U2 L2 F2 D U L2 F2 R2 F2 U2 L' B' U2 F' R' U L2 U F'
+random-76	uniform-pairs	0.184666000	20	0	U' R2 D2 R2 D L2 B2 L2 U2 R2 D' B' F' R B U L2 U L U2
+random-77	uniform-pairs	3.132791000	20	0	D2 F2 L U2 L' D2 B2 L' R U2 B' D2 U R' D B L' U L2 B2
+random-78	uniform-pairs	13.772125000	19	0	F R2 U2 L D' B L2 U' F2 U2 B U2 D2 R2 F' U2 L' F' L'
+random-79	uniform-pairs	0.242625000	20	0	D2 F' L2 R2 F2 U2 F' L2 B D2 F2 U' B' U L' F' L2 D' U L
+random-80	uniform-pairs	0.307417000	20	0	B2 U B U2 L2 B U2 L2 B D2 L2 F2 L2 U L2 R' U' F2 D F
+random-81	uniform-pairs	0.188000000	20	0	U L2 F2 U2 L2 F2 U F2 L2 U' L2 R U' F2 D' L F' U2 R' D2
+random-82	uniform-pairs	0.132709000	20	0	B' U L' F U B L' R2 U' R2 U2 R2 F2 D L2 D' B2 U R2 L'
+random-83	uniform-pairs	1.684084000	20	0	F' D2 R D F2 B' L' F2 L F U2 D2 R' F2 R U2 L2 F2 R' B2
+random-84	uniform-pairs	0.161291000	18	0	F D2 F2 L' B2 D2 B2 L U2 R B2 L B U' B2 L2 F' U2
+random-85	uniform-pairs	0.262291000	19	0	U F2 D' R2 B2 L' U' R' U2 B' D2 F2 U F2 D' F2 R2 L2 U
+random-86	uniform-pairs	13.479375000	20	0	D L2 B R F' U D F B2 U2 F U2 D2 F L2 D2 R D F R2
+random-87	uniform-pairs	0.252125000	20	0	D' B2 U D2 R' U' L' F2 D R2 L2 U2 R2 L2 F' L2 U2 L2 F B
+random-88	uniform-pairs	0.982375000	20	0	L D' F2 R' F' U' B D2 R D' F2 U2 B2 L2 B2 R2 L B2 D2 R2
+random-89	uniform-pairs	3.015167000	19	0	B R F D2 L F2 R' F2 R D2 L' R2 F2 D' U F' R' D' F2
+random-90	uniform-pairs	1.810125000	20	0	D2 F D2 R2 B U2 L2 R2 U2 B L' R' U F' R U R2 D B U
+random-91	uniform-pairs	1.706125000	20	0	R' U B U R B U2 D' R' D' F' D2 B2 U2 R2 B2 L2 U2 R2 F
+random-92	uniform-pairs	0.305500000	20	0	B D B D2 F D B U D2 B2 R' F2 D2 F2 L B2 L2 U2 L' F'
+random-93	uniform-pairs	4.115166000	20	0	F' U2 R U' D F' D B R D' B F2 D2 F2 U' F2 U' F2 U B2
+random-94	uniform-pairs	0.068333000	20	0	F' U F2 B R F' D R2 F' R2 F2 B D2 R2 U2 R2 F' R2 L B2
+random-95	uniform-pairs	1.008750000	20	0	R' D2 L2 D L' F' D R U' B2 L2 D2 R2 U B2 L2 U' R2 B2 D2
+random-96	uniform-pairs	1.487250000	20	0	R2 F' U' D R2 F' D R B2 U' D2 R2 F2 D2 R2 B' R2 U2 B' R2
+random-97	uniform-pairs	0.277042000	20	0	U' F L2 U B R' L B D' R' B2 U2 L2 U' L2 U2 F2 U' F2 D
+random-98	uniform-pairs	1.314041000	20	0	F2 D F B U' R D2 F2 U' F2 R U2 R2 U2 R' F2 U2 R B2 D
+random-99	uniform-pairs	0.507125000	20	0	U2 D R' F' U D R2 F D' B' D2 L2 U B2 U' L2 B2 D' L2 B2
+random-100	uniform-pairs	0.046542000	20	0	F' D2 R2 U' R L2 D' F D2 B2 R D2 L U2 L2 B2 L' D2 B2 U2
+random-101	uniform-pairs	0.213583000	19	0	B2 U L' U2 F2 U' L' F' L2 F2 R2 L2 U2 F U2 F L2 R B'
+random-102	uniform-pairs	0.721667000	20	0	D2 R L B D2 R' B2 R D2 R2 U F2 D R2 L2 F2 L2 U' B D
+random-103	uniform-pairs	0.060709000	20	0	F D2 L U F U' L F R' B2 D' R2 U' R2 L2 U R2 L2 D' F2
+random-104	uniform-pairs	0.127667000	20	0	U D R' U D2 B' U B2 U F2 B2 U2 R2 B' L2 F2 U2 L2 B2 U2
+random-105	uniform-pairs	1.121375000	20	0	F2 R' F' L F R2 L2 D B' R U2 D2 R2 D2 R2 B2 D2 L' B2 F'
+random-106	uniform-pairs	1.094916000	20	0	D L2 B D' F U' D2 R U2 F L2 D2 B' R2 D2 F' R2 U2 L' F'
+random-107	uniform-pairs	0.162209000	20	0	R' B R2 U2 D' B' L' B2 L2 F B2 D2 L2 B D2 R2 D2 B R F2
+random-108	uniform-pairs	0.410292000	20	0	B2 L F2 R' D2 F2 R' D2 B2 R U2 B' U R2 D2 R' D B' F2 D
+random-109	uniform-pairs	0.461084000	20	0	F' L B' L2 U2 B2 L B R' U2 L2 D' F2 U' R2 U' F2 B2 D R
+random-110	uniform-pairs	1.657666000	20	0	R' L' F' L2 U' D2 L2 F' D L2 F U2 F' R2 U2 L2 U2 F2 R2 L'
+random-111	uniform-pairs	0.049292000	20	0	U2 D' F R' D L2 U L' U F2 R2 U F2 U L2 U L2 U' R2 D
+random-112	uniform-pairs	0.591917000	20	0	U2 L B2 D' F' B R F R2 D2 B' U2 R2 U2 R2 D2 F U F' R2
+random-113	uniform-pairs	0.387500000	20	0	D' F' R B' R' U2 D' L' B U2 R F2 R2 F2 R' B2 R' F2 D2 L'
+random-114	uniform-pairs	0.024084000	20	0	D F2 D2 R2 D2 F D' L F2 D2 F' R2 D2 F' U2 F R2 B R2 D2
+random-115	uniform-pairs	0.045084000	20	0	F2 L U' R2 B U R' D U2 R U2 R D2 F2 R2 U2 F2 L U2 D2
+random-116	uniform-pairs	2.418500000	20	0	B R' D2 B' R2 F' R2 D2 F U2 B F' R' D U2 L' F D2 U B'
+random-117	uniform-pairs	0.408208000	18	0	U2 B L' U2 L' F2 R D2 B2 D2 L' F2 D R F2 D' R2 F
+random-118	uniform-pairs	0.113792000	20	0	R D' B' L' F' U2 D' B' R2 F2 L2 D2 R' B2 D2 L F2 U2 F2 D2
+random-119	uniform-pairs	0.337750000	20	0	F' D L F2 U2 R2 D2 R' D2 F2 D2 F2 R2 B' U R F2 R2 D' L'
+random-120	uniform-pairs	0.524917000	20	0	B D' L D2 F' R' D' F U' D R2 U' L2 D R2 B2 R2 B2 F U
+random-121	uniform-pairs	0.080417000	20	0	U L F B2 R' B2 R F' D' R2 B U2 L2 B2 U2 R2 F L2 B R2
+random-122	uniform-pairs	1.925375000	19	0	R' B2 R U B2 D2 L2 F U F' R B2 U2 R U2 L2 U2 R2 B2
+random-123	uniform-pairs	0.768333000	20	0	L' D' B L F' D' F L U R' L2 F2 D2 R2 U2 R2 D B2 R2 U2
+random-124	uniform-pairs	1.595292000	20	0	R' U L2 B' L' F L B L2 B' U2 B' L2 D2 B' R2 L2 U' R2 D
+random-125	uniform-pairs	0.172416000	20	0	R' F' R D2 B R D' F' R U' F2 R2 U' L2 U' R2 D R2 L2 D
+random-126	uniform-pairs	0.097541000	20	0	D' F R U R' F2 B2 R' B' U2 R' U2 R F2 U2 L' D2 R2 U2 D2
+random-127	uniform-pairs	0.404000000	20	0	B' R' D F R D' L' F B L U2 D2 F2 U2 D2 R' L2 U2 L' B2
+random-128	uniform-pairs	1.875833000	20	0	L2 U B' R2 B U' D' L D' B L F2 U2 R F2 L2 D2 R' D2 F2
+random-129	uniform-pairs	6.087500000	20	0	U R' D R B R2 F U L R2 U' L2 U' F2 B2 R2 F2 U2 B' U'
+random-130	uniform-pairs	2.290375000	20	0	F2 R' U' B2 L2 F2 D2 B2 D2 L U2 F2 L2 F R' U B U2 B2 U'
+random-131	uniform-pairs	0.378375000	20	0	F2 R F D L B' L D L2 U2 R' D2 B2 R D2 L' B2 L B2 U
+random-132	uniform-pairs	0.884792000	19	0	L2 F2 B U B U' D' F D R' U2 L2 F2 D L2 U' L2 U2 F2
+random-133	uniform-pairs	1.346833000	19	0	D2 B2 D' F R D2 L' F U2 B' D2 F R2 L2 F2 D2 R D F
+random-134	uniform-pairs	2.453000000	20	0	U R2 B U2 B' R2 F U2 L2 F2 D2 L R' D' U' R' D B F' D'
+random-135	uniform-pairs	0.054167000	19	0	U' F2 R' F2 R' B' D F2 R' F2 L D2 F2 D2 B2 R' U2 L' B
+random-136	uniform-pairs	0.289709000	20	0	F' U' D2 B R2 B2 R2 F' U2 F' L2 B L2 R' D' U L B2 F U2
+random-137	uniform-pairs	3.175166000	19	0	L' D2 F D2 R' D2 B2 L R2 D2 F2 L U' B2 R2 B D' U' F2
+random-138	uniform-pairs	1.212708000	19	0	D2 L2 D R D B' R2 D' B L' B2 D B2 D R2 F2 D R2 D2
+random-139	uniform-pairs	0.155209000	20	0	D2 B' D2 L U L F2 D' R' F2 L B2 U2 D2 R2 U2 R' D2 F2 L2
+random-140	uniform-pairs	0.605208000	20	0	F' U F' B D2 R D' L' U2 D2 F B2 D2 L2 B2 R2 F' L2 R' U
+random-141	uniform-pairs	0.021500000	20	0	U R L B' D' B' L F R F2 L F2 R' U2 B2 D2 B2 D2 R' D2
+random-142	uniform-pairs	0.045959000	19	0	L R2 D B2 L2 F2 R2 U' B2 D' B2 U2 L' F' D R2 U2 R B
+random-143	uniform-pairs	0.249667000	20	0	F L D' L F D L' B2 L' U L2 F2 R2 D2 F2 U2 B2 U' R2 D'
+random-144	uniform-pairs	1.453750000	20	0	R L' B D2 F' R' L' B' R' U R D2 L2 F2 L D2 R' B2 D2 F2
+random-145	uniform-pairs	1.160709000	20	0	U2 R D F R D' L U2 D2 L2 B R2 D2 B' D2 F' L2 D R2 U2
+random-146	uniform-pairs	0.193542000	20	0	F2 D' F2 R2 D' B2 D' R2 D R2 U B' U L2 D2 B D' L' F2 U
+random-147	uniform-pairs	0.186917000	20	0	R' F' B2 D' B2 D2 B2 U R2 D' U2 B2 L2 R F' D' F U L' B'
+random-148	uniform-pairs	2.163792000	20	0	U' B' U2 F2 L D2 B2 R' F2 U2 L R2 U B2 L' R' U2 F' D2 R
+random-149	uniform-pairs	0.555875000	19	0	R2 U D' L' B' D2 L U2 R2 F2 L2 U2 F2 D' R2 U L' D2 F
+random-150	uniform-pairs	0.429250000	20	0	U R2 B2 D B2 D L2 D2 R2 U L2 B' R2 D' U L' B2 D L U'
+random-151	uniform-pairs	11.878875000	19	0	B' L' F' U' R B U2 B R2 U' F B2 R2 F' L2 U2 F' D2 L'
+random-152	uniform-pairs	0.275042000	20	0	D2 R' F' D' R2 L2 D' F' U F2 U2 F L2 F R2 D2 L2 B' U2 F'
+random-153	uniform-pairs	0.337292000	20	0	R U' R U' D2 F2 U B' D' R U2 R' D2 R D2 L D2 B2 U2 B2
+random-154	uniform-pairs	0.376375000	20	0	F R' D' B' R D' B L2 F' L' D B2 R2 L2 U2 F2 L2 D L2 U2
+random-155	uniform-pairs	0.800500000	20	0	D' R U' D' L' B2 D F' L2 F' U' L2 D2 R2 B2 D L2 F2 D2 R2
+random-156	uniform-pairs	0.580042000	20	0	D' R L2 U2 R U' F U L2 U2 R' F2 R2 L' F2 B2 R U2 D2 F2
+random-157	uniform-pairs	0.045625000	20	0	U2 L B' L2 U' D' F' D' L F2 L2 U' R2 U2 F2 L2 U' B2 L2 B2
+random-158	uniform-pairs	0.044083000	20	0	D2 R B' R2 U' D2 B2 R B R2 U' B2 U R2 L2 F2 B2 U2 B2 U
+random-159	uniform-pairs	0.456833000	19	0	D' B2 R' F2 D2 R B' D2 L F2 L2 U' R2 U L2 B2 R2 D2 R2
+random-160	uniform-pairs	1.693584000	20	0	U B' R B' L F2 U R2 U2 F R' U2 F2 L' D2 L U2 L D2 R'
+random-161	uniform-pairs	0.340125000	20	0	U2 R U B2 U L2 U L2 B R2 L2 B D2 B' R2 F' U2 B U R
+random-162	uniform-pairs	0.267250000	20	0	R' U2 B' U L' F U L D' B' R2 D2 L2 U' F2 L2 D B2 U R2
+random-163	uniform-pairs	0.310792000	20	0	R2 D B2 R L' F' B' L B R2 D2 F2 L2 B2 L2 U' R2 L2 F2 R
+random-164	uniform-pairs	0.254125000	20	0	R' D2 L2 U2 B R2 L D F D2 F L2 F' U2 B U2 F' L2 F2 R2
+random-165	uniform-pairs	7.583333000	20	0	R2 U B R U' F U2 F B2 L2 U F2 B2 R2 B2 D2 F2 B L' F2
+random-166	uniform-pairs	0.203250000	19	0	R2 F U2 L2 R2 F2 D2 B R2 B2 L R' F U' B' D U' L' F'
+random-167	uniform-pairs	0.283083000	20	0	L' F R' B2 F2 L' U2 F2 L B2 R U2 L2 B' R' U B2 D2 F U2
+random-168	uniform-pairs	0.823916000	19	0	L B2 L U B' D2 F D F2 R2 D' R2 U2 B2 D' R' L2 U2 F'
+random-169	uniform-pairs	0.552292000	20	0	B D2 F' L' B D R L2 U' L2 U2 R2 U F2 U' B2 R2 L U' F2
+random-170	uniform-pairs	2.149708000	20	0	U' D' B' L D' F D B2 R2 D2 R' B2 R U2 D2 R' D2 B R' F'
+random-171	uniform-pairs	1.494667000	20	0	L2 U' L' D2 F' R' B2 U' F2 R2 U2 B L2 D2 L2 U2 B L2 R D'
+random-172	uniform-pairs	1.382834000	20	0	L2 B R2 U2 D2 R U' R2 U' L F2 L2 F' R2 F' R2 B2 D2 F2 R2
+random-173	uniform-pairs	6.638500000	20	0	D2 R L2 U' F U L' B' U' D R2 U B2 U L2 B2 L2 B R2 D2
+random-174	uniform-pairs	0.079833000	20	0	D2 F' U2 F' R U F2 R' U L2 D2 F2 U D2 B2 D L2 D' F2 L
+random-175	uniform-pairs	0.054084000	20	0	D' L U2 R U2 R2 B2 R' F2 U2 F2 R U2 B F2 U R F' L' B2
+random-176	uniform-pairs	0.493000000	20	0	D2 R2 D2 B R L' F R D R F2 D2 B2 R2 D' L2 D' L2 F2 U
+random-177	uniform-pairs	0.602291000	20	0	L2 U L' D' B U2 F' L U R2 F2 L2 U2 R2 D' L2 B2 U R F'
+random-178	uniform-pairs	1.214042000	20	0	F2 B' R L2 D' B2 L' D' B' D2 L2 F' D2 F D2 B' U2 F2 D' B2
+random-179	uniform-pairs	0.507667000	20	0	U' D2 B' L2 R2 B U2 F' R2 U2 B2 D2 U' L' U B' D' B' R B
+random-180	uniform-pairs	0.367958000	20	0	F' D R2 L' F U2 F D F' B' D' R2 D2 R2 F2 D' R2 L2 U2 L2
+random-181	uniform-pairs	1.956250000	20	0	R U' D' R F' L2 D' B' U' L' U2 R U2 B2 L F2 L B2 R2 D'
+random-182	uniform-pairs	0.321209000	19	0	U F U D' F D' L' F2 B D2 F R2 F2 R2 L2 F R2 L F'
+random-183	uniform-pairs	0.035625000	20	0	B R F2 U2 L2 U B F2 D2 R' F2 U2 D2 R U2 R2 U2 D2 R' B
+random-184	uniform-pairs	0.181125000	20	0	B2 R2 F2 U' R2 B2 U' R2 F2 D B2 F R F2 D' B' F2 D L2 U
+random-185	uniform-pairs	2.683500000	20	0	L2 U' L' B2 F2 R2 D2 R' B2 R' B2 R' B' L U' F' D' R2 B R2
+random-186	uniform-pairs	0.400292000	19	0	L D2 L' D2 R' F2 R D2 R' B2 F L' D2 R2 B2 D F' U R
+random-187	uniform-pairs	0.026459000	20	0	F B2 U' L' D B' R2 D' F R2 L2 B2 D' F2 D2 R2 U R2 B2 U
+random-188	uniform-pairs	0.115000000	20	0	L2 B' D2 F U' R' F B' D F2 R2 U2 R2 B2 L B2 D2 R' B2 R
+random-189	uniform-pairs	0.823667000	20	0	B L2 B2 R' F' B' U2 L' U' B2 L2 D2 L2 U' L2 B2 L2 U' R' U'
+random-190	uniform-pairs	0.374250000	20	0	R2 D2 L' B2 L R2 F2 U2 R2 F2 U2 B' U' F D' L' F' U2 L D
+random-191	uniform-pairs	0.142209000	19	0	R2 B' U' F D' F' R2 L F2 L F2 B2 D2 R F2 B2 D2 B' U
+random-192	uniform-pairs	0.274709000	20	0	L2 D B2 D' F2 U' F2 D' B2 R2 D R' B D2 B2 U F D2 F' R
+random-193	uniform-pairs	0.140583000	20	0	B' L U R2 B' U' R' L2 D2 L2 F D2 F' R2 B2 U2 F U2 R D2
+random-194	uniform-pairs	0.029208000	20	0	U2 B' U' B2 R B L F' R D2 L2 U B2 D R2 U F2 D' B2 D
+random-195	uniform-pairs	7.385417000	20	0	U' F2 U R' D L F' D' B U L2 D' F2 U' R2 U' L2 U R' F
+random-196	uniform-pairs	5.684500000	20	0	R U' F2 L' U R2 F U D' B2 D' B2 R2 L2 U D' L U F U
+random-197	uniform-pairs	0.054458000	20	0	D2 L2 B2 D' F2 L2 U F2 U' B2 D' F2 L' F' D U F2 D' B U2
+random-198	uniform-pairs	1.859792000	20	0	U B' R' U' B2 L2 U' L2 U' B2 F2 L2 D B U2 F' D2 U B D
+random-199	uniform-pairs	0.790000000	20	0	U2 L2 D F2 L' D2 F B2 R' D2 B2 D2 B2 R U2 L' U2 L' D' R'
+random-200	uniform-pairs	0.303625000	20	0	L' U' B2 R' L D' R B' R2 D2 B2 L2 F L2 F' U2 L2 B U' R
+random-201	uniform-pairs	9.638375000	20	0	U2 D' R' U L2 B' L' F2 D2 F U' F2 U2 B U2 F D2 F2 R2 F2
+random-202	uniform-pairs	0.689292000	20	0	L' U2 D F R2 F2 D L' U2 L' D2 L2 U B2 U' F2 D' F2 B2 U'
+random-203	uniform-pairs	6.515375000	20	0	L F L U D2 R' L2 D2 L D R2 B2 R2 B2 U' F2 L2 U2 L F
+random-204	uniform-pairs	1.764750000	20	0	U' F' R2 L U F L2 D' F D' L' D2 B2 U2 R U2 D2 B2 R U2
+random-205	uniform-pairs	0.660000000	20	0	L' U L' B2 F2 L' F2 L B2 D2 B2 L' D2 F R' B' R B D2 U'
+random-206	uniform-pairs	1.277875000	20	0	F U D' R L D' L R2 D2 B L2 D2 F R2 B2 R2 B' U L F
+random-207	uniform-pairs	0.554375000	19	0	F2 L2 B L D R' D F2 B' R U2 D2 R2 B2 U F2 B2 U' F2
+random-208	uniform-pairs	2.682334000	19	0	B' U L2 D2 R2 F' D2 L2 F' L2 B' R' B' U' F2 U2 B2 U L'
+random-209	uniform-pairs	2.355666000	20	0	R2 F L' F' L2 U2 B U2 R2 F2 D2 U2 F' U L' R' D2 U2 B2 D
+random-210	uniform-pairs	0.259667000	20	0	F' L F U2 L2 R2 B' F2 R2 F2 L2 R2 F' L' R F' U L B' U
+random-211	uniform-pairs	0.097542000	20	0	U B D' R U R L2 F' D2 L2 F2 D B2 D' R2 L2 D' L2 B2 L2
+random-212	uniform-pairs	0.392333000	20	0	R U' D2 B' D B R D2 B U2 F2 R2 U' D' F2 D F2 L2 B2 L2
+random-213	uniform-pairs	2.207958000	20	0	B2 D2 F' U F' L2 B' D' R' U R2 U2 R2 D2 F2 L2 D2 F2 R' D2
+random-214	uniform-pairs	36.901292000	19	0	L R2 F2 R D2 U2 R F2 D' B L' B U2 L U2 L B F U
+random-215	uniform-pairs	0.395209000	19	0	F2 R F2 L' U' L D L' U2 B2 U2 F2 U' R2 B2 L2 F2 U B2
+random-216	uniform-pairs	0.767667000	19	0	D L' D F2 D' B' R B2 U2 L R2 F' R2 F' D2 B U2 D2 B2
+random-217	uniform-pairs	0.669375000	20	0	F U B L D' R' U' R L2 D' R2 L2 B U2 D2 B' U2 F2 D2 B
+random-218	uniform-pairs	0.155250000	20	0	R2 U L' D F B' D R2 D2 R' L2 F2 L' D2 B2 U2 L2 D2 U' R'
+random-219	uniform-pairs	1.517792000	20	0	R2 D L2 D R2 F2 L2 D F2 U F L B D2 F' L B2 L' U' F2
+random-220	uniform-pairs	0.547417000	20	0	R2 B2 F2 L F2 L2 R' D2 U2 B2 R2 F' R2 D B' F2 R D R B
+random-221	uniform-pairs	1.432750000	20	0	R2 D B2 L2 D2 U' R2 B2 F2 U R U' F2 D R B D F2 U' F2
+random-222	uniform-pairs	3.243667000	19	0	D B2 U2 L2 U2 B U2 L2 R2 F' L R U' R U' F' D' L' B2
+random-223	uniform-pairs	1.145792000	20	0	F2 U' B2 U2 R' U' L F2 D B' U2 L2 F L2 U2 L2 B2 L2 F2 L
+random-224	uniform-pairs	0.144250000	20	0	L2 F D F' L' U2 F' D' R2 F D2 R2 F2 L2 F2 U2 F D2 F R
+random-225	uniform-pairs	1.151292000	19	0	R B2 L F R D' R' B' L' U' B' U2 F2 D2 F' U2 L2 F U2
+random-226	uniform-pairs	1.994583000	20	0	B U L' U' B2 U F R U2 R2 B2 R' B2 U2 L2 F2 L' B D2 F'
+random-227	uniform-pairs	1.319917000	20	0	D' F L' D2 B2 U' B2 R2 U' R2 F2 D' U2 B' L' D F2 L' B R'
+random-228	uniform-pairs	0.292042000	20	0	F' R2 U' R U D R' L B U F2 L2 B2 L2 U2 D L2 F2 D' B2
+random-229	uniform-pairs	1.319042000	20	0	D' B' U R F2 R L F2 R2 U2 F L2 D2 R2 F2 D2 B' R' D' B
+random-230	uniform-pairs	2.486458000	20	0	B2 R2 B' R2 U2 B' U2 B D2 B' L U' R' D' R' F2 D B' F' U2
+random-231	uniform-pairs	6.694333000	20	0	F' R' D' B' R D' R2 F2 R L2 D' F2 D R2 U D2 B2 R2 F U
+random-232	uniform-pairs	1.148000000	20	0	F' L D' R L D2 F D' L' D F2 B2 D B2 D2 L2 F2 R2 B2 F
+random-233	uniform-pairs	0.463334000	20	0	D L2 D' L2 U' F2 D' L2 B2 D L2 R U2 B D2 B2 F' U L2 F2
+random-234	uniform-pairs	1.951917000	20	0	B U L F2 B U L' U' L' F2 L' B2 L' F2 L2 F2 L' F2 B' D'
+random-235	uniform-pairs	0.705334000	20	0	F U' L D' L' B D L D2 B' R2 U D2 B2 U' F2 B2 U L2 U'
+random-236	uniform-pairs	0.127291000	20	0	B2 R2 U R2 U' L2 U F2 D' B2 L2 B' U R' D' L F R F U2
+random-237	uniform-pairs	0.343708000	20	0	L' F' L2 U2 F2 D2 L' R' F2 L D2 R F2 U' F2 L' R' U' F2 R'
+random-238	uniform-pairs	0.252292000	20	0	R' U2 R2 U2 B' U' F' L' F' R' D R2 U R2 B2 U L2 D' R2 B2
+random-239	uniform-pairs	0.143750000	20	0	D2 R' D2 R2 F U2 L2 R2 B F2 R2 D2 B' D R' U' F L' B' L2
+random-240	uniform-pairs	1.602292000	20	0	L' F U' F2 U' R2 F2 D' L2 U' L2 U B' R2 F' L' U2 R U' F2
+random-241	uniform-pairs	0.071416000	20	0	L' U F2 R' B' U2 F D' R' F2 L D2 R2 D2 F2 R D2 R' B2 L2
+random-242	uniform-pairs	2.803209000	20	0	U2 F L U2 R2 D2 L B2 R' U2 B2 U2 F D' U B U' F2 R F'
+random-243	uniform-pairs	1.080375000	18	0	F2 L' R2 B' F' D2 R2 B' L2 R2 F2 U' B D' B2 U2 L2 F'
+random-244	uniform-pairs	3.859792000	20	0	F' B' R' B2 L' D L F R' D F U' F2 D' R2 D L2 B2 U' L2
+random-245	uniform-pairs	0.127958000	20	0	B' L D2 B' D2 F L D' F' D2 F2 U2 R' B2 R2 F2 L B2 R' B2
+random-246	uniform-pairs	0.500541000	20	0	B2 U2 D R L2 F' B2 R D2 L2 B2 D2 B R2 D2 R2 U2 F L2 D
+random-247	uniform-pairs	0.677000000	20	0	U' F2 R' U' D' F2 B L2 U' F2 L2 U' L2 B2 U R2 B2 F' R2 U
+random-248	uniform-pairs	3.679375000	20	0	D2 L2 R D2 F2 L2 B2 L B2 R2 D' R' B' U L D2 F2 U' F D
+random-249	uniform-pairs	0.720958000	20	0	F2 B U' R' B2 R2 D' B2 R D F' D2 R2 U2 B U2 B L2 F U2
+random-250	uniform-pairs	0.174417000	19	0	R' L2 B' R L2 D' F2 B D' L' U2 L2 U2 B2 R F2 R' U2 L'
+random-251	uniform-pairs	2.484500000	20	0	D2 L D B D B R' D' B L2 D2 F2 L D2 R' F2 U2 D2 L2 U
+random-252	uniform-pairs	0.199041000	19	0	D2 F R2 D R B2 R2 L2 D B' D2 F' B L2 B D2 L2 D2 F
+random-253	uniform-pairs	0.228417000	20	0	R2 D2 F L2 D2 B' R2 D2 U2 B' F' L U F' L D' B' D F R
+random-254	uniform-pairs	0.372416000	20	0	F' B U B' L' U' B2 L2 D B' U2 F2 L2 D F2 U B2 D' L2 D'
+random-255	uniform-pairs	0.554959000	20	0	B D' L' U' F' D R' L2 D R2 U' B2 U' R2 U B2 R2 B' U L2
+random-256	uniform-pairs	0.507584000	20	0	R' B' L' U' F' D' R L2 U' F2 U' D' R2 D L2 F2 R2 F D F
+random-257	uniform-pairs	0.267000000	20	0	L' U' B U2 F2 U2 F' R2 F L2 R2 D2 U2 R' D U2 R F U2 B'
+random-258	uniform-pairs	7.217042000	19	0	U2 L' D2 L D' R' D' F R2 L2 F2 B2 U2 F2 D B2 R F' D
+random-259	uniform-pairs	0.864500000	20	0	F2 B' U' F R L' F' L D U2 L2 F' L2 D2 F L2 F U2 B' L
+random-260	uniform-pairs	0.098083000	20	0	D' R U2 R' U B R' F2 R2 U2 D' R2 U2 R2 B2 R2 B2 D' R' U2
+random-261	uniform-pairs	0.163541000	20	0	R2 U2 L2 D' F2 L2 D' L2 B2 R2 F2 B L U L2 U R' B U B'
+random-262	uniform-pairs	1.603958000	20	0	R' L' F' R U' D2 R' U' D B D2 R' D2 F2 L2 F2 L' B2 U2 R
+random-263	uniform-pairs	0.213167000	20	0	F B R D2 B R U' R2 B R2 B' L2 B' R2 B U2 B' U2 L2 U
+random-264	uniform-pairs	3.425125000	19	0	U R U2 B2 L' F2 D2 L' U2 L2 D R F R U L' B' D2 R
+random-265	uniform-pairs	1.834542000	17	0	R2 F2 B2 D' L2 B L U B D F U2 B L2 F B D2
+random-266	uniform-pairs	0.326208000	20	0	U2 L' B2 D R2 L' B2 U' L U2 R2 L2 F' D2 F' D2 L2 F2 B U2
+random-267	uniform-pairs	0.058250000	20	0	B R' U2 L' D B' R B2 R2 D' F2 U' R2 D F2 L2 D R2 B' U
+random-268	uniform-pairs	0.314666000	20	0	L2 U L' B2 R' D2 L' U2 F2 R2 D2 L' F2 U B' U' F D' F' U2
+random-269	uniform-pairs	2.422958000	20	0	F2 R' B2 D2 L2 R2 F2 U F2 D R2 D R' D U B L2 B2 R F
+random-270	uniform-pairs	5.418875000	20	0	R' B2 D' B2 L D F' R2 B' L' F2 U B2 L2 B2 L2 U2 L2 D2 B'
+random-271	uniform-pairs	0.163041000	20	0	U2 F R2 L' D2 B' L2 U2 B' U' F2 B2 U' L2 D F2 D2 F2 R2 U'
+random-272	uniform-pairs	0.929625000	20	0	B D' L' U2 F' L' U L' B2 D' R2 B R2 B' D2 B U2 B' D2 F2
+random-273	uniform-pairs	0.385792000	20	0	F' L' B' R2 B' L2 F' R2 D2 F R2 U2 L2 D' L' D' U L U F
+random-274	uniform-pairs	0.153375000	20	0	R U' F2 U R2 D R2 F2 R2 U' F2 U' F R D2 B L F D B2
+random-275	uniform-pairs	14.558042000	20	0	L2 D' F2 U2 L' B' D R U' L' F B L2 D2 F R2 U2 F B2 D
+random-276	uniform-pairs	0.382375000	20	0	R F2 B2 R F2 D F' L B L B2 U R2 F2 U2 L2 U R2 D L2
+random-277	uniform-pairs	0.081708000	20	0	L' D' R2 B2 F2 U2 F2 R2 F2 D R2 D' F2 L' U B U' R2 U2 F'
+random-278	uniform-pairs	0.259750000	20	0	U F' R B2 U2 L D B D2 R F2 U2 F2 R2 U' L2 D' R2 U' L2
+random-279	uniform-pairs	0.590917000	20	0	D R2 B' D F2 L' D2 R U R' D2 L2 D L2 B2 R2 U' R2 U' F2
+random-280	uniform-pairs	0.495291000	20	0	L2 D' F U' R U' B2 R U F2 L2 F2 U D' F2 D2 B2 D' B' R
+random-281	uniform-pairs	0.162167000	20	0	F2 U2 R F D' F R D B2 R2 U2 L' F2 R' D2 R' F2 U2 R2 U2
+random-282	uniform-pairs	0.369750000	18	0	B R2 U' R D' B' U2 R' F L' U' R2 D' L2 F2 U' R2 U2
+random-283	uniform-pairs	0.054875000	20	0	F U2 L' F U D B2 L D' B U2 B L2 U2 D2 F2 D2 F' D2 F
+random-284	uniform-pairs	1.009375000	20	0	F R2 F2 U R' L' D R' F2 U D2 B2 U2 D2 L2 B' U2 B2 L2 D2
+random-285	uniform-pairs	0.167458000	20	0	R L2 F R F' D L F' D B D2 L2 F L2 B' R2 D2 F2 R2 U2
+random-286	uniform-pairs	1.856709000	20	0	L F2 R L2 U2 F' R D' B U' B2 R2 L F2 D2 F2 D2 R L D2
+random-287	uniform-pairs	0.122208000	20	0	R2 U B2 D' R2 U' R2 F2 R2 D2 B2 F' U L D' L2 F R' D F
+random-288	uniform-pairs	0.261125000	20	0	D' F2 R' F2 D R' F2 D F' D2 B' L2 D2 F' U2 L2 D2 F D2 F2
+random-289	uniform-pairs	1.939875000	19	0	U2 L2 D' R' D2 L U2 L D2 R' U2 L F D U' B F2 D U'
+random-290	uniform-pairs	0.600500000	20	0	F2 L' U R2 F2 L U' D' B' U' D' R2 U' F2 U F2 U2 F2 U2 B
+random-291	uniform-pairs	0.032583000	20	0	U2 F2 R2 F2 D' F2 U' F2 U B2 D' U' F' R' B F U B' D' U'
+random-292	uniform-pairs	0.285667000	20	0	B' R D2 U2 R2 D2 L B2 L2 D2 R' F2 D B' U F L2 R2 U R
+random-293	uniform-pairs	0.048208000	20	0	L' U' R U2 B L B' L' U2 D' L2 U L2 B2 U' L2 B2 U' F2 R
+random-294	uniform-pairs	1.070625000	19	0	U' R B' D R2 L U R' L F R' B2 R' D2 B2 D2 B2 R' L'
+random-295	uniform-pairs	0.233500000	20	0	U R' F' R2 L' F2 B' U R L F2 U' B2 L2 F2 D2 R2 U' D2 L2
+random-296	uniform-pairs	14.782625000	20	0	U2 B2 R U B R B2 L2 U L' D2 L F2 L' F2 R2 B2 R' F' U
+random-297	uniform-pairs	0.154583000	20	0	R2 F' L2 F L2 B2 R2 D2 B' R2 B' D B' U' B' D2 L F R F'
+random-298	uniform-pairs	6.922333000	20	0	L U' F2 R U D2 L B2 U2 D' L2 U' F2 D L2 B2 F' R B2 U'
+random-299	uniform-pairs	0.070833000	19	0	R2 F D2 F2 R' F L' D F2 L2 D L2 B2 U F2 R2 D' L B
+random-300	uniform-pairs	0.568583000	20	0	R2 F R' D' L2 U R2 D' R' L' D F2 D' R2 D L2 D F2 R2 F2
+random-301	uniform-pairs	0.052875000	20	0	U F R2 F' U' L2 B' R2 L D2 R F2 B2 U2 L' F2 R' F2 D2 U
+random-302	uniform-pairs	0.095667000	20	0	B' D2 B L' D2 L' F D R2 F2 U B2 R2 D R2 U' B2 D L' D2
+random-303	uniform-pairs	2.054666000	20	0	U' D2 B' D' L F2 B2 U' L2 F U2 R D2 L' F2 L2 U2 L' D2 L'
+random-304	uniform-pairs	0.160250000	20	0	D' R U' F U R L B D' L2 U2 B2 R2 F' R2 B R2 D2 L2 D2
+random-305	uniform-pairs	12.274792000	20	0	R' U2 R2 L2 D' R2 B2 U' R2 F U2 B' U2 B2 U2 D2 R2 L U2 R
+random-306	uniform-pairs	0.133500000	20	0	R B' U' R2 F' L B' D B2 U2 B' R2 B D2 B' R2 D2 R2 D2 R2
+random-307	uniform-pairs	0.325833000	20	0	F U B R L' U2 L' U2 L2 B' R2 F L2 F D2 F' R2 F' R F
+random-308	uniform-pairs	0.659250000	20	0	R2 F2 B2 D' L D2 L2 B R2 F2 D2 F2 U2 R2 B2 L U2 D2 B2 R'
+random-309	uniform-pairs	0.866041000	20	0	F L2 U2 F' D L B' R' U2 B' L2 D2 F' U2 B L2 F U2 R' F
+random-310	uniform-pairs	0.395625000	20	0	U F2 U2 R B' D' B2 R B U2 R2 F R2 L2 D2 R2 B R2 B L'
+random-311	uniform-pairs	0.523167000	20	0	L B R F R2 B2 R D' F' U2 L2 B' D2 R2 B2 L2 F' R2 F' U2
+random-312	uniform-pairs	0.312542000	19	0	R2 F' U B R2 F2 U' F2 B2 D2 L' D2 R U2 D2 R L U' R2
+random-313	uniform-pairs	1.552666000	20	0	B' D L F2 D2 B' D2 F' D' U2 R' U2 F2 B2 R L2 F2 D2 L' B'
+random-314	uniform-pairs	0.197333000	20	0	F2 R B U' L' F' D L R2 F D2 F U2 F2 U2 B R2 F2 R2 D'
+random-315	uniform-pairs	0.207542000	20	0	L D' L' U' L' F D L2 U' L2 F R2 F' D2 R2 F B' U2 B2 L2
+random-316	uniform-pairs	1.399542000	19	0	B2 L' D' F R' B L' B' L2 F' R2 U2 R D2 R B2 L2 D2 R2
+random-317	uniform-pairs	0.700916000	20	0	F2 R2 U2 D R F2 U2 B D' R2 B2 D2 R2 D F2 L2 U' B2 L' F
+random-318	uniform-pairs	0.063791000	20	0	B L D R2 D B U2 L' B D F2 L2 U2 D' B2 R2 U R2 U' B2
+random-319	uniform-pairs	0.767084000	20	0	B' R' L B' D' L2 F B D L U2 F R2 B D2 B2 U2 F' R2 F
+random-320	uniform-pairs	1.628625000	20	0	F' U' R' F2 L2 D L2 R2 F2 U' L2 D' R2 L' B' R B2 L2 F U2
+random-321	uniform-pairs	2.425458000	20	0	D R' F' D2 R F2 R F2 L2 B2 R' F2 R U' L2 F2 U2 F' D2 U2
+random-322	uniform-pairs	0.074583000	20	0	D' F' U F L' F' R U F' B2 U F2 U2 B2 D R2 U' B2 D2 B2
+random-323	uniform-pairs	0.091333000	20	0	R' U2 F' D2 B2 R' U2 F' D' B2 U2 R2 B2 R F2 D2 B2 U2 R' B2
+random-324	uniform-pairs	1.104042000	20	0	D2 F B D' R' B2 R D2 F R2 D2 B' D2 L2 B' U2 B' U' R' F
+random-325	uniform-pairs	0.225209000	19	0	U2 L U' B R U' F2 L2 F' L' R2 U' B2 D L2 D B2 D' F2
+random-326	uniform-pairs	0.195583000	20	0	F2 L' D' R' B2 R2 D' F R U F2 U2 D B2 R2 B2 L2 U2 B2 U'
+random-327	uniform-pairs	1.899875000	20	0	D F B2 U F D2 B2 U2 L2 F L U2 R' L U2 L F2 U2 B2 U2
+random-328	uniform-pairs	0.041583000	19	0	B' D F2 R D2 R' U' R2 U2 B' L2 F B R2 F R2 U2 B2 L
+random-329	uniform-pairs	0.694875000	20	0	R2 U' D2 L' U2 R2 D' R B U L2 F L2 U2 B' L2 F B U2 L2
+random-330	uniform-pairs	1.429458000	19	0	R2 L B' U' L U D' B' R U2 D2 R' F2 R' L F2 R U F'
+random-331	uniform-pairs	0.159958000	20	0	L B' R' B L2 F U R2 B' L2 B' U2 F' R2 L2 B' R2 F2 D' B'
+random-332	uniform-pairs	0.138625000	20	0	D2 L' U2 D' F U F L' F2 R' B2 R B2 R' D2 F2 L' U2 F L
+random-333	uniform-pairs	0.279417000	20	0	F' U F L2 B2 R2 D2 F D2 B L2 F2 D2 L' B2 R U F2 L' R'
+random-334	uniform-pairs	2.417333000	20	0	R' D' L2 U' F2 U' B2 R2 F2 R2 D F U' F2 U R U R F L'
+random-335	uniform-pairs	0.249209000	20	0	D R D2 R B2 L F2 L' F2 D2 R2 U2 R U' L' R' B' L B F2
+random-336	uniform-pairs	0.171584000	20	0	L' D R2 B2 U' L2 R2 U' R2 U F2 U2 L B' R2 D2 B' U' B' U2
+random-337	uniform-pairs	1.423167000	20	0	F2 R U2 F2 U F' U' R' U' B' R2 F' D2 L2 F2 U2 D2 L2 F2 U
+random-338	uniform-pairs	0.263334000	20	0	F U' R2 D F2 R' F' L F2 L2 U2 R2 U L2 D' R2 F2 D B U2
+random-339	uniform-pairs	0.020417000	19	0	U B R2 F' B D2 R F D2 F2 U R2 U' L2 B2 D R2 L2 D'
+random-340	uniform-pairs	0.049333000	19	0	R B2 R D' B D R B' D2 F2 R2 D2 R2 D R2 D' F2 D R2
+random-341	uniform-pairs	0.145875000	20	0	D' L2 F U2 B' R2 L' D2 F L2 B' U2 B' U2 F2 D2 L2 F' D R'
+random-342	uniform-pairs	0.071792000	20	0	B R L2 B' R' L' D R B2 D2 L2 F2 L2 F2 D R2 U L2 D2 L2
+random-343	uniform-pairs	0.092458000	20	0	F D L D' B' L' D' R' D2 R2 D' B2 L2 F2 U2 B2 U L2 U' B2
+random-344	uniform-pairs	3.338792000	20	0	U' B2 R F R2 D F' R' L' B' R' U2 F2 D2 F2 L2 D' B2 D B2
+random-345	uniform-pairs	0.184875000	20	0	B R' F' U2 B' D2 L2 B2 U2 L2 F' U2 B' L U' L D' F D L2
+random-346	uniform-pairs	0.049875000	20	0	D2 B' U2 F2 L2 D2 R2 F2 L2 F D2 F L' D2 F U F' R F2 R
+random-347	uniform-pairs	0.267541000	19	0	R' D B2 U2 F2 L2 U2 F2 R B2 L R2 F' R' D L' B2 D' U2
+random-348	uniform-pairs	0.564333000	20	0	U L2 D2 R' L2 U2 B U L2 U' R2 U R2 B2 D2 R2 D2 B D R
+random-349	uniform-pairs	0.123083000	20	0	F L U2 D' R' B U F' B2 U2 B2 U' R2 D' F2 B2 D F2 L2 B2
+random-350	uniform-pairs	0.050875000	20	0	R2 F D' R' L U' B R B' D2 R2 D2 R2 F' L2 F2 R2 D2 R2 F
+random-351	uniform-pairs	0.100667000	20	0	D2 F' R' F2 R L D' B R' F2 R2 F L2 F L2 U2 F' B2 U2 R2
+random-352	uniform-pairs	0.830792000	19	0	B' U2 D B2 U' F U' R' F2 D R2 F2 B2 D2 B2 D' L2 F' R'
+random-353	uniform-pairs	0.836292000	20	0	B' L U2 D L' B2 L2 D2 B' F2 U2 L2 D L2 B2 D B2 L2 U' B'
+random-354	uniform-pairs	2.078208000	20	0	L' R2 U' B2 D' L2 F2 D2 F2 D' B2 F L2 R2 B L F' D' B2 F'
+random-355	uniform-pairs	0.489625000	20	0	B2 R' L U2 B' R2 U L' R2 F L2 F2 L2 F R2 D2 L2 B2 D2 U'
+random-356	uniform-pairs	1.526709000	19	0	U L2 D L B' D' L2 F U2 D2 F2 R2 D2 R' F2 B2 R' U' L'
+random-357	uniform-pairs	0.199167000	19	0	L' B L2 D' U' B2 U F2 R2 U2 L2 F2 R' D' L2 U B L' F'
+random-358	uniform-pairs	0.397958000	20	0	R' D2 R2 F2 D' R' B' R2 F2 L' U2 D2 B2 L D2 R D2 B2 F U'
+random-359	uniform-pairs	0.228958000	20	0	F2 R D2 R' L2 B2 U R F U2 R2 B' L2 D2 R2 L2 B' U2 B' U
+random-360	uniform-pairs	0.067583000	19	0	F2 U' L2 F D' L' U2 R2 D' L2 U' R2 U B2 D' L2 U L2 F
+random-361	uniform-pairs	10.945541000	20	0	D' B' L' F B2 D' R' D2 R F R2 L2 B R2 U2 L2 U2 B2 R' F'
+random-362	uniform-pairs	0.753500000	19	0	B' D F2 D2 R B2 F2 R D2 B2 R U2 F' U R D2 R U' R
+random-363	uniform-pairs	7.708208000	19	0	B U' F' D2 F R F2 U2 L' B D' F2 U B2 D2 R2 U' R2 L
+random-364	uniform-pairs	1.800000000	20	0	R U2 B D' L2 D2 U' F2 L2 D2 F2 R2 D' B L' D B' L D2 F'
+random-365	uniform-pairs	0.082584000	20	0	F2 U L U' F B2 L B D2 F2 L2 U L2 U2 D R2 L2 U' L2 U'
+random-366	uniform-pairs	0.104292000	20	0	F2 R2 F' U2 R2 F' D2 B L2 B D2 F' L U L2 U R F L2 R'
+random-367	uniform-pairs	0.033583000	19	0	L' B2 L2 F B U' F' L U' L2 F2 U F2 L2 D' L2 U' F2 U
+random-368	uniform-pairs	0.171833000	20	0	L' F' D2 R2 D2 B R2 F L2 D2 U2 F D' R' U2 B L2 U' B' F
+random-369	uniform-pairs	1.262209000	20	0	B' D' R F' U2 D' L' F L' F' U2 R2 D2 L2 F' D2 R2 B2 U2 D
+random-370	uniform-pairs	0.908834000	20	0	R L B U' L' D B R' L2 U2 B2 L2 U2 F' D2 B' R2 B' D B
+random-371	uniform-pairs	10.742292000	20	0	B L' F R' U' L' D R' L U2 R' F' L2 D2 F' U2 B2 L2 F' R2
+random-372	uniform-pairs	0.628000000	20	0	D2 B U2 F' L U F' R2 D2 L2 B2 U' R2 U L2 U F2 L' U' B
+random-373	uniform-pairs	0.176666000	20	0	L2 U2 F2 L' U L' B' U2 B2 R F2 L F2 L' B2 L' D2 L' D2 B
+random-374	uniform-pairs	0.218375000	20	0	R' L2 F' D2 B' L2 U2 F L2 B2 L2 B2 D R F L F2 U' L2 R
+random-375	uniform-pairs	0.279708000	20	0	L' D R2 B2 D2 F2 U R2 U2 L2 D' F2 R' B' D2 B2 U B D' F
+random-376	uniform-pairs	0.781959000	20	0	F R L' U2 F' D2 F2 L R2 F2 U' L2 D F2 U B2 U' L2 F' D2
+random-377	uniform-pairs	0.280417000	20	0	D R B R' F R D' L2 D2 F2 R2 F2 R D2 F2 D2 F2 L' F' L'
+random-378	uniform-pairs	0.499709000	20	0	F2 U' R' F D' R D' R D2 B' D' F2 L2 F2 L2 D' R2 U R2 F2
+random-379	uniform-pairs	0.475208000	19	0	R D R' U' D' R U2 B D B2 R2 L2 F D2 B' D2 L2 D2 B2
+random-380	uniform-pairs	7.929333000	20	0	F' D2 F' R' D F2 B' U' F2 R L2 U' D2 B2 U R2 U R2 F2 B'
+random-381	uniform-pairs	0.116833000	20	0	L F' B2 R F' R U' R' D2 R' F2 B2 L' F2 R' D2 R' D2 L D
+random-382	uniform-pairs	0.142292000	20	0	U L2 F2 U' B2 R' U F R2 F2 D2 L2 U2 B L2 B' R2 B' R' D2
+random-383	uniform-pairs	0.894541000	18	0	B' D' L' U' R' F' R' L2 U' L2 B2 U2 R2 F' U2 R2 F D'
+random-384	uniform-pairs	0.133584000	20	0	D' R' F' B2 L' D' F2 B' L' U2 B' L2 F B2 U2 L2 D2 F R2 L2
+random-385	uniform-pairs	9.190625000	20	0	L B R2 F2 U' B' R2 F' R' U' R2 F2 U2 B2 L2 U2 L2 U L F2
+random-386	uniform-pairs	0.097084000	20	0	L2 F2 L' F2 R F' L' F2 U F2 R2 D2 R2 B2 L2 D R2 D L' U
+random-387	uniform-pairs	0.091333000	19	0	R' U' R B D' R' F B L2 U' D2 L2 F2 U B2 U' F2 D L'
+random-388	uniform-pairs	0.375375000	20	0	L2 U' F2 D2 L' U2 R D2 F2 U2 R D2 L2 D' F' U2 R' D2 L' R'
+random-389	uniform-pairs	2.160417000	18	0	R U' F2 D2 B2 D L2 D R2 F U' B R' B' R B' D' U'
+random-390	uniform-pairs	0.144125000	20	0	U2 B' D2 R B' U' R F' R F2 U2 L2 F2 U R2 F2 R2 D' L2 U
+random-391	uniform-pairs	1.558750000	19	0	B' R' L2 B U' L2 D' U2 R' U2 L' U2 B2 L' B2 L F R2 F
+random-392	uniform-pairs	0.079250000	19	0	B' R' D' B' D' B' L D2 B2 D2 L2 D2 F' D2 F L2 B' L2 D'
+random-393	uniform-pairs	1.014667000	19	0	F' B D R2 U2 L B U' R' B D2 B2 L B2 D2 L' D2 L2 U2
+random-394	uniform-pairs	12.850667000	20	0	L B R U R' L2 B' L' B' U' R L2 F D2 L2 B2 D2 B' U2 B'
+random-395	uniform-pairs	0.227625000	20	0	R D F' L2 D L D B2 R' D2 L F2 U2 R' F2 L F2 L U' B
+random-396	uniform-pairs	2.345791000	19	0	B2 D' L2 B R2 F U2 B R2 B' F' R' F U' L2 D2 R2 D L'
+random-397	uniform-pairs	0.064459000	19	0	F R2 U' R F2 L' F' D B2 D2 B2 R2 F2 R2 U2 L' U2 R' B2
+random-398	uniform-pairs	0.241542000	20	0	B D' F R B2 U2 R' U' D2 L B2 R' F2 U2 F2 R' F2 R U2 B'
+random-399	uniform-pairs	0.136375000	20	0	B2 R2 D' R' B2 D F' D' R2 B2 D2 R2 U R2 F2 U B2 U R B'
+random-400	uniform-pairs	1.036708000	17	0	F R F2 U F L2 F' D' F B2 D2 F D2 F R2 L' U'
+random-401	uniform-pairs	0.037417000	20	0	B' L2 U R2 D2 U' L2 F2 D F2 D' F2 R2 F' L B2 F' U B' F
+random-402	uniform-pairs	0.269333000	19	0	U2 B L2 U R2 F' R' D' L' F' B2 L2 B2 D' F2 L2 U R2 F2
+random-403	uniform-pairs	0.118250000	19	0	R' B' D2 L' F R2 B U2 F' D' L2 U F2 U2 L2 F2 U' B2 D2
+random-404	uniform-pairs	1.969125000	20	0	L D F' U2 R2 F' U2 L2 D2 U2 F' U2 R' F2 D L' U' F2 L U2
+random-405	uniform-pairs	0.449041000	18	0	R2 B' D2 F2 R2 B R' F' D R' F2 U L2 F2 U2 L2 U' B2
+random-406	uniform-pairs	0.732083000	20	0	L2 D' L F2 R' D2 U2 R D2 B2 D2 U2 L' D R D' U' L' F' U'
+random-407	uniform-pairs	0.426250000	20	0	D2 L2 B2 L2 B' L2 B L2 D2 B' R2 D' R D' U' L2 B2 U L2 B2
+random-408	uniform-pairs	0.491834000	20	0	D' F' L' F R2 L2 B' R U2 R' B2 D2 R2 F2 R' F2 D2 R' D F2
+random-409	uniform-pairs	0.075250000	20	0	R2 U2 L D' B2 L F' U F' L2 U2 B R2 D2 F' R2 F' R2 F R
+random-410	uniform-pairs	2.425792000	20	0	D2 L2 U2 D2 B' R D' R F2 L2 D2 F L2 F R2 F B' L2 U L'
+random-411	uniform-pairs	0.131042000	20	0	D' B R U' L' D2 R U2 D' B2 D2 F2 L2 D2 R2 F2 U F2 B D
+random-412	uniform-pairs	0.280541000	20	0	B U' D2 B F2 L2 B' D2 F2 R2 F' R2 F' U B L' U2 B' L2 U
+random-413	uniform-pairs	1.022208000	20	0	U B R U' F L D U2 F D2 F D2 L2 U2 B2 U2 B' D' F R2
+random-414	uniform-pairs	0.905292000	20	0	L' D' F U2 F' R F R2 L2 U' B' L2 U2 B U2 F' D2 F' R2 B'
+random-415	uniform-pairs	54.686667000	20	0	L F' R U B' L U2 D2 B R2 D' R' U B2 U' L2 U' B2 U2 D'
+random-416	uniform-pairs	0.054750000	20	0	D L D B2 R' B R F' B2 U F2 U L2 U R2 D' R2 D' R2 F'
+random-417	uniform-pairs	3.431833000	20	0	B' D2 F2 B' D2 R' D F2 R' U2 L' B2 R2 U2 B2 U2 R F' L' F
+random-418	uniform-pairs	1.025458000	20	0	U B' L U' D2 F' B' R' U' L2 D2 R2 F' D2 L2 F U2 L2 F' R
+random-419	uniform-pairs	0.036875000	19	0	B' U R' D' F2 L F U2 F U2 R2 U2 D' B2 R2 F2 B2 U R2
+random-420	uniform-pairs	2.877500000	20	0	L2 D2 B' U2 B' U2 R2 U2 B2 L2 U R' D2 U2 R F2 D U' L D
+random-421	uniform-pairs	19.859292000	20	0	U F2 L2 F2 B D F' R' B2 R F2 U2 R' D2 F2 R B U' F2 L2
+random-422	uniform-pairs	1.542333000	20	0	F2 R2 L' U' D' L' F U' B2 D2 R U2 R' U2 B2 L' D2 R2 F' L'
+random-423	uniform-pairs	0.159000000	20	0	R2 U2 R' D2 F R' B L2 B2 U F2 B2 L2 B2 U' B2 U2 L2 D F'
+random-424	uniform-pairs	0.099875000	20	0	L2 D' L2 D2 F2 U F2 U R2 D' B2 R B U' B D R' D F U2
+random-425	uniform-pairs	0.237542000	19	0	L R2 U2 B L2 U2 B D2 F' R2 B R U' L2 F2 D R' U' B'
+random-426	uniform-pairs	0.167583000	20	0	F2 D B2 L U R' U2 D B' L B2 L2 F2 L' B2 L' U2 R' B2 R2
+random-427	uniform-pairs	1.221167000	20	0	U' L' U' D' R' F' B' U' R' L2 D2 L' F2 L' F2 B2 L' D2 F L
+random-428	uniform-pairs	0.293125000	20	0	R' U2 B' R2 F2 L B R' U2 D2 F2 U2 R' U2 R2 L' D2 R2 U' R
+random-429	uniform-pairs	1.675917000	20	0	D2 B L2 U2 F' R2 F R2 D2 B' U R U' B2 L' U B F R B
+random-430	uniform-pairs	0.076208000	20	0	D2 B' R L D2 F2 D' L U D2 F R2 F L2 B' U2 F2 L2 F' L2
+random-431	uniform-pairs	20.487959000	20	0	L B' U' R F L' F D' U2 B2 R' B2 R' F2 L2 F2 U2 F' D F'
+random-432	uniform-pairs	0.631917000	20	0	B2 R' U' L2 B D' L D2 F' D R2 D' F2 U2 D L2 F2 B2 D B
+random-433	uniform-pairs	0.192792000	19	0	L' F2 D2 L2 U B2 L2 R2 U B2 D2 F U2 L B' U B' L2 F2
+random-434	uniform-pairs	0.066833000	20	0	F' D2 B L2 U R F2 U' B R2 B' L2 D2 R2 D2 F' R2 F' D2 B'
+random-435	uniform-pairs	14.941625000	20	0	D' B U2 L2 U F B2 R F2 L2 F' B L2 F' U2 B D2 R' B2 D
+random-436	uniform-pairs	0.190084000	20	0	F L2 R2 U2 B2 R2 U2 F' U2 L2 B' U' F2 R' D' U' B U2 R2 B2
+random-437	uniform-pairs	3.166917000	20	0	U2 F R F2 D B D R' B2 R' B D2 R2 B2 D B2 U2 R2 L2 D'
+random-438	uniform-pairs	27.273084000	19	0	L2 F L B2 R2 U' B2 U F2 D' U2 F' D2 F2 L R2 D B U'
+random-439	uniform-pairs	14.674416000	20	0	D2 B2 R B2 U' L' F2 B D' F D2 B L2 B R2 D2 B2 D2 U B2
+random-440	uniform-pairs	1.394166000	20	0	D F L' D' B2 D L2 U L2 F2 L2 F2 D' B' F' U B L' R' D2
+random-441	uniform-pairs	0.076916000	20	0	R D' B2 L D F2 D B' L2 B2 U2 F' D2 R2 F2 L2 B' R2 D' L'
+random-442	uniform-pairs	0.023875000	16	0	L' U2 F' D2 L2 F L2 B R2 F L' B' F2 U L' F'
+random-443	uniform-pairs	0.421333000	20	0	R2 F' R2 D2 R B2 U2 R2 D2 R B2 U2 L U B2 U2 L R2 D2 L
+random-444	uniform-pairs	0.077208000	20	0	F L U F U D R' F2 U2 L2 F' D2 L2 F D2 B2 R2 B2 R' U'
+random-445	uniform-pairs	0.136250000	20	0	F' R2 D' L2 B2 U B' L D2 F D2 B2 L2 F' B' U2 R2 U2 L2 U
+random-446	uniform-pairs	0.150500000	20	0	F' R F' U2 R F L' F2 U F2 R' F2 R' U2 R' B2 D2 L2 U2 L'
+random-447	uniform-pairs	0.020792000	19	0	B2 L2 B L2 B' D2 B U2 F D2 F2 D' B2 U R' D L U' F2
+random-448	uniform-pairs	0.199750000	17	0	U2 B' D2 R' F2 D' F L U2 F2 R L2 F2 U2 D2 B U'
+random-449	uniform-pairs	132.819750000	20	0	R2 B' L D F R' D' F D F' B U D2 B2 U2 B L2 F B2 D2
+random-450	uniform-pairs	0.207708000	19	0	L' U B R' F L' D' R B2 R F2 B2 L U2 L2 F2 B2 U R2
+random-451	uniform-pairs	0.181625000	20	0	D2 L B2 L2 R U2 L' D2 U2 L' F2 B' U' R2 U2 R' B' F' L2 D
+random-452	uniform-pairs	0.142334000	18	0	D L' U' R F' B' U' F D2 R2 F R2 L2 F L2 U2 R2 U
+random-453	uniform-pairs	4.351583000	19	0	L2 U2 D' F2 B2 L F2 B' D' R' F' L2 F2 B2 D' L2 U' R2 U'
+random-454	uniform-pairs	0.354167000	20	0	R2 B2 U2 F' D2 L2 U2 B2 F' L2 B U L2 R2 B U F' R' U2 R'
+random-455	uniform-pairs	0.092708000	20	0	D R B' L2 F U F R L2 F2 B R2 B2 U2 B U2 L2 D2 F2 L2
+random-456	uniform-pairs	0.097750000	20	0	F D B2 U' R2 U B2 F2 R2 U R2 D2 B' R F' L' R B D F2
+random-457	uniform-pairs	0.968000000	20	0	L D F2 L D B U B2 D' B' R2 U2 D2 F U2 L2 B' U2 L2 D'
+random-458	uniform-pairs	0.152083000	20	0	R D B U' B' U F' R' F2 R F2 U2 D2 R B2 R' F2 R' F' D'
+random-459	uniform-pairs	5.392292000	20	0	D R U B' U' L' B U' R' F' U' D2 F2 D2 F2 R2 U2 D' B2 R
+random-460	uniform-pairs	0.118125000	19	0	R' U' B D R F2 R' B U2 F2 U2 R2 L2 F' D2 F' R2 F' L'
+random-461	uniform-pairs	0.424458000	20	0	D' B2 L' F' B2 U' L B2 U2 L2 D F2 B2 L2 U' F2 L2 F' U2 L
+random-462	uniform-pairs	0.602875000	20	0	D F R2 D' F' U' B' U' L F2 R2 B2 D R2 B2 L2 B2 U B2 F
+random-463	uniform-pairs	0.111750000	19	0	L' U2 R F2 R2 U' D2 R' F2 L2 D2 F' L2 B' U2 L2 F U2 R
+random-464	uniform-pairs	3.040875000	20	0	L F' D' U2 F2 L2 F' D2 B F U2 L2 F' D U2 R' F D L' U
+random-465	uniform-pairs	1.287500000	19	0	B L2 U2 D2 L' F R2 U L2 F' L2 B' D2 B U2 L2 B' D F2
+random-466	uniform-pairs	1.384917000	20	0	L U F D2 U' R2 U R2 F2 D R2 U2 R2 B' L R2 F D' R U2
+random-467	uniform-pairs	7.479250000	20	0	F' B2 U' F' B2 U2 R' U' R2 D' F2 U B2 U R2 D R F' L2 U'
+random-468	uniform-pairs	0.529166000	20	0	D L' B2 R2 B2 R2 D2 L' D2 U2 B2 U2 B' R F' R2 U' B' L2 U
+random-469	uniform-pairs	0.311875000	20	0	R D2 B2 R2 B2 L F2 L' R' F2 D2 B F' U' B D2 R F2 L' U'
+random-470	uniform-pairs	0.601208000	19	0	F' B2 U F2 R U B U' F2 L U D F2 R2 B2 R2 U' B2 L2
+random-471	uniform-pairs	0.437083000	20	0	B' R' F2 U2 F2 D2 F2 L' B2 L' D2 B2 U' F2 U2 F' D' L2 B' U'
+random-472	uniform-pairs	1.037917000	20	0	B D2 L2 U D' L' D' R F2 R U2 B2 R D2 L' B2 D2 B U2 F
+random-473	uniform-pairs	1.062375000	20	0	L2 B R2 L' B L2 U' R' D L2 D' L2 B2 D' F2 B2 D' B2 R D2
+random-474	uniform-pairs	0.331625000	18	0	D2 U R' B2 L U2 R2 D2 B2 L F' L B' L B2 F L' U'
+random-475	uniform-pairs	0.347709000	19	0	D' L2 F' L D' F' B' U F' B' L2 B2 L2 D2 B' R2 L2 U2 R2
+random-476	uniform-pairs	0.564667000	20	0	F2 L B U L' B' R U' D' B' L2 D2 L2 F2 U' F2 U B2 U' F2
+random-477	uniform-pairs	0.119000000	20	0	R2 D2 L U2 F2 L F2 D2 L' U2 L B2 U F R2 D2 F U' R' F2
+random-478	uniform-pairs	1.639250000	20	0	F R U L U B L2 U R' D F2 U2 L2 U2 R F2 L U2 R' B2
+random-479	uniform-pairs	0.900834000	19	0	F R2 F R2 D' R' L2 D B' L2 D' B2 R2 U R2 F2 D L2 F
+random-480	uniform-pairs	0.494417000	20	0	D B2 D2 R B2 R2 D2 F2 U2 R U2 L' B' R' U F2 U2 L' F2 U'
+random-481	uniform-pairs	0.282416000	20	0	R2 B L2 B' R2 F' D2 U2 R2 F' L2 D R' U' L2 F' D' F' U2 R
+random-482	uniform-pairs	0.491625000	20	0	U2 F' L' B2 U F2 R L B R F2 R2 F2 U2 B2 U2 L2 U' R2 F2
+random-483	uniform-pairs	0.058667000	20	0	U' L2 R2 U' R2 D R2 U F2 U2 R2 U B R D L' U2 B L' B2
+random-484	uniform-pairs	0.041000000	20	0	R D2 F2 L2 B2 L' R2 F2 R U2 B2 U2 B' R' F D' R' F D2 R'
+random-485	uniform-pairs	0.088875000	20	0	F2 R L F' U' L B U' D' L F2 L2 B2 U2 B2 R F2 R U2 R'
+random-486	uniform-pairs	0.196167000	20	0	U' R' U F' L' U B R2 D' B R2 F B2 L2 D2 B' U2 F2 U2 L2
+random-487	uniform-pairs	0.589625000	20	0	D B2 U' R L' B R2 F2 D' B' D F2 D' B2 D2 F2 L2 D L2 F2
+random-488	uniform-pairs	1.600083000	20	0	B2 R2 L' B2 L U2 D R D2 R2 F' U2 F' R2 F R2 L2 D2 U' R'
+random-489	uniform-pairs	0.026083000	20	0	U2 R' B L F U D R2 F' L2 U2 F2 D' F2 R2 U' R2 B2 D2 F2
+random-490	uniform-pairs	0.126167000	20	0	U2 D2 B R' L F U' R D2 R B2 L D2 R U2 F2 L2 B2 U L'
+random-491	uniform-pairs	11.353250000	20	0	L U L' U F B2 U L D R' U B' L2 F2 R2 F2 U2 R2 U2 B2
+random-492	uniform-pairs	0.144917000	20	0	B2 R U' L B L D' L2 U2 L' U2 R F2 L2 U2 L F2 B2 D B'
+random-493	uniform-pairs	2.359542000	20	0	D R' U F2 B' D L U R F L F2 L D2 L' D2 L2 B2 D2 L2
+random-494	uniform-pairs	0.075125000	20	0	F2 L' D' F' D R2 D' F' R2 L2 F2 U2 F2 D2 R2 U B2 D' F2 R'
+random-495	uniform-pairs	0.340833000	20	0	F' B U F D2 B' U' R' F2 L D2 R2 B2 D' F2 B2 D' F2 B2 L2
+random-496	uniform-pairs	2.094292000	20	0	D2 L2 D2 B F2 R2 B2 F2 R2 F' R F L D' U' R' D F2 R' D'
+random-497	uniform-pairs	2.267084000	20	0	B2 L2 B2 L2 U F2 U2 B2 D F2 R B' F' L U' L2 F R' F2 R'
+random-498	uniform-pairs	0.524667000	20	0	U' F2 L2 D R2 D U2 B2 U L2 U B' F L B' R D R' U2 R2
+random-499	uniform-pairs	0.325583000	17	0	U' F' R2 B D R B U L F2 R2 U2 F' D2 F U2 R2
+random-500	uniform-pairs	0.172459000	20	0	U R D' B' L2 U F2 B2 U F' U2 B2 D2 R2 F' L2 B' L2 F' U2
+random-501	uniform-pairs	0.366917000	19	0	U D2 L U L U2 B2 U' F2 U2 F2 L2 B2 R2 B' U2 R2 U2 D2
+random-502	uniform-pairs	1.342667000	20	0	L' D B' U2 R2 B R F' B2 D' R2 D2 R2 B2 R' L2 F2 B2 U2 L'
+random-503	uniform-pairs	0.065667000	20	0	L2 B2 D' U2 R2 F2 R2 B2 U2 L2 D B2 R' F' D2 F L' F D' R2
+random-504	uniform-pairs	0.099000000	20	0	F' B2 R D2 R2 L D' B D L2 D' F2 R2 D F2 L2 U R2 F2 L'
+random-505	uniform-pairs	1.375750000	20	0	U' R' L' D R F' R2 F' U' B R L U2 F2 D2 B2 R2 U2 L' F2
+random-506	uniform-pairs	0.361375000	20	0	B' L U2 D F' L' B2 R' F U2 L2 U2 B' U2 D2 L2 B D2 F L'
+random-507	uniform-pairs	0.155375000	20	0	R F R F U2 D' F R F B R2 F' U2 B L2 F2 U2 L2 B' D
+random-508	uniform-pairs	0.103334000	20	0	R' D2 B2 U F L2 B2 L B2 U L2 D B2 U' B2 L2 B2 L2 U' F2
+random-509	uniform-pairs	10.111917000	20	0	B U F U R' U' D2 R' L D R' D2 B2 D2 B' D2 B' R2 D2 B2
+random-510	uniform-pairs	0.079250000	20	0	B' D R' D' B' R U D' F2 R2 B R2 D2 F' U2 F L2 B D2 L2
+random-511	uniform-pairs	0.184041000	20	0	F' L D F2 L D' R' B2 R2 B2 U B2 U' D' R2 L2 D R2 U R'
+random-512	uniform-pairs	0.232041000	20	0	D' U B2 R2 D B2 R2 U' R2 F2 R2 U2 R' U2 B2 U' F' L2 R' U2
+random-513	uniform-pairs	0.099500000	20	0	F' D' R2 B' R' U R F' L2 F2 D L2 F2 U' B2 U' F2 D B2 R
+random-514	uniform-pairs	0.270417000	20	0	R2 B2 U' L2 D2 B2 L2 U L2 U' R2 D2 L' B2 F D2 U' B2 F L
+random-515	uniform-pairs	0.521709000	20	0	L U2 F' D2 L2 D2 B' U2 B R2 F' L2 U R2 D2 F' L' B L U'
+random-516	uniform-pairs	0.448209000	20	0	L U L2 B2 L' U F' U2 B R2 U F2 B2 D F2 U R2 U' B2 R'
+random-517	uniform-pairs	0.539792000	20	0	F' R2 F R' U' L B2 U2 L' B' L2 F2 B2 U2 D' B2 D2 B2 R2 B2
+random-518	uniform-pairs	1.281375000	20	0	D B2 R2 F2 R2 D2 F2 D F2 D' F' L D U' L' B R' B2 U' B2
+random-519	uniform-pairs	3.820917000	19	0	B' F2 R' F2 R' F2 D2 U2 L2 F2 U' B L' F R' B R F D2
+random-520	uniform-pairs	0.166542000	20	0	R B2 R2 L U B L2 F2 U' F B2 R2 B' U2 B U2 L2 F' D2 L2
+random-521	uniform-pairs	0.787084000	20	0	R' U' F' D' R U2 B U L2 U' F2 U' L2 D' B2 R2 D2 B' U B'
+random-522	uniform-pairs	0.031125000	20	0	R2 D B2 U B2 L2 B2 U2 F2 U' R2 U R' F' L' F' U' F R2 B
+random-523	uniform-pairs	2.703084000	20	0	D L2 R' B2 L U2 F2 U2 L2 F2 R2 B' R' D L' R D F2 L U
+random-524	uniform-pairs	0.361708000	20	0	R2 F2 U' L2 F R D2 L' D2 B' U L2 F2 L2 D' F2 U R2 U2 B2
+random-525	uniform-pairs	0.600208000	19	0	L' D' L D B' R L2 D' B L2 B2 U2 F2 D' F2 U' B2 U F'
+random-526	uniform-pairs	0.327333000	20	0	D' F R2 B2 U F2 D' L2 D' L2 B2 D L2 F' R U' L D' R' D2
+random-527	uniform-pairs	0.238542000	19	0	B' L R2 U' F2 U2 R2 D2 L2 D' B2 U2 B' L' U2 F' U2 R2 F2
+random-528	uniform-pairs	0.156250000	20	0	F' B R' D B R F' D R' F2 L2 U2 R2 B R2 L2 B L2 F2 R2
+random-529	uniform-pairs	1.196375000	19	0	R2 F' R U' R F2 B' L' D R2 U2 D2 B U2 F2 B R2 F' D
+random-530	uniform-pairs	2.585250000	19	0	D L' U L' D' R' F U F' U B2 U2 B2 L F2 D2 L F2 L
+random-531	uniform-pairs	0.461583000	20	0	L' D F2 D' F' L D' R D R2 D B2 D F2 D' R2 D R2 B R'
+random-532	uniform-pairs	0.238959000	20	0	U' R F R U F2 D' F' D2 B2 U2 B L2 B U2 R2 F2 L2 U' F2
+random-533	uniform-pairs	0.180375000	20	0	F2 L B' D B2 L D' R L2 U2 D2 R B2 L F2 L' F2 R2 F R2
+random-534	uniform-pairs	5.523875000	20	0	B R U' L2 B' U L R2 D F2 D B2 U2 L2 U' R2 B' D F U'
+random-535	uniform-pairs	1.761166000	20	0	F2 U' L' F D2 L' B2 L' U2 F D2 R' L2 F2 B2 U2 R' B2 R B2
+random-536	uniform-pairs	0.111125000	20	0	R' B2 U F2 B L F U2 R2 U2 F2 U' L2 B2 R2 U R2 D L F2
+random-537	uniform-pairs	1.962333000	20	0	L' B' D2 F2 R2 B2 U' L2 D2 F2 D L2 B' L D' F2 R F' D F
+random-538	uniform-pairs	1.844041000	19	0	U L2 F2 L2 B2 R2 U' B2 U L F D F U2 B' F' U L' F'
+random-539	uniform-pairs	1.026375000	20	0	F D F2 U' L D' B U L' R2 D' B2 U' F2 R2 F2 L2 U B2 F
+random-540	uniform-pairs	0.024042000	20	0	F' L B2 U' R L D B' D2 B2 R F2 R B2 R' B2 L B2 L U2
+random-541	uniform-pairs	0.992708000	18	0	U' B U2 F2 D' L' B R2 U F2 U2 R2 L F2 L' B2 R' F
+random-542	uniform-pairs	0.163667000	20	0	B U' R2 D' B L U F U' R L2 U2 L' F2 R U2 F2 L2 U2 R
+random-543	uniform-pairs	0.222042000	20	0	B L2 D2 F2 R B2 L U2 R U2 L B2 F L U R' B' D2 L D'
+random-544	uniform-pairs	0.201083000	20	0	F' L2 U' R2 D' R2 B2 D2 B2 U' R2 U2 R' B U' L F' L2 R' U
+random-545	uniform-pairs	0.126417000	20	0	F2 D' F' D2 F' U2 F' L' U2 L2 U2 L2 F L2 F2 B' D2 B' L2 D'
+random-546	uniform-pairs	0.429500000	20	0	L2 U2 L2 U F2 U2 B2 D' F2 U2 R2 L B' R F' R D2 L' B2 R
+random-547	uniform-pairs	0.047917000	19	0	R2 B' D R2 U' D L U' B F2 R2 F2 R2 B2 D2 F2 U L2 U
+random-548	uniform-pairs	0.599666000	20	0	B2 R2 L U B L2 F' R2 D R2 B2 D F2 U' D' L2 F2 L B' U
+random-549	uniform-pairs	5.393750000	20	0	F' D2 F D R2 D2 L B R U2 B' U2 F2 L2 D F2 U' B2 R2 D2
+random-550	uniform-pairs	0.728125000	20	0	D' F B2 R' B' D2 F L2 F D L2 U' F2 R2 D F2 D' L2 D' L'
+random-551	uniform-pairs	0.110791000	20	0	U2 D2 L2 U' D' F' D' B2 L R2 F2 D F2 R2 D2 R2 D' B2 D2 F2
+random-552	uniform-pairs	0.188709000	20	0	U' R B2 R2 D2 L' D' L2 D R2 F U2 F B2 D2 L2 D2 B L2 D2
+random-553	uniform-pairs	2.557416000	19	0	L' D2 F2 D2 F2 U' L2 U B2 U2 F U F L' B R D' B R2
+random-554	uniform-pairs	0.932209000	20	0	B R2 U' L F2 R B U' R' B2 D2 L2 U B2 U' B2 L2 U B2 R
+random-555	uniform-pairs	0.748417000	20	0	B2 L2 U' F' D2 R L U2 B2 U R2 U2 B L2 U2 B' L2 U2 B2 R2
+random-556	uniform-pairs	0.883458000	20	0	F R' U2 B L2 F' D' F' B2 U' B2 U F2 U L2 U' R2 D L D
+random-557	uniform-pairs	0.267500000	20	0	U' D2 R2 B F L2 U2 R2 D2 R2 B L2 R F U L2 B U R2 D
+random-558	uniform-pairs	0.094541000	20	0	B L D R2 D2 F R' D' L2 F2 B2 U L2 F2 B2 U2 F2 D2 L D2
+random-559	uniform-pairs	0.119625000	20	0	R2 B2 U2 B' R2 B2 U2 F R2 F R2 D' L' B R' U' F2 U2 L F2
+random-560	uniform-pairs	1.102333000	20	0	F' R' L F' U2 L' B2 R' B' R U2 R2 B2 U' F2 U2 F2 B2 U' L2
+random-561	uniform-pairs	0.252667000	20	0	D2 F B2 U2 L' B2 R2 U' F R2 U2 B2 U2 R2 B' U2 R2 B D2 L'
+random-562	uniform-pairs	0.118917000	19	0	R F L F2 L U2 B2 U' F2 R2 U2 R' U2 F2 R2 U2 F2 D2 L'
+random-563	uniform-pairs	0.335208000	20	0	D' B2 R2 D' R2 B2 U R2 D2 L2 B2 L' B2 D U B' R2 D2 U' F'
+random-564	uniform-pairs	3.188334000	20	0	D2 L B' R2 B2 U2 F2 R2 F2 L2 R B2 R2 D' L' R2 F L' D R'
+random-565	uniform-pairs	0.372583000	20	0	R2 U' L2 U' L2 B2 R2 F2 R2 D R2 D2 F' L F' R' D2 L2 R U'
+random-566	uniform-pairs	3.106334000	20	0	U R' B' R2 F U' R' F D2 B' R' D L2 D R2 F2 D' F2 D' B2
+random-567	uniform-pairs	0.526125000	20	0	B' D L' B2 L U' B' U R2 L2 B2 D' F2 U' L2 U' D2 F' L F2
+random-568	uniform-pairs	0.401792000	20	0	R2 D2 F D' R' B2 D2 R2 D' F' B' D2 B' R2 F U2 R2 L2 D2 F
+random-569	uniform-pairs	0.288125000	20	0	B2 U2 B2 D R2 U' F2 U2 F2 R2 U2 B' L2 D2 F' R U' F' U' B'
+random-570	uniform-pairs	0.151333000	20	0	D R2 B2 L2 D F' U2 D' L F2 R2 F2 U2 B' R2 L2 U2 F' U2 B2
+random-571	uniform-pairs	2.074792000	20	0	L2 F R2 F U2 F' L2 D2 R2 B2 L' B D' U' F' L' F' R' B F'
+random-572	uniform-pairs	0.303167000	20	0	R2 D2 B2 L F2 D2 R D2 L2 F2 L2 D' B D U L' D R' B F'
+random-573	uniform-pairs	1.164291000	20	0	L2 F D' R2 F2 U R' U' D' R' L2 B' L2 B L2 F R2 B' R2 B'
+random-574	uniform-pairs	4.278250000	20	0	F D2 B' D2 R2 B L2 B2 L2 R2 U' B D2 L2 D' B2 D' R' B D2
+random-575	uniform-pairs	2.531875000	20	0	U' R B2 L2 B2 L2 D' L2 U' F2 D' F2 R' D L U2 B U' R' F
+random-576	uniform-pairs	0.354875000	20	0	D2 B U2 B U2 R2 B2 U2 F' L2 F2 U L U B2 R F' R2 F U2
+random-577	uniform-pairs	95.681541000	19	0	B D' L' F R F L2 B U2 F2 U' F2 U' F2 U F' U' F' D'
+random-578	uniform-pairs	0.755708000	20	0	R2 L D B2 R2 U2 L' B2 R2 U' F2 U2 R2 D F2 D2 F2 R' B R2
+random-579	uniform-pairs	3.096416000	20	0	U2 F R' D2 B2 L2 D2 B2 L2 D2 F R2 U2 R' U2 B' U R U2 L2
+random-580	uniform-pairs	0.249917000	19	0	R U' L2 U' D' L F L2 D' F' U2 B' R2 F2 D2 R2 F L2 U2
+random-581	uniform-pairs	0.789458000	20	0	D F U R' F2 U' D R' D R B2 R2 F U2 F2 D2 L2 B R2 F
+random-582	uniform-pairs	1.591875000	20	0	U' B2 R' L B U' B D L2 F2 R U2 R' U2 F2 R U2 R U' F'
+random-583	uniform-pairs	4.525791000	20	0	D2 B2 D2 L D2 B2 L' F2 R2 F2 D F D R B2 D L2 R2 U2 F'
+random-584	uniform-pairs	0.935709000	19	0	F' B2 U2 F2 L D' L2 B R' L' U2 D2 F2 D2 R2 B U2 F L2
+random-585	uniform-pairs	19.909708000	20	0	B' R F' B2 R2 L D R L2 U2 F2 R' B2 R' B2 R2 D L2 U2 R2
+random-586	uniform-pairs	0.256292000	20	0	D2 R' B2 L2 U' F2 L2 F2 D' R2 F2 U' F2 B' L' F2 R F' L' R'
+random-587	uniform-pairs	2.462167000	20	0	U' B2 R' D2 L F2 R2 B2 L2 F2 R' B' L' R F D R2 D F2 U
+random-588	uniform-pairs	0.068875000	20	0	B' R2 B U' R' L' F L' U R2 B2 U B2 D R2 L2 U' B2 U2 L
+random-589	uniform-pairs	0.765792000	20	0	L F2 L D' F R F B2 U2 L2 B2 D R2 U F2 U R2 L' F2 U
+random-590	uniform-pairs	0.429250000	19	0	B U B2 U L' F2 B' R' B F2 L2 F2 U R2 L2 B2 U L2 U
+random-591	uniform-pairs	1.415041000	20	0	D2 L R2 F2 R U2 B2 D2 R B2 R' D L2 B2 R F' D2 R B2 U2
+random-592	uniform-pairs	1.477000000	20	0	R2 B2 D2 U B2 U B2 R2 U2 R2 F D2 L U2 R U F2 D R2 F
+random-593	uniform-pairs	0.398500000	20	0	B' D F2 D2 R U' F' L' D R' U R2 L2 B2 R2 B2 D R2 B2 U
+random-594	uniform-pairs	0.031167000	20	0	L B2 R U2 R' F2 U2 R F2 L D2 R2 B' F' R' U2 B L' U L2
+random-595	uniform-pairs	0.121875000	19	0	L2 R2 D' L2 U2 R2 F2 L2 F2 D' L2 D2 L B' D' U' F' D' F'
+random-596	uniform-pairs	3.167625000	20	0	R2 D2 B2 R B2 R B2 D2 B2 L' B L' U' L2 B2 D U2 L' U' B2
+random-597	uniform-pairs	0.930250000	20	0	D L2 D' R' F2 B2 D2 R D' U2 F' L2 F U2 L2 B L2 U2 F2 R'
+random-598	uniform-pairs	0.393875000	20	0	F D2 R2 U2 F2 U2 F2 L2 F D2 U2 R' F2 D' U' B R2 D2 L U
+random-599	uniform-pairs	1.064292000	20	0	F' U' F R2 B2 D B R F L2 D2 L2 U B2 R2 U R2 L2 U F
+random-600	uniform-pairs	1.052833000	20	0	F L' F D F B' R' F U F R2 B' R2 B' L2 B' R2 D2 L2 R
+random-601	uniform-pairs	0.858458000	20	0	U' R' L B U2 R' U' L B' D2 F2 R2 U2 D2 B R2 D2 B2 D R2
+random-602	uniform-pairs	0.139667000	20	0	F2 D F2 R' U2 B' R2 L' U B L2 F' D2 F U2 D2 L2 B2 U2 L2
+random-603	uniform-pairs	2.330833000	19	0	B' D' L' U D2 B' D' F2 L' U2 B2 U2 F2 R' B2 L2 B U2 B2
+random-604	uniform-pairs	0.231000000	20	0	B2 U2 B' L' B R F D F D2 L2 F2 B D2 R2 D2 B' U2 F' R'
+random-605	uniform-pairs	3.191625000	20	0	U L' U' F U' F' L' F R U' L U2 D' F2 U' D2 B2 R2 U2 D'
+random-606	uniform-pairs	0.574000000	20	0	U D' F' D2 L2 F2 R L' D' L' D2 F D2 F U2 L2 F B2 D2 B'
+random-607	uniform-pairs	2.051208000	20	0	R' F' L U' R2 U' L2 B2 D2 U' B2 L2 U F U B U2 F2 L' U'
+random-608	uniform-pairs	0.110500000	20	0	F' L' D' B U2 D R' F2 R2 D R2 L2 U B2 U R2 F2 U F' L2
+random-609	uniform-pairs	0.134250000	19	0	F U D F B R' D2 R' F2 U2 D2 F' R2 D2 F B L2 B U2
+random-610	uniform-pairs	1.831416000	20	0	R2 F' L' F L F' U2 R2 U B' R2 F2 U' F2 U' D2 L2 F2 R2 B2
+random-611	uniform-pairs	0.105250000	20	0	U' B R U L2 B R2 B L' D2 F' D2 R2 U2 R2 F' B2 U2 F2 R2
+random-612	uniform-pairs	0.568417000	20	0	L2 D2 F' L2 U2 L2 F2 D2 F' R2 B2 D L2 B' D' L2 D' B2 L' D2
+random-613	uniform-pairs	0.024709000	20	0	U' D R D2 B' R2 U D F' L2 U R2 U F2 U2 R2 U' F2 D R2
+random-614	uniform-pairs	0.028834000	20	0	D F' R F D' R2 B' U' L F2 U' B2 U' B2 U F2 D2 R2 U L2
+random-615	uniform-pairs	1.695583000	20	0	D' R2 F2 R2 D' F2 U B2 L2 D R' F2 U L B D U2 L F D2
+random-616	uniform-pairs	1.354375000	20	0	L' B' R D' L U2 R U' L D2 F2 D2 B2 L F2 D2 B2 U2 B D'
+random-617	uniform-pairs	0.100750000	20	0	D R' F R U' B R' U' F2 B2 R' U2 L' D2 L' B2 R2 F2 U2 R'
+random-618	uniform-pairs	0.365833000	20	0	F' R F2 R D2 L U2 L' U2 B2 R' U2 D F U R D' L2 B D
+random-619	uniform-pairs	0.317500000	20	0	L2 F2 L B2 L' D2 L2 R' B2 R U2 D B2 L' U2 B' U B L R
+random-620	uniform-pairs	2.479042000	20	0	D L F D2 L2 B D2 U2 R2 F' R2 F L B R D' U L' U F'
+random-621	uniform-pairs	0.358709000	20	0	R D' L2 B' D2 R2 F' D2 U2 B' L2 F' L2 U' F D' B2 F R F'
+random-622	uniform-pairs	1.531875000	20	0	L' F2 B L2 B' D F' B2 U' L' U L2 D2 R2 D R2 F2 L2 F2 U
+random-623	uniform-pairs	0.132792000	20	0	R' U' R2 D2 B2 F2 D' F2 R2 D F2 U' L F R2 D U2 B2 R' F
+random-624	uniform-pairs	0.224375000	20	0	D' B2 D' R U' F2 B' U2 R2 U2 R' D2 B2 R2 F2 R U2 L2 D R
+random-625	uniform-pairs	0.085041000	20	0	R' L' U F2 D L' U2 R F R' F2 R' F2 U2 R2 B2 L' B2 L2 F2
+random-626	uniform-pairs	1.133000000	20	0	U' R' L B2 R2 F' U' B U2 L2 F L2 F' U2 R2 F U2 L' B' D'
+random-627	uniform-pairs	2.963958000	20	0	D' F R' B2 U2 F2 D2 R F2 D2 R U2 D' F' L U' F2 U' B D'
+random-628	uniform-pairs	0.057750000	20	0	B L' F B D2 R' F L2 F L2 U2 D' F2 R2 L2 U' L2 F2 D' L2
+random-629	uniform-pairs	0.128834000	20	0	F R2 U B R F B L2 U L2 U2 L D2 L' U2 R D2 R B2 R'
+random-630	uniform-pairs	0.073500000	19	0	B' U F R' U' D' R2 L B' R2 F2 B2 R2 U' F2 U2 F2 L2 U
+random-631	uniform-pairs	0.176250000	20	0	D B' L' B R2 L D' F D2 F2 L2 U2 F2 L2 B2 D2 R D2 R U2
+random-632	uniform-pairs	0.090709000	18	0	R' F' L2 U2 B' F' D2 R2 B' D2 B U R B2 U L2 F D'
+random-633	uniform-pairs	0.096709000	20	0	R' D B R2 B R' B' R B2 L2 U2 D2 R D2 R' F2 R' U2 D2 F
+random-634	uniform-pairs	6.031250000	19	0	L2 F' D R L2 U' R2 U L B' F2 L2 U F2 U' D2 B2 U L
+random-635	uniform-pairs	0.189583000	20	0	D L U R2 D L' F L' R2 D2 L2 U2 B' U2 L2 F' B' D2 B' R
+random-636	uniform-pairs	1.223041000	20	0	U' L' D' F' L' F R2 U R U2 F2 D' R2 D' R2 L2 F2 U2 R2 L'
+random-637	uniform-pairs	0.174250000	20	0	B2 D2 R' L2 B D F L' U2 D2 B' R2 B R2 B2 U2 F U2 L2 F2
+random-638	uniform-pairs	20.434583000	20	0	U2 L2 D' B2 U F2 D R2 F2 B U2 L R U F U L U L R
+random-639	uniform-pairs	0.287125000	20	0	R2 U2 R2 D' F2 D2 U B2 U F2 U' R' F' R' F2 D2 L2 R' F' R'
+random-640	uniform-pairs	0.100292000	20	0	U F2 D' R2 D F2 L2 R2 U' R2 D2 F2 B L' F2 D2 B' L2 B U'
+random-641	uniform-pairs	0.164042000	19	0	R' B D F' B R B2 R' F L2 U F2 L2 D2 R2 D2 B2 L2 F2
+random-642	uniform-pairs	0.557084000	20	0	R' F2 R F2 U' B' L U D' F2 R2 F2 B2 U2 D' R2 D' F D2 R2
+random-643	uniform-pairs	0.162833000	20	0	R' U2 L2 U' F2 D2 R2 U F2 L2 D' U' R' F L F' L U' F U'
+random-644	uniform-pairs	1.301667000	20	0	F' L2 D2 F2 L2 F U2 B L2 B' D' L2 D' F D' L' U' B' R' F'
+random-645	uniform-pairs	14.467042000	20	0	L F D R' L2 F L' R2 B U2 F D2 B2 R2 U2 F' L' F' U2 R'
+random-646	uniform-pairs	0.157000000	20	0	B2 L B2 D2 F2 U' F2 U' B2 D L2 D F2 B L' F R U' R' D
+random-647	uniform-pairs	0.072209000	20	0	L B' D2 L F D R' L' B U2 L2 U L2 F2 D B2 U B2 L2 U
+random-648	uniform-pairs	2.626833000	20	0	U2 B' R2 U2 R2 B2 D2 U2 R2 F' U L2 F U2 R U L' D' B R2
+random-649	uniform-pairs	1.356541000	20	0	U L2 D2 F L2 B' D' R2 L U L' D2 R2 L' U2 B2 D2 F2 D2 L'
+random-650	uniform-pairs	2.079292000	20	0	D2 R2 B2 U2 F2 R2 U2 L2 D' B2 L R B' D L2 U2 F2 D2 F' L2
+random-651	uniform-pairs	0.184042000	20	0	U2 B2 D2 L F2 D2 L' U2 L' R2 F2 U R' D' U R' B' D' F' U'
+random-652	uniform-pairs	0.274291000	19	0	F' D' F2 U' F U2 F' B2 R F2 R' F2 L' U2 B2 U2 L2 U L'
+random-653	uniform-pairs	0.146417000	20	0	D' B2 R2 D B2 L2 R2 F2 R2 D U2 R' U' F U B D F' D' R'
+random-654	uniform-pairs	0.631042000	20	0	L2 D2 F' L2 B2 U D' L F2 U' B2 D F2 L2 F2 R2 D' R2 D' R2
+random-655	uniform-pairs	4.225500000	20	0	D' U2 R' B2 L F2 L' R' D2 F2 R2 B U B' U' B' F R2 U R'
+random-656	uniform-pairs	0.485708000	20	0	L2 F2 B' D2 R D' F' D' R' D B2 U F2 D' F2 L2 U' L2 D2 R'
+random-657	uniform-pairs	14.200084000	20	0	F2 U' F' R' L' F2 R' B R' U F' R D2 R' L2 F2 R L2 F2 B2
+random-658	uniform-pairs	0.078208000	19	0	U2 B' R2 U' B2 U' D R' U' R2 F2 L2 B' L2 F D2 F' B2 D2
+random-659	uniform-pairs	2.778833000	20	0	D R2 B2 D2 U' B2 U' B2 R2 U B' U' R B L2 D' R2 B' R2 U'
+random-660	uniform-pairs	1.896292000	20	0	F' B2 U R2 F2 U' R2 F2 D' F2 L2 R D B R' B R F2 R2 F'
+random-661	uniform-pairs	0.355417000	17	0	D L2 D' F2 U2 F2 R L2 F U2 F' L2 B2 D2 B' R B'
+random-662	uniform-pairs	12.931500000	18	0	L2 F R2 B R' L' U D2 L2 B D2 F L2 U2 D B R' F'
+random-663	uniform-pairs	1.087916000	20	0	B U2 L U' D2 L' D' U2 F D2 F U2 B R2 F R2 B U B' U'
+random-664	uniform-pairs	0.203542000	19	0	B' R U2 F2 U D2 R2 L2 F' R2 U B2 U' F2 D' B2 D' R2 D'
+random-665	uniform-pairs	0.116666000	20	0	F2 D2 R2 F2 L2 D L2 D R2 D R2 F L' D L2 U2 R' U B U2
+random-666	uniform-pairs	1.688959000	20	0	B2 R D R L F2 U' R' L' B' L2 U2 L U2 R' D2 B2 R' F2 B2
+random-667	uniform-pairs	0.021792000	19	0	D L' F2 L U' R F L B R2 D2 R2 U2 F2 L2 B' U2 R2 B
+random-668	uniform-pairs	1.194875000	20	0	U B' D2 L B R2 D' R2 U2 B' D2 F L2 F2 R2 B2 D2 R B2 D
+random-669	uniform-pairs	0.380209000	20	0	D2 B' U2 R' F2 L' B2 R F2 D2 L2 D2 R2 F R' D U F R' B2
+random-670	uniform-pairs	0.186083000	20	0	U D L2 D F2 D B2 R' U F2 R2 U2 F2 U' F2 R2 U R2 L2 D2
+random-671	uniform-pairs	0.432792000	20	0	D F' R2 U' L2 D' R' D L2 F' U2 B' D2 B' U2 F' U2 B2 R2 L
+random-672	uniform-pairs	2.781167000	20	0	F B' U2 F2 D' R F' R2 U' F L' D' R2 L2 B2 U2 F2 B2 U L2
+random-673	uniform-pairs	0.572250000	19	0	D B2 R L' F' L D2 R2 F' R2 D2 B2 R2 F2 U' B2 R2 D' F
+random-674	uniform-pairs	1.034958000	20	0	L D' R L B L F R' F2 U' L2 F2 R2 F' D2 F' D2 F2 D2 B'
+random-675	uniform-pairs	0.222791000	20	0	F L2 U B2 L2 U2 L2 U2 B2 U F2 U' F' D2 R' F' L' R2 U' B'
+random-676	uniform-pairs	0.170291000	18	0	B' L2 D2 B D2 F D2 B R2 F U' B' U2 L R2 B L D'
+random-677	uniform-pairs	0.043583000	20	0	D2 U2 B' D2 L2 R2 B R2 U2 F2 R2 U2 L' D' L D' R' U' F' R2
+random-678	uniform-pairs	1.718083000	20	0	U2 R' D' L2 U' D2 R F' R F B2 L' U2 L' U2 R D2 R' F2 L
+random-679	uniform-pairs	15.388417000	19	0	L' B' L D R' F' D2 L' D F2 U' L2 B2 D2 R D2 R2 B2 R
+random-680	uniform-pairs	0.156042000	20	0	R' B R F B L2 U D2 F' U2 L2 U B2 R2 F2 U L2 D' F2 U2
+random-681	uniform-pairs	0.326042000	20	0	R' U2 F U2 B R2 L D R B F2 R2 L2 U' R2 B2 L2 F2 U' R2
+random-682	uniform-pairs	0.072708000	19	0	F U R B' L B' R' D F L2 F D2 B' R2 U2 B U2 F D
+random-683	uniform-pairs	0.109500000	20	0	U D2 R' D R2 D B2 R' L2 U2 F U2 B2 U2 B2 L2 B R2 U2 R
+random-684	uniform-pairs	0.067917000	20	0	D L' U' B2 R L2 U' R F D' L2 D F2 D L2 B2 U' F2 B2 L2
+random-685	uniform-pairs	0.203125000	20	0	D2 R B' U R D' F' D2 R' L2 B2 U2 D' B2 L2 U R2 F2 D' B2
+random-686	uniform-pairs	0.831625000	20	0	L F' U2 D' R U F2 R' U2 B2 D2 F2 R2 U2 D2 B R2 B2 R' B'
+random-687	uniform-pairs	2.298959000	19	0	U2 B U2 R2 U2 B' L2 D2 B L' U B2 F2 L B' F L2 F' U
+random-688	uniform-pairs	0.698292000	20	0	B2 U' R' U D' B U2 L B' L2 U F2 U' F2 D2 R2 F2 L2 F2 L
+random-689	uniform-pairs	0.099375000	20	0	R U L F' L D R L2 D B R2 L2 D2 B U2 L2 F U2 L2 B'
+random-690	uniform-pairs	0.208333000	19	0	D2 R2 B2 L F2 D2 U2 R' U2 R F2 L' U' B2 L' D' U' L' U
+random-691	uniform-pairs	1.228167000	20	0	L B L' B' D2 F2 D F' L F U' D2 R2 D F2 D' F2 B2 D' F2
+random-692	uniform-pairs	1.125958000	20	0	F' D L2 B2 U2 L' D' R' U L2 U D2 B2 R2 F2 U L2 F2 B2 L
+random-693	uniform-pairs	0.300500000	20	0	L' U2 R2 F2 D2 L2 B D2 B L2 U2 L2 D' B' D' R B' R2 D L
+random-694	uniform-pairs	0.418333000	20	0	U2 B R U D2 F' U2 F U R F2 L F2 B2 D2 B2 R B2 L F2
+random-695	uniform-pairs	14.479542000	20	0	L U B R U B2 L' R2 F D2 F R2 D2 F R2 B2 D R D2 L
+random-696	uniform-pairs	1.028542000	20	0	D2 L U' L2 D' R2 F' U' L2 B D2 R' D2 F2 R D2 B2 U2 F2 R'
+random-697	uniform-pairs	0.098458000	20	0	D2 L2 B2 U' L2 B2 D2 B2 U' R2 D' U2 R B F' L2 B2 D' B R'
+random-698	uniform-pairs	5.017292000	20	0	F R' B L U2 B2 R2 B' L D' F2 U B2 L2 F2 U F2 D R' U2
+random-699	uniform-pairs	9.124541000	20	0	R' F2 U2 F L2 D B' L F R' U F2 L2 F2 D' R2 U R2 D2 F'
+random-700	uniform-pairs	0.075708000	18	0	L B' L' F R' U' B' F2 U R2 U D2 F2 L2 U2 F2 R2 B2
+random-701	uniform-pairs	0.157791000	20	0	F B L2 B U' B2 R F' B' L' B2 R F2 L B2 L2 B2 U2 F2 R
+random-702	uniform-pairs	0.142750000	20	0	F L2 U2 F2 R2 U' R2 U F2 U' L2 U' B' U2 F' L2 R B2 D F'
+random-703	uniform-pairs	0.485708000	20	0	L' D R F2 L' U L' D F' L U' D2 L2 D F2 U B2 R2 F2 D2
+random-704	uniform-pairs	0.315084000	20	0	R2 F2 D2 B' U2 B' L2 D2 B2 R2 F L F' U B' U2 L F' D R
+random-705	uniform-pairs	1.837208000	20	0	B U F R2 U' L' B' D F R2 L D2 R' D2 F2 L D2 L U2 B
+random-706	uniform-pairs	0.096375000	20	0	L2 F2 L2 U F' R2 U' R' D F2 B2 U2 F2 U2 L2 F' L2 U2 B' D2
+random-707	uniform-pairs	0.195666000	20	0	U2 R' D F2 R2 F D' R B F2 R B2 U2 D2 L' F2 R2 F2 B2 R2
+random-708	uniform-pairs	0.311834000	20	0	U F2 U' R2 F2 U' L2 R2 U2 L2 B2 R D R D F L2 D R2 D
+random-709	uniform-pairs	0.119584000	20	0	F' R2 B' L F2 B2 D' F R' U2 R2 D2 B2 L2 F2 L2 D B2 D' F2
+random-710	uniform-pairs	0.056917000	20	0	R' F2 B2 L D2 F' L' B2 U' R2 D' F2 U2 F2 U F2 U2 L2 B R
+random-711	uniform-pairs	0.417916000	20	0	B2 U2 B2 U F2 U' F2 L2 R2 F2 R2 D2 F D F L2 D' U' B L'
+random-712	uniform-pairs	1.701417000	19	0	F' R2 U B' D' L D' B2 D2 R B2 R2 U2 D2 L F2 B U' L
+random-713	uniform-pairs	0.208083000	20	0	F2 D' B2 F2 U' R2 U2 B2 R2 U2 R2 L' U2 F' R2 F2 R' U B' R2
+random-714	uniform-pairs	0.187375000	19	0	B' U' D F' D' R L' B2 U2 B' R2 D2 B R2 F' L2 U2 L B2
+random-715	uniform-pairs	10.223708000	20	0	L2 F U' D2 R D F' B' U' F R B2 U2 R2 L2 F2 U2 F' L2 B'
+random-716	uniform-pairs	0.605541000	19	0	B D B' L F D R B' L' D' B' U2 B' D2 L2 B' L2 F' B'
+random-717	uniform-pairs	2.146417000	20	0	L2 U B R2 U2 B L2 F2 U2 R2 F R2 U' B' L B R' F D' R2
+random-718	uniform-pairs	0.066375000	20	0	L F' U D2 R F R2 B2 L' U' F2 L2 B2 L2 U B2 U2 L2 U' R2
+random-719	uniform-pairs	1.411208000	20	0	F2 U R F U' L U2 D' B D2 R' F2 D2 R U2 D2 R' U2 R' U'
+random-720	uniform-pairs	0.050750000	19	0	B U F R B2 L U B2 R' L F2 B2 R F2 U2 D2 L B2 U
+random-721	uniform-pairs	0.884542000	20	0	F L' B D' F' D' L2 F D R' F2 L2 B R2 F2 D2 R2 B2 U2 L2
+random-722	uniform-pairs	0.103125000	19	0	B D' R2 U' F L2 B R' D R2 L2 F D2 R2 U2 R2 F2 B' D2
+random-723	uniform-pairs	0.737042000	20	0	U2 B R2 U R2 L D' L2 B' U2 R2 U2 R2 U B2 U' D F2 L2 B
+random-724	uniform-pairs	0.246000000	20	0	U R2 U' B2 U' R2 D B2 D2 U' L2 R U F L B2 D2 B2 D' B'
+random-725	uniform-pairs	0.029500000	20	0	U2 R' U F B U L' B' R F2 B2 L2 B2 U' B2 L2 U F2 R2 U'
+random-726	uniform-pairs	0.237125000	20	0	U B D F' L' D' F' R2 F R B2 D2 F2 D' L2 D2 R2 D' B2 U'
+random-727	uniform-pairs	0.161625000	20	0	U' L F' L' D' F R2 F' B2 D2 F2 B2 R' B2 L2 U2 F2 R U2 B2
+random-728	uniform-pairs	0.045208000	20	0	R' B2 L U2 B2 L B2 U2 L2 D2 R D2 F' R' B2 R F2 D R B
+random-729	uniform-pairs	1.011541000	20	0	U2 R B2 D2 R B D' F2 B2 R F R2 U2 B U2 B2 R2 D2 F2 L2
+random-730	uniform-pairs	0.069792000	19	0	B' D B' D B2 L' U' L D F2 U2 R2 D2 R2 F L2 U2 F B2
+random-731	uniform-pairs	0.045208000	20	0	U' F D R' U B2 D F' L' D B2 L2 D' R2 L2 D' R2 D' B2 U2
+random-732	uniform-pairs	2.274958000	18	0	B L R2 F' L2 U2 B2 U2 R2 D2 L' B D' L' B' R U R
+random-733	uniform-pairs	0.252583000	20	0	R2 D R2 U2 L2 B2 F L2 F' D2 F D2 L2 D' B L' U R' F' L2
+random-734	uniform-pairs	1.585541000	20	0	B' L F2 L2 F L' U2 L' D' B2 R B2 L D2 R L' D2 B2 R D'
+random-735	uniform-pairs	0.840167000	20	0	R' U D2 L U' D2 F2 U B' D2 F2 U R2 L2 B2 U' L2 D2 B2 R
+random-736	uniform-pairs	0.213542000	20	0	F2 U2 F2 U2 L2 R2 F2 L2 U' F2 D' L' D R2 U' B L' F' D B'
+random-737	uniform-pairs	0.365917000	20	0	L2 U' R2 F2 U F2 U' F2 U2 F2 U2 L' R F L B U2 R F U
+random-738	uniform-pairs	0.254417000	20	0	B D U F2 U' R2 U' R2 B2 D' R2 U2 B' F' L D' L F' R U'
+random-739	uniform-pairs	1.118333000	19	0	U2 F D' R U' L' F U L2 D' R B2 U2 R U2 R' B2 U2 R
+random-740	uniform-pairs	16.731792000	20	0	B2 R' D2 B' D' F' L' B2 D B' U2 R2 B L2 B2 R2 U2 F' U' F2
+random-741	uniform-pairs	0.259875000	20	0	L' F' B2 D B2 D' L' U B' U F2 R2 B2 D' F2 D R2 U2 R2 B2
+random-742	uniform-pairs	0.191875000	19	0	U2 F2 D' B2 D R2 B2 D' B2 D2 R B F' D' F2 D2 F' L' F2
+random-743	uniform-pairs	1.460333000	20	0	L2 F2 B U' L B2 D R' B2 U F2 L2 B D2 L2 F2 D2 F' U2 F'
+random-744	uniform-pairs	8.296042000	19	0	F2 U2 F' D2 F R L' B' U2 F' U2 R2 F' R2 L2 U2 F' L2 U2
+random-745	uniform-pairs	0.288167000	19	0	R D2 R U2 F2 U2 B2 R2 D2 L U2 R D B F2 R2 D R2 B
+random-746	uniform-pairs	0.484209000	20	0	R2 F2 L2 D F2 U2 L2 D' F2 U R2 L' F R2 F U2 F' L B U
+random-747	uniform-pairs	6.797084000	20	0	B L2 D2 U2 F2 R2 D2 B D2 F' R2 F U' L' D2 F2 L R' B2 F'
+random-748	uniform-pairs	1.867458000	20	0	L' D2 F' D' R' B U B2 L D' R2 L2 B2 D2 F R2 F' B' U2 R2
+random-749	uniform-pairs	0.837250000	19	0	U L' R' B2 U2 L D2 U2 R2 B2 D2 B' R2 D B U' F' L U2
+random-750	uniform-pairs	5.814584000	18	0	D2 F2 B2 U' B R L' F' L U R' U' F2 U2 D' R2 D2 F2
+random-751	uniform-pairs	0.086667000	18	0	F' R U' L F2 U' F R' L2 B2 L2 F D2 F2 R2 L2 B' D
+random-752	uniform-pairs	1.404042000	20	0	U D' B U' F' U F U2 L' F2 D2 R' B2 L2 F2 B2 U2 D' R' F
+random-753	uniform-pairs	0.525792000	20	0	F U F' B U' L2 D L B R2 U R2 D2 L2 B2 D B2 U2 F2 R'
+random-754	uniform-pairs	0.518209000	20	0	F' D2 R2 B2 U' F2 D F2 U R2 U2 R2 F2 B U' R' B2 L R' B'
+random-755	uniform-pairs	0.884583000	20	0	L F2 L2 F L' B2 R F L2 B2 U' R2 F2 U2 F2 B2 R2 D F L'
+random-756	uniform-pairs	0.453792000	19	0	F2 D' R U2 F2 L' B2 R' F2 R U2 R B L' D' L D L2 B2
+random-757	uniform-pairs	0.680500000	19	0	U' R2 B2 L' B2 D2 B2 D2 L' D2 R' B' R U L B2 U L2 F
+random-758	uniform-pairs	1.538417000	18	0	F' U2 L' B' U' F' L2 U2 F' U R' F2 U2 D2 L' D2 L' U2
+random-759	uniform-pairs	0.057417000	20	0	F' D2 B2 R' D F2 L' B2 U2 D F2 D' L2 U R2 D' L2 D B R2
+random-760	uniform-pairs	1.807625000	20	0	U' R2 F' D' L D F' L F U' B2 D2 R' F2 U2 D2 R2 L U2 L
+random-761	uniform-pairs	0.117334000	20	0	R B2 R' B U L F2 R2 D U2 F2 R2 U2 D2 F' U2 F B2 L2 B'
+random-762	uniform-pairs	1.944708000	20	0	U2 F' L2 B' L2 D2 B2 R2 U2 F L U2 F D' B' L' U F' U L
+random-763	uniform-pairs	0.179667000	20	0	F U' L2 D2 R2 F' L2 D2 B L2 U2 B2 F2 L' B2 D' R' F R2 B
+random-764	uniform-pairs	0.288709000	20	0	B' D R2 B' L2 D2 B2 F L2 D2 L2 F' L2 R B' D U2 F2 R2 D
+random-765	uniform-pairs	0.145375000	20	0	L F B2 R2 F2 L2 U F2 U B2 D2 F2 D' B' D U L R D' F2
+random-766	uniform-pairs	2.044500000	19	0	L2 D' R' L2 B2 L2 U' B2 D R2 D' U2 F' L' U' L2 D B' F2
+random-767	uniform-pairs	0.917833000	20	0	B' D2 F' R2 F' R2 D2 F2 L2 R2 F U L2 B2 R' D L2 D2 U F
+random-768	uniform-pairs	2.123000000	20	0	D U B2 L2 D L2 D B2 F2 L2 F R2 B R' F U B2 R' U2 R2
+random-769	uniform-pairs	0.722750000	20	0	F U2 R2 L2 D' F' L2 U D2 L F' L2 F U2 R2 U2 F' D2 B2 U2
+random-770	uniform-pairs	1.148583000	20	0	B' D F U' R U2 D R2 B' D2 B2 L F2 R F2 L D2 R2 L' U
+random-771	uniform-pairs	1.667625000	19	0	B' D' F U D2 F D' F2 R' U2 L2 F2 R2 F2 R' U2 D' L2 D
+random-772	uniform-pairs	32.103041000	20	0	U2 F D' L' B R2 D2 R2 U2 B' D2 F L2 R D2 F D F2 U2 B'
+random-773	uniform-pairs	0.081959000	20	0	U F' D' R2 F' U2 F2 R B2 U2 F2 R2 D2 R2 U2 F' D2 F R2 U2
+random-774	uniform-pairs	0.411417000	20	0	F L' F2 U2 B2 L2 D L2 D2 B2 L2 U' L2 B' U2 B2 L2 U B' D2
+random-775	uniform-pairs	5.013833000	20	0	F' B2 L' U D' L2 F D2 R' U' B' U D' B2 U' R2 B2 U' B2 D2
+random-776	uniform-pairs	0.218875000	19	0	B2 L F' R' U2 L' U B' U2 D' F2 B2 D R2 F2 U R2 F2 R2
+random-777	uniform-pairs	0.142416000	20	0	R2 U B' D' R L U' D2 F2 D2 F R2 F' R2 D2 B' R2 B2 D' L
+random-778	uniform-pairs	0.778166000	20	0	B2 D B L F B U R2 U' B U B2 U R2 B2 U B2 D' F2 U
+random-779	uniform-pairs	0.187250000	20	0	F U F2 R D B R D F2 L2 F' L2 B2 U2 R2 B R2 B' R2 U
+random-780	uniform-pairs	1.096042000	20	0	F2 R D' B' D' R2 U2 F B2 U R2 D R2 B2 R2 U F2 U' B' R'
+random-781	uniform-pairs	0.130459000	20	0	L F R F D F' B L U' B2 R L2 D2 R' F2 R2 L D2 B2 D2
+random-782	uniform-pairs	0.185208000	20	0	F R L' B' R2 U L B U' R' U2 L U2 D2 R2 B2 D2 R B2 L2
+random-783	uniform-pairs	1.472750000	20	0	L B2 R U' B R F2 D R' F2 D2 R B2 L F2 U2 D2 L B' U
+random-784	uniform-pairs	0.282625000	20	0	R' U' R' L B L D' F2 B2 R2 D2 R' B2 U2 F2 R2 U2 L2 U' F'
+random-785	uniform-pairs	0.108500000	20	0	D2 L' U B2 U L2 D' R2 U2 R2 F2 L2 F2 B L F' D' L' F2 U
+random-786	uniform-pairs	0.726667000	20	0	L D B' D2 L2 D2 L' B2 U L' U2 L2 F L2 U2 F' R2 D2 B2 D2
+random-787	uniform-pairs	0.084375000	20	0	F D B U B' R2 D' R' U B2 R2 B2 D' R2 D' B2 R2 U2 B2 U'
+random-788	uniform-pairs	1.257542000	20	0	B U R F2 R U R B2 U2 B2 U D2 B2 R2 D2 R2 D F' U' B'
+random-789	uniform-pairs	1.798750000	20	0	U' L2 D' L2 U2 R2 B2 L2 F2 D2 L' B U F2 R' U' B2 D B2 F'
+random-790	uniform-pairs	0.051666000	20	0	F L U B' U' D R' U' F2 D' R2 B2 D' B2 D2 R2 L2 B2 F D'
+random-791	uniform-pairs	4.844291000	20	0	R2 D2 R2 U2 L' D B' R D R F' B2 D' B2 D2 R2 B2 D B2 L2
+random-792	uniform-pairs	1.073000000	20	0	D2 L B2 R D L' D2 L2 U B U2 L2 B2 D2 R2 F' R2 F' R2 D
+random-793	uniform-pairs	0.742917000	20	0	D' F' B2 L2 U F2 U2 L2 U R' F U2 F D2 F D2 B' U2 F2 R2
+random-794	uniform-pairs	0.040750000	19	0	L2 U2 L U2 F2 L U2 L U2 L2 U2 F' D F2 R' B2 R D R
+random-795	uniform-pairs	1.811875000	19	0	L F U L2 B2 F D2 R2 B2 L2 B' U2 R D2 U R D' L' D
+random-796	uniform-pairs	0.037167000	20	0	D R2 B D2 L' D B U2 B2 R U2 B2 R2 B2 R' B2 L' D2 L D
+random-797	uniform-pairs	1.100917000	20	0	L2 F D' B2 R' L' D' R B' U2 R L F2 R' D2 R' D2 F2 L2 F
+random-798	uniform-pairs	0.111541000	20	0	F2 R2 U' D2 L' B R2 U B R2 F2 U B2 L2 F2 U R2 U2 L2 D'
+random-799	uniform-pairs	0.511458000	20	0	D' L2 B' D2 U2 B U2 B' R2 F2 U2 F' D' F2 L U2 F D' U B
+random-800	uniform-pairs	0.018625000	17	0	L U' R U' D2 B L' F D B2 L2 U R2 D2 R2 D' R2
+random-801	uniform-pairs	0.784958000	20	0	L D' F' L' F R B2 L' B L2 F' L2 F' D2 F R2 D2 B' U B
+random-802	uniform-pairs	1.260125000	20	0	D' B2 U2 L2 U' R2 U2 R2 F2 U2 B' R' U2 B2 D' R D2 B R' U2
+random-803	uniform-pairs	0.086875000	20	0	B2 L D2 B2 D R' U F U2 R U2 F2 U2 L F2 R' L2 B2 L2 U2
+random-804	uniform-pairs	0.281625000	19	0	L2 R D R2 D' R2 U2 L2 B2 D' F2 L' U2 L U L2 B' R2 D'
+random-805	uniform-pairs	1.118542000	20	0	D' R B' R' U D2 L F2 D' B' R2 L U2 B2 U2 B2 U2 L U2 B2
+random-806	uniform-pairs	0.831583000	19	0	B D R' D' R' F' R L' D L2 D2 F R2 D2 L2 F2 R2 F' R2
+random-807	uniform-pairs	0.712709000	19	0	L' U F' R2 L F2 L2 D F D' B2 L2 B2 L2 D' L2 B2 D2 L'
+random-808	uniform-pairs	0.243292000	20	0	F2 D2 F R2 D' R U2 L' U B F2 U2 R2 U D2 R2 D B2 R2 D
+random-809	uniform-pairs	0.488625000	20	0	U' R B2 U' B' L' D F' D' F2 L' B2 R' U2 L' F2 U2 L2 B2 L'
+random-810	uniform-pairs	0.852500000	18	0	R L' D F' B' R' U2 F' L' F2 B2 D2 L' F2 D2 L2 F2 B
+random-811	uniform-pairs	0.063000000	20	0	D2 L2 D2 L2 F' D2 B' D2 U2 F' D2 F R' D2 R' D B U' F R
+random-812	uniform-pairs	0.135625000	20	0	R' U L B U F' L U' D2 B2 L2 F' D2 F L2 D2 F' R2 L2 U'
+random-813	uniform-pairs	1.020125000	20	0	R' L' D L' F2 D2 F' B2 D' R2 F2 D L2 U2 F2 B2 D B L' B'
+random-814	uniform-pairs	0.116792000	19	0	R' D F2 L' F2 B2 D' R2 F' B2 D2 F' R2 F D2 R2 B' D' F'
+random-815	uniform-pairs	0.213583000	20	0	U F U' R D2 B' L D R2 D' B2 U' F2 L2 D F2 D2 L2 R F'
+random-816	uniform-pairs	0.098083000	20	0	R2 B2 U B2 U2 L2 R2 U2 R2 D F2 U' R B2 R2 U' R' B' U F'
+random-817	uniform-pairs	0.062417000	20	0	R2 F B' R L' B' U' D' R U' L2 U2 B2 D R2 F2 U2 L2 B2 D'
+random-818	uniform-pairs	0.157833000	20	0	B2 D' R2 U' R2 L U D2 F' L' D2 F2 R L2 B2 R D2 F2 L' F2
+random-819	uniform-pairs	3.083042000	20	0	U2 D' L' D' R' U' B' R' L U2 B' F2 U2 B2 L2 U' B2 U2 L2 F2
+random-820	uniform-pairs	0.123792000	20	0	L U2 F' R2 L U2 F D' B2 R U2 D2 L B2 R B2 L2 U2 L' D'
+random-821	uniform-pairs	0.180291000	20	0	D' R2 F D' B' R' U' B' L U2 F D2 F' B' R2 D2 F' R2 U2 R2
+random-822	uniform-pairs	0.347333000	20	0	B2 D2 L2 U R2 U' L2 D' B2 L2 D' B R' F D2 F L B2 F2 R'
+random-823	uniform-pairs	0.063542000	18	0	B' U R' D L' U' D' F R2 B' U2 F U2 B' D2 F B2 D2
+random-824	uniform-pairs	2.368167000	19	0	U F2 D2 R2 F' L2 B2 U2 R2 B2 L U' B L' R U B' D2 F2
+random-825	uniform-pairs	0.638625000	20	0	F2 L B2 L' D2 B2 L' B2 D2 R D2 B' R' F2 R2 U' F' L2 R' D'
+random-826	uniform-pairs	1.594000000	20	0	B2 U' B2 D' B2 R2 B2 F2 D' L2 R' B2 L' B L2 F' L2 U' R B2
+random-827	uniform-pairs	0.094541000	20	0	U B' L2 U2 R' D' L' F2 U2 B2 D' F2 B2 U R2 D2 R2 L2 F L
+random-828	uniform-pairs	0.030042000	20	0	F2 R2 F2 L2 F2 U2 L2 U F2 R2 B2 U' R' F U L2 F U F' L'
+random-829	uniform-pairs	0.094667000	20	0	U B2 R' D2 R2 F' L D L2 U' R2 B2 D' R2 B2 U2 F2 D B U'
+random-830	uniform-pairs	0.070167000	20	0	B R' D L2 B2 U2 R' U L' R2 F' U2 R2 L2 F' L2 B D2 B D2
+random-831	uniform-pairs	0.626667000	19	0	B2 U D2 F' R' U F2 D B' D' F2 R2 U' F2 U L2 U' R2 F'
+random-832	uniform-pairs	0.134709000	20	0	L' D B2 L B L2 D L2 B' U' F2 L2 U B2 D' R2 L2 U' F2 D'
+random-833	uniform-pairs	1.991042000	20	0	U' R B2 R2 B2 D2 F2 U L2 F2 D' R2 B' F L U' L' D2 F' R'
+random-834	uniform-pairs	0.416292000	20	0	U2 D' L U2 F L2 U R' F B2 L2 D B2 U F2 D2 L2 B2 D' F'
+random-835	uniform-pairs	0.027125000	20	0	B' L2 B2 D R2 D2 R2 U B2 D B2 L2 U L' B2 F L' B' R' U2
+random-836	uniform-pairs	0.094000000	20	0	R' L U F L' B L' U' R2 F U2 B' L2 B R2 D2 F2 U2 F2 D'
+random-837	uniform-pairs	0.176542000	20	0	U2 D' F D2 B U F' L D' R F2 R2 D2 F2 D2 L' U2 R D2 L
+random-838	uniform-pairs	0.342959000	19	0	B L' F' U' F' D2 R' B D2 R2 D' L2 U' B2 L2 U2 R2 F R
+random-839	uniform-pairs	0.379166000	20	0	U' B' D' F2 D' L2 B2 R2 B2 D F2 L2 D L F D2 L' F2 L' F
+random-840	uniform-pairs	0.952791000	19	0	D L' D2 F' R' B' U' D2 L' F2 D2 B2 D2 R L2 D2 F' U2 F'
+random-841	uniform-pairs	0.627417000	20	0	B2 U' B D2 R' U' D' L' F' L2 U F2 R2 F2 R2 D2 F2 D' F2 L
+random-842	uniform-pairs	1.826666000	20	0	U R' D F L F B L2 D2 F2 U2 B2 L F2 D2 R L' U B2 R'
+random-843	uniform-pairs	2.326667000	18	0	L2 R2 U' F2 D2 L2 D' R2 F D B2 U F' L R D U2 R
+random-844	uniform-pairs	5.149958000	20	0	L' U F2 B U' B2 L R2 D' F2 D' R2 D F2 D B2 F' U' B2 U
+random-845	uniform-pairs	0.217542000	20	0	D' R2 B2 L F' U' B' L D' B2 D F2 R2 B2 D L2 U D F U2
+random-846	uniform-pairs	0.783875000	19	0	D' R' B L B2 R' F R' U D F' B U2 R2 F R2 D2 B D2
+random-847	uniform-pairs	0.263333000	20	0	L U2 R2 B2 F2 D2 L' D2 R' U2 R' B' L F D2 L2 U' L D F
+random-848	uniform-pairs	1.120708000	20	0	F' D' R L' B2 R U' F' U2 B' U2 R2 L2 F2 U2 F D2 U R' F
+random-849	uniform-pairs	1.305125000	20	0	B2 D B2 L2 U L2 B2 U2 F2 U L U' L2 R' B' D2 F' D L U
+random-850	uniform-pairs	0.306167000	20	0	R2 L2 D' F B D L2 D2 F2 R' B2 L2 U2 B2 U F2 D L2 U' F2
+random-851	uniform-pairs	0.262917000	20	0	U' L2 B2 U2 R2 U B2 D B2 U' F2 B' R' D U' B R2 U2 L D
+random-852	uniform-pairs	0.602750000	20	0	D' R F2 R2 D R2 U F2 D U L2 U' F2 R' B' R' D' F2 U L2
+random-853	uniform-pairs	9.923875000	20	0	U' F2 U R U L2 U2 B' L' U R L2 U2 F D2 B D2 B' L2 F'
+random-854	uniform-pairs	0.179542000	20	0	D2 B2 D2 R' B2 D F' U' D2 R' D2 R' F2 B2 L D2 B2 R F2 B
+random-855	uniform-pairs	0.101333000	20	0	B' U' F2 D' F' D2 L F2 R' U2 F D2 B' U2 B L2 B2 L2 D2 F2
+random-856	uniform-pairs	0.077250000	19	0	L2 F' R L2 B2 U' L' F' D' F' L2 U2 R2 F2 U2 B2 R2 F' L2
+random-857	uniform-pairs	0.110625000	20	0	F' R' B' D2 F2 U2 L' F U' F' R2 L2 F' R2 B U2 F2 D2 F D2
+random-858	uniform-pairs	0.132667000	20	0	L2 U' L2 D F2 D' F2 D L2 D2 F2 B' L D R B' F' U L2 B
+random-859	uniform-pairs	1.176333000	20	0	F L' F' U B' D B' L2 F R2 B2 R' U2 R' D2 L F2 R' U2 F'
+random-860	uniform-pairs	0.181834000	19	0	B' R' F L B' D' R B' L2 D2 R2 F D2 B2 U2 B' D2 L U'
+random-861	uniform-pairs	1.800084000	20	0	F' L2 R2 F2 R2 D' L2 U L2 U2 L2 F' L B' U F D L' D' B2
+random-862	uniform-pairs	0.240792000	20	0	R2 B2 D R2 B2 D L2 F' D B2 D2 R F2 D2 R B2 R L2 B2 R'
+random-863	uniform-pairs	0.040750000	20	0	L2 B' U2 R2 F' L' D' B R U' R2 U L2 B2 U F2 R2 D' R2 B2
+random-864	uniform-pairs	1.077584000	20	0	U R L' F U2 R L B' L' R2 U2 B U2 B' D2 L2 F2 D2 B U
+random-865	uniform-pairs	0.468916000	20	0	B R2 F' R L B' L2 B' D L2 D' L2 D2 L2 F2 U' R2 F2 R2 L
+random-866	uniform-pairs	0.169083000	20	0	D2 L U2 L2 D2 L2 B2 D2 B2 U L2 U' F2 L U2 B' R' D2 U' L'
+random-867	uniform-pairs	0.068667000	20	0	D B' U F2 R D' L F' U' B' U2 F D2 F' L2 B U2 L2 U2 D2
+random-868	uniform-pairs	1.273875000	20	0	R F B U2 D' B R2 F' D' F' U2 L' D2 F2 D2 L U2 L' B2 D2
+random-869	uniform-pairs	0.140417000	20	0	U2 R' B L U2 B D F' R D2 R2 U2 F2 D2 R F2 B2 L' F2 U'
+random-870	uniform-pairs	1.556792000	20	0	D2 F2 R2 U L U' F' L' U' D2 B U2 L2 F' L2 D2 B' D2 L2 U'
+random-871	uniform-pairs	0.120792000	18	0	F2 B L' F B' D' F2 U B F2 U2 D2 F2 R' F2 R L2 U2
+random-872	uniform-pairs	11.801959000	20	0	R' U' R2 L' B' L2 F2 U F' U2 F' L2 D2 B R2 D2 F2 L' F L2
+random-873	uniform-pairs	9.882459000	20	0	U F R2 D B2 L F2 R' U2 B2 U' D2 F' R2 D2 R2 F U2 F' L2
+random-874	uniform-pairs	1.009500000	20	0	B L2 U F B' U2 B D' L U D' F2 U' L2 U L2 D B2 D B
+random-875	uniform-pairs	2.654000000	20	0	F2 R D2 B2 F2 R' U2 F2 D2 F2 B D F' D B' D' U L' D' R2
+random-876	uniform-pairs	3.612958000	20	0	F2 U2 F' D' B2 R' F R2 B' R L D2 R2 L2 U F2 B2 D' R2 U'
+random-877	uniform-pairs	0.924166000	20	0	B2 R L' D' R2 B' U' L F' R2 F R2 B' R2 F' L2 U2 F' D' L2
+random-878	uniform-pairs	0.214833000	20	0	L U2 F2 R B2 U' R2 U F U2 B2 D2 B' U2 R2 U2 D2 F R2 B'
+random-879	uniform-pairs	8.772583000	20	0	B' R U F B2 U' L U B D' R' L2 U2 D2 B D2 B' U2 D2 B
+random-880	uniform-pairs	7.124166000	20	0	D R' U F D' L' F' R U2 R2 U R2 F2 D' F2 B2 D F' D2 R'
+random-881	uniform-pairs	0.279583000	20	0	D' B' R' U' L B' D' F' U' B' R2 D' B2 U' R2 B2 U2 F2 U F2
+random-882	uniform-pairs	1.584417000	19	0	F B R2 F U F2 D R2 F' R2 U2 L U2 R2 F2 B2 L B2 U'
+random-883	uniform-pairs	0.450750000	20	0	U2 D' F B D' B L' U2 R D2 F2 L2 B2 U' L2 D F2 B2 L2 R'
+random-884	uniform-pairs	1.172833000	20	0	F2 R2 U2 B2 L2 D F2 R2 D' B2 R D' R B D2 F' D2 L U R'
+random-885	uniform-pairs	1.621792000	20	0	U B' D R' F2 B D L' D2 R2 D2 B2 U2 D2 R' D2 R B' U2 B
+random-886	uniform-pairs	2.191250000	18	0	R2 D L2 U R2 F2 L2 R2 B' L' D' R' D B U F2 L' R2
+random-887	uniform-pairs	0.181333000	20	0	U' B D F' L' D2 F D2 R2 B2 L' U2 D2 L D2 F2 R2 F2 D' L2
+random-888	uniform-pairs	3.498500000	20	0	F' U' F' R2 B2 D2 B2 R F2 R' F2 D2 R' B R' D L' D' F2 D'
+random-889	uniform-pairs	0.799208000	20	0	R F L2 U' D2 R U R2 D R F L2 U2 F R2 F2 L2 U2 F2 D2
+random-890	uniform-pairs	1.698083000	20	0	D B2 U2 R' L' B U' F D' R' U2 R2 D2 R' B2 R U2 F2 R' D'
+random-891	uniform-pairs	1.695084000	20	0	F' L' B' R2 F2 L2 U B' L' D2 F2 L' D2 R' B2 L2 B2 R' U' R'
+random-892	uniform-pairs	0.124542000	20	0	B2 D2 F' R L D L2 F' U2 F2 R D2 B2 L' F2 R2 U2 L D2 B'
+random-893	uniform-pairs	0.173000000	18	0	L F B' U R' B R D F2 U2 L' B2 R B2 L' F2 D2 F'
+random-894	uniform-pairs	0.127375000	20	0	B2 U L2 B R' U2 B D' F2 U2 F2 B2 U' F2 B2 U L2 B2 R U'
+random-895	uniform-pairs	1.311000000	19	0	B U' F2 U R2 F2 U2 R' F2 D' R2 U2 B U2 F D2 L2 B R2
+random-896	uniform-pairs	0.159000000	18	0	F R U2 B2 D R2 D' R2 U' L2 D' R2 F' R B U F D
+random-897	uniform-pairs	0.024666000	20	0	U B2 R' D' L2 F U B' R' U F2 U2 B2 D' F2 U B2 L2 F2 D'
+random-898	uniform-pairs	0.865375000	20	0	D' B2 U2 B' L2 D' F' R L2 U' F2 U R2 U D2 R2 B2 D2 L' F2
+random-899	uniform-pairs	0.107833000	20	0	D F R' B' D B' R D2 L2 F L2 F2 B' U2 D2 R2 F U2 B R
+random-900	uniform-pairs	0.180708000	19	0	L F' U2 L' U' D R F' D2 B2 U2 R2 U F2 D B2 D2 R2 L
+random-901	uniform-pairs	0.498708000	20	0	F' R2 U2 B R2 B' L2 F D2 B2 L2 D' L B R' F2 U F' R' B'
+random-902	uniform-pairs	5.820292000	20	0	L F R2 F2 U' F' R L F U L' U2 D B2 U R2 D' F2 B2 D'
+random-903	uniform-pairs	0.041417000	20	0	R D F2 R' U2 R U' B U2 R2 F2 R2 F2 L2 D R2 D' F2 R2 U'
+random-904	uniform-pairs	0.107250000	20	0	F L' F D' R' B D2 R L2 F' R2 F R2 U2 B2 U2 R2 F' L2 D2
+random-905	uniform-pairs	0.358000000	20	0	R' B' L2 F' D2 F2 L2 B2 R2 F D2 R2 D' R U' B D' R' B' F'
+random-906	uniform-pairs	3.228750000	20	0	U D2 L2 B2 F2 R D2 U2 F2 U2 R2 B' F L F2 R' D' R2 D2 B
+random-907	uniform-pairs	0.766459000	19	0	R' U2 D L2 F' L B' R F D2 R' D2 R2 F2 R2 B2 D2 R' F2
+random-908	uniform-pairs	0.436167000	20	0	L F' R2 L' B' U' R' U2 L U R2 B2 R2 U2 F2 L2 U L2 D F
+random-909	uniform-pairs	0.060208000	19	0	F' L2 D R' U2 B' R' B' R' D L2 F2 D' F2 L2 B2 R2 D' L2
+random-910	uniform-pairs	0.498875000	19	0	U2 B2 U R2 F R' L2 U L U B2 L2 D F2 L2 B2 R2 D2 F
+random-911	uniform-pairs	1.287542000	20	0	B2 D F L2 F' L2 F2 U2 F L2 B R2 D' B' U R' D2 L' U' B'
+random-912	uniform-pairs	3.138958000	19	0	D2 B F2 D2 B2 L R2 U2 L2 U2 R' F' D U R2 B' U R2 D2
+random-913	uniform-pairs	0.608458000	20	0	F2 U2 L F D' R F' U F2 D' B2 U2 B2 L2 D R2 U2 L F2 U
+random-914	uniform-pairs	1.258750000	20	0	F2 D2 F2 U B2 L2 R2 U2 R2 U R' B' D2 F D' U2 R D2 F U'
+random-915	uniform-pairs	0.240292000	19	0	D B2 L2 F' L2 D2 B2 R2 D2 R2 B R' F2 L2 D2 U R D' B'
+random-916	uniform-pairs	0.058250000	20	0	R' U2 B' L U' D2 B R D' F B L2 D2 F D2 F2 U2 D2 F U2
+random-917	uniform-pairs	0.494875000	20	0	F2 D B' D L2 B' D' L' B2 R' F2 B2 U2 D F2 L2 D F2 R2 B2
+random-918	uniform-pairs	0.223666000	20	0	F2 R U2 F2 D2 R F2 R' F2 R2 D2 U L2 B U' F2 D R' U' B2
+random-919	uniform-pairs	0.460916000	20	0	F2 U' L' F R D' R D' B2 L' U' L2 U L2 D F2 U R2 D B2
+random-920	uniform-pairs	1.215541000	20	0	F L2 D' L' B L' D2 L2 U B F2 D2 L' U2 R' B2 L U2 B2 D2
+random-921	uniform-pairs	0.049000000	20	0	F' R U R2 L' B R' U' L R2 F' D2 B U2 B U2 L2 F' R2 F2
+random-922	uniform-pairs	0.101833000	20	0	F' L' U' B' L U2 L' F R2 F2 U D2 R2 D' F2 D R2 F2 U2 L
+random-923	uniform-pairs	0.069416000	20	0	R F D' L U2 B' U F D' B U2 F B2 L2 F' D2 R2 D2 B U2
+random-924	uniform-pairs	1.426541000	19	0	F U2 D F' L2 B2 L R2 D2 F B L2 B D2 B D2 R' U2 R'
+random-925	uniform-pairs	0.187458000	20	0	R2 B L2 D' B R L' D' L U2 L2 B D2 F' U2 L2 D2 R2 L2 B
+random-926	uniform-pairs	6.003792000	19	0	B2 U B' D' B U2 L' B' D2 F' L R2 F2 U F2 D B2 L2 U2
+random-927	uniform-pairs	1.969583000	20	0	F2 L2 F2 D' F2 U R2 U2 B2 U L B' D' L2 U2 B2 D B L2 U2
+random-928	uniform-pairs	0.109792000	20	0	U' D R' D2 F2 U B2 L' B2 U' L2 B2 U' R2 D2 F2 U R2 F2 L2
+random-929	uniform-pairs	0.025583000	19	0	L U R2 L U F' U R B2 R' B2 R D2 R' U2 D2 B2 L' B'
+random-930	uniform-pairs	0.120541000	20	0	U2 R2 F2 U2 L2 D B2 R2 F2 R2 D' U2 R U' B2 U' R' B R D2
+random-931	uniform-pairs	0.150042000	20	0	D R2 B D2 U2 F R2 F R2 F' R2 D2 B2 L D2 F' U' L' F D'
+random-932	uniform-pairs	0.807958000	20	0	D2 R' F2 U2 L F L' U' F2 L2 B2 R2 U L2 D' R2 D2 R' F' L
+random-933	uniform-pairs	1.083666000	20	0	D B2 R' D2 R D' R' L2 U F' U2 B2 D' B2 U' L2 D B2 R2 F2
+random-934	uniform-pairs	0.037041000	20	0	R' L' U R' U' F B L' F U L2 D B2 R2 U R2 U2 L2 B2 L2
+random-935	uniform-pairs	2.388750000	20	0	R F U L D F' L U D2 L D2 F2 R2 D2 R' U2 F2 R D B'
+random-936	uniform-pairs	0.092750000	20	0	B' U2 L U R F B D F R U2 D2 R B2 R B2 U2 F2 L B2
+random-937	uniform-pairs	0.522584000	19	0	R' B' L' F L' F2 D' F' B' L2 U2 B2 R' B2 L U2 B2 L' U2
+random-938	uniform-pairs	4.115292000	20	0	U2 L' F B D L' B U D' F2 U' L2 U R2 B2 U F L U' R
+random-939	uniform-pairs	1.017375000	20	0	F L2 D L2 B' L' U2 L B U B2 R2 L2 F' U2 R2 B2 D2 R2 D2
+random-940	uniform-pairs	0.393542000	20	0	F' L D B L' F D L' D' R' U2 L2 U' B2 U D2 B2 D B2 U
+random-941	uniform-pairs	5.575709000	19	0	L' U' D' R' D2 F2 B L2 F2 U2 L2 D R2 U F2 R B R' F
+random-942	uniform-pairs	0.026167000	20	0	R B D' L2 B2 L' F D' B D' F2 U L2 B2 D' L2 F2 U' F2 R2
+random-943	uniform-pairs	0.030625000	18	0	F2 R L B' L F' D' R2 F R2 U2 F D2 F' L2 F D2 B
+random-944	uniform-pairs	8.045459000	20	0	L' F U F' B2 U L' B D B U' D' F2 B2 L2 U' D2 R2 L2 F'
+random-945	uniform-pairs	1.499417000	20	0	L2 D R B2 L2 B U2 D' R2 B L F2 L' F2 R' U2 B2 U2 B2 L
+random-946	uniform-pairs	0.132333000	20	0	D2 F2 D2 F R2 B' U2 R2 U2 B2 U2 B' D' L' U2 R' B R B R'
+random-947	uniform-pairs	0.100083000	20	0	U L D2 F2 R D2 U2 L F2 L D2 F2 R' U' B F2 U' R B' F'
+random-948	uniform-pairs	31.261333000	20	0	R B' U F R D2 B2 U2 B2 L2 F2 L R2 U B2 U R' U2 B L'
+random-949	uniform-pairs	0.090458000	19	0	R U' B' L' U' R2 F2 U B' U' F2 D' F2 U R2 U2 R2 L2 D
+random-950	uniform-pairs	0.435916000	20	0	R' B2 L' B2 R2 F2 R' U2 R2 U2 R' D R' D2 F D' L U' L' D'
+random-951	uniform-pairs	0.162500000	20	0	U' L2 U2 F' L F2 B D B2 L' B2 L U2 R U2 R' D2 R D2 R'
+random-952	uniform-pairs	0.256542000	20	0	L2 D2 R D' L' F B' L B2 U' L2 B2 R2 U2 B2 U F2 R2 B2 R
+random-953	uniform-pairs	5.583542000	20	0	U2 B' L' D R2 D' R U2 D' L2 U2 L2 B2 U' L2 U' B U F' U2
+random-954	uniform-pairs	0.395125000	20	0	L2 U L2 F' D2 R2 B' D2 B' D2 F' D2 F' D B' L2 F' L U2 B'
+random-955	uniform-pairs	0.179208000	20	0	L' U L' U' R U2 B' U' F' D2 R' B2 R F2 R U2 B2 U2 L2 F2
+random-956	uniform-pairs	0.328958000	19	0	L' B L2 D2 L F' D' U2 F2 R2 B2 L2 U2 R2 L F2 L2 F U
+random-957	uniform-pairs	0.122833000	19	0	L' U2 R2 U F2 D2 L2 U' L2 B2 D2 B' R D' B' R D F' D'
+random-958	uniform-pairs	2.912208000	20	0	U' F U' F U L' U' B2 L2 D2 L' U2 R D2 R2 F2 R F D F2
+random-959	uniform-pairs	2.860625000	20	0	D L F' R2 B2 U2 L2 F2 D2 L' D2 B2 L D U2 R' B' U' L F
+random-960	uniform-pairs	0.142167000	19	0	U R2 B' D R' F2 U2 R' F B2 L D2 R' F2 B2 R B2 U2 R'
+random-961	uniform-pairs	0.063292000	20	0	U2 B2 R U2 R2 B2 R U2 F2 R F2 L D' L B L' F' R' D' B
+random-962	uniform-pairs	1.940583000	20	0	L' F2 U R2 F2 R2 D2 R2 U' F2 R2 L D' U B U' B' F D2 R'
+random-963	uniform-pairs	0.085375000	19	0	U F2 L2 F L2 F2 L2 F' D2 F' L2 F' R' D2 B' U2 R' D L'
+random-964	uniform-pairs	2.665416000	20	0	U B U2 F' U2 R2 U2 R2 F' D2 B' D' F' U2 L U B' R2 F D
+random-965	uniform-pairs	0.279042000	20	0	R' B D' R F L U F2 R U2 F2 D2 R F2 R2 D2 R' F2 D2 F'
+random-966	uniform-pairs	0.062667000	19	0	U2 B2 L D2 B2 L B2 U2 R F2 R' F2 U L' F2 D U2 L' F2
+random-967	uniform-pairs	58.340542000	20	0	F L' U B R' L2 D' B' R' D2 L F U2 R2 D2 B2 D' R2 F2 D
+random-968	uniform-pairs	0.228041000	20	0	D' B' L' B U2 D2 L U F B2 R B2 R2 U2 B2 D2 F2 L F2 L
+random-969	uniform-pairs	0.412000000	19	0	U D2 L2 F2 R2 F2 U R F U R2 U2 D' F2 U' L2 F2 U F2
+random-970	uniform-pairs	0.082834000	20	0	L2 F' L2 D2 L2 B2 R2 B D2 B' L2 F2 U B F2 L' B2 L2 U' R
+random-971	uniform-pairs	2.357917000	20	0	R' B' U2 F D B' R2 D' F D2 B2 R' U2 L2 F2 L F2 L' U2 D
+random-972	uniform-pairs	0.418167000	19	0	B' L' D2 R2 F' U2 L2 B U2 B' D2 F2 U' F D2 B R B2 L2
+random-973	uniform-pairs	0.183042000	20	0	L2 D2 L' U2 B2 L2 B R F2 D F2 B2 L2 U F2 U2 F2 B2 R2 U'
+random-974	uniform-pairs	1.636166000	20	0	D F R' D' F U R F R' F2 U2 L F2 D2 L' U2 R' F2 U' B
+random-975	uniform-pairs	0.278208000	20	0	L' F2 R2 L' F U B' D2 F2 R' F2 B2 D2 R' L2 B2 R' D2 F' D2
+random-976	uniform-pairs	1.130416000	20	0	F' R U B R2 U' L B U2 R2 B U2 D2 F' L2 F' B2 U' F2 D'
+random-977	uniform-pairs	0.084750000	18	0	F B' R D2 F B2 R' D' F2 U2 F' R2 B' D2 B L2 B' U'
+random-978	uniform-pairs	0.065875000	20	0	D' F L' D' R' F2 U2 B U F2 L2 F R2 D2 R2 L2 B' U2 R2 U2
+random-979	uniform-pairs	14.565917000	20	0	D' F R D F' U' F2 R L2 D2 B2 D2 B D2 F R2 U2 D B2 L'
+random-980	uniform-pairs	1.223667000	20	0	B2 D B U D' L' U2 R' F2 L' F U2 D2 R2 B D2 F2 B L2 B'
+random-981	uniform-pairs	0.502000000	20	0	R B2 U L2 F2 B' R U L D R2 B2 U B2 L2 D' F2 D2 R2 F'
+random-982	uniform-pairs	0.174792000	20	0	B' D R' D B2 R2 F R' F' R2 F' D2 L2 D2 B L2 D2 B' R2 F2
+random-983	uniform-pairs	0.253167000	20	0	B' U R2 L F' U' L2 F R' U2 F2 L D2 B2 R2 L F2 D2 R' U
+random-984	uniform-pairs	3.030542000	20	0	R' D' L2 R2 D B2 D' F2 D' B2 U2 B' U' R' D2 R U' R F' D2
+random-985	uniform-pairs	0.303791000	20	0	U' L D2 F' R D B2 R2 L' B' D' F2 R2 D R2 U2 D F2 R2 D2
+random-986	uniform-pairs	0.021292000	20	0	U' L U' B R2 B2 D R2 B2 R F2 R' F2 R F2 U2 L' D2 R2 D
+random-987	uniform-pairs	4.466792000	20	0	F2 R' F' R2 U2 R U' B' R L' F' R2 U' B2 D' L2 D F2 U' F2
+random-988	uniform-pairs	0.166167000	20	0	U2 R2 D2 L2 F' R2 B R2 F2 L2 B' F2 U R2 B' U' R' U2 B2 D2
+random-989	uniform-pairs	0.040209000	19	0	B' D L' U' D2 F' R' U B U B2 D2 B2 U' L2 D2 F2 L2 U
+random-990	uniform-pairs	0.166833000	20	0	D2 R B2 U2 R2 B2 D2 R D2 L2 R' D' F L2 B R' D F' R' U2
+random-991	uniform-pairs	1.259750000	20	0	R2 D R2 F U2 F' U R' B' D L2 B2 R F2 L' U2 B2 R' F2 D2
+random-992	uniform-pairs	0.087792000	20	0	L' U2 B' R U' D' B U' D2 F2 B2 L' D2 R' L2 F2 L U2 L2 U2
+random-993	uniform-pairs	13.040167000	20	0	L U F2 B' D F D2 R' B' L R2 F B' R2 B L2 F' R2 B U'
+random-994	uniform-pairs	0.637000000	19	0	B U2 F' R2 D2 U2 F D2 U2 F2 R' B2 L R' D L U F2 L2
+random-995	uniform-pairs	0.433167000	19	0	R' L2 U' F2 R2 F2 L2 U' R2 U' F2 L2 F' D' F L D' R B
+random-996	uniform-pairs	0.442417000	20	0	F' L U R U L' F D F B' U D' F2 R2 U' R2 B2 U' F2 R2
+random-997	uniform-pairs	0.151875000	20	0	D2 L2 U' L' U' D' R L B' U2 F2 R' D2 L' F2 R2 B2 L' F2 U2
+random-998	uniform-pairs	0.149541000	20	0	U2 L R F2 R' U2 L' D2 F2 U2 L' D' B' L B' U' R' U2 F D'
+random-999	uniform-pairs	0.053917000	20	0	L' D R' L' F2 D F' D L2 F' L2 F L2 F' D2 B L2 F2 D2 F2
+correction-0	scramble-correction	0.268000000	20	0	U B' D2 R L U B2 U2 L U2 R2 F' U2 F' B' U2 L2 U2 B R2
+correction-1	scramble-correction	0.114083000	20	0	B' L2 F B2 R' F' U D2 R F U2 B' D2 F' U2 R2 F' D2 L2 F2
+correction-2	scramble-correction	0.027000000	20	0	U' R2 B' R2 U L D' L' U2 B2 U2 B' R2 D2 F D2 F' U2 B R2
+correction-3	scramble-correction	0.284542000	20	0	U2 R2 D' F2 D' L2 U B2 U' L2 D' F' L B' U L' R2 U' F' L2
+correction-4	scramble-correction	0.355375000	20	0	D2 L' D L' B' U' L F2 B2 U R2 D R2 B2 R2 U D F2 U L
+correction-5	scramble-correction	0.454166000	20	0	F2 L2 F R F B2 R' L F' L U D' B2 R2 U2 D' R2 D B2 L2
+correction-6	scramble-correction	0.485833000	20	0	L B' D' R L' U2 R' U2 F R D' L2 F2 L2 U' R2 U B2 R2 U
+correction-7	scramble-correction	11.307083000	20	0	B2 R' L F2 R' U2 L' F U D F2 U' R2 U' B2 R2 U2 B L B
+correction-8	scramble-correction	0.907416000	20	0	B L U' F U' L2 F' B' L D' R2 B D2 L2 B' R2 U2 B' L2 U2
+correction-9	scramble-correction	0.735958000	20	0	B L' U2 F L F R' F2 R2 D' L2 D' F2 R2 D' F2 U R' D R2
+correction-10	scramble-correction	0.043208000	8	0	R' U' R2 F2 R F D' R
+correction-11	scramble-correction	0.555458000	20	0	F' R2 F2 U' L F2 D2 L' F L2 U' L2 F2 D' F2 R2 U' D' B2 L
+correction-12	scramble-correction	0.173667000	20	0	D2 L2 D R2 U' R2 B2 D2 B2 U' L2 U' L' B' U2 L D2 L' D' R'
+correction-13	scramble-correction	0.314084000	19	0	B L2 F2 U2 L2 D' B2 U F2 D' U2 F D R B2 D' B D' L'
+correction-14	scramble-correction	0.022541000	6	0	R2 F2 D' U R D'
+correction-15	scramble-correction	0.017292000	4	0	B U' R2 F2
+correction-16	scramble-correction	0.031792000	19	0	U B' D F R U' R' U B U2 F2 U2 R2 B2 L2 D L2 B2 R2
+correction-17	scramble-correction	0.030042000	19	0	L2 R' B2 L' D2 L F2 U2 L2 U2 R' U F' D U F U' B L'
+correction-18	scramble-correction	0.284791000	14	0	D2 R' U2 F2 D2 F2 U2 F2 L D2 L B' F R2
+correction-19	scramble-correction	0.068625000	20	0	F2 R2 F2 D L U D' F' L2 U B2 U' R2 B2 D2 L2 B2 D' L2 B2
+correction-20	scramble-correction	0.019584000	8	0	U' L D L2 F' U' L2 U2
+correction-21	scramble-correction	1.600167000	19	0	R F' D' R2 U' L2 R2 U2 F2 U B2 R' F' U R' F L B L
+correction-22	scramble-correction	0.219000000	18	0	D2 L2 F' R U' L F B R2 F2 U2 F2 R2 B2 D2 L2 U' D2
+correction-23	scramble-correction	0.094125000	17	0	L' U2 D2 B' L' F2 U B2 U' F2 U B2 D' L2 D' F L
+correction-24	scramble-correction	0.183292000	19	0	R2 B D2 B' R2 D2 B' F D2 F' D' L' F R F D' B' U2 B2
+correction-25	scramble-correction	0.920416000	20	0	U B U F' R' L F2 B D R' U2 R L U2 R' F2 R2 U2 B2 U'
+correction-26	scramble-correction	0.094834000	19	0	D2 F' R' U2 F' L2 F U2 F2 D R2 U F2 D R2 U B2 U L2
+correction-27	scramble-correction	0.087000000	15	0	B' L2 U2 B' F' R2 U2 F2 R2 U B' L2 B L F
+correction-28	scramble-correction	0.060542000	8	0	F2 B' U' B' L2 F2 U2 F2
+correction-29	scramble-correction	0.021834000	15	0	D' B' U' L2 U R2 B2 D2 F2 L2 U2 R F2 B2 L2
+correction-30	scramble-correction	0.217292000	19	0	R F2 U' L2 B2 D B2 U' L2 B2 D' L2 D B' R D F D2 U'
+correction-31	scramble-correction	0.063959000	20	0	B' F2 R2 B2 D L2 B2 D2 R2 F2 R2 D R2 F' L2 U' R F U' L'
+correction-32	scramble-correction	0.064083000	20	0	D2 B U D2 L D' R' D' F D B2 L2 F2 L2 D F2 D2 B2 D2 B2
+correction-33	scramble-correction	0.060833000	20	0	F U2 B2 R2 L F R U2 L' B2 D' B2 D2 R2 D2 R2 F2 B2 U F2
+correction-34	scramble-correction	0.025000000	7	0	U R L' F R' F R2
+correction-35	scramble-correction	0.339917000	20	0	R' D L2 U2 B2 R' F' U' R D2 B' R2 U2 F' U2 D2 B' U2 F' B'
+correction-36	scramble-correction	0.073333000	20	0	D' B U' B' L D R B' U2 L2 D' L2 B2 U2 D L2 D F2 L2 F2
+correction-37	scramble-correction	1.607167000	20	0	L' B2 L2 D' B2 U' L2 D' B2 U B2 L B U' F' L R2 U2 R' B
+correction-38	scramble-correction	0.245209000	20	0	B D B2 U2 F2 L2 F' R U' F2 L2 F' U2 L2 B' D2 B R2 L2 B'
+correction-39	scramble-correction	0.028791000	3	0	F L' U2
+correction-40	scramble-correction	0.021417000	20	0	U L' U' F2 D' F D2 R F2 D' B2 D2 F2 R2 U' L2 B2 U' F2 D2
+correction-41	scramble-correction	1.411167000	20	0	R2 B2 R' F2 D' L F' R2 D F L2 D2 R2 L' U2 F2 R F2 L D2
+correction-42	scramble-correction	2.318959000	20	0	L2 B2 D2 U R2 U B2 D B2 U' F D R' B' F' U F2 U R F'
+correction-43	scramble-correction	2.196125000	20	0	D' L2 U' D' F' D B R2 U' L F2 R' B2 U2 L D2 B2 R2 F2 U'
+correction-44	scramble-correction	0.068334000	8	0	R' U2 R2 B' L' R2 F B2
+correction-45	scramble-correction	0.026292000	8	0	R2 D' F' R B' F D' R'
+correction-46	scramble-correction	0.325834000	19	0	F2 U B2 L2 U2 L2 F2 D B2 U2 R U' F R2 U' L R' B2 F'
+correction-47	scramble-correction	0.381500000	20	0	D2 F' U D' L D F L2 B' U2 L2 D' F2 R2 D R2 U F2 B2 U2
+correction-48	scramble-correction	0.130000000	20	0	L2 B2 R B2 U B' L U' F' R' D2 R2 L' F2 D2 R' U2 D2 L2 F2
+correction-49	scramble-correction	1.264084000	20	0	U' D2 L F U R2 U2 R' F' R' U2 F2 L2 D R2 U F2 B2 R2 U2
+correction-50	scramble-correction	0.899709000	20	0	D' L2 F2 L F2 D2 F' U' R2 U' L2 D R2 F2 U2 F2 D2 L B2 R2
+correction-51	scramble-correction	0.029334000	4	0	U2 R2 D F
+correction-52	scramble-correction	0.914542000	20	0	U' B' D' L D2 R U' F' U R2 U2 R2 F2 U' R2 D' F2 U F R'
+correction-53	scramble-correction	2.136500000	20	0	L2 F2 U2 R2 F2 D2 L2 R' D2 U2 B' U B' F D F2 R' B D' L
+correction-54	scramble-correction	0.092208000	20	0	L2 D L2 D' F2 U R2 B2 U' L2 F2 U' R' D U2 R U L2 B D
+correction-55	scramble-correction	0.540250000	20	0	L2 U2 D' B2 R' F L' B2 R2 D2 B2 L2 U D2 F2 U' R2 F' D2 R'
+correction-56	scramble-correction	0.015833000	9	0	U2 F2 L2 B2 L F D R2 F2
+correction-57	scramble-correction	0.420208000	20	0	U2 F2 U R D R D' F B' R B2 U F2 U R2 L2 U' F2 B2 L2
+correction-58	scramble-correction	0.066250000	20	0	L2 F D R' F L' F L' U' F2 U' R2 D2 L2 D' B2 L2 U R2 L2
+correction-59	scramble-correction	0.521584000	20	0	U F D2 B R L2 U L' B' R2 D2 F2 R2 F L2 D2 B U2 B R2
+correction-60	scramble-correction	0.076125000	9	0	L2 D L2 R B' D2 B D L
+correction-61	scramble-correction	10.118209000	20	0	R' F D F L2 B' R2 D F2 D' L B2 R2 B' D2 F U2 B2 U2 R2
+correction-62	scramble-correction	0.255792000	20	0	D L2 B2 L2 B2 U' R2 B2 U2 L2 F2 D' L' F2 L' B F' D B' F'
+correction-63	scramble-correction	0.022041000	16	0	F' L D' R' U' L U R' F2 R2 L' U2 R D2 L' F2
+correction-64	scramble-correction	0.079834000	20	0	F' B' U F' R D' R' F2 L2 B' L2 B L2 B2 D2 B' U2 L2 R' F'
+correction-65	scramble-correction	0.029250000	9	0	D R2 D U B D' B' F' R'
+correction-66	scramble-correction	0.235041000	18	0	R2 U2 R2 D2 R2 B2 D R2 F2 L' F2 R' D' B' U2 B' F' D'
+correction-67	scramble-correction	1.040834000	20	0	D B' R' F2 U R B2 U F2 U2 R2 D2 F L2 B U2 D2 L2 U F
+correction-68	scramble-correction	0.785542000	20	0	L' U2 D L B D2 R U2 B2 U F2 B2 D2 R2 L2 B2 U' L F U2
+correction-69	scramble-correction	0.038292000	8	0	U2 R' D B L R2 B2 U
+correction-70	scramble-correction	0.084209000	20	0	U' B D F L B L2 U R2 D2 B' L2 U2 F' U2 F2 U2 F' D2 R2
+correction-71	scramble-correction	0.609750000	20	0	U2 D2 F' R' L2 F' B2 L B' D2 F2 U' R2 B2 L2 U' F2 U' R2 B
+correction-72	scramble-correction	0.667375000	20	0	B L2 R U2 F2 L' B2 R' B2 U2 B2 L2 B' L' B D' B2 R2 B' L
+correction-73	scramble-correction	4.462791000	20	0	U' R' L2 B D' R' U' L' F' B2 L B2 U' B2 D L2 U2 F2 L2 B2
+correction-74	scramble-correction	0.047083000	15	0	F2 R' L' B' R' B2 R' U2 F2 R2 D2 R2 F2 L2 U'
+correction-75	scramble-correction	0.364875000	20	0	R' B U D B' U2 R' B R' U' F2 B2 L2 D' F2 U' F2 L2 D' F
+correction-76	scramble-correction	0.969625000	20	0	U L F2 U F' L2 B D R D2 F' L2 F D2 B' D2 F R2 F' D
+correction-77	scramble-correction	0.031916000	19	0	B' L' U D' F2 R B D' L B2 R2 B2 D2 R D2 F2 L' D2 L'
+correction-78	scramble-correction	0.500708000	20	0	L U' D' F U' R2 U2 R2 B R' L2 D2 F2 U2 D B2 R2 D2 L2 D'
+correction-79	scramble-correction	0.034250000	5	0	R2 L2 D2 F' B'
+correction-80	scramble-correction	0.463375000	20	0	F2 L2 F U2 R' F' U' B' L' F2 L2 U2 R2 D' R2 F2 U2 R2 B2 U
+correction-81	scramble-correction	0.182083000	20	0	R D' R L B U L U2 B U2 R2 U2 F' B' D2 L2 U2 L2 R B2
+correction-82	scramble-correction	12.254958000	20	0	F2 U2 B L' U' R' D' B L2 F' D2 F B L2 F D2 R' F2 U L'
+correction-83	scramble-correction	0.036125000	18	0	F2 R' U2 R' F2 D2 R' F2 U2 R F2 R2 D' L2 F D' F D'
+correction-84	scramble-correction	0.256375000	20	0	B2 F2 U' F2 U' B2 R2 D2 U L2 F2 B' L F2 R' D F L2 B L2
+correction-85	scramble-correction	0.191375000	19	0	U' L' F2 B' R U L F2 D' U2 B2 R' F2 D2 R2 B2 L' D2 R'
+correction-86	scramble-correction	0.085875000	20	0	F2 L D F2 B U B' U2 R F' U2 F R2 L2 B2 D2 R2 D2 B R2
+correction-87	scramble-correction	0.591333000	20	0	D2 R2 B2 L' F' R' D F' U F2 U L2 U F2 U' D2 B2 D F D
+correction-88	scramble-correction	0.190834000	20	0	R' U B2 L2 R2 B L2 D2 B' L2 D2 F U2 D L' B D U B2 F
+correction-89	scramble-correction	0.070542000	15	0	B' R B R L D2 R2 F2 U2 R2 F2 L2 D2 R2 B'
+correction-90	scramble-correction	5.174583000	20	0	B' L' B2 U' F' R' F2 B L' R2 U2 L2 U' R2 U R2 F2 L2 F U'
+correction-91	scramble-correction	0.225083000	20	0	D' B L D B2 R B U2 R F' L2 U2 B D2 L2 B' L2 B' L2 F
+correction-92	scramble-correction	0.038666000	14	0	F' U' R2 U' R U2 F2 R2 U2 F2 U2 R2 U2 F
+correction-93	scramble-correction	5.668000000	20	0	B R2 L' F U' R D L F2 R' B' U R2 U' B2 L2 D2 R2 U R2
+correction-94	scramble-correction	0.054833000	9	0	U F' B' U' L2 U2 D2 F' B2
+correction-95	scramble-correction	0.115250000	18	0	U2 D B' R' B U L U F U2 D2 R' U2 F2 B2 U2 L' F2
+correction-96	scramble-correction	0.022166000	14	0	U2 L R U2 R' B2 F2 L D2 B' R D' B' F2
+correction-97	scramble-correction	0.140833000	20	0	R' U2 F D' B' L' D R2 B L2 F2 L2 U' R2 F2 U' B2 U F2 B2
+correction-98	scramble-correction	0.128375000	20	0	R2 F' U2 R' F' R F R2 L2 U R2 U2 L2 D F2 R2 D' R2 B2 F
+correction-99	scramble-correction	0.263709000	17	0	R2 B R2 D2 L2 F U2 R2 B2 D' B' D B2 U' R U' B
+correction-100	scramble-correction	0.135166000	20	0	R2 F' R B' R2 F L' D L R2 B2 U' R2 U' L2 D' B2 U2 F2 U
+correction-101	scramble-correction	0.034083000	17	0	F L D L2 F2 U R L2 U2 R2 U2 F2 L2 D2 L2 F U2
+correction-102	scramble-correction	0.056917000	9	0	L R D2 U B2 L B2 F D'
+correction-103	scramble-correction	0.046959000	18	0	B U F B R B L F2 D2 F' B' U2 F2 D2 R2 B D2 L2
+correction-104	scramble-correction	1.279791000	20	0	D2 L' B D F2 U2 F' R2 U' R' L2 F R2 B' R2 B' R2 D2 R2 F
+correction-105	scramble-correction	0.559375000	20	0	D' B' D' B' D B' U' F U' R' U2 F2 B2 R2 F2 U2 R L F2 U2
+correction-106	scramble-correction	0.157375000	20	0	R' U L2 R2 U F2 R2 U2 L2 U' F2 U B' L' U B2 U' R D F'
+correction-107	scramble-correction	0.138250000	19	0	D' F2 U' L2 F2 D2 R2 F2 U B2 U2 L2 B U' B2 F2 D2 L' R'
+correction-108	scramble-correction	0.064375000	20	0	L2 D' B2 D F2 U R2 B2 L2 F2 R2 U' B' D2 F L R2 D2 B2 R'
+correction-109	scramble-correction	0.053667000	4	0	B2 L2 B2 U2
+correction-110	scramble-correction	0.154041000	17	0	B2 U2 L2 D U' R2 F2 R2 U2 B2 L' D2 R F' L F2 L
+correction-111	scramble-correction	0.095750000	10	0	U' R F L' F U' D2 F B2 R
+correction-112	scramble-correction	0.039166000	19	0	L2 U' F2 D B2 D2 L2 D' R2 B2 R2 D' R' F2 D B' D' F D
+correction-113	scramble-correction	0.160250000	20	0	F' B2 D F L2 F2 B U' L U2 R' B2 L' U2 R' U2 L' U2 R2 B'
+correction-114	scramble-correction	0.044208000	5	0	L' U L F R'
+correction-115	scramble-correction	0.088875000	12	0	D' U' R2 B2 D2 B2 R2 F2 U2 R2 F' L
+correction-116	scramble-correction	0.077750000	19	0	U F' R' U2 B U2 D F D2 F2 L2 F2 U F2 D' F2 B2 U2 L'
+correction-117	scramble-correction	0.016333000	9	0	U' B' U2 D L D F2 R' F2
+correction-118	scramble-correction	0.134083000	19	0	D F' R L' B' U2 F' L U2 D2 F' U2 D2 B D2 F U2 R2 D2
+correction-119	scramble-correction	0.053042000	19	0	L2 R2 D2 B L2 F' D2 B L2 B D2 R2 L D2 U2 R' F' L2 U
+correction-120	scramble-correction	0.063375000	20	0	R U2 L' B2 F2 U2 L' U2 R2 D2 U2 R' D U' F' L U L2 U' R2
+correction-121	scramble-correction	0.059625000	20	0	B L U2 B' U F2 R F B2 U2 F2 U L2 F2 U F2 D' F2 U R
+correction-122	scramble-correction	0.094792000	13	0	L' U B R2 L D' F' L' F' R F2 D2 R'
+correction-123	scramble-correction	1.887083000	20	0	L' D2 L2 U2 B' R2 D2 B' F2 U2 B U L U' R F' D2 B D R'
+correction-124	scramble-correction	0.153625000	20	0	D2 R' U2 B D F' D R F' L2 B' D2 B' L2 B' D2 B R2 F2 D
+correction-125	scramble-correction	23.529625000	20	0	L D2 F2 L2 D U' L2 U R2 U' B' L' B2 R B' F R U F2 R
+correction-126	scramble-correction	0.052416000	4	0	R' U B' D
+correction-127	scramble-correction	0.977542000	20	0	B D2 R F2 R' L2 F' R B D2 L2 B2 D' F2 D' F2 D' F2 D2 R
+correction-128	scramble-correction	0.077708000	19	0	R' D2 B D' F L B D' R D2 F2 U2 R' F2 R' L2 U2 R' D2
+correction-129	scramble-correction	0.179750000	20	0	D' L2 D' B' D' L' D F' L2 B2 R2 U2 B2 D2 B' R2 F R2 D' L'
+correction-130	scramble-correction	2.102792000	20	0	B D B2 U2 B L2 D2 F' L2 B' D2 B L D' U2 F2 R' U F2 L2
+correction-131	scramble-correction	0.029125000	13	0	R2 D2 L' B2 L D2 U R2 F2 U L B' U'
+correction-132	scramble-correction	0.481708000	18	0	U' L' D R2 F2 R2 D L2 U2 B2 U' F2 D' B' R B L2 U'
+correction-133	scramble-correction	0.028208000	7	0	U2 R2 B2 U' L2 R2 B
+correction-134	scramble-correction	0.163250000	18	0	R2 U2 L' U2 B2 R D2 U2 R2 B2 R2 B' D2 L R' B R U2
+correction-135	scramble-correction	0.398250000	20	0	R' D R F2 D2 L' B2 R F2 R2 F2 R2 D2 U R2 F D F U' F
+correction-136	scramble-correction	1.378750000	20	0	L' D2 B U F2 R D F' R2 U F2 U2 F2 D2 B U2 B' L2 U2 D2
+correction-137	scramble-correction	0.732959000	20	0	R D2 F2 L2 U2 R F' B2 R2 D2 R' F2 L D2 L U2 B2 D2 L2 D'
+correction-138	scramble-correction	0.018334000	4	0	D' U2 F2 L'
+correction-139	scramble-correction	0.362750000	20	0	U' L' U L2 F R2 B2 R2 U B L2 D B2 R2 D' B2 L2 U' F2 U
+correction-140	scramble-correction	0.264166000	20	0	R2 L2 B' D F2 U' F B R' L2 D2 L2 B U2 F' D2 L2 B2 U2 F'
+correction-141	scramble-correction	0.892834000	19	0	D2 L2 D2 R U L' D F' L R2 D2 B U2 B' D2 B U2 F R
+correction-142	scramble-correction	0.022167000	5	0	B' D2 R' F' L2
+correction-143	scramble-correction	0.096125000	19	0	R L U' D F' R B R' F2 U' F2 B2 D F2 D B2 U F2 R
+correction-144	scramble-correction	0.041375000	7	0	B2 D F B D R L'
+correction-145	scramble-correction	0.054958000	18	0	B2 R2 U' R2 U L2 U' R2 U R2 F L2 R D B' R' D2 U
+correction-146	scramble-correction	1.047250000	20	0	U2 L2 F' B2 R' D2 L' F' U2 B2 U2 R2 D2 F' U2 D2 F D2 U' F'
+correction-147	scramble-correction	0.060375000	19	0	R' U2 B L2 F' R2 B2 D2 R2 U2 L2 U2 L' B2 F' U' B' R' F
+correction-148	scramble-correction	0.790333000	19	0	F' B2 U' D2 B' R' B D2 R2 U' B2 U' R2 D' R2 D2 R' B' R
+correction-149	scramble-correction	0.089416000	7	0	F' R F U' F2 R D'
+correction-150	scramble-correction	0.055125000	20	0	F' U' L2 R2 U2 R2 U' B2 U B2 U2 B2 U2 F' R' B2 L2 F' D F
+correction-151	scramble-correction	0.175125000	18	0	F L2 B2 F2 D2 B2 U' L2 D2 U R2 B' R' D R D2 F L'
+correction-152	scramble-correction	0.111125000	20	0	D' L B D' B2 U' F' L' D2 R2 F2 U' D2 R2 D R2 F2 R2 L2 F'
+correction-153	scramble-correction	0.030959000	17	0	L' D' B' R D R2 B R2 B2 R2 B2 R2 D2 R F2 U2 D2
+correction-154	scramble-correction	1.084791000	20	0	F' B D' F2 B' D2 L' D B L' B2 U2 F2 R2 U R2 F2 D B2 D'
+correction-155	scramble-correction	2.323125000	20	0	L2 D2 B2 L2 B2 R2 B' R2 U2 R2 D' U R B' L' D2 B' F R B'
+correction-156	scramble-correction	0.547709000	20	0	F R B U' F D2 R' B2 D' R2 F2 D' R2 U' F2 U2 F2 L' B2 L'
+correction-157	scramble-correction	0.197000000	20	0	F' R D2 F2 B2 U' B L B2 L2 B2 U' L2 D L2 U R2 D2 B2 F
+correction-158	scramble-correction	0.047417000	20	0	F2 B' U' L' B' D R U2 B2 L2 D' F2 U' B2 U R2 B2 D2 B D'
+correction-159	scramble-correction	0.029666000	8	0	L' F2 B' U B L R D'
+correction-160	scramble-correction	0.024458000	20	0	R F R L' D' B2 L' D U2 R2 L2 B' R2 B D2 F' L2 F L2 B
+correction-161	scramble-correction	1.258000000	19	0	L' F' L2 D2 B' L2 F2 R2 B' R2 F L B' U L2 U' R' D L2
+correction-162	scramble-correction	0.257458000	20	0	R2 F' U F' U' D2 R F' D' B' U2 R2 F D2 L2 F2 B R2 F2 L2
+correction-163	scramble-correction	0.028916000	19	0	B2 D B' L U2 R' B L F2 D2 L U2 R F2 R' D2 F2 U2 B
+correction-164	scramble-correction	0.212584000	20	0	U2 F2 R' D' R2 L2 F' R2 L' B D F2 D2 L2 D' L2 F2 B2 U L2
+correction-165	scramble-correction	0.022167000	18	0	F2 L B2 U2 L2 U' F D' L2 D2 R2 U' L2 U F2 U F2 R2
+correction-166	scramble-correction	0.339875000	20	0	R' U' B2 L2 B2 U' B2 D2 B2 R2 U' R2 L U2 B' R F L D B
+correction-167	scramble-correction	0.211250000	19	0	U2 R2 U' R2 F2 L2 R2 D2 L2 U' B' L' D' L2 U' F2 R2 B' D'
+correction-168	scramble-correction	1.782708000	20	0	R F2 D2 B D2 F L2 U2 L2 F U2 R F U2 L B2 D' B' F R
+correction-169	scramble-correction	0.017833000	8	0	L U L U' R2 L2 U2 R2
+correction-170	scramble-correction	0.024458000	9	0	D2 F' L B' L F2 U F' B2
+correction-171	scramble-correction	0.027167000	6	0	R2 D' L2 D2 U2 R'
+correction-172	scramble-correction	0.584625000	19	0	U R2 F L2 D L' B' F2 L2 B2 D B2 L2 D' R2 D' B' R F
+correction-173	scramble-correction	0.027667000	20	0	L' B' D L' B2 U R' F R L U2 B2 L2 U2 L' B2 U2 L F2 B2
+correction-174	scramble-correction	1.113834000	20	0	U2 L2 B2 U' D R' D L2 U B R2 B D2 R2 F' D2 R2 F2 U2 D
+correction-175	scramble-correction	0.022500000	6	0	F D2 F L' U' R'
+correction-176	scramble-correction	0.075917000	20	0	R2 F L2 U' L' D R' U' B' R L2 U2 R F2 R F2 U2 R B2 L2
+correction-177	scramble-correction	0.044333000	19	0	U' R2 D' L2 U L2 B' F2 D F2 U2 R2 U' F2 D F2 U F2 D2
+correction-178	scramble-correction	0.042416000	7	0	F U' F L' U2 B' D
+correction-179	scramble-correction	0.250666000	20	0	B D' L' U L2 D L' U L2 U' R2 D B2 D F2 U F2 R2 B' U2
+correction-180	scramble-correction	0.405958000	20	0	U F' B U2 R F' U2 L2 U' R' U2 D L2 U' D2 R2 U' B2 U2 R2
+correction-181	scramble-correction	0.394083000	20	0	F2 R' L2 D F2 R2 D' R2 B2 F2 U2 R2 U L B2 R F' L' U' B2
+correction-182	scramble-correction	0.776542000	19	0	R' B' D2 B' U R' U2 F B' U2 B2 U' L2 B2 D' F2 R2 L2 F
+correction-183	scramble-correction	0.358875000	19	0	B2 R' U2 R U2 R2 D2 B2 D2 U2 L2 B L2 U' R' U F2 L D
+correction-184	scramble-correction	0.319875000	20	0	L U2 L' D2 F2 D2 R' F2 R B2 L' F D B2 L F2 D2 L2 U L
+correction-185	scramble-correction	0.042042000	14	0	B2 R2 U L2 R2 D' F2 D' F2 D' B L2 F2 D
+correction-186	scramble-correction	0.181000000	20	0	B' R U' F' D F B L2 B2 U' B2 L2 U2 F2 D' F2 B2 D2 F U2
+correction-187	scramble-correction	0.141333000	20	0	R' D' B' D L2 U2 L D L2 U2 R2 F2 L2 U2 F' R2 F R2 B2 D2
+correction-188	scramble-correction	0.166667000	20	0	U R F B2 D' F R' F U2 B F2 L2 D' L2 D' B2 D2 F2 U' R2
+correction-189	scramble-correction	0.021000000	6	0	B2 F D' B L D'
+correction-190	scramble-correction	0.480250000	20	0	R2 F2 D F2 B R F U2 B R L2 B2 R2 L2 U R2 L2 B2 R2 U
+correction-191	scramble-correction	0.039917000	18	0	R2 L2 U2 L B' L2 U F2 L' U2 F2 L' U2 L' D2 B2 L U
+correction-192	scramble-correction	0.026958000	4	0	R' F B' U2
+correction-193	scramble-correction	0.039459000	5	0	R L B2 D' L2
+correction-194	scramble-correction	0.164083000	20	0	B' D L B' U2 R2 F L' B2 R U2 R' F2 R2 B2 D2 R' U2 F2 B
+correction-195	scramble-correction	1.310167000	20	0	F' B2 D2 B' R' B' U D' F U2 R2 L2 B' L2 B R2 L2 B' D' L
+correction-196	scramble-correction	0.031084000	16	0	B L2 F2 D2 U2 R2 F' R2 D2 L2 U' L2 F2 U' L' B
+correction-197	scramble-correction	0.931708000	20	0	B' L2 U' D' F R' L' F2 B R' L2 U' B2 U D R2 L2 U' F2 B2
+correction-198	scramble-correction	0.016917000	9	0	D' R2 B2 U' R2 U2 B' L' B'
+correction-199	scramble-correction	0.149916000	20	0	B2 D2 F U2 R' B' U2 R U D2 R2 L' U2 B2 R2 F2 B2 R' U2 F2
+correction-200	scramble-correction	13.851542000	19	0	B R' U2 L2 B U2 B R2 D B R L B2 U2 B2 D2 R2 B2 U
+correction-201	scramble-correction	0.060875000	14	0	B' U D2 R' F U D' L' F U2 F' U2 B U'
+correction-202	scramble-correction	0.010042000	15	0	B U D L U R2 F L2 F' R2 F L2 F' R2 F
+correction-203	scramble-correction	0.072625000	16	0	L' U' R2 B2 D' L2 F L2 B R2 L2 U2 B U2 F U2
+correction-204	scramble-correction	0.024375000	4	0	B2 F' U' R
+correction-205	scramble-correction	0.063583000	7	0	F' D F' D' L' R2 D
+correction-206	scramble-correction	0.022167000	10	0	F R2 F L2 R2 D2 R' B U F'
+correction-207	scramble-correction	0.036625000	14	0	F B U D R2 U2 R2 U2 F2 L2 D2 L2 B' R2
+correction-208	scramble-correction	0.291125000	14	0	B2 L R U2 L2 U R D2 U2 B R F D F
+correction-209	scramble-correction	0.094750000	18	0	U2 D L F U2 R' B2 R D' F' D2 B R2 U2 R2 B2 D2 R2
+correction-210	scramble-correction	3.060042000	19	0	L F2 U R2 D2 L2 D L2 R2 U' B' U B R2 D' L D U R'
+correction-211	scramble-correction	0.656542000	20	0	L2 D' L2 U2 F2 B U R' L2 D2 L2 B2 D' B2 R2 U R2 B2 R' F'
+correction-212	scramble-correction	0.105500000	15	0	F L' F' L2 B L D R' B2 L' B2 R U2 F2 B'
+correction-213	scramble-correction	14.153667000	20	0	D L2 U L' D' F2 L D R D2 L2 D2 F B2 L2 U2 F2 B' L U'
+correction-214	scramble-correction	0.232375000	19	0	U L D2 L2 B' L2 B' R D2 R D2 R' B2 R U2 R2 L' U F2
+correction-215	scramble-correction	0.041542000	17	0	U' R' B L F B R' L D2 L2 U2 L2 B2 U D' B2 U'
+correction-216	scramble-correction	0.006333000	3	0	U L F
+correction-217	scramble-correction	0.007625000	8	0	D B' D' L B' D B U
+correction-218	scramble-correction	0.033958000	9	0	U' R F2 B2 D U2 L F2 L2
+correction-219	scramble-correction	0.128333000	20	0	L F U R2 F' R' B2 R' U D R2 U R2 F2 L2 U' L2 D B2 R
+correction-220	scramble-correction	0.223125000	20	0	D R' F2 D2 R' D2 R' D2 F2 R' B2 R B F R' U B2 R D R
+correction-221	scramble-correction	0.102875000	19	0	R' F2 D L B D' B2 D' B' R B2 L2 D2 F2 B2 R U2 D2 R'
+correction-222	scramble-correction	0.025458000	7	0	F2 L B' R' D' F B'
+correction-223	scramble-correction	0.889250000	20	0	D F' L' U' R2 U2 L U' L2 B L2 B2 U R2 F2 R2 F2 D2 F2 U'
+correction-224	scramble-correction	0.063833000	20	0	U' B U R' L' U' F2 R D' R2 B U2 R2 B R2 B R2 L2 U2 F2
+correction-225	scramble-correction	0.028375000	10	0	R2 L' B' L U B U D' F2 D2
+correction-226	scramble-correction	0.032958000	19	0	R U R' L U2 R' D2 B R' U2 L' B2 D2 L B2 L' B2 L2 B2
+correction-227	scramble-correction	0.435792000	20	0	F2 U F2 R2 D B2 F2 L2 D' F2 U B' U' L2 B2 F2 L' D' R' U2
+correction-228	scramble-correction	0.151584000	19	0	R D' R2 F' L2 B2 R2 B' D2 F L2 F' D L' R' B' D' U2 R2
+correction-229	scramble-correction	0.088333000	16	0	F B L' F2 D F2 L2 U2 L2 U2 B2 R2 B2 U2 B2 R
+correction-230	scramble-correction	0.031292000	20	0	B2 L2 U B2 D' F2 D' L2 U2 B2 L2 U F' U R' D L' B2 F' L
+correction-231	scramble-correction	0.037167000	6	0	L' D R2 L2 F2 D'
+correction-232	scramble-correction	0.101917000	20	0	R F2 U2 R D R U' D F U2 R2 D2 B2 L2 U2 F2 D' F2 U2 R2
+correction-233	scramble-correction	0.041208000	13	0	R2 U F2 L2 D' B L' R D' B D' R B2
+correction-234	scramble-correction	0.017584000	5	0	L2 U2 L2 D F
+correction-235	scramble-correction	0.046750000	10	0	L2 D2 U2 F2 D2 R B2 F L' F
+correction-236	scramble-correction	0.049459000	10	0	F2 R F2 U R B D' R' D B'
+correction-237	scramble-correction	0.030708000	11	0	D R2 D2 R2 F2 L2 U2 L' U2 R D
+correction-238	scramble-correction	2.972375000	20	0	U L' D2 R2 D L F' B U2 R B L2 F2 D L2 U' D2 R2 U2 R2
+correction-239	scramble-correction	0.026000000	12	0	U2 L2 B F L2 U' L R2 D R' U2 L
+correction-240	scramble-correction	0.028125000	16	0	F' L2 D R L F2 R2 F2 L2 B U2 F' R2 U2 F2 D2
+correction-241	scramble-correction	0.284208000	20	0	B' R B2 D L2 U R' L2 U' R2 U L2 D2 F2 U' B2 U' B2 U R'
+correction-242	scramble-correction	0.047500000	10	0	R' U R2 F U' R D2 F' R' D'
+correction-243	scramble-correction	1.830875000	20	0	F' B' U D B U2 R2 U' R D2 F2 D2 L' U2 L2 F2 L D2 F L
+correction-244	scramble-correction	0.688333000	19	0	R D' B' R F R' F B2 U' F2 L2 U2 D' R2 U' B2 R D' F2
+correction-245	scramble-correction	0.467292000	20	0	F' U' B D2 L2 U2 R' U' B U2 F2 U2 F2 L' F2 R' D2 L' F2 B2
+correction-246	scramble-correction	0.395375000	20	0	B2 L' F2 R' B2 D2 L B2 U2 R F2 U' B' L' U2 R' U2 B' R' U'
+correction-247	scramble-correction	0.061083000	11	0	R' D' R F2 B D2 R' L2 U D F
+correction-248	scramble-correction	14.734791000	20	0	B' R2 F R2 D L2 D2 F R' B' D2 L2 U2 B' U2 F2 B' L2 R D
+correction-249	scramble-correction	0.306625000	13	0	R U2 L U2 D L' R' F2 D' B F' L B
+correction-250	scramble-correction	0.523625000	20	0	F U R' B D' B D' F D' R' B' D2 F R2 B' R2 U2 B2 D2 B2
+correction-251	scramble-correction	0.417125000	20	0	L' B2 L2 F2 L' F2 R' D2 R' B2 U2 D B' D L' D R F2 R2 F'
+correction-252	scramble-correction	0.222500000	17	0	U2 L2 B F U2 R2 U2 B L2 R2 U2 L U' L' F' D2 U2
+correction-253	scramble-correction	0.120917000	20	0	R' B2 L2 U R2 U R2 U L2 D L2 U R2 F' R' B2 D2 B2 R2 B'
+correction-254	scramble-correction	6.914167000	19	0	L2 U D' L' F B' D2 R' U D2 F2 U2 B2 D L2 U F U2 F'
+correction-255	scramble-correction	0.096500000	12	0	D F D B R' L U' F' D B' L2 U2
+correction-256	scramble-correction	0.041958000	7	0	F L D2 B L2 D' L'
+correction-257	scramble-correction	0.028209000	14	0	D R2 F' U R U R2 F2 U2 L2 U2 F2 D2 R
+correction-258	scramble-correction	0.022500000	12	0	R2 B2 U2 F U2 D R F' L' F2 D B'
+correction-259	scramble-correction	0.705958000	20	0	L' F2 R U2 D L D2 B' U L D B2 R2 L2 U L2 U L2 D B2
+correction-260	scramble-correction	0.405250000	20	0	D2 F2 L D' F' L' U' B L' U2 B2 R2 L2 D' R2 B2 U R2 U2 R
+correction-261	scramble-correction	0.086666000	20	0	L F B U F' D2 L' D B2 L F2 B2 U2 L B2 D2 R' F2 D2 B2
+correction-262	scramble-correction	1.490917000	20	0	R2 L B L D2 R B2 L D2 F B2 D' R2 F2 L2 U B2 D2 B2 R2
+correction-263	scramble-correction	0.181875000	19	0	R' L' F2 D2 B R' U2 L U2 B2 R2 D2 B2 D B2 U R2 U' R'
+correction-264	scramble-correction	1.459875000	20	0	R2 F' U2 R' D2 F2 D' R U2 F2 R2 D2 F' L2 F2 U2 F D2 L' B'
+correction-265	scramble-correction	0.011667000	7	0	D2 L F' U2 F2 U2 R2
+correction-266	scramble-correction	0.020000000	14	0	L F' B' R F2 U2 R2 U2 F2 U2 L2 F' R2 B2
+correction-267	scramble-correction	0.048917000	5	0	B2 D' L' F2 B2
+correction-268	scramble-correction	0.283542000	20	0	U' L' D2 R' F D' F U2 B2 R2 B2 U' F2 U' D2 L2 D' F2 L' D2
+correction-269	scramble-correction	0.171541000	19	0	F D' B' R' D F2 L2 U' F' L2 U2 L2 D2 F2 D2 B2 U R2 L2
+correction-270	scramble-correction	0.587375000	20	0	D2 B2 U2 R' B2 R F2 L' R' B2 R2 F' D' R2 D B2 F' L F' D'
+correction-271	scramble-correction	2.971875000	20	0	U R B2 R F' B' D R B D2 L' D' F2 U' R2 U R2 U' L2 D'
+correction-272	scramble-correction	0.073125000	20	0	F2 U B U2 F2 L' D F2 U2 B' U2 F2 L2 U2 L2 F L2 B' R F'
+correction-273	scramble-correction	0.014750000	8	0	F L F' D F B' U2 F
+correction-274	scramble-correction	0.352417000	18	0	F2 L' B2 F2 L D2 L2 U2 B2 R2 F' L U B R' U2 F U2
+correction-275	scramble-correction	0.225625000	20	0	B F2 D F2 D' B2 L2 R2 U L2 R2 D U2 R' B' U2 L' F R F'
+correction-276	scramble-correction	0.312833000	12	0	B U L2 F' B' U F L' B' L2 D' L2
+correction-277	scramble-correction	0.612250000	20	0	L D' B2 L' B U' D2 L R2 U' L2 D' F2 L2 D2 R2 U2 D B L
+correction-278	scramble-correction	0.381041000	20	0	D U2 L2 F2 L' B2 F2 D2 L' F2 R' B2 U F R B R2 U R2 F2
+correction-279	scramble-correction	0.196750000	18	0	B' R F2 B2 R2 D2 L U' R2 D' L2 F2 R2 U F2 U L2 D2
+correction-280	scramble-correction	0.068667000	10	0	L2 F2 R' D' R' L2 U R2 L2 D2
+correction-281	scramble-correction	5.227875000	20	0	B2 R' D2 F2 B' U2 D R' D' F' L U2 R2 B2 D2 B2 L2 U' B2 D'
+correction-282	scramble-correction	0.197417000	18	0	F R' B2 D' L B D R F2 R L B2 D2 F2 U2 R2 L' D'
+correction-283	scramble-correction	0.239792000	20	0	B L F2 U2 L' F2 U2 L2 D2 F2 U2 L' B2 D' B L2 D2 B R U2
+correction-284	scramble-correction	26.436542000	20	0	B' L D2 U2 B2 D2 F' R2 B2 D2 F2 D U R' F' L U2 B2 F' U'
+correction-285	scramble-correction	0.150000000	12	0	U F2 L U D' B2 R U2 F' B R B2
+correction-286	scramble-correction	0.216250000	20	0	F B' L F' U2 D B U2 B2 U' R2 L2 U R2 B2 U' F2 B2 D2 F'
+correction-287	scramble-correction	3.639750000	18	0	D F U' L2 B2 F2 R' B2 R U2 L' B D2 F2 L U F D
+correction-288	scramble-correction	0.073750000	14	0	R2 F U2 B' F' L2 R2 D2 L2 R2 U' L R D'
+correction-289	scramble-correction	4.688000000	20	0	L2 B' R L2 U2 L2 B' D' B U' L U F2 B2 U L2 D2 B2 U' L2
+correction-290	scramble-correction	0.065875000	19	0	B U' F2 L2 U' B D2 L' B' L2 B2 U2 R2 B' L2 D2 B R2 D2
+correction-291	scramble-correction	0.177500000	20	0	U R2 L' D' L U' B D2 L' U2 L F2 U2 L' F2 U2 F2 L2 U L
+correction-292	scramble-correction	0.025459000	7	0	R2 L U' F D2 F2 D'
+correction-293	scramble-correction	0.028875000	20	0	F' D R2 F' L2 U' F L F D2 F' U2 R2 F' L2 B R2 L2 D2 R2
+correction-294	scramble-correction	2.151000000	20	0	U2 R' B D2 B D2 F2 L2 F U2 L2 F' L F2 L' D U L2 R' F
+correction-295	scramble-correction	0.027083000	5	0	B2 U2 D' L2 D
+correction-296	scramble-correction	0.717458000	20	0	L' U' F D' L B' L2 F2 R U L2 B2 D F2 D2 B2 L2 B2 L2 B
+correction-297	scramble-correction	0.149791000	10	0	B D L U R L' F' L D F
+correction-298	scramble-correction	1.439375000	20	0	L2 U2 L2 D F2 U2 F2 R2 U' F2 R' B' L' D2 U L' F' R B' L'
+correction-299	scramble-correction	0.085000000	20	0	U' F' L F2 U R2 L U' R D2 L2 F' U2 B L2 B2 D2 F' U2 F'
+near-0	near-target	0.056792000	3	0	D R2 L
+near-1	near-target	0.037500000	4	0	L R2 D R'
+near-2	near-target	0.055791000	5	0	L' F' U L' D2
+near-3	near-target	0.029542000	6	0	B2 L2 F' L' B2 F'
+near-4	near-target	0.024084000	7	0	B2 D R' U' R2 L2 U'
+near-5	near-target	0.028125000	6	0	F' L2 D2 B2 U B'
+near-6	near-target	0.032250000	3	0	L F R'
+near-7	near-target	0.034042000	4	0	D2 L' D B
+near-8	near-target	0.033542000	5	0	R' B' R' L' U2
+near-9	near-target	0.016209000	6	0	U' F R2 D2 F2 B'
+near-10	near-target	0.040291000	7	0	D' R U' L' B D' B'
+near-11	near-target	0.624708000	17	0	D' F' B' U' R L D2 F R2 F U2 B D2 F' B2 L2 B'
+near-12	near-target	0.023833000	3	0	L F B2
+near-13	near-target	0.032584000	4	0	F' L2 B D'
+near-14	near-target	0.011792000	5	0	R2 U2 R U2 R2
+near-15	near-target	0.027000000	6	0	D B2 U' F D' F'
+near-16	near-target	0.062125000	7	0	L2 B' D2 U L' B R'
+near-17	near-target	0.027583000	8	0	F B U L' F' D U2 R
+near-18	near-target	0.035042000	3	0	F' D' B
+near-19	near-target	0.038625000	4	0	R2 D' B D'
+near-20	near-target	0.044250000	5	0	D F2 R' U' B
+near-21	near-target	0.023792000	6	0	B' D' F L F2 U2
+near-22	near-target	0.020791000	13	0	R L F2 L2 U2 F' R2 B2 R2 B2 R2 D2 B'
+near-23	near-target	0.048375000	12	0	L F' R2 F U2 B2 L2 F2 D2 F2 L D2
+near-24	near-target	0.018333000	3	0	F2 U' B2
+near-25	near-target	0.026750000	4	0	U F2 U' L
+near-26	near-target	0.021875000	5	0	F D' R' U' L2
+near-27	near-target	0.044208000	6	0	B' R L' B F2 U'
+near-28	near-target	0.053333000	4	0	U F' R F'
+near-29	near-target	0.027375000	8	0	B F2 D2 B' F2 L' R F'
+near-30	near-target	0.020125000	2	0	R' L2
+near-31	near-target	0.013792000	4	0	B2 U2 R2 D'
+near-32	near-target	0.025292000	2	0	U' F'
+near-33	near-target	0.017417000	5	0	F D2 L' F B
+near-34	near-target	0.024667000	7	0	U2 L2 B L D L B2
+near-35	near-target	0.036125000	8	0	U2 L2 B U' R' D2 F D
+near-36	near-target	0.048125000	3	0	R F2 R2
+near-37	near-target	0.027666000	4	0	L' D B2 R
+near-38	near-target	0.021625000	5	0	B2 U B2 R2 B2
+near-39	near-target	0.024416000	6	0	U2 D B L2 D' L2
+near-40	near-target	0.035250000	10	0	D2 R B2 F2 L' R' U2 B F R'
+near-41	near-target	0.023333000	8	0	L' R' D2 R' U2 F R D'
+near-42	near-target	0.027666000	3	0	D2 R2 B
+near-43	near-target	0.045666000	4	0	R L D F2
+near-44	near-target	0.019000000	5	0	U' F' L U' D2
+near-45	near-target	0.059916000	13	0	B' L U' L2 D U2 F2 U2 R2 U2 F2 D2 L
+near-46	near-target	0.013667000	7	0	D' R2 D' U2 B2 U R
+near-47	near-target	0.019875000	8	0	B' U2 F2 R D' L' B2 D'
+near-48	near-target	0.024792000	3	0	B' U' F2
+near-49	near-target	0.060166000	4	0	L' R D2 U
+near-50	near-target	0.017958000	5	0	U2 R2 U2 R' U
+near-51	near-target	0.047417000	14	0	D B' L2 U L B2 R' U2 F2 R2 F2 U2 R B2
+near-52	near-target	0.027000000	5	0	B' R U F2 B2
+near-53	near-target	0.101291000	13	0	R' U' B U' R2 D B2 U2 R' L' F2 U2 B2
+near-54	near-target	0.030291000	3	0	R D2 F'
+near-55	near-target	0.015209000	4	0	U2 F' L B2
+near-56	near-target	0.015375000	5	0	D2 L U R' F2
+near-57	near-target	0.070459000	6	0	F L' B2 D' F D
+near-58	near-target	0.023625000	7	0	B2 U2 D F2 U' R2 F2
+near-59	near-target	0.020834000	8	0	U' D' B D' B' L2 B' U2
+near-60	near-target	0.022625000	3	0	R' L' D2
+near-61	near-target	0.049417000	4	0	L R2 B' L'
+near-62	near-target	0.013375000	5	0	R2 F B R2 B
+near-63	near-target	0.016083000	6	0	R U2 B2 R2 D L
+near-64	near-target	0.021917000	7	0	D' F2 L2 R2 B' U B2
+near-65	near-target	0.030542000	6	0	L F' B' D' F2 B
+near-66	near-target	0.026583000	3	0	B' L F2
+near-67	near-target	0.016084000	4	0	D2 B' F U
+near-68	near-target	0.052042000	5	0	B' F' R2 L F'
+near-69	near-target	0.023791000	4	0	B D F R2
+near-70	near-target	0.011791000	7	0	L2 R2 D L2 F2 R U'
+near-71	near-target	0.016167000	8	0	U' B U2 L U F U' R2
+near-72	near-target	0.031000000	3	0	L R2 D'
+near-73	near-target	0.019625000	4	0	B U B' U2
+near-74	near-target	0.011458000	5	0	L U D2 R2 B2
+near-75	near-target	0.021333000	6	0	F L2 B2 U2 D L
+near-76	near-target	0.024333000	7	0	U' D2 L D' B2 U2 D'
+near-77	near-target	0.020833000	5	0	R D2 B2 R U'
+near-78	near-target	0.024875000	3	0	R2 U L
+near-79	near-target	0.017458000	4	0	D' R L F2
+near-80	near-target	0.018666000	5	0	R B2 L D' R
+near-81	near-target	0.015417000	6	0	D' B2 R B' U D'
+near-82	near-target	0.034125000	7	0	D B2 R B D R B'
+near-83	near-target	0.027958000	8	0	U R U' L2 F U F B
+near-84	near-target	0.027250000	3	0	L2 B' D'
+near-85	near-target	0.014917000	4	0	R' B' R2 B2
+near-86	near-target	0.021625000	5	0	D2 B2 L' R' B
+near-87	near-target	0.028000000	6	0	B' F2 U2 R' F2 D2
+near-88	near-target	0.014250000	7	0	D2 L2 B2 R' U L' F2
+near-89	near-target	0.012291000	6	0	B2 R2 U2 L' U B
+near-90	near-target	0.018083000	3	0	B2 U' D
+near-91	near-target	0.030750000	4	0	L2 B' U2 F'
+near-92	near-target	0.029125000	5	0	F D2 B' U2 R
+near-93	near-target	0.029125000	6	0	L2 F2 L2 R2 U' R'
+near-94	near-target	0.018209000	7	0	U' B2 U2 R2 B' L2 R
+near-95	near-target	0.027125000	14	0	L' U' R D2 R F2 R2 U2 R2 F2 L2 D2 F2 B
+near-96	near-target	0.029667000	3	0	F' R F'
+near-97	near-target	0.004583000	4	0	F U F U2
+near-98	near-target	0.036583000	5	0	D R2 F U D'
+near-99	near-target	0.034833000	6	0	L' D2 B' L' F2 B2
+near-100	near-target	0.054333000	7	0	R' U L2 D' U2 F B
+near-101	near-target	0.036708000	7	0	F U F2 B2 L F B'
+near-102	near-target	0.016083000	3	0	L' F B
+near-103	near-target	0.025375000	4	0	R' L U2 F2
+near-104	near-target	0.019292000	5	0	D' F R F' D2
+near-105	near-target	0.021459000	6	0	R2 F' R D' B R'
+near-106	near-target	0.017000000	12	0	U R L F2 R2 U2 R2 F2 R2 U' R2 D'
+near-107	near-target	0.095459000	14	0	L' B2 R2 F2 U2 F2 L F2 L' U2 B2 R D U'
+near-108	near-target	0.033542000	3	0	B' F' D
+near-109	near-target	0.033041000	4	0	B2 F2 U B
+near-110	near-target	0.037500000	5	0	L2 D B U' F'
+near-111	near-target	0.020375000	6	0	R B2 R B L R
+near-112	near-target	0.013042000	5	0	U B' D2 B D2
+near-113	near-target	0.014250000	8	0	R2 F R' F L D2 R U2
+near-114	near-target	0.082667000	3	0	U L D'
+near-115	near-target	0.029208000	4	0	D U2 R' B2
+near-116	near-target	0.024709000	5	0	R F2 U' F R
+near-117	near-target	0.023750000	13	0	U' F2 D F2 U2 F U2 F U2 F D2 F L2
+near-118	near-target	0.022500000	7	0	D' R2 B L' F D2 R2
+near-119	near-target	0.152958000	13	0	L' R2 D2 B2 L2 F2 U2 B2 R2 U2 F' R' F'
+near-120	near-target	0.081167000	1	0	B'
+near-121	near-target	0.021833000	4	0	L R2 U' F2
+near-122	near-target	0.048542000	4	0	U D L B2
+near-123	near-target	0.033666000	6	0	L2 U2 R2 F' B2 R2
+near-124	near-target	0.026209000	14	0	D L U' F U' D R2 F2 U2 L2 D2 B2 D2 L
+near-125	near-target	0.052250000	8	0	L U' L' U' L' R2 U F2
+near-126	near-target	0.033791000	3	0	R L' U2
+near-127	near-target	0.014291000	4	0	B U F' R
+near-128	near-target	0.028250000	5	0	D' B' R2 U' L2
+near-129	near-target	0.060250000	6	0	D' L2 R D B L'
+near-130	near-target	0.015625000	7	0	L2 D' R2 B' L B' F'
+near-131	near-target	0.097583000	19	0	F' D2 F' D B' D2 F D2 F2 R2 D' R2 D R2 F2 B2 D' L2 U'
+near-132	near-target	0.068834000	3	0	U' D2 F
+near-133	near-target	0.033042000	4	0	L2 D F2 L
+near-134	near-target	0.034625000	5	0	B2 R B' R2 D
+near-135	near-target	0.034375000	5	0	D' U' L R' F'
+near-136	near-target	0.020500000	7	0	U2 R F2 U2 B' R' F'
+near-137	near-target	0.020083000	8	0	L' F2 U D F' U R' L2
+near-138	near-target	0.014959000	3	0	D' R L'
+near-139	near-target	0.029042000	4	0	F2 R U L'
+near-140	near-target	0.034042000	5	0	U L' U2 D2 R
+near-141	near-target	0.021250000	6	0	F' B2 U2 F' B2 D2
+near-142	near-target	0.017750000	7	0	F' D2 L2 B2 D2 F' D'
+near-143	near-target	0.017500000	8	0	R' L F' U2 F2 R2 F' L2
+near-144	near-target	0.022916000	3	0	B' R' F
+near-145	near-target	0.014334000	4	0	R2 F2 U2 F
+near-146	near-target	0.017208000	5	0	F2 D2 U' R' F
+near-147	near-target	0.065334000	6	0	U' D B' D' U2 R
+near-148	near-target	0.013291000	7	0	B2 D2 B' U B' L B
+near-149	near-target	0.016125000	16	0	U2 B2 R' F R F2 L2 B2 L2 D2 F2 B' L2 U2 F' L2
+near-150	near-target	0.036792000	3	0	R' B' U'
+near-151	near-target	0.018208000	4	0	D U R D
+near-152	near-target	0.032916000	5	0	R2 F' D L' D
+near-153	near-target	0.012583000	6	0	R2 L' B' U B2 U
+near-154	near-target	0.018875000	4	0	L2 R' F D
+near-155	near-target	0.050417000	14	0	L D2 B2 R2 F2 U2 F2 R2 D2 B' F U' R F
+near-156	near-target	0.004417000	3	0	R B R
+near-157	near-target	0.025125000	4	0	L' U2 F' B2
+near-158	near-target	0.026334000	5	0	B D' R' L' B2
+near-159	near-target	0.034208000	6	0	L2 B L D' F2 L
+near-160	near-target	0.019750000	7	0	U D R U R2 D R2
+near-161	near-target	0.018375000	14	0	R2 U2 R F U' F2 U' L2 U2 D R2 U B2 U2
+near-162	near-target	0.019084000	3	0	L' U2 L
+near-163	near-target	0.021042000	4	0	B D2 L D
+near-164	near-target	0.069125000	5	0	F U R2 U B
+near-165	near-target	0.027250000	6	0	R' F D L' D2 R2
+near-166	near-target	0.027917000	6	0	D F L R2 U' D2
+near-167	near-target	0.038042000	8	0	R' B' D L' F2 B2 R' B2
+near-168	near-target	0.022416000	3	0	L R U
+near-169	near-target	0.033375000	4	0	D B2 R B
+near-170	near-target	0.022041000	5	0	U' L2 F' R2 B
+near-171	near-target	0.022958000	6	0	R' L2 B' D2 R L2
+near-172	near-target	0.036916000	6	0	F B U' L F B'
+near-173	near-target	0.016625000	15	0	B' R2 U' D2 F U D2 R2 U' R2 U F2 U' D2 F2
+near-174	near-target	0.019583000	3	0	D2 L U
+near-175	near-target	0.017750000	4	0	U' F R' L2
+near-176	near-target	0.020542000	5	0	F2 U' F2 B' D
+near-177	near-target	0.047208000	6	0	D' F2 L D2 B2 R
+near-178	near-target	0.032250000	7	0	F2 U B D L' F D2
+near-179	near-target	0.011500000	7	0	B2 F2 U B' U2 R U'
+near-180	near-target	0.067750000	3	0	D' F D
+near-181	near-target	0.061334000	4	0	D F' B2 L'
+near-182	near-target	0.017667000	5	0	R2 B2 L U2 B'
+near-183	near-target	0.021958000	6	0	U' F D2 F' U D2
+near-184	near-target	0.025167000	7	0	D' U F2 L2 U R' B
+near-185	near-target	0.060625000	14	0	D' B U B' L2 U B U' L2 U' R2 U L2 U
+near-186	near-target	0.033625000	3	0	F' D2 L'
+near-187	near-target	0.020334000	4	0	R' U D2 B2
+near-188	near-target	0.024042000	5	0	F2 D' U L2 B'
+near-189	near-target	0.013708000	6	0	U B2 L2 U' R2 F2
+near-190	near-target	0.010542000	6	0	F2 D F2 B' R2 B2
+near-191	near-target	0.069917000	8	0	B R L' U' D' R' F D
+near-192	near-target	0.032500000	3	0	F B2 L
+near-193	near-target	0.034875000	4	0	L R B U'
+near-194	near-target	0.030917000	5	0	U2 R2 L2 B' U2
+near-195	near-target	0.022291000	12	0	B D R L U2 R2 B2 L2 D2 R2 U2 D'
+near-196	near-target	0.052959000	11	0	F' U2 L2 D R2 U2 D2 L2 F D2 B2
+near-197	near-target	0.021125000	8	0	F' R L B R F2 U F2
+near-198	near-target	0.022041000	3	0	D' F' B2
+near-199	near-target	0.023166000	4	0	U B' U D2
+solved	structured	0.001166000	0	0	
+one-quarter	structured	0.029458000	1	0	R'
+one-half	structured	0.023334000	1	0	R2
+checkerboard	structured	0.097667000	6	0	U2 D2 R2 L2 F2 B2
+six-spots	structured	0.044083000	16	0	U D F B R L U2 L2 F2 R2 D2 L2 B2 U' D' F2
+superflip	structured	481.825041000	20	0	R L U2 F U' D F2 R2 B2 L U2 F' B' U R2 D F2 U R2 U

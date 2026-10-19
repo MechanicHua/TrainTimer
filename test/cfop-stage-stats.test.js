@@ -46,7 +46,7 @@ test('aggregates saved CFOP timing into Cross, F2L, OLL and PLL', () => {
   assert.equal(result.totalMs, 12200);
 });
 
-test('rejects incomplete and collapsed CFOP timing while accepting skips', () => {
+test('rejects incomplete timing while accepting simultaneous completion and skips', () => {
   assert.equal(aggregateCfopChartStages(stages(undefined, { incompleteIndex: 3 })), null);
   const collapsed = stages().map((stage, index) => ({
     ...stage,
@@ -54,7 +54,7 @@ test('rejects incomplete and collapsed CFOP timing while accepting skips', () =>
     turns: index === 0 ? 12 : 0,
     durationMs: index === 0 ? 1200 : 0,
   }));
-  assert.equal(aggregateCfopChartStages(collapsed), null);
+  assert.deepEqual(aggregateCfopChartStages(collapsed).values, { cross: 1200, f2l: 0, oll: 0, pll: 0 });
 
   const skip = aggregateCfopChartStages(stages([1800, 1400, 1700, 1600, 1500, 0, 0]));
   assert.equal(skip.values.oll, 0);
@@ -119,4 +119,14 @@ test('builds stage shares and cumulative boundaries', () => {
   assert.equal(share.totalMs, 14350);
   assert.deepEqual(share.boundariesMs, [0, 1860, 9810, 12430, 14350]);
   assert.equal(share.stages.reduce((sum, stage) => sum + stage.percentage, 0), 100);
+});
+
+test('history comparison uses the same recomputed stage source as current timing', () => {
+  const previous = solve('previous', '2026-09-01T00:00:00Z');
+  const current = solve('current', '2026-09-02T00:00:00Z');
+  const corrected = stages([100, 200, 300, 400, 500, 600, 700]);
+  const index = buildCfopHistoryIndex([previous, current], () => corrected);
+  assert.deepEqual(index.entries.get('current').averages, { cross: 100, f2l: 1400, oll: 600, pll: 700 });
+  assert.ok(buildCfopStageComparison(current, corrected, index).rows.every((row) => row.deltaMs === 0));
+  assert.equal(previous.cfopStages[0].durationMs, 1800);
 });

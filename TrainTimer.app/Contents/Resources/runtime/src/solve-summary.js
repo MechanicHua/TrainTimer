@@ -29,7 +29,7 @@ export function buildSolveSummary(solve, sessionName = '') {
     if (cfopStages.length > 0) {
       lines.push('CFOP 分段:');
       lines.push(...cfopStages.map((stage) => (
-        `${stage.label || '-'} ${stage.name || ''}: ${stage.completed ? stageTimeText(stage.durationMs) : '未完成'} · ${stage.turns ?? 0} 步 · ${Number.isFinite(stage.tps) ? `${stage.tps.toFixed(2)} TPS` : 'TPS --'}${Number.isFinite(stage.observationMs) ? ` · 观察 ${stageTimeText(stage.observationMs)}` : ''}`
+        `${stage.label || '-'} ${stage.name || ''}: ${stage.completed ? stageTimeText(stage.durationMs) : '未完成'} · ${stage.turns ?? 0} 步 · ${Number.isFinite(stage.tps) ? `${stage.tps.toFixed(2)} TPS` : 'TPS --'}${Number.isFinite(stage.observationMs) ? ` · ${stage.key === 'cross' || stage.label === 'C' ? '赛前观察' : '观察'} ${stageTimeText(stage.observationMs)}` : ''}`
       )));
     }
     const opEvents = Array.isArray(solve.opEvents) ? solve.opEvents : [];

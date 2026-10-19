@@ -5,11 +5,27 @@
 
 ## Information hierarchy
 
-1. Result time and solve context.
+1. Top bar: result time and solve context, navigation, and editable scramble formula.
 2. Two-view stage analytics: comparison and time share.
 3. Existing replay/CFOP detail.
-4. Existing editable solve metadata.
-5. Sticky copy/save/delete actions.
+4. Penalty and notes below the charts; Bluetooth solves show notes only.
+   Raw time, puzzle type, and tags have no detail-page edit controls; saving preserves their stored values.
+5. Notes as the final content section, followed by always-visible copy/save/delete actions.
+
+## Scrolling
+
+- Header and footer are non-scrolling flex siblings of `.solve-dialog-content`.
+- Only the middle content region scrolls; preserve native wheel, touch, and keyboard scrolling.
+- Exclude solve detail from shared edge-anchor position switching and fixed scroll indicators.
+- Keep notes full-width after replay/CFOP content.
+
+## Scramble formula
+
+- Present the formula as borderless text in the top bar, with a quiet label and no filled input surface.
+- Use 15px medium-weight monospace, 1.9 line height, and slightly wider spaces between moves.
+- Wrap at spaces to keep moves intact; grow with content up to 160px, then scroll internally.
+- Preserve direct text editing; keyboard focus uses a single accent underline.
+- Disable spellcheck and automatic capitalization for move notation.
 
 ## Stage comparison
 

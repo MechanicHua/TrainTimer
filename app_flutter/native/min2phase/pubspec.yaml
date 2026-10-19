@@ -1,0 +1,17 @@
+name: traintimer_min2phase
+description: Pinned local min2phase C ABI for offline TrainTimer solving.
+version: 0.1.0
+publish_to: none
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+  flutter: '>=3.24.0'
+dependencies:
+  flutter:
+    sdk: flutter
+flutter:
+  plugin:
+    platforms:
+      macos:
+        ffiPlugin: true
+      windows:
+        ffiPlugin: true

@@ -7,13 +7,13 @@ const caseOrder = new Map(algorithmTrainerCases
   .filter((item) => ['oll', 'pll'].includes(item.set))
   .map((item, index) => [`${item.set}:${item.id}`, index]));
 
-export function summarizeOpStats(solves) {
+export function summarizeOpStats(solves, options = {}) {
   const buckets = new Map();
   let totalEvents = 0;
   const byKind = { oll: 0, pll: 0 };
 
   for (const solve of Array.isArray(solves) ? solves : []) {
-    for (const event of opEventsForStatsSolve(solve)) {
+    for (const event of opEventsForStatsSolve(solve, options)) {
       if (!['oll', 'pll'].includes(event?.kind) || !event.caseId) continue;
       totalEvents += 1;
       byKind[event.kind] += 1;
@@ -35,7 +35,7 @@ export function summarizeOpStats(solves) {
   };
 }
 
-export function opCaseSamplesForSolves(solves, kind, caseId) {
+export function opCaseSamplesForSolves(solves, kind, caseId, options = {}) {
   const targetKind = String(kind || '').toLowerCase();
   const targetCaseId = String(caseId || '');
   if (!['oll', 'pll'].includes(targetKind) || !targetCaseId) return [];
@@ -43,7 +43,7 @@ export function opCaseSamplesForSolves(solves, kind, caseId) {
   const samples = [];
   for (const solve of Array.isArray(solves) ? solves : []) {
     const solveId = String(solve?.id || '');
-    for (const event of opEventsForStatsSolve(solve)) {
+    for (const event of opEventsForStatsSolve(solve, options)) {
       if (event?.kind !== targetKind || String(event.caseId || '') !== targetCaseId) continue;
       samples.push(opCaseSampleFromEvent(solve, event, solveId));
     }
@@ -52,7 +52,8 @@ export function opCaseSamplesForSolves(solves, kind, caseId) {
   return samples.sort(compareOpCaseSamples);
 }
 
-function opEventsForStatsSolve(solve) {
+function opEventsForStatsSolve(solve, options) {
+  if (options.storedOnly) return solve?.opEvents || [];
   if (Array.isArray(solve?.opEvents) && solve.opEvents.length > 0) return solve.opEvents;
   try {
     return opEventsForSave(solve);

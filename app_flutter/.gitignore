@@ -1,0 +1,16 @@
+.dart_tool/
+.flutter-plugins*
+.toolchain/
+build/
+coverage/
+**/ephemeral/
+**/Pods/
+**/.symlinks/
+**/Flutter/GeneratedPluginRegistrant.swift
+**/flutter/generated_plugin_registrant.*
+**/flutter/generated_plugins.cmake
+*.iml
+.idea/
+.DS_Store
+benchmarks/work/
+native/min2phase/build/

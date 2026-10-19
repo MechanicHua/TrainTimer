@@ -29,7 +29,7 @@ function opDiagramFromPdfAlgorithm(item) {
     setup,
     facelets,
     recognitionCaseId: recognition?.caseId || '',
-    recognitionConfidence: recognition?.confidence || 'none',
+    recognitionMatchCount: recognition?.matchCount || 0,
     signature: recognition?.signature || '',
     poster: opPosterDiagramShapes[item.caseId] || null,
   };

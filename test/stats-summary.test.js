@@ -39,9 +39,7 @@ test('builds copyable session statistics summary', () => {
   assert.match(text, /次数: 6/);
   assert.match(text, /平均: 12\.345/);
   assert.match(text, /蓝牙成绩: 2/);
-  assert.match(text, /平均转动: 12\.5/);
-  assert.match(text, /平均 TPS: 3\.457/);
-  assert.match(text, /最佳 TPS: 4\.250/);
+  assert.doesNotMatch(text, /TPS|平均转动/);
   assert.match(text, /mo3: 11\.900/);
   assert.match(text, /ao50: 12\.100/);
   assert.match(text, /最佳 mo3: 11\.200/);

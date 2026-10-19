@@ -1,0 +1,28 @@
+cmake_minimum_required(VERSION 3.16)
+project(traintimer_min2phase LANGUAGES CXX)
+
+find_package(Threads REQUIRED)
+add_library(traintimer_min2phase SHARED
+  src/traintimer_min2phase.cpp
+  vendor/src/CubieCube.cpp vendor/src/Search.cpp
+  vendor/src/coords.cpp vendor/src/info.cpp)
+target_compile_features(traintimer_min2phase PRIVATE cxx_std_14)
+target_compile_definitions(traintimer_min2phase PRIVATE TT_M2P_BUILD)
+target_include_directories(traintimer_min2phase PUBLIC include PRIVATE vendor/include vendor/src)
+target_link_libraries(traintimer_min2phase PRIVATE Threads::Threads)
+set_target_properties(traintimer_min2phase PROPERTIES CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN YES)
+if(MSVC)
+  target_compile_options(traintimer_min2phase PRIVATE /O2 /EHsc)
+else()
+  target_compile_options(traintimer_min2phase PRIVATE -O3)
+endif()
+option(TT_M2P_TESTS "Build native ABI tests" ON)
+if(TT_M2P_TESTS)
+  enable_testing()
+  add_executable(min2phase_tests tests/native_test.cpp)
+  target_compile_features(min2phase_tests PRIVATE cxx_std_14)
+  target_link_libraries(min2phase_tests PRIVATE traintimer_min2phase Threads::Threads)
+  add_test(NAME min2phase_native COMMAND min2phase_tests)
+endif()
+install(TARGETS traintimer_min2phase RUNTIME DESTINATION bin LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)
+install(FILES include/traintimer_min2phase.h DESTINATION include)

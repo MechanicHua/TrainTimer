@@ -84,6 +84,7 @@ function parseExternalTimerJsonSolve(record, index, data, sessions, source, opti
     scrambleSource: source,
     scramblePuzzle: puzzle,
     inspectionEnabled: parseBoolean(firstDefined(record.inspectionEnabled, record.inspection_enabled, '')) || Number(record.inspection_time) > 0,
+    inspectionDurationMs: parseOptionalInteger(record.inspectionDurationMs),
     timerSource: smartCube || bluetoothMoves.length > 0 ? 'bluetooth' : 'manual',
     bluetoothMoves,
     bluetoothMoveCount: smartTurnCount,
@@ -205,12 +206,14 @@ function parseCsvImport(text, options = {}) {
       comment: value('comment'),
     };
     assignOptionalString(solve, 'timerStartedAt', value('timerStartedAt'));
+    assignOptionalNumber(solve, 'inspectionDurationMs', value('inspectionDurationMs'));
     assignOptionalNumber(solve, 'timerStartedAtMs', value('timerStartedAtMs'));
     assignOptionalString(solve, 'timerFinishedAt', value('timerFinishedAt'));
     assignOptionalNumber(solve, 'timerFinishedAtMs', value('timerFinishedAtMs'));
     assignOptionalArray(solve, 'bluetoothMoveLog', value('bluetoothMoveLog'), index + 2);
     assignOptionalArray(solve, 'bluetoothStateCorrections', value('bluetoothStateCorrections'), index + 2);
     assignOptionalArray(solve, 'bluetoothStateLog', value('bluetoothStateLog'), index + 2);
+    assignOptionalString(solve, 'cfopBottomFace', value('cfopBottomFace'));
     assignOptionalArray(solve, 'cfopStages', value('cfopStages'), index + 2);
     assignOptionalArray(solve, 'opEvents', value('opEvents'), index + 2);
     return solve;

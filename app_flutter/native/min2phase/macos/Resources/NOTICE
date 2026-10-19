@@ -1,0 +1,27 @@
+TrainTimer min2phase native integration
+
+min2phaseCXX Copyright (C) 2022 Borgo Federico.
+min2phase Copyright (C) 2023 Shuang Chen / Chen Shuang.
+Upstream: https://github.com/lilborgo/min2phaseCXX
+Pinned commit: db0ee5f431178f2153f9aa60581bd6ca59e89391
+
+The exact upstream README, including both its GPLv3 and MIT notices, is retained
+in vendor/README.md. The C++ source files retain their original GPL-style notices.
+This integration distributes the solver under GPL-3.0-or-later conservatively;
+the README's MIT section is not treated as permission to omit the C++ notices.
+The full GNU GPL version 3 text is in LICENSE.
+
+Modifications on 2026-10-19: the previously researched portability patch is
+applied to three vendor source files; the original patch is retained beside
+SOURCE.json. New code adds a C ABI, serialized initialization/search, canonical
+input validation, current-to-target composition, an independent geometric
+facelet verifier, desktop build integration and regression fixtures/tests.
+HTTP, networking, file cache and upstream example code are not part of the
+linked library. Source hashes are recorded in SOURCE.json.
+
+The facelet coordinate conventions in the independent verifier follow the
+existing TrainTimer src/cube-state.js implementation. Test fixture data is an
+unaltered copy of the project's 2026-10-18 solver research dataset (seed
+20261018); it is included for reproducible current-to-target regression.
+
+This software is distributed without warranty; see LICENSE and vendor/README.md.

@@ -1145,9 +1145,81 @@ dialog.solve-dialog {
 }
 
 .solve-dialog .solve-dialog-header {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+  grid-template-areas: "heading actions" "heading scramble";
   min-height: 142px;
-  align-items: flex-start;
-  gap: 24px;
+  align-items: start;
+  gap: 12px 24px;
+}
+
+.solve-dialog .solve-detail-heading {
+  grid-area: heading;
+}
+
+.solve-dialog .dialog-header-actions {
+  grid-area: actions;
+  justify-content: flex-end;
+}
+
+.solve-detail-scramble-field {
+  grid-area: scramble;
+  min-width: 0;
+}
+
+.solve-detail-scramble-field label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted-strong);
+  font-size: 11px;
+  font-weight: 560;
+  letter-spacing: 0.06em;
+}
+
+.solve-dialog .solve-detail-scramble {
+  display: block;
+  width: 100%;
+  min-height: 58px;
+  max-height: 160px;
+  field-sizing: content;
+  padding: 0 0 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink-strong);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 15px;
+  font-weight: 500;
+  font-variant-ligatures: none;
+  letter-spacing: 0.015em;
+  word-spacing: 0.16em;
+  line-height: 1.9;
+  overflow-wrap: normal;
+  word-break: normal;
+  resize: none;
+  caret-color: var(--accent);
+}
+
+.solve-dialog .solve-detail-scramble:focus-visible {
+  outline: none;
+  box-shadow: 0 1px 0 var(--accent);
+}
+
+.solve-dialog .solve-detail-scramble::placeholder {
+  font-family: inherit;
+  font-size: 13px;
+  word-spacing: normal;
+  letter-spacing: normal;
+}
+
+.solve-detail-grid:has(> #solveDetailPenaltyField[hidden]) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#solveDetailPenaltyField[hidden],
+#solveDetailError:empty {
+  display: none;
 }
 
 .solve-dialog .solve-detail-heading {
@@ -1845,7 +1917,13 @@ dialog.solve-dialog {
 
 @media (max-width: 760px) {
   .solve-dialog .solve-dialog-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "heading actions" "scramble scramble";
     min-height: 136px;
+  }
+
+  .solve-dialog .dialog-header-actions {
+    max-width: 210px;
   }
 
   .solve-analysis-head {
@@ -2861,7 +2939,7 @@ body[data-state="timing"] .timer-display {
   display: block;
   width: min(860px, 100%);
   margin: 16px auto 0;
-  overflow: hidden;
+  overflow: visible;
   color: var(--ink-strong);
   font-size: clamp(19px, 1.62vw, 26px);
   font-weight: 560;
@@ -2938,75 +3016,61 @@ body[data-state="timing"] .timer-display {
 .scramble-move {
   display: inline-block;
   margin-right: 0.34em;
-  border-radius: 6px;
   padding: 0.02em 0.09em;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted-strong);
+  opacity: 0.72;
   transition:
-    background-color 160ms var(--ease),
-    box-shadow 160ms var(--ease),
-    color 160ms var(--ease),
-    transform 160ms var(--ease);
+    color 240ms var(--ease),
+    opacity 280ms var(--ease),
+    text-shadow 280ms var(--ease),
+    transform 280ms var(--ease);
 }
 
 .scramble-move:hover {
-  background: rgba(255, 255, 255, 0.1);
   color: var(--ink-strong);
-  transform: translateY(-1px);
 }
 
 .scramble-move.correct {
-  background: rgba(0, 230, 118, 0.1);
-  color: var(--success-highlight);
+  color: #40b879;
+  opacity: 0.72;
+  transform: translateY(-2px);
 }
 
-.scramble-move.current {
-  background: rgba(var(--accent-rgb), 0.035);
-  color: #f5feff;
-  box-shadow: inset 0 -2px 0 rgba(var(--accent-rgb), 0.62);
-}
-
-.scramble-move.partial {
-  background: rgba(255, 159, 10, 0.18);
-  color: #ffd28a;
-  transform: translateY(-1px);
-}
-
-.scramble-move.correction {
-  background: rgba(var(--accent-rgb), 0.075);
-  color: #eafcff;
-}
-
+.scramble-move.partial,
 .scramble-move.correction-undo {
-  background: rgba(255, 159, 10, 0.16);
-  color: #ffd28a;
+  color: #ffce80;
+  opacity: 1;
+  text-shadow:
+    0 0 5px rgba(255, 206, 128, 0.85),
+    0 0 14px rgba(255, 159, 10, 0.55);
 }
 
-.scramble-move.correction-resume {
-  background: transparent;
-  color: #edf5f8;
-}
-
+.scramble-move.correction,
+.scramble-move.correction-resume,
 .scramble-move.correction-solver {
-  background: rgba(var(--accent-rgb), 0.095);
-  color: #d6fbff;
-}
-
-.scramble-move.correction-next {
-  box-shadow: inset 0 -2px 0 rgba(var(--accent-rgb), 0.62);
+  color: var(--muted-strong);
 }
 
 .scramble-move.wrong {
-  background: rgba(255, 69, 58, 0.18);
   color: #ffb4ad;
-  transform: translateY(-1px);
+  opacity: 1;
 }
 
-.scramble-move.correct:hover,
-.scramble-move.current:hover,
-.scramble-move.partial:hover,
-.scramble-move.correction:hover,
-.scramble-move.wrong:hover {
-  filter: brightness(1.08);
-  transform: translateY(-1px);
+.scramble-move.current,
+.scramble-move.correction-next {
+  color: #f5feff;
+  opacity: 1;
+  text-shadow:
+    0 0 5px rgba(245, 254, 255, 0.78),
+    0 0 13px rgba(var(--accent-rgb), 0.42);
+}
+
+.scramble-move.correction-undo {
+  color: #ffd28a;
 }
 
 .scramble-guide-meta {
@@ -3288,6 +3352,13 @@ body[data-focus-transition="leave"]:has(.preview-panel .bluetooth-3d-panel:not([
   display: none;
 }
 
+.bluetooth-3d-placeholder {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  pointer-events: none;
+}
+
 body[data-focus="true"][data-live3d="true"] .bluetooth-3d-canvas,
 body[data-focus="true"] .preview-panel:has(.bluetooth-3d-panel:not([hidden])) .bluetooth-3d-canvas,
 body[data-focus-transition="leave"] .preview-panel:has(.bluetooth-3d-panel:not([hidden])) .bluetooth-3d-canvas,
@@ -3304,17 +3375,8 @@ body[data-focus-transition="leave"] .bluetooth-3d-focus-host .bluetooth-3d-canva
   box-shadow: none;
   pointer-events: auto;
   transform: translateY(calc(-50% - var(--timer-focus-3d-lift))) translateZ(0);
-  animation: timer-3d-model-in 280ms var(--ease) both;
-}
-
-body[data-focus-transition="enter"] .preview-panel:has(.bluetooth-3d-panel:not([hidden])) .bluetooth-3d-canvas,
-body[data-focus-transition="enter"] .bluetooth-3d-focus-host .bluetooth-3d-canvas {
-  animation: timer-3d-model-in 360ms var(--ease) both;
-}
-
-body[data-focus-transition="leave"] .preview-panel:has(.bluetooth-3d-panel:not([hidden])) .bluetooth-3d-canvas,
-body[data-focus-transition="leave"] .bluetooth-3d-focus-host .bluetooth-3d-canvas {
-  animation: timer-3d-model-out 320ms var(--ease) both;
+  /* Position/scale is animated once by the layout transition, never on state cleanup. */
+  animation: none;
 }
 
 .bluetooth-3d-head,
@@ -4098,6 +4160,9 @@ body[data-focus-transition="leave"] .bluetooth-3d-focus-host .bluetooth-3d-canva
   min-width: 0;
   font-size: 10px;
   text-align: right;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .history-cfop-stages .op-event-card.has-op-diagram {
@@ -4184,24 +4249,44 @@ body[data-focus="true"] .timer-surface {
   transform: translate(var(--timer-focus-number-shift), var(--timer-focus-number-lower));
 }
 
+/* Animate one inherited value on the stable body, never on refreshed panels. */
+@property --timer-interface-opacity {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+body {
+  --timer-interface-opacity: 1;
+  transition: --timer-interface-opacity 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body[data-focus="true"] {
+  --timer-interface-opacity: 0.045;
+  transition-duration: 260ms;
+}
+
 .app-shell > :not(.timer-band),
 .timer-layout > :not(.timer-surface),
 .timer-surface > :not(.timer-display) {
-  transition: opacity 260ms var(--ease), transform 260ms var(--ease);
+  opacity: var(--timer-interface-opacity);
+  transition: transform 260ms var(--ease);
+}
+
+body[data-focus-visited="true"] .app-shell > :not(.timer-band),
+body[data-focus-visited="true"] .timer-layout > :not(.timer-surface),
+body[data-focus-visited="true"] .timer-surface > :not(.timer-display),
+.history-panel .history-row,
+.history-cfop-panel {
+  animation: none;
 }
 
 body[data-focus="true"] .app-shell > :not(.timer-band),
 body[data-focus="true"] .timer-layout > :not(.timer-surface),
-body[data-focus="true"] .timer-surface > :not(.timer-display) {
-  animation: none;
-  opacity: 0.045;
-  pointer-events: none;
-}
-
+body[data-focus="true"] .timer-surface > :not(.timer-display),
 body[data-focus-transition="leave"] .app-shell > :not(.timer-band),
 body[data-focus-transition="leave"] .timer-layout > :not(.timer-surface),
 body[data-focus-transition="leave"] .timer-surface > :not(.timer-display) {
-  animation: focus-background-light-on 680ms cubic-bezier(0.37, 0, 0.63, 1) both;
   pointer-events: none;
 }
 
@@ -4227,12 +4312,6 @@ body[data-focus="true"][data-state="hold"][data-hold-ready="false"] .timer-displ
 body[data-focus="true"][data-state="hold"][data-hold-ready="true"] .timer-display {
   color: var(--success);
   transform: scale(1);
-}
-
-body[data-focus="true"][data-inspection-enter] .app-shell > :not(.timer-band),
-body[data-focus="true"][data-inspection-enter] .timer-layout > :not(.timer-surface),
-body[data-focus="true"][data-inspection-enter] .timer-surface > :not(.timer-display) {
-  animation: inspection-dim-in 480ms var(--ease) both;
 }
 
 body[data-inspection-enter]:not([data-state="timing"]) .timer-band {
@@ -6285,7 +6364,7 @@ dialog[open] {
 
 .solve-detail-grid {
   display: grid;
-  grid-template-columns: minmax(140px, 0.9fr) minmax(118px, 0.55fr) minmax(140px, 0.72fr);
+  grid-template-columns: minmax(118px, 0.25fr) minmax(0, 1fr);
   gap: 8px 10px;
   margin-top: 10px;
 }
@@ -6299,18 +6378,6 @@ dialog[open] {
 .solve-detail-grid > div > label {
   display: block;
   margin-bottom: 5px;
-}
-
-.solve-detail-scramble {
-  min-height: 58px;
-  padding: 9px 10px;
-  border: 0;
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.055);
-  color: var(--ink-strong);
-  font-size: 16px;
-  font-weight: 680;
-  line-height: 1.35;
 }
 
 .solve-solution-panel {
@@ -6568,24 +6635,14 @@ button.solve-cfop-card.active {
   color: var(--danger);
 }
 
-body:not([data-focus-visited="true"]) .app-shell > * {
-  animation: panel-in 360ms var(--ease) both;
+/* Startup has one slow fade on the stable shell, independent of solve focus. */
+body:not([data-focus-visited="true"]) .app-shell {
+  animation: interface-startup-light-on 2200ms cubic-bezier(0.45, 0, 0.65, 1) both;
 }
 
-body:not([data-focus-visited="true"]) .app-shell > *:nth-child(2) {
-  animation-delay: 35ms;
-}
-
-body:not([data-focus-visited="true"]) .app-shell > *:nth-child(3) {
-  animation-delay: 70ms;
-}
-
-body:not([data-focus-visited="true"]) .app-shell > *:nth-child(4) {
-  animation-delay: 105ms;
-}
-
-body:not([data-focus-visited="true"]) .app-shell > *:nth-child(5) {
-  animation-delay: 140ms;
+@keyframes interface-startup-light-on {
+  from { opacity: 0.045; }
+  to { opacity: 1; }
 }
 
 @keyframes history-row-in {
@@ -6607,37 +6664,6 @@ body:not([data-focus-visited="true"]) .app-shell > *:nth-child(5) {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes focus-background-light-on {
-  from {
-    opacity: 0.045;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes timer-3d-model-in {
-  from {
-    opacity: 0.42;
-    transform: translateY(calc(-50% - var(--timer-focus-3d-lift, 24px) - 20px)) scale(0.92) translateZ(0);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(calc(-50% - var(--timer-focus-3d-lift, 24px))) scale(1) translateZ(0);
-  }
-}
-
-@keyframes timer-3d-model-out {
-  from {
-    opacity: 1;
-    transform: translateY(calc(-50% - var(--timer-focus-3d-lift, 24px))) scale(1) translateZ(0);
-  }
-  to {
-    opacity: 0.54;
-    transform: translateY(calc(-50% - var(--timer-focus-3d-lift, 24px) - 12px)) scale(0.94) translateZ(0);
   }
 }
 
@@ -7779,3 +7805,119 @@ dialog.algorithm-dialog > form.algorithm-dialog-inner {
     display: none;
   }
 }
+
+/* The history popover shares the detail chart, sized for the narrow sidebar. */
+.history-stage-comparison {
+  --solve-chart-fast: #35e7e0;
+  --solve-chart-fast-rgb: 53, 231, 224;
+  --solve-chart-slow: #ff6257;
+  --solve-chart-slow-rgb: 255, 98, 87;
+  --dialog-muted: var(--muted-strong);
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  padding: 8px 5px 4px;
+}
+.history-stage-comparison .solve-comparison-scale-inner,
+.history-stage-comparison .solve-comparison-row {
+  grid-template-columns: 44px minmax(0, 1fr) 78px;
+  gap: 8px;
+}
+.history-stage-comparison .solve-comparison-row { min-height: 64px; }
+.history-stage-comparison .solve-comparison-scale-axis { height: 58px; }
+.history-stage-comparison .solve-comparison-stage { font-size: 12px; }
+.history-stage-comparison .solve-comparison-direction,
+.history-stage-comparison .solve-comparison-scale-label { font-size: 10px; }
+.history-stage-comparison .solve-comparison-metrics {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+  text-align: right;
+}
+.history-stage-comparison .solve-comparison-metrics strong { font-size: 12px; }
+.history-stage-comparison .solve-comparison-metrics em { font-size: 11px; }
+.history-stage-comparison .solve-comparison-tick.minor { display: none; }
+.history-stage-comparison .solve-comparison-current-marker { will-change: auto; }
+
+/* Solve detail: only the middle region scrolls; its chrome never changes position mode. */
+dialog.solve-dialog {
+  overflow: hidden;
+}
+
+dialog.solve-dialog > form.solve-dialog-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: calc(100dvh - var(--dialog-viewport-gutter) * 2);
+  overflow: hidden;
+  padding: 0;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.solve-dialog-inner > .solve-dialog-content {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 18px 20px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(199, 199, 204, 0.3) transparent;
+}
+
+.solve-dialog-content::-webkit-scrollbar {
+  width: 5px;
+}
+
+.solve-dialog-content::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: rgba(199, 199, 204, 0.3);
+}
+
+.solve-dialog-content:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -2px;
+}
+
+dialog.solve-dialog .solve-dialog-header,
+dialog.solve-dialog .dialog-actions {
+  position: static;
+  flex: none;
+  margin: 0;
+  width: 100%;
+  transform: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+dialog.solve-dialog .solve-dialog-header {
+  padding: 16px 20px;
+}
+
+dialog.solve-dialog .dialog-actions {
+  padding: 12px 20px;
+}
+
+.solve-dialog .solve-detail-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 720px) {
+  dialog.solve-dialog .solve-dialog-header,
+  dialog.solve-dialog .dialog-actions,
+  .solve-dialog-inner > .solve-dialog-content {
+    padding: 12px 16px;
+  }
+}
+
+/* Fixed row extent lets large histories retain bounded DOM without changing data. */
+.windowed-history > .history-row {
+  height: 37px;
+  min-height: 37px;
+  box-sizing: border-box;
+  animation: none;
+}
+.windowed-history { overflow-anchor: none; }
+
+.solve-bottom-face-field { display: flex; align-items: center; gap: 6px; margin-left: auto; font-size: 12px; white-space: nowrap; }
+.solve-bottom-face-field select { width: auto; min-width: 76px; }

@@ -1,5 +1,7 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { analysisInputKey, invalidateAnalysis } from './analysis-input.js';
+import { randomUUID } from 'node:crypto';
+import { mkdir, readFile, writeFile, rename, rm }  from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { countMoveSteps } from './move-metrics.js';
 import { averageOfLast, bestAverageOf, bestMeanOf, chronologicalSolves, meanOfLast } from './rolling-averages.js';
@@ -40,86 +42,101 @@ export async function loadSessions(historyPath = getHistoryPath()) {
 }
 
 export async function saveSolve(solve, historyPath = getHistoryPath()) {
-  const history = await loadHistory(historyPath);
-  const nextSolve = normalizeSolve(solve);
-  const nextHistory = normalizeHistory({
-    ...history,
-    sessions: ensureSession(history.sessions, nextSolve.sessionId),
-    solves: [...history.solves, nextSolve],
+  return withHistoryWrite(historyPath, async () => {
+    const history = await loadHistory(historyPath);
+    const nextSolve = normalizeSolve(solve);
+    const nextHistory = normalizeHistory({
+      ...history,
+      sessions: ensureSession(history.sessions, nextSolve.sessionId),
+      solves: [...history.solves, nextSolve],
   });
   await writeHistory(nextHistory, historyPath);
   return nextHistory.solves;
+  });
 }
 
 export async function replaceSolves(solves, historyPath = getHistoryPath(), sessions = []) {
-  const nextHistory = normalizeHistory({ sessions, solves });
-  await writeHistory(nextHistory, historyPath);
-  return nextHistory.solves;
+  return withHistoryWrite(historyPath, async () => {
+    const nextHistory = normalizeHistory({ sessions, solves });
+    await writeHistory(nextHistory, historyPath);
+    return nextHistory.solves;
+  });
 }
 
 export async function updateSolve(id, updates, historyPath = getHistoryPath()) {
-  const history = await loadHistory(historyPath);
-  let updatedSolve = null;
-  const nextSolves = history.solves.map((solve) => {
-    if (solve.id !== id) return solve;
-    updatedSolve = normalizeSolve({ ...solve, ...updates });
-    return updatedSolve;
+  return withHistoryWrite(historyPath, async () => {
+    const history = await loadHistory(historyPath);
+    let updatedSolve = null;
+    const nextSolves = history.solves.map((solve) => {
+      if (solve.id !== id) return solve;
+      updatedSolve = invalidateAnalysis(solve, normalizeSolve({ ...solve, ...updates }));
+      return updatedSolve;
   });
 
   if (!updatedSolve) return null;
   const nextHistory = normalizeHistory({ ...history, solves: nextSolves });
   await writeHistory(nextHistory, historyPath);
   return { solve: updatedSolve, solves: nextHistory.solves, sessions: nextHistory.sessions };
+  });
 }
 
 export async function updateSolves(ids, updates, historyPath = getHistoryPath()) {
-  const idSet = new Set(ids);
-  const history = await loadHistory(historyPath);
-  const nextHistory = normalizeHistory({
-    ...history,
-    solves: history.solves.map((solve) => (idSet.has(solve.id) ? { ...solve, ...updates } : solve)),
+  return withHistoryWrite(historyPath, async () => {
+    const idSet = new Set(ids);
+    const history = await loadHistory(historyPath);
+    const nextHistory = normalizeHistory({
+      ...history,
+      solves: history.solves.map((solve) => (idSet.has(solve.id) ? invalidateAnalysis(solve, normalizeSolve({ ...solve, ...updates })) : solve)),
   });
   await writeHistory(nextHistory, historyPath);
   return { solves: nextHistory.solves, sessions: nextHistory.sessions };
+  });
 }
 
 export async function deleteSolves(ids, historyPath = getHistoryPath()) {
-  const idSet = new Set(ids);
-  const history = await loadHistory(historyPath);
-  const nextHistory = normalizeHistory({
-    ...history,
-    solves: history.solves.filter((solve) => !idSet.has(solve.id)),
+  return withHistoryWrite(historyPath, async () => {
+    const idSet = new Set(ids);
+    const history = await loadHistory(historyPath);
+    const nextHistory = normalizeHistory({
+      ...history,
+      solves: history.solves.filter((solve) => !idSet.has(solve.id)),
   });
   await writeHistory(nextHistory, historyPath);
   return nextHistory.solves;
+  });
 }
 
 export async function moveSolves(ids, sessionId, historyPath = getHistoryPath()) {
-  const targetSessionId = typeof sessionId === 'string' && sessionId ? sessionId : defaultSession.id;
-  const idSet = new Set(ids);
-  const history = await loadHistory(historyPath);
-  const nextHistory = normalizeHistory({
-    ...history,
-    sessions: ensureSession(history.sessions, targetSessionId),
-    solves: history.solves.map((solve) => (idSet.has(solve.id) ? { ...solve, sessionId: targetSessionId } : solve)),
+  return withHistoryWrite(historyPath, async () => {
+    const targetSessionId = typeof sessionId === 'string' && sessionId ? sessionId : defaultSession.id;
+    const idSet = new Set(ids);
+    const history = await loadHistory(historyPath);
+    const nextHistory = normalizeHistory({
+      ...history,
+      sessions: ensureSession(history.sessions, targetSessionId),
+      solves: history.solves.map((solve) => (idSet.has(solve.id) ? { ...solve, sessionId: targetSessionId } : solve)),
   });
   await writeHistory(nextHistory, historyPath);
   return { solves: nextHistory.solves, sessions: nextHistory.sessions };
+  });
 }
 
 export async function clearSolves(historyPath = getHistoryPath()) {
-  const history = await loadHistory(historyPath);
-  await writeHistory({ ...history, solves: [] }, historyPath);
-  return [];
+  return withHistoryWrite(historyPath, async () => {
+    const history = await loadHistory(historyPath);
+    await writeHistory({ ...history, solves: [] }, historyPath);
+    return [];
+  });
 }
 
 export async function createSession(name, historyPath = getHistoryPath(), options = {}) {
-  const history = await loadHistory(historyPath);
-  const session = normalizeSession({
-    id: randomId('session'),
-    name,
-    scramblePuzzle: options.scramblePuzzle,
-    targetCount: options.targetCount,
+  return withHistoryWrite(historyPath, async () => {
+    const history = await loadHistory(historyPath);
+    const session = normalizeSession({
+      id: randomId('session'),
+      name,
+      scramblePuzzle: options.scramblePuzzle,
+      targetCount: options.targetCount,
   });
   const nextHistory = normalizeHistory({
     ...history,
@@ -127,19 +144,21 @@ export async function createSession(name, historyPath = getHistoryPath(), option
   });
   await writeHistory(nextHistory, historyPath);
   return { session, sessions: nextHistory.sessions, solves: nextHistory.solves };
+  });
 }
 
 export async function duplicateSession(id, name, historyPath = getHistoryPath()) {
-  const sourceSessionId = typeof id === 'string' && id ? id : defaultSession.id;
-  const history = await loadHistory(historyPath);
-  const sourceSession = history.sessions.find((session) => session.id === sourceSessionId);
-  if (!sourceSession) return null;
+  return withHistoryWrite(historyPath, async () => {
+    const sourceSessionId = typeof id === 'string' && id ? id : defaultSession.id;
+    const history = await loadHistory(historyPath);
+    const sourceSession = history.sessions.find((session) => session.id === sourceSessionId);
+    if (!sourceSession) return null;
 
-  const session = normalizeSession({
-    id: randomId('session'),
-    name: typeof name === 'string' && name.trim() ? name : `${sourceSession.name} 副本`,
-    scramblePuzzle: sourceSession.scramblePuzzle,
-    targetCount: sourceSession.targetCount,
+    const session = normalizeSession({
+      id: randomId('session'),
+      name: typeof name === 'string' && name.trim() ? name : `${sourceSession.name} 副本`,
+      scramblePuzzle: sourceSession.scramblePuzzle,
+      targetCount: sourceSession.targetCount,
   });
   const copiedSolves = history.solves
     .filter((solve) => solve.sessionId === sourceSessionId)
@@ -155,26 +174,29 @@ export async function duplicateSession(id, name, historyPath = getHistoryPath())
   });
   await writeHistory(nextHistory, historyPath);
   return { session, sessions: nextHistory.sessions, solves: nextHistory.solves };
+  });
 }
 
 export async function mergeSession(sourceId, targetId, historyPath = getHistoryPath()) {
-  const sourceSessionId = typeof sourceId === 'string' && sourceId ? sourceId : defaultSession.id;
-  const targetSessionId = typeof targetId === 'string' && targetId ? targetId : defaultSession.id;
-  if (sourceSessionId === defaultSession.id || sourceSessionId === targetSessionId) return null;
+  return withHistoryWrite(historyPath, async () => {
+    const sourceSessionId = typeof sourceId === 'string' && sourceId ? sourceId : defaultSession.id;
+    const targetSessionId = typeof targetId === 'string' && targetId ? targetId : defaultSession.id;
+    if (sourceSessionId === defaultSession.id || sourceSessionId === targetSessionId) return null;
 
-  const history = await loadHistory(historyPath);
-  const sourceSession = history.sessions.find((session) => session.id === sourceSessionId);
-  const targetSession = history.sessions.find((session) => session.id === targetSessionId);
-  if (!sourceSession || !targetSession) return null;
+    const history = await loadHistory(historyPath);
+    const sourceSession = history.sessions.find((session) => session.id === sourceSessionId);
+    const targetSession = history.sessions.find((session) => session.id === targetSessionId);
+    if (!sourceSession || !targetSession) return null;
 
-  const nextHistory = normalizeHistory({
-    sessions: history.sessions.filter((session) => session.id !== sourceSessionId),
-    solves: history.solves.map((solve) => (
-      solve.sessionId === sourceSessionId ? { ...solve, sessionId: targetSessionId } : solve
-    )),
+    const nextHistory = normalizeHistory({
+      sessions: history.sessions.filter((session) => session.id !== sourceSessionId),
+      solves: history.solves.map((solve) => (
+        solve.sessionId === sourceSessionId ? { ...solve, sessionId: targetSessionId } : solve
+      )),
   });
   await writeHistory(nextHistory, historyPath);
   return { sourceSession, targetSession, sessions: nextHistory.sessions, solves: nextHistory.solves };
+  });
 }
 
 export async function renameSession(id, name, historyPath = getHistoryPath()) {
@@ -182,28 +204,32 @@ export async function renameSession(id, name, historyPath = getHistoryPath()) {
 }
 
 export async function updateSession(id, updates, historyPath = getHistoryPath()) {
-  const history = await loadHistory(historyPath);
-  let updatedSession = null;
-  const sessions = history.sessions.map((session) => {
-    if (session.id !== id) return session;
-    updatedSession = normalizeSession({ ...session, ...updates });
-    return updatedSession;
+  return withHistoryWrite(historyPath, async () => {
+    const history = await loadHistory(historyPath);
+    let updatedSession = null;
+    const sessions = history.sessions.map((session) => {
+      if (session.id !== id) return session;
+      updatedSession = normalizeSession({ ...session, ...updates });
+      return updatedSession;
   });
   if (!updatedSession) return null;
   const nextHistory = normalizeHistory({ ...history, sessions });
   await writeHistory(nextHistory, historyPath);
   return { session: updatedSession, sessions: nextHistory.sessions, solves: nextHistory.solves };
+  });
 }
 
 export async function deleteSession(id, historyPath = getHistoryPath()) {
-  if (id === defaultSession.id) return null;
-  const history = await loadHistory(historyPath);
-  const nextHistory = normalizeHistory({
-    sessions: history.sessions.filter((session) => session.id !== id),
-    solves: history.solves.filter((solve) => solve.sessionId !== id),
+  return withHistoryWrite(historyPath, async () => {
+    if (id === defaultSession.id) return null;
+    const history = await loadHistory(historyPath);
+    const nextHistory = normalizeHistory({
+      sessions: history.sessions.filter((session) => session.id !== id),
+      solves: history.solves.filter((solve) => solve.sessionId !== id),
   });
   await writeHistory(nextHistory, historyPath);
   return { sessions: nextHistory.sessions, solves: nextHistory.solves };
+  });
 }
 
 export function normalizeSolve(solve) {
@@ -231,14 +257,16 @@ export function normalizeSolve(solve) {
   const opEvents = normalizeOpEvents(solve.opEvents);
   const cfopAnalysisVersion = normalizedAnalysisVersion(solve.cfopAnalysisVersion, cfopStages);
   const opAnalysisVersion = normalizedAnalysisVersion(solve.opAnalysisVersion, opEvents);
-  const timerStartedAtMs = Number(solve.timerStartedAtMs);
-  const timerFinishedAtMs = Number(solve.timerFinishedAtMs);
+  const timerStartedAtMs = optionalNumber(solve.timerStartedAtMs);
+  const timerFinishedAtMs = optionalNumber(solve.timerFinishedAtMs);
 
   return {
     ...solve,
     id: typeof solve.id === 'string' && solve.id ? solve.id : randomId('solve'),
     durationMs,
     duration: solve.duration || formatTime(durationMs),
+    inspectionDurationMs: optionalNumber(solve.inspectionDurationMs) != null
+      ? Math.max(0, Math.round(Number(solve.inspectionDurationMs))) : null,
     timerStartedAt: typeof solve.timerStartedAt === 'string' ? solve.timerStartedAt : '',
     timerStartedAtMs: Number.isFinite(timerStartedAtMs) ? Math.max(0, Math.round(timerStartedAtMs)) : null,
     timerFinishedAt: typeof solve.timerFinishedAt === 'string' ? solve.timerFinishedAt : '',
@@ -258,6 +286,8 @@ export function normalizeSolve(solve) {
     bluetoothStateCorrections,
     bluetoothStateLog,
     bluetoothSolvedByStatePacket: solve.bluetoothSolvedByStatePacket === true,
+    cfopBottomFace: /^[URFDLB]$/.test(String(solve.cfopBottomFace || '')) ? solve.cfopBottomFace : '',
+    analysisSummary: normalizeAnalysisSummary(solve.analysisSummary),
     cfopStages,
     cfopAnalysisVersion,
     opEvents,
@@ -267,6 +297,16 @@ export function normalizeSolve(solve) {
     bluetoothDeviceName: typeof solve.bluetoothDeviceName === 'string' ? solve.bluetoothDeviceName : '',
     bluetoothProtocols: normalizeStringList(solve.bluetoothProtocols),
     bluetoothSources: normalizeStringList(solve.bluetoothSources),
+  };
+}
+
+function normalizeAnalysisSummary(summary) {
+  if (!summary || typeof summary !== 'object') return undefined;
+  return {
+    bottomFace: /^[URFDLB]$/.test(String(summary.bottomFace || '')) ? summary.bottomFace : '',
+    bottomFaceStatus: ['selected', 'automatic', 'ambiguous', 'unavailable'].includes(summary.bottomFaceStatus) ? summary.bottomFaceStatus : '',
+    bottomFaceCandidates: Array.isArray(summary.bottomFaceCandidates) ? summary.bottomFaceCandidates.filter((face) => /^[URFDLB]$/.test(String(face))) : [],
+    finalSolved: summary.finalSolved === true,
   };
 }
 
@@ -327,9 +367,9 @@ function normalizeBluetoothMoveLog(moveLog, fallbackMoves = []) {
 function normalizeBluetoothMoveLogEntry(entry, index) {
   const move = normalizeBluetoothMoves([entry])[0];
   if (!move) return null;
-  const elapsedMs = Number(entry?.elapsedMs);
-  const timestampMs = Number(entry?.timestampMs);
-  const solveStartedAtMs = Number(entry?.solveStartedAtMs);
+  const elapsedMs = optionalNumber(entry?.elapsedMs);
+  const timestampMs = optionalNumber(entry?.timestampMs);
+  const solveStartedAtMs = optionalNumber(entry?.solveStartedAtMs);
   return {
     step: Number.isFinite(Number(entry?.step)) ? Math.max(1, Math.round(Number(entry.step))) : index + 1,
     move,
@@ -357,9 +397,9 @@ function normalizeBluetoothStateCorrection(entry) {
   const facelets = normalizeFacelets(entry?.facelets);
   if (!facelets) return null;
   const step = Number(entry?.step);
-  const elapsedMs = Number(entry?.elapsedMs);
-  const timestampMs = Number(entry?.timestampMs);
-  const moveCounter = Number(entry?.moveCounter);
+  const elapsedMs = optionalNumber(entry?.elapsedMs);
+  const timestampMs = optionalNumber(entry?.timestampMs);
+  const moveCounter = optionalNumber(entry?.moveCounter);
   return {
     step: Number.isFinite(step) ? Math.max(0, Math.round(step)) : 0,
     facelets,
@@ -387,11 +427,11 @@ function normalizeBluetoothStateLog(entries) {
 function normalizeBluetoothStateLogEntry(entry) {
   const facelets = normalizeFacelets(entry?.facelets);
   const step = Number(entry?.step);
-  const elapsedMs = Number(entry?.elapsedMs);
-  const timestampMs = Number(entry?.timestampMs);
-  const solveStartedAtMs = Number(entry?.solveStartedAtMs);
-  const moveCounter = Number(entry?.moveCounter);
-  const counterModulo = Number(entry?.counterModulo);
+  const elapsedMs = optionalNumber(entry?.elapsedMs);
+  const timestampMs = optionalNumber(entry?.timestampMs);
+  const solveStartedAtMs = optionalNumber(entry?.solveStartedAtMs);
+  const moveCounter = optionalNumber(entry?.moveCounter);
+  const counterModulo = optionalNumber(entry?.counterModulo);
   const moves = normalizeBluetoothMoves(entry?.moves);
   const hasPacketPayload = facelets
     || typeof entry?.raw === 'string'
@@ -433,22 +473,22 @@ function normalizeCfopStages(stages) {
   if (!Array.isArray(stages)) return [];
   return stages.map((stage) => {
     const turns = Number(stage?.turns);
-    const durationMs = Number(stage?.durationMs);
-    const tps = Number(stage?.tps);
-    const completedAt = Number(stage?.completedAt);
-    const startStep = Number(stage?.startStep);
-    const endStep = Number(stage?.endStep);
-    const physicalCompletedAt = Number(stage?.physicalCompletedAt);
-    const physicalStartStep = Number(stage?.physicalStartStep);
-    const physicalEndStep = Number(stage?.physicalEndStep);
-    const physicalTurns = Number(stage?.physicalTurns);
-    const startedAtElapsedMs = Number(stage?.startedAtElapsedMs);
-    const firstMoveElapsedMs = Number(stage?.firstMoveElapsedMs);
-    const completedAtElapsedMs = Number(stage?.completedAtElapsedMs);
-    const observationMs = Number(stage?.observationMs);
-    const startedAtTimestampMs = Number(stage?.startedAtTimestampMs);
-    const firstMoveTimestampMs = Number(stage?.firstMoveTimestampMs);
-    const completedAtTimestampMs = Number(stage?.completedAtTimestampMs);
+    const durationMs = optionalNumber(stage?.durationMs);
+    const tps = optionalNumber(stage?.tps);
+    const completedAt = optionalNumber(stage?.completedAt);
+    const startStep = optionalNumber(stage?.startStep);
+    const endStep = optionalNumber(stage?.endStep);
+    const physicalCompletedAt = optionalNumber(stage?.physicalCompletedAt);
+    const physicalStartStep = optionalNumber(stage?.physicalStartStep);
+    const physicalEndStep = optionalNumber(stage?.physicalEndStep);
+    const physicalTurns = optionalNumber(stage?.physicalTurns);
+    const startedAtElapsedMs = optionalNumber(stage?.startedAtElapsedMs);
+    const firstMoveElapsedMs = optionalNumber(stage?.firstMoveElapsedMs);
+    const completedAtElapsedMs = optionalNumber(stage?.completedAtElapsedMs);
+    const observationMs = optionalNumber(stage?.observationMs);
+    const startedAtTimestampMs = optionalNumber(stage?.startedAtTimestampMs);
+    const firstMoveTimestampMs = optionalNumber(stage?.firstMoveTimestampMs);
+    const completedAtTimestampMs = optionalNumber(stage?.completedAtTimestampMs);
     return {
       key: typeof stage?.key === 'string' ? stage.key : '',
       label: typeof stage?.label === 'string' ? stage.label : '',
@@ -465,6 +505,8 @@ function normalizeCfopStages(stages) {
       stateTransitionObserved: stage?.stateTransitionObserved === true,
       unobservedTurns: stage?.unobservedTurns === true,
       completionSource: typeof stage?.completionSource === 'string' ? stage.completionSource : '',
+      includedInCross: stage?.includedInCross === true,
+      timingInterpolated: stage?.timingInterpolated === true,
       skipped: stage?.skipped === true,
       skipAdjustment: typeof stage?.skipAdjustment === 'string' ? stage.skipAdjustment : '',
       analysisVersion: normalizedAnalysisVersion(stage?.analysisVersion),
@@ -509,7 +551,6 @@ function normalizeOpEvents(events) {
       algorithm: typeof event?.algorithm === 'string' ? event.algorithm : '',
       pdfLabel: typeof event?.pdfLabel === 'string' ? event.pdfLabel : '',
       source: typeof event?.source === 'string' ? event.source : '',
-      confidence: typeof event?.confidence === 'string' ? event.confidence : '',
       matchCount: matchCount != null ? Math.max(0, Math.round(matchCount)) : 0,
       startStep: startStep != null ? Math.max(0, Math.round(startStep)) : null,
       endStep: endStep != null ? Math.max(0, Math.round(endStep)) : null,
@@ -776,7 +817,8 @@ export function normalizeHistoryForBootstrap(history, options = {}) {
     sessions: [...sessionMap.values()],
     solves,
     summarySolves,
-    historyPartial: solves.length < summarySolves.length,
+    historyPartial: solves.length < summarySolves.length || rawSolves.some((solve) =>
+      [solve.bluetoothMoves, solve.bluetoothMoveLog, solve.bluetoothStateCorrections, solve.bluetoothStateLog].some((items) => Array.isArray(items) && items.length > 0)),
     historyTotal: summarySolves.length,
   };
 }
@@ -843,13 +885,39 @@ function ensureSession(sessions, sessionId) {
   return [...sessions, normalizeSession({ id: sessionId, name: sessionId })];
 }
 
+const historyWrites = new Map();
+function withHistoryWrite(historyPath, action) {
+  const key = resolve(historyPath);
+  const previous = historyWrites.get(key) || Promise.resolve();
+  const next = previous.catch(() => {}).then(action);
+  historyWrites.set(key, next);
+  void next.finally(() => { if (historyWrites.get(key) === next) historyWrites.delete(key); }).catch(() => {});
+  return next;
+}
+
+export function updateSolveAnalysis(id, expectedInput, result, historyPath = getHistoryPath()) {
+  return withHistoryWrite(historyPath, async () => {
+    const history = await loadHistory(historyPath);
+    const index = history.solves.findIndex((solve) => solve.id === id);
+    if (index < 0) return null;
+    const current = history.solves[index];
+    if (analysisInputKey(current) !== expectedInput) return null;
+    const solve = normalizeSolve({ ...current, ...result, analysisRawRevision: current.rawRevision || 0 });
+    history.solves[index] = solve;
+    await writeHistory(history, historyPath);
+    return solve;
+  });
+}
+
 async function writeHistory(history, historyPath) {
   await mkdir(dirname(historyPath), { recursive: true });
-  await writeFile(
-    historyPath,
-    `${JSON.stringify(normalizeHistory(history), null, 2)}\n`,
-    'utf8',
-  );
+  const temporaryPath = `${historyPath}.${randomUUID()}.tmp`;
+  try {
+    await writeFile(temporaryPath, `${JSON.stringify(history)}\n`, 'utf8');
+    await rename(temporaryPath, historyPath);
+  } finally {
+    await rm(temporaryPath, { force: true });
+  }
 }
 
 function randomId(prefix) {

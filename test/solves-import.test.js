@@ -77,6 +77,7 @@ test('parses exported CSV solves and sessions', () => {
 test('round-trips TrainTimer CSV timing, CFOP, and OP metadata', () => {
   const solve = {
     id: 'op1',
+    inspectionDurationMs: 9850,
     sessionId: 'default',
     createdAt: '2026-06-03T10:00:00.000Z',
     durationMs: 1500,
@@ -132,6 +133,7 @@ test('round-trips TrainTimer CSV timing, CFOP, and OP metadata', () => {
   );
 
   assert.equal(parsed.source, 'csv');
+  assert.equal(parsed.solves[0].inspectionDurationMs, 9850);
   assert.equal(parsed.solves[0].timerStartedAt, solve.timerStartedAt);
   assert.equal(parsed.solves[0].timerStartedAtMs, solve.timerStartedAtMs);
   assert.equal(parsed.solves[0].timerFinishedAt, solve.timerFinishedAt);

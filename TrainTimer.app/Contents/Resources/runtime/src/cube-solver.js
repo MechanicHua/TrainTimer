@@ -18,6 +18,8 @@ let solverStdoutBuffer = '';
 let solverRequestId = 0;
 let solverLastStderr = '';
 let solverReadyPromise = null;
+let solverReadyTimer = null;
+let solverWorkTail = Promise.resolve();
 let solverReadyResolve = null;
 let solverReadyReject = null;
 let solverIdleTimer = null;
@@ -87,35 +89,35 @@ export async function solveCorrectionToScrambleTarget(targetMoves, currentFacesO
 }
 
 async function solveRelativeFaceletsCached(relativeFacelets, options) {
-  const pending = solutionPending.get(relativeFacelets);
-  if (pending) {
-    return {
-      moves: [...await abortablePromise(pending, options.signal)],
-      shared: true,
-    };
-  }
-
   throwIfAborted(options.signal);
-  const solverOptions = {
-    ...options,
-    signal: null,
-  };
-  const promise = solveRelativeFacelets(relativeFacelets, solverOptions)
-    .then((output) => {
+  let job = solutionPending.get(relativeFacelets);
+  const shared = Boolean(job && !job.controller.signal.aborted);
+  if (!shared) {
+    if (solutionPending.size >= 32) throw new Error('min2phase queue is full');
+    job = { controller: new AbortController(), subscribers: 0 };
+    const current = job;
+    current.promise = solverWorkTail.catch(() => {}).then(async () => {
+      // Skip work whose consumers have all moved on. An already-running bounded
+      // search finishes before the next starts, keeping the Java input queue empty.
+      throwIfAborted(current.controller.signal);
+      const output = await solveRelativeFacelets(relativeFacelets, { ...options, signal: null });
       if (/^Error\b/i.test(output)) throw new Error(`min2phase solver failed: ${output}`);
       const moves = output ? output.split(/\s+/).filter(Boolean) : [];
       rememberSolution(relativeFacelets, moves);
       return moves;
-    })
-    .finally(() => {
-      solutionPending.delete(relativeFacelets);
+    }).finally(() => {
+      if (solutionPending.get(relativeFacelets) === current) solutionPending.delete(relativeFacelets);
       scheduleCubeCorrectionSolverIdleStop();
     });
-  solutionPending.set(relativeFacelets, promise);
-  return {
-    moves: [...await abortablePromise(promise, options.signal)],
-    shared: false,
-  };
+    solverWorkTail = current.promise.catch(() => {});
+    solutionPending.set(relativeFacelets, current);
+  }
+  job.subscribers += 1;
+  try { return { moves: [...await abortablePromise(job.promise, options.signal)], shared }; }
+  finally {
+    job.subscribers -= 1;
+    if (!job.subscribers) job.controller.abort();
+  }
 }
 
 function normalizeRelativeFacelets(facelets) {
@@ -179,6 +181,7 @@ function stopCubeCorrectionSolverWithError(error) {
     pending.reject(error);
   }
   solverPending.clear();
+  for (const job of solutionPending.values()) job.controller.abort();
   solutionPending.clear();
   const processToStop = solverProcess;
   solverProcess = null;
@@ -278,6 +281,7 @@ function ensureSolverProcess() {
     solverReadyResolve = resolve;
     solverReadyReject = reject;
   });
+  solverReadyTimer = setTimeout(() => stopCubeCorrectionSolverWithError(new Error('min2phase startup timed out')), 10000);
   solverProcess = spawn('java', [
     '-cp',
     bundledTnoodleJar,
@@ -345,12 +349,14 @@ function handleSolverExit(exitedProcess, errorOrCode) {
 }
 
 function resolveSolverReady() {
+  clearTimeout(solverReadyTimer);
   solverReadyResolve?.(true);
   solverReadyResolve = null;
   solverReadyReject = null;
 }
 
 function rejectSolverReady(error) {
+  clearTimeout(solverReadyTimer);
   solverReadyReject?.(error);
   solverReadyResolve = null;
   solverReadyReject = null;

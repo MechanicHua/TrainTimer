@@ -33,7 +33,7 @@ test('finished result remains visible until the user explicitly requests a new s
 test('browser entrypoint invalidates the immutable app bundle cache', async () => {
   const indexSource = await readFile(indexUrl, 'utf8');
 
-  assert.match(indexSource, /app\.js\?v=20260825-comparison-saturation-motion-v66/);
+  assert.match(indexSource, /app\.bundle\.js\?v=[a-f0-9]{12}/);
 });
 
 test('latest-result keyboard actions remain available after auto-advancing to ready', async () => {

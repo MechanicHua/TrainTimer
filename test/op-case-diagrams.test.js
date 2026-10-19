@@ -27,7 +27,7 @@ test('poster-traced OP diagrams are backed by recognizable facelets', () => {
     const recognition = recognizeOpCase(diagram.facelets, diagram.kind);
     assert.equal(recognition?.caseId, diagram.caseId, `${diagram.kind}:${diagram.caseId} should recognize from diagram facelets`);
     assert.equal(diagram.recognitionCaseId, diagram.caseId);
-    assert.equal(diagram.recognitionConfidence, 'unique');
+    assert.equal(diagram.recognitionMatchCount, 1);
     assert.equal(opCaseDiagramForCase(diagram.kind, diagram.caseId), diagram);
   }
 });

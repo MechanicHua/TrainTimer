@@ -8,10 +8,14 @@ const projectRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const appRuntimeRoot = join(projectRoot, 'TrainTimer.app', 'Contents', 'Resources', 'runtime');
 
 const mirroredPublicFiles = [
-  'app.js',
+  'app.js', 'app.bundle.js', 'correction-worker.bundle.js', 'build-manifest.json',
+  'correction-worker.js', 'latest-worker.js', 'cube3d-timing.js', 'windowed-list.js',
+  'cube3d-material.js',
+  'cube3d-layout.js',
   'index.html',
   'styles.css',
   'vendor/three.module.js',
+  'vendor/three.LICENSE.txt',
 ];
 
 const mirroredSourceModules = [
@@ -20,7 +24,8 @@ const mirroredSourceModules = [
   'cfop-analysis.js',
   'cfop-stage-stats.js',
   'cube-state.js',
-  'history.js',
+  'history.js', 'analysis-input.js', 'analysis-service.js', 'analysis-worker.js',
+  'solve-analysis.js', 'replay-state.js', 'rolling-averages.js', 'tnoodle-service.js', 'cube-solver.js',
   'move-metrics.js',
   'op-analysis.js',
   'op-case-diagrams.js',
@@ -80,4 +85,19 @@ test('packaged runtime exposes OP browser modules through the server allow-list'
   assert.match(appSource, /from '\.\/op-stats\.js\?/);
   assert.match(appSource, /from '\.\/replay-timing\.js\?/);
   assert.match(appSource, /from '\.\/cfop-stage-stats\.js\?/);
+});
+
+test('browser bundles are built from the current source inputs', async () => {
+  const { createHash } = await import('node:crypto');
+  const { inputs, outputs } = JSON.parse(await readFile(join(projectRoot, 'public/build-manifest.json'), 'utf8'));
+  for (const [file, hash] of Object.entries({ ...inputs, ...outputs })) {
+    assert.equal(createHash('sha256').update(await readFile(join(projectRoot, file))).digest('hex'), hash, `${file}: run npm run build:web`);
+  }
+  assert.equal(await readFile(join(projectRoot, 'vendor/TnoodleServer.java'), 'utf8'), await readFile(join(appRuntimeRoot, 'vendor/TnoodleServer.java'), 'utf8'));
+});
+
+test('server entrypoint remains a valid executable module', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const result = spawnSync(process.execPath, ['--check', join(projectRoot, 'src/server.js')], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
 });

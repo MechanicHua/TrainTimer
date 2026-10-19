@@ -1,0 +1,12 @@
+{
+  "reference": "Frozen original src/cube-state.js, imported read-only",
+  "checked": 1506,
+  "missing": [],
+  "errors": [],
+  "verifies": [
+    "current + formula = target",
+    "relative + formula = solved",
+    "HTM <= 20",
+    "no duplicate or missing IDs"
+  ]
+}

@@ -538,7 +538,7 @@ test('strict OLL formula validation rejects candidates ending as another OLL sta
 
   assert.equal(rejected.accepted, false);
   assert.equal(rejected.reason, 'intermediate-op-case');
-  assert.equal(rejected.finalRecognition?.confidence, 'unique');
+  assert.equal(rejected.finalRecognition?.matchCount, 1);
   assert.notEqual(rejected.finalRecognition?.caseId, 'oll-41');
   assert.equal(accepted.accepted, true);
 });

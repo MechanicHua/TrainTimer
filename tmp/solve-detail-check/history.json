@@ -1,0 +1,87 @@
+{
+  "version": 2,
+  "sessions": [
+    {
+      "id": "default",
+      "name": "详情测试",
+      "scramblePuzzle": "three",
+      "targetCount": null
+    }
+  ],
+  "solves": [
+    {
+      "sessionId": "default",
+      "durationMs": 12345,
+      "duration": "12.345",
+      "scramblePuzzle": "three",
+      "scramble": "R U R' U' F2 D L2 B2 U2 R2 F2 D' L B2 R' D2 F2 U B' L2",
+      "scrambleSource": "test",
+      "tags": [
+        "PLL"
+      ],
+      "comment": "详情滚动修复保存验证",
+      "id": "manual-detail",
+      "timerSource": "manual",
+      "penalty": "dnf",
+      "createdAt": "2026-09-07T10:00:00Z",
+      "inspectionDurationMs": null,
+      "timerStartedAt": "",
+      "timerStartedAtMs": 0,
+      "timerFinishedAt": "",
+      "timerFinishedAtMs": 0,
+      "effectiveDurationMs": null,
+      "effectiveDuration": "DNF",
+      "bluetoothMoves": [],
+      "bluetoothMoveLog": [],
+      "bluetoothStateCorrections": [],
+      "bluetoothStateLog": [],
+      "bluetoothSolvedByStatePacket": false,
+      "cfopStages": [],
+      "cfopAnalysisVersion": 0,
+      "opEvents": [],
+      "opAnalysisVersion": 0,
+      "bluetoothMoveCount": 0,
+      "bluetoothTps": null,
+      "bluetoothDeviceName": "",
+      "bluetoothProtocols": [],
+      "bluetoothSources": []
+    },
+    {
+      "sessionId": "default",
+      "durationMs": 12345,
+      "duration": "12.345",
+      "scramblePuzzle": "three",
+      "scramble": "R U R' U' F2 D L2 B2 U2 R2 F2 D' L B2 R' D2 F2 U B' L2",
+      "scrambleSource": "test",
+      "tags": [
+        "PLL"
+      ],
+      "comment": "蓝牙备注保存检查",
+      "id": "bluetooth-detail",
+      "timerSource": "bluetooth",
+      "penalty": "ok",
+      "createdAt": "2026-09-07T10:01:00Z",
+      "inspectionDurationMs": null,
+      "timerStartedAt": "",
+      "timerStartedAtMs": 0,
+      "timerFinishedAt": "",
+      "timerFinishedAtMs": 0,
+      "effectiveDurationMs": 12345,
+      "effectiveDuration": "12.345",
+      "bluetoothMoves": [],
+      "bluetoothMoveLog": [],
+      "bluetoothStateCorrections": [],
+      "bluetoothStateLog": [],
+      "bluetoothSolvedByStatePacket": false,
+      "cfopStages": [],
+      "cfopAnalysisVersion": 0,
+      "opEvents": [],
+      "opAnalysisVersion": 0,
+      "bluetoothMoveCount": 0,
+      "bluetoothTps": null,
+      "bluetoothDeviceName": "",
+      "bluetoothProtocols": [],
+      "bluetoothSources": []
+    }
+  ]
+}

@@ -10,9 +10,6 @@ export function buildStatsSummary(sessionName, summary, latestSolves = []) {
     ['最佳', timeOrDash(summary.best)],
     ['平均', timeOrDash(summary.average)],
     ['标准差', timeOrDash(summary.standardDeviation)],
-    ['平均转动', numberOrDash(summary.averageBluetoothMoveCount, 1)],
-    ['平均 TPS', numberOrDash(summary.averageBluetoothTps, 3)],
-    ['最佳 TPS', numberOrDash(summary.bestBluetoothTps, 3)],
     ['mo3', timeOrDash(summary.mo3)],
     ['ao5', timeOrDash(summary.ao5)],
     ['ao12', timeOrDash(summary.ao12)],
@@ -35,10 +32,6 @@ export function buildStatsSummary(sessionName, summary, latestSolves = []) {
 
 function timeOrDash(value) {
   return value == null ? '-' : formatTime(value);
-}
-
-function numberOrDash(value, digits) {
-  return Number.isFinite(value) ? value.toFixed(digits) : '-';
 }
 
 function displaySolveTime(solve) {

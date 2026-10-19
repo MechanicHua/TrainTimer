@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-19",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "architecture": "arm64",
+  "flags": "-O3 -std=c++14 -fsanitize=address,undefined -fno-omit-frame-pointer",
+  "abi_tests": "passed, including illegal states, invalid buffers, budget exhaustion, and 160 calls from eight threads",
+  "regression_cases": 1506,
+  "failed": 0,
+  "stderr_bytes": 0,
+  "raw_results": "sanitizer-regression.tsv",
+  "limitations": "macOS arm64 only. Windows x64 and ARM64 builds and runtime remain pending."
+}

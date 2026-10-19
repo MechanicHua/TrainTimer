@@ -3,6 +3,41 @@ export function rollingAverageAt(solves, index, size) {
   return averageOfWindow(solves.slice(index + 1 - size, index + 1));
 }
 
+// Numeric windows only. Detail views retain their stable tie-breaking sort.
+export function rollingWindowSeries(solves, size, kind = 'average') {
+  const values = solves.map(effectiveDurationMs);
+  const result = Array(values.length).fill(null);
+  const mins = [], maxs = [];
+  let minHead = 0, maxHead = 0, sum = 0, dnfs = 0;
+  for (let index = 0; index < values.length; index += 1) {
+    const value = values[index];
+    if (value == null) dnfs += 1;
+    else {
+      sum += value;
+      while (mins.length > minHead && values[mins.at(-1)] >= value) mins.pop();
+      while (maxs.length > maxHead && values[maxs.at(-1)] <= value) maxs.pop();
+      mins.push(index); maxs.push(index);
+    }
+    if (index >= size) {
+      const removed = values[index - size];
+      if (removed == null) dnfs -= 1;
+      else sum -= removed;
+    }
+    while (minHead < mins.length && mins[minHead] <= index - size) minHead += 1;
+    while (maxHead < maxs.length && maxs[maxHead] <= index - size) maxHead += 1;
+    if (index + 1 >= size) {
+      if (kind === 'mean' && dnfs === 0) result[index] = sum / size;
+      else if (kind === 'average' && dnfs <= 1 && size > 2) {
+        result[index] = (sum - values[mins[minHead]] - (dnfs ? 0 : values[maxs[maxHead]])) / (size - 2);
+      }
+    }
+    // Bound backing arrays even for a long monotonic session.
+    if (minHead > size * 2) { mins.splice(0, minHead); minHead = 0; }
+    if (maxHead > size * 2) { maxs.splice(0, maxHead); maxHead = 0; }
+  }
+  return result;
+}
+
 export function rollingAverageDetailAt(solves, index, size) {
   if (!Number.isInteger(index) || index < 0 || index + 1 < size) return null;
   const startIndex = index + 1 - size;
@@ -111,13 +146,13 @@ export function averageOfLast(solves, size) {
 }
 
 export function bestAverageOf(solves, size) {
-  if (solves.length < size) return null;
-  const averages = [];
-  for (let index = 0; index <= solves.length - size; index += 1) {
-    const average = averageOfWindow(solves.slice(index, index + size));
-    if (average != null) averages.push(average);
-  }
-  return averages.length === 0 ? null : Math.min(...averages);
+  return minimumWindowValue(rollingWindowSeries(solves, size));
+}
+
+function minimumWindowValue(values) {
+  let best = null;
+  for (const value of values) if (value != null && (best == null || value < best)) best = value;
+  return best;
 }
 
 export function bestAverageRecord(solves, size) {
@@ -130,13 +165,7 @@ export function meanOfLast(solves, size) {
 }
 
 export function bestMeanOf(solves, size) {
-  if (solves.length < size) return null;
-  const means = [];
-  for (let index = 0; index <= solves.length - size; index += 1) {
-    const mean = meanOfWindow(solves.slice(index, index + size));
-    if (mean != null) means.push(mean);
-  }
-  return means.length === 0 ? null : Math.min(...means);
+  return minimumWindowValue(rollingWindowSeries(solves, size, 'mean'));
 }
 
 export function bestMeanRecord(solves, size) {
@@ -205,24 +234,13 @@ export function bestSingleRecord(solves) {
 }
 
 function bestWindowRecord(solves, size, windowValue, type) {
-  if (solves.length < size) return null;
+  const values = rollingWindowSeries(solves, size, windowValue === meanOfWindow ? 'mean' : 'average');
   let best = null;
-  for (let startIndex = 0; startIndex <= solves.length - size; startIndex += 1) {
-    const windowSolves = solves.slice(startIndex, startIndex + size);
-    const value = windowValue(windowSolves);
-    if (value == null) continue;
-    if (!best || value < best.value) {
-      best = {
-        type,
-        label: type,
-        value,
-        startIndex,
-        endIndex: startIndex + size - 1,
-        solveIds: windowSolves.map((solve) => solve.id),
-      };
-    }
-  }
-  return best;
+  values.forEach((value, endIndex) => {
+    if (value == null || (best && value >= best.value)) return;
+    best = { type, label: type, value, startIndex: endIndex + 1 - size, endIndex };
+  });
+  return best ? { ...best, solveIds: solves.slice(best.startIndex, best.endIndex + 1).map((solve) => solve.id) } : null;
 }
 
 function bestSingleOf(solves) {

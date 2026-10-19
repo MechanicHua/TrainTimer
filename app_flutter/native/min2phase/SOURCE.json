@@ -1,0 +1,22 @@
+{
+  "upstream_url": "https://github.com/lilborgo/min2phaseCXX",
+  "commit": "db0ee5f431178f2153f9aa60581bd6ca59e89391",
+  "license": "GPL-3.0-or-later (conservative distribution choice; upstream README also contains MIT attribution text)",
+  "patch": "min2phase-cxx-portability.patch",
+  "vendor_source": "Pinned upstream files plus existing portability patch; upstream HTTP server and examples are excluded from build.",
+  "fixture_source": "Read-only copy of output/solver-research-2026-10-18/cases.json",
+  "files": {
+    "vendor/Algorithm.md": "aae4bb5b4884d21d9a59c3bfe95b2e5ae79b37eb7c5eae367d5bfe8d970861dd",
+    "vendor/Benchmarks.md": "28b57de0ed7c98bd042f5fafb05538e7829dbc8fe7ed83d9a31d52cd67d1167c",
+    "vendor/README.md": "e2eed703edd71b2aae4d9a268ea6dddd29bfae51612f575b7071e3f1575cabd2",
+    "vendor/include/min2phase/min2phase.h": "1c4402502202cbe8d4541c75de795082578fa57f8bfa82df6612d8492d72810e",
+    "vendor/src/CubieCube.cpp": "efac34de9f35641d41118595231402574121fc4d952d8913f9e46095b94340d1",
+    "vendor/src/CubieCube.h": "14d5c3edc40c9ce6e0562ca258412746e866c4b6c180f407a42e760e17f2c04e",
+    "vendor/src/Search.cpp": "718e0b4c82cfea5d153f95c598d9973ee1c28a8c8f381aebc99c7bc08a9b0e26",
+    "vendor/src/Search.h": "2bcd29d56543e3b7a5502886c7b14e23cbde96f3811e4061ad80b6213ccaf97b",
+    "vendor/src/coords.cpp": "b874af9a062a6915f802686abeb5ace5b5f62854cb1bb9630169315fedcac6c4",
+    "vendor/src/coords.h": "9fc27cd283716f4156ffb93a2422b7d677a9a5d34a8e58c2cd4cd2fff1e7f4a9",
+    "vendor/src/info.cpp": "cc637f890533fe2cc76059a6eada9f1d0c6688bc49d78bf0e5a9556e3ba795c0",
+    "vendor/src/info.h": "c824dd30b70332bd282b7bee2bf175f92934ffe2eac700701828bebf136943bd"
+  }
+}

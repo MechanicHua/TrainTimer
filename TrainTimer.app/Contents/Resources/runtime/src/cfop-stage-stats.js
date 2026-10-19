@@ -18,7 +18,7 @@ const comparisonColorSlowRgb = [255, 98, 87];
 export function aggregateCfopChartStages(stages) {
   if (!Array.isArray(stages) || stages.length === 0) return null;
   const normalized = stages.map(normalizeStage).filter(Boolean);
-  if (normalized.length === 0 || isCollapsedCfopTiming(normalized)) return null;
+  if (normalized.length === 0) return null;
 
   const cross = normalized.find((stage) => stage.group === 'cross');
   const f2lStages = ['F1', 'F2', 'F3', 'F4']
@@ -48,7 +48,7 @@ export function aggregateCfopChartStages(stages) {
   };
 }
 
-export function buildCfopHistoryIndex(solves) {
+export function buildCfopHistoryIndex(solves, stagesForSolve = (solve) => solve.cfopStages) {
   const entries = new Map();
   const sums = Object.fromEntries(cfopChartStageOrder.map((key) => [key, 0]));
   let count = 0;
@@ -61,7 +61,7 @@ export function buildCfopHistoryIndex(solves) {
         : null,
     });
 
-    const aggregate = eligibleHistoryAggregate(solve);
+    const aggregate = eligibleHistoryAggregate(solve, stagesForSolve);
     if (!aggregate) continue;
     for (const key of cfopChartStageOrder) sums[key] += aggregate.values[key];
     count += 1;
@@ -181,10 +181,10 @@ export function roundedPercentages(percentages) {
   return result;
 }
 
-function eligibleHistoryAggregate(solve) {
+function eligibleHistoryAggregate(solve, stagesForSolve) {
   if (!solve || (solve.scramblePuzzle || 'three') !== 'three') return null;
   if ((solve.penalty || 'ok') === 'dnf') return null;
-  return aggregateCfopChartStages(solve.cfopStages);
+  return aggregateCfopChartStages(stagesForSolve(solve));
 }
 
 function normalizeStage(stage) {
@@ -208,16 +208,6 @@ function normalizeStage(stage) {
 
 function validCompletedStage(stage) {
   return Boolean(stage?.completed && Number.isFinite(stage.durationMs) && stage.durationMs >= 0);
-}
-
-function isCollapsedCfopTiming(stages) {
-  const completed = stages.filter((stage) => stage.completed);
-  if (completed.length < 4) return false;
-  const first = completed[0];
-  if (!Number.isFinite(first.completedAt) || first.completedAt <= 0) return false;
-  if (!Number.isFinite(first.durationMs) || first.durationMs <= 0) return false;
-  return completed.every((stage) => stage.completedAt === first.completedAt)
-    && completed.slice(1).every((stage) => stage.turns === 0 && (stage.durationMs == null || stage.durationMs === 0));
 }
 
 function optionalNumber(value) {

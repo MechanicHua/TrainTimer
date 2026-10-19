@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { runInNewContext } from 'node:vm';
 
 const appUrl = new URL('../public/app.js', import.meta.url);
 const stylesUrl = new URL('../public/styles.css', import.meta.url);
@@ -9,36 +10,39 @@ const packagedBlurUrl = new URL('../TrainTimer.app/Contents/Resources/runtime/pu
 const blurWorkerUrl = new URL('../public/scramble-blur-worker.js', import.meta.url);
 const packagedBlurWorkerUrl = new URL('../TrainTimer.app/Contents/Resources/runtime/public/scramble-blur-worker.js', import.meta.url);
 
-test('scramble changes use a lyric-style directional transition', async () => {
-  const [appSource, stylesSource, blurSource, packagedBlurSource, blurWorkerSource, packagedBlurWorkerSource] = await Promise.all([
-    readFile(appUrl, 'utf8'),
-    readFile(stylesUrl, 'utf8'),
-    readFile(blurUrl, 'utf8'),
-    readFile(packagedBlurUrl, 'utf8'),
-    readFile(blurWorkerUrl, 'utf8'),
-    readFile(packagedBlurWorkerUrl, 'utf8'),
-  ]);
+test('Bluetooth synchronization captures the old text before the full render follows', async () => {
+  const source = await readFile(appUrl, 'utf8');
+  const start = source.indexOf('function renderScrambleGuideDisplay(');
+  const end = source.indexOf('\nfunction renderScrambleText(', start);
+  const text = { textContent: 'R U2 F', dataset: {} };
+  const outgoing = [];
+  const context = {
+    scramble: { puzzle: 'three', scramble: 'L D2 B' }, scramblePuzzle: 'three',
+    scrambleFormulaRenderKey: 'three\nR U2 F', scrambleGuideErrorIndex: null,
+    elements: { scrambleText: text },
+    captureScrambleTextTransition: () => ({ text: text.textContent }),
+    renderScrambleText() { text.textContent = context.scramble.scramble; },
+    renderScrambleGuideMeta() {},
+    animateScrambleTextTransition: (snapshot) => outgoing.push(snapshot.text),
+  };
+  runInNewContext(source.slice(start, end), context);
+  // applyLoadedScramble synchronizes Bluetooth first, then calls render().
+  context.renderScrambleGuideDisplay();
+  context.renderScrambleGuideDisplay();
+  assert.deepEqual(outgoing, ['R U2 F']);
+  assert.equal(text.textContent, 'L D2 B');
+  context.scramble.scramble = 'F2 R2';
+  context.renderScrambleGuideDisplay();
+  assert.deepEqual(outgoing, ['R U2 F', 'L D2 B']);
+});
 
-  assert.match(appSource, /nextFormulaRenderKey !== scrambleFormulaRenderKey[\s\S]*captureScrambleTextTransition\(\)/);
-  assert.match(appSource, /cloneNode\(false\);[\s\S]*ghost\.textContent = elements\.scrambleText\.textContent/);
-  assert.match(appSource, /translate3d\(0, -8px, 0\)[\s\S]*translate3d\(0, 10px, 0\)/);
-  assert.match(appSource, /duration: 420[\s\S]*duration: 560[\s\S]*duration: 760[\s\S]*delay: 72/);
-  assert.match(appSource, /requestIdleCallback\(run, \{ timeout: scrambleTextBlurIdleTimeoutMs \}\)/);
-  assert.match(appSource, /const scrambleTextBlurPrecomputeDelayMs = 980/);
-  assert.match(appSource, /appState === 'timing' \|\| appState === 'hold'/);
-  assert.match(appSource, /takeScrambleTextBlurGhost\(textWidth, textHeight\)/);
-  assert.match(appSource, /scrambleTextTransitionReducedMotion\(\)[\s\S]*prefers-reduced-motion: reduce/);
-  const animationSource = appSource.match(/function animateScrambleTextTransition[\s\S]*?function finishScrambleTextTransition/)?.[0] || '';
-  assert.doesNotMatch(animationSource, /filter:|blur\(|scale\(/);
-  assert.match(stylesSource, /\.scramble-text-transition-old\s*\{[^}]*position:\s*absolute;[^}]*pointer-events:\s*none;[^}]*will-change:\s*opacity, transform;/s);
-  assert.match(stylesSource, /\.scramble-text-transition-blur\s*\{[^}]*image-rendering:\s*auto;/s);
-  assert.match(blurSource, /createDualKawaseTextBlurPrecomputer/);
-  assert.match(blurSource, /gl_FragColor = color \/ 8\.0;[\s\S]*gl_FragColor = color \/ 12\.0;/);
-  assert.match(blurSource, /powerPreference:\s*'low-power'/);
-  assert.match(blurSource, /framebufferTexture2D/);
-  assert.match(blurSource, /new Worker\([\s\S]*scramble-blur-worker\.js/);
-  assert.match(blurWorkerSource, /new OffscreenCanvas\(1, 1\)/);
-  assert.match(blurWorkerSource, /transferToImageBitmap\(\)/);
-  assert.equal(packagedBlurSource, blurSource);
-  assert.equal(packagedBlurWorkerSource, blurWorkerSource);
+test('scramble changes animate concurrently without blur and respect reduced motion', async () => {
+  const appSource = await readFile(appUrl, 'utf8');
+  const animation = appSource.slice(appSource.indexOf('function animateScrambleTextTransition('), appSource.indexOf('function finishScrambleTextTransition('));
+  assert.match(animation, /duration: 180/);
+  assert.match(animation, /duration: 200/);
+  assert.doesNotMatch(animation, /filter:|delay:|blur\(/);
+  assert.match(appSource, /prefers-reduced-motion: reduce/);
+  assert.match(appSource, /cloneNode\(true\)/);
+  assert.doesNotMatch(appSource, /createDualKawaseTextBlurPrecomputer/);
 });
